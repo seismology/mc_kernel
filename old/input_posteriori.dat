@@ -1,0 +1,32 @@
+####### MISFIT FUNCTIONS ##############################################
+F               ! xc_tt: cross-correlation traveltime
+F               ! xc_am: cross-correlation amplitude
+F               ! pk_tt: peak-arrival traveltime
+F               ! on_tt: onset traveltime
+F               ! insta: instantaneous waveform pick
+F               ! wf_dd: waveform misfit (data needed)
+F               ! instph: instantaneous phase misfit (data needed)
+F 	        ! insten: instantaneous envelope (data needed)
+F               ! phase: phase misfit (data needed)
+F               ! envel: envelope misfit (data needed)
+######## FILTERING ####################################################
+0               ! filtering operations (correspond to num follow. lines ) 
+######## MODEL PARAMETERIZATION  ######################################
+T               ! lambda (mu,rho const)
+F               ! mu (lambda,rho const)
+F               ! rho (lambda,mu const)
+F               ! vp(vs,rho const)
+F               ! vs(vp,rho const)
+F               ! rho(vp,vs const): also represents impedance
+F               ! normalize (over all time & frequency) ?
+######## SOURCE TYPES #################################################
+1                           ! number of forward calculations considered
+'/nas/home/tarjen/AXISEM/KERNER/UNCERTAINTY_NOISE'                     
+1.3,0.2,0.3,1.0,2.1,0.3     ! Mij: Mrr,Mtt,Mpp,Mrt,Mrp,Mtp * 10^20 Nm
+######## DATA & MISFIT DETAILS ########################################
+T                 ! include data into the misfit kernels?
+'NOISE/rec_dispr.dat'       ! full path to displacement component (including filename): needs to be in same dt,nt
+2                ! number of time picks (needed for pk_tt,on_tt,insta)
+400,xc_tt        ! time pick and corresponding misfit measurement 
+450,xc_tt        
+ 

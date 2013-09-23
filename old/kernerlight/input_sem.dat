@@ -1,0 +1,3 @@
+FORWARD_DIR  /home/simon/axisem/SOLVER/test_meshgroup_2/
+BACKWARD_DIR /home/simon/axisem/SOLVER/test_meshgroup_2/ 
+KERNEL_MESH  /home/simon/axisem/KERNER/external_mesh.xyz 

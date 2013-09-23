@@ -1,0 +1,30 @@
+######### Source: ###########
+SOURCE_TYPE moment     
+#      Type of source ('single', 'forces', 'moment') 
+
+CMT_SRC 1.000e+27     0.500e+27     2.500e+27     2.000e+27     3.000e+27     1.500e+27     
+# only used, if SOURCE_TYPE is 'moment'
+# in form MRR, MTT, MPP, MRT, MRP, MTP
+
+FORCES_SRC 1.000 0.000 0.000
+# only used, if SOURCE_TYPE is 'forces'
+# in form PZ, PX, PY
+
+SCALAR_MOMENT_SRC 1.000e+27
+# only used, if SOURCE_TYPE is 'single'
+
+######## Receiver: ##########
+RECEIVER_TYPE moment     
+#      Type of receiver ('single', 'forces', 'moment') 
+# Equivalent to pressure gauge, seismometer, Heiner Igel's amazing technicolor rotation
+# sensor
+CMT_REC 1.000e+27     0.500e+27     2.500e+27     2.000e+27     3.000e+27     1.500e+27     
+# only used, if SOURCE_TYPE is 'moment'
+# in form MRR, MTT, MPP, MRT, MRP, MTP
+
+FORCES_REC 1.000 0.000 0.000
+# only used, if SOURCE_TYPE is 'forces'
+# in form PZ, PX, PY
+
+SCALAR_MOMENT_REC 1.000e+27
+# only used, if SOURCE_TYPE is 'single'
