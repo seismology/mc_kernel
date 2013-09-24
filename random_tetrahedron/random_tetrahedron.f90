@@ -35,12 +35,12 @@ contains
 !
 !    Output, real ( kind = 8 ) X(3,N), the points.
 !
-subroutine uniform_in_tetrahedron ( v, n, x )
+function generate_random_point(v, n)
     implicit none
 
     integer, intent(in)        ::  n
     real(kind=sp), intent(in)  ::  v(3,4)
-    real(kind=sp), intent(out) ::  x(3,n)
+    real(kind=sp), intent(out) ::  generate_random_point(3,n)
 
     real(kind=sp)              ::  c(4)
     real(kind=sp)              ::  coordinates(3,n)

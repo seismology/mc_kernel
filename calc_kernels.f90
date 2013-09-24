@@ -112,10 +112,10 @@ subroutine calc_kernel(inv_points, receiver_info, parameters)
                 filtered_wavefield_kernel_fd = filter(wavefield_kernel_fd, kernelspec%filter)
                 filtered_wavefield_kernel_td = iFFT(filtered_wavefield_kernel_fd, parameters%FFT_plan)
 
-                call cut_time_window(filtered_wavefield_kernel_td, kernel(ikernel)%time_window)
+                cut_filtered_wavefield_kernel_td = cut_time_window(filtered_wavefield_kernel_td, kernel(ikernel)%time_window)
                 kernel(ikern) = calc_misfit_kernel(filtered_wavefield_kernel_td, kernelspec%misfit)
 
-                integrated_kernel(ikernel) = add_random_point_to_integral(kernel(ikernel), converged(ikernel))
+                call add_random_point_to_integral(kernel(ikernel), integrated_kernel)
 
             end do ! iKernel
 
