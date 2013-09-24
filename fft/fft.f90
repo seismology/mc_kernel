@@ -11,19 +11,13 @@ program test_fft
 
     integer, parameter :: fftw_mode = FFTW_ESTIMATE
 
-    ! IMPORTANT: 
-    ! these buffer arrays may be used as work arrays in the fft and
-    ! hence the original data can be destroyed. Needs verfication for the
-    ! specific application!
     real(kind=8), dimension(:,:), allocatable       :: datat
     complex(kind=8), dimension(:,:), allocatable    :: dataf
+    real(kind=8), dimension(:,:), allocatable       :: datat1
+    complex(kind=8), dimension(:,:), allocatable    :: dataf1
 
-    rank    = 1
-    istride = 1
-    ostride = 1
-
-    nsnap = 5
-    ntracesperstep = 4
+    nsnap = 2
+    ntracesperstep = 2
 
     nextpow2 = 2
     do while (nextpow2 < nsnap) 
@@ -36,8 +30,9 @@ program test_fft
     write(6,*) 'ntimes:', ntimes
     write(6,*) 'nomega:', nomega
 
-    allocate(datat(1:ntimes, 1:ntracesperstep))
-    allocate(dataf(1:nomega, 1:ntracesperstep))
+    rank    = 1
+    istride = 1
+    ostride = 1
 
     call dfftw_plan_many_dft_r2c(plan_fft, rank, ntimes, ntracesperstep, datat, &
                                  ntracesperstep, istride, ntimes, dataf, &
@@ -46,27 +41,57 @@ program test_fft
                                  ntracesperstep, istride, nomega, datat, &
                                  ntracesperstep, ostride, ntimes, fftw_mode)
 
+    allocate(datat(1:ntimes, 1:ntracesperstep))
+    allocate(dataf(1:nomega, 1:ntracesperstep))
+    allocate(datat1(1:ntimes, 1:ntracesperstep))
+    allocate(dataf1(1:nomega, 1:ntracesperstep))
+
+
     datat = 0
-    datat(1,:) = 1
+    !datat(2,:) = 1
+    datat1 = 0
+    datat1(2,:) = 1
 
     do i=1, ntracesperstep
        write(6,'(100(f5.1))') datat(:,i)
     enddo
 
+    do i=1, ntracesperstep
+       write(6,'(100(f5.1))') datat1(:,i)
+    enddo
+
+    ! use specific interfaces including the buffer arrays to make sure the
+    ! compiler does not change the order of execution (stupid, but known issue)
     call dfftw_execute_dft_r2c(plan_fft, datat, dataf)
+    call dfftw_execute_dft_r2c(plan_fft, datat1, dataf1)
+
 
     do i=1, ntracesperstep
        write(6,'(100("(", f5.1, f5.1, ")"))') dataf(:,i)
     enddo
 
+    do i=1, ntracesperstep
+       write(6,'(100("(", f5.1, f5.1, ")"))') dataf1(:,i)
+    enddo
+
     datat = 0
 
+    ! use specific interfaces including the buffer arrays to make sure the
+    ! compiler does not change the order of execution (stupid, but known issue)
     call dfftw_execute_dft_c2r(plan_ifft, dataf, datat)
+    call dfftw_execute_dft_c2r(plan_ifft, dataf1, datat1)
 
+    ! normalization, see
+    ! http://www.fftw.org/doc/The-1d-Discrete-Fourier-Transform-_0028DFT_0029.html
     datat = datat / ntimes
+    datat1 = datat1 / ntimes
 
     do i=1, ntracesperstep
        write(6,'(100(f5.1))') datat(:,i)
+    enddo
+
+    do i=1, ntracesperstep
+       write(6,'(100(f5.1))') datat1(:,i)
     enddo
 
     call dfftw_destroy_plan(plan_fft)
