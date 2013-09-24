@@ -84,12 +84,11 @@ subroutine calc_kernel(inv_points, receiver_info, parameters)
 
         nkernel = receiver_info(ireceiver)%nkernel
 
-        allocate(converged(nkernel))
-        converged = .false.
+        call initialize_montecarlo(integrated_kernel, nkernel) 
 
         seismograms = load_synthetic_seismograms(receiver_info, parameters%netcdf_info)
 
-        do while any(.not.converged) ! Beginning of Monte Carlo loop
+        do while any(.not.integrated_kernel%converged) ! Beginning of Monte Carlo loop
 
             random_point = generate_random_point(inv_points, n)
 
@@ -107,17 +106,17 @@ subroutine calc_kernel(inv_points, receiver_info, parameters)
                 
                 kernelspec = receiver_info(ireceiver)%kernel(ikernel)
 
-                if (converged(ikernel)) cycle
+                if (integrated_kernel%converged(ikernel)) cycle
                 
                 filtered_wavefield_kernel_fd = filter(wavefield_kernel_fd, kernelspec%filter)
                 filtered_wavefield_kernel_td = iFFT(filtered_wavefield_kernel_fd, parameters%FFT_plan)
 
                 cut_filtered_wavefield_kernel_td = cut_time_window(filtered_wavefield_kernel_td, kernel(ikernel)%time_window)
-                kernel(ikern) = calc_misfit_kernel(filtered_wavefield_kernel_td, kernelspec%misfit)
+                kernelvalues(ikernel) = calc_misfit_kernel(filtered_wavefield_kernel_td, kernelspec%misfit)
 
-                call add_random_point_to_integral(kernel(ikernel), integrated_kernel)
 
             end do ! iKernel
+            call check_montecarlo_integral(kernelvalues, nkernel, integrated_kernel)
 
         end do ! Convergence
 

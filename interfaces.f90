@@ -1,3 +1,5 @@
+
+
 function load_synthetic_seismograms(receiver_info, netcdf_info)
     type(receiver_type), intent(in)                       :: receiver_info
     type(netcdf_type), intent(in)                         :: netcdf_info
@@ -59,7 +61,3 @@ function calc_misfit_kernel(wavefield_kernel, misfit_criterion)
     real(kind=sp), dimension(:), intent(out)              :: calc_misfit_kernel
 end function
 
-subroutine add_random_point_to_integral(values, integrated_values)
-    real(kind=sp), dimension(:), intent(in)               :: values
-    type(integrated_type), dimension(:), intent(inout)    :: integrated_values
-end subroutine
