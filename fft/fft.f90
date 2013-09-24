@@ -22,7 +22,7 @@ program test_fft
     istride = 1
     ostride = 1
 
-    nsnap = 2
+    nsnap = 5
     ntracesperstep = 4
 
     nextpow2 = 2
@@ -62,6 +62,8 @@ program test_fft
     datat = 0
 
     call dfftw_execute_dft_c2r(plan_ifft, dataf, datat)
+
+    datat = datat / ntimes
 
     do i=1, ntracesperstep
        write(6,'(100(f5.1))') datat(:,i)
