@@ -100,8 +100,8 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine rfft(this, datat, dataf)
     class(rfft_type) :: this
-    real(kind=8), intent(in)        :: datat(:,:)!(1:this%ntimes, 1:this%ntraces)
-    complex(kind=8), intent(out)    :: dataf(:,:)!(1:this%nomega, 1:this%ntraces)
+    real(kind=8), intent(in)        :: datat(:,:)
+    complex(kind=8), intent(out)    :: dataf(:,:)
 
     if (.not. this%initialized) &
         stop 'ERROR: trying fft on a plan that was not initialized'
@@ -119,10 +119,10 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine irfft(this, dataf, datat)
+pure subroutine irfft(this, dataf, datat)
     class(rfft_type) :: this
-    complex(kind=8), intent(in)     :: dataf(1:this%nomega, 1:this%ntraces)
-    real(kind=8), intent(out)       :: datat(1:this%ntimes, 1:this%ntraces)
+    complex(kind=8), intent(in)     :: dataf(:,:)
+    real(kind=8), intent(out)       :: datat(:,:)
 
     if (.not. this%initialized) then
         stop 'ERROR: trying inverse fft on a plan that was not initialized'
