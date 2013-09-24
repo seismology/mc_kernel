@@ -4,10 +4,17 @@ program test_fft
     implicit none
     include 'fftw3.f03'
 
-    integer :: plan_fftf
-    integer :: rank, istride, ostride, nextpow2, nsnap, nomega, ntimes
-    integer :: ntracesperstep
+    integer(8)  :: plan_fft, plan_ifft
+    integer     :: rank, istride, ostride, nextpow2, nsnap, nomega, ntimes
+    integer     :: ntracesperstep
+    integer     :: i
 
+    integer, parameter :: fftw_mode = FFTW_ESTIMATE
+
+    ! IMPORTANT: 
+    ! these buffer arrays may be used as work arrays in the fft and
+    ! hence the original data can be destroyed. Needs verfication for the
+    ! specific application!
     real(kind=8), dimension(:,:), allocatable       :: datat
     complex(kind=8), dimension(:,:), allocatable    :: dataf
 
@@ -15,8 +22,8 @@ program test_fft
     istride = 1
     ostride = 1
 
-    nsnap = 1000
-    ntracesperstep = 100
+    nsnap = 2
+    ntracesperstep = 4
 
     nextpow2 = 2
     do while (nextpow2 < nsnap) 
@@ -26,15 +33,41 @@ program test_fft
     nomega = nextpow2 + 1
     ntimes = nextpow2 * 2
 
+    write(6,*) 'ntimes:', ntimes
+    write(6,*) 'nomega:', nomega
+
     allocate(datat(1:ntimes, 1:ntracesperstep))
     allocate(dataf(1:nomega, 1:ntracesperstep))
 
-    call dfftw_plan_many_dft_r2c(plan_fftf, rank, ntimes, ntracesperstep, datat, &
+    call dfftw_plan_many_dft_r2c(plan_fft, rank, ntimes, ntracesperstep, datat, &
                                  ntracesperstep, istride, ntimes, dataf, &
-                                 ntracesperstep, ostride, nomega, FFTW_ESTIMATE)
+                                 ntracesperstep, ostride, nomega, fftw_mode)
+    call dfftw_plan_many_dft_c2r(plan_ifft, rank, ntimes, ntracesperstep, dataf, &
+                                 ntracesperstep, istride, nomega, datat, &
+                                 ntracesperstep, ostride, ntimes, fftw_mode)
 
-    call dfftw_execute(plan_fftf)
+    datat = 0
+    datat(1,:) = 1
 
-    call dfftw_destroy_plan(plan_fftf)
+    do i=1, ntracesperstep
+       write(6,'(100(f5.1))') datat(:,i)
+    enddo
+
+    call dfftw_execute_dft_r2c(plan_fft, datat, dataf)
+
+    do i=1, ntracesperstep
+       write(6,'(100("(", f5.1, f5.1, ")"))') dataf(:,i)
+    enddo
+
+    datat = 0
+
+    call dfftw_execute_dft_c2r(plan_ifft, dataf, datat)
+
+    do i=1, ntracesperstep
+       write(6,'(100(f5.1))') datat(:,i)
+    enddo
+
+    call dfftw_destroy_plan(plan_fft)
+    call dfftw_destroy_plan(plan_ifft)
 
 end program
