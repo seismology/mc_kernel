@@ -323,7 +323,7 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
                     count = count + 1
                     write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
                     if ( count < 50 ) then
-                        write(*,'(i10,e15.5)')    i, array1(i), array2(i)
+                        write(*,'(i10,e15.5,e15.5)')    i, array1(i), array2(i)
                     endif
                     write(*,*) 'Number of differences: ', count
                 endif
