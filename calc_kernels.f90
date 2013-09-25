@@ -70,6 +70,7 @@ subroutine calc_kernel(inv_points, receiver_info, parameters)
     !type(kernelspec_type), intent(in), dimension(:) :: kernelspec
     type(receiver_type), intent(in), dimension(:)   :: receiver_info
     type(parameter_type), intent(in)                :: parameters
+    type(integrated_type)                           :: int_kernel
 
     real(kind=dp), dimension(4), intent(in)         :: inv_points
 
@@ -84,11 +85,11 @@ subroutine calc_kernel(inv_points, receiver_info, parameters)
 
         nkernel = receiver_info(ireceiver)%nkernel
 
-        call initialize_montecarlo(integrated_kernel, nkernel) 
+        call int_kernel%initialize_montecarlo(nkernel, volume, parameters%allowed_error) 
 
         seismograms = load_synthetic_seismograms(receiver_info, parameters%netcdf_info)
 
-        do while any(.not.integrated_kernel%converged) ! Beginning of Monte Carlo loop
+        do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
 
             random_point = generate_random_point(inv_points, n)
 
@@ -106,17 +107,17 @@ subroutine calc_kernel(inv_points, receiver_info, parameters)
                 
                 kernelspec = receiver_info(ireceiver)%kernel(ikernel)
 
-                if (integrated_kernel%converged(ikernel)) cycle
+                if (int_kernel%isconverged(ikernel)) cycle
                 
                 filtered_wavefield_kernel_fd = filter(wavefield_kernel_fd, kernelspec%filter)
                 filtered_wavefield_kernel_td = iFFT(filtered_wavefield_kernel_fd, parameters%FFT_plan)
 
                 cut_filtered_wavefield_kernel_td = cut_time_window(filtered_wavefield_kernel_td, kernel(ikernel)%time_window)
-                kernelvalues(ikernel) = calc_misfit_kernel(filtered_wavefield_kernel_td, kernelspec%misfit)
+                kernelvalues(ikernel) = calc_misfit_kernel(filtered_wavefield_kernel_td, seismograms, kernelspec%misfit)
 
 
             end do ! iKernel
-            call check_montecarlo_integral(kernelvalues, nkernel, integrated_kernel)
+            call int_kernel%check_montecarlo_integral(kernelvalues)
 
         end do ! Convergence
 

@@ -8,7 +8,7 @@ module montecarlo
         integer                                  :: nfuncs
         real(kind=dp), dimension(:), allocatable :: fsum, f2sum
         real(kind=dp), dimension(:), allocatable :: integral
-        real(kind=dp), dimension(:), allocatable :: allowed_error
+        real(kind=dp), dimension(:), allocatable :: allowed_variance
         real(kind=dp), dimension(:), allocatable :: variance
         real(kind=dp)                            :: volume
         logical, dimension(:), allocatable       :: converged
@@ -44,7 +44,7 @@ subroutine check_montecarlo_integral(this, func_values)
                                 (  (this%f2sum(ifuncs) / this%nmodels)     &
                                  - (this%fsum(ifuncs)  / this%nmodels)**2  )
 
-        if (this%variance(ifuncs) < this%allowed_error(ifuncs)) then
+        if (this%variance(ifuncs) < this%allowed_variance(ifuncs)) then
             this%converged(ifuncs) = .true.
         end if
     end do
@@ -61,22 +61,22 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error)
     if(allocated(this%converged)) deallocate(this%converged)
     if(allocated(this%integral)) deallocate(this%integral)
     if(allocated(this%variance)) deallocate(this%variance)
-    if(allocated(this%allowed_error)) deallocate(this%allowed_error)
+    if(allocated(this%allowed_variance)) deallocate(this%allowed_variance)
     
     allocate(this%fsum(nfuncs))
     allocate(this%f2sum(nfuncs))
     allocate(this%converged(nfuncs))
     allocate(this%integral(nfuncs))
     allocate(this%variance(nfuncs))
-    allocate(this%allowed_error(nfuncs))
+    allocate(this%allowed_variance(nfuncs))
 
-    this%volume        = volume
-    this%nfuncs        = nfuncs
-    this%fsum          = 0
-    this%f2sum         = 0
-    this%allowed_error = allowed_error
-    this%converged     = .false.
-    this%nmodels       = 0
+    this%volume           = volume
+    this%nfuncs           = nfuncs
+    this%fsum             = 0
+    this%f2sum            = 0
+    this%allowed_variance = allowed_error ** 2
+    this%converged        = .false.
+    this%nmodels          = 0
 
 end subroutine initialize_montecarlo
 
