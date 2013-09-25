@@ -98,7 +98,7 @@ end function
 function isconverged(this, ifunc)
     class(integrated_type)                :: this
     integer                               :: ifunc
-    real(kind=dp)                         :: isconverged
+    logical                               :: isconverged
 
     isconverged = this%converged(ifunc)
 end function
