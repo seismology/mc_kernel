@@ -15,6 +15,7 @@ program test_ftnunit
   subroutine test_all
     call test(test_unit_hexagon, 'TEST MC_unit_hexagon')
     call test(test_fft_dirac, 'TEST FFT_dirac')
+    call test(test_fft_inverse, 'TEST FFT_inverse')
   end subroutine
 
 end program
