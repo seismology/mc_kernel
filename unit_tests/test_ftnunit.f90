@@ -1,8 +1,7 @@
 program test_ftnunit
 
   use ftnunit
-  use ab
-  use test_ab
+  use test_mc
   implicit none
 
   call runtests_init
