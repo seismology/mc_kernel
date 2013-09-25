@@ -119,7 +119,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-pure subroutine irfft(this, dataf, datat)
+subroutine irfft(this, dataf, datat)
     class(rfft_type) :: this
     complex(kind=8), intent(in)     :: dataf(:,:)
     real(kind=8), intent(out)       :: datat(:,:)
@@ -168,55 +168,3 @@ end function
 
 end module fft
 !=========================================================================================
-
-
-program test_fft
-
-    use fft
-    implicit none
-
-    integer     :: nomega, ntimes, ntraces
-    integer     :: i
-
-    type(rfft_type) :: fftt
-
-    real(kind=8), dimension(:,:), allocatable       :: datat
-    complex(kind=8), dimension(:,:), allocatable    :: dataf
-
-    ntimes = 3
-    ntraces = 1
-
-    call fftt%init(ntimes, ntraces)
-
-    ntimes = fftt%get_ntimes()
-    nomega = fftt%get_nomega()
-
-    write(6,*) 'ntimes:', ntimes
-    write(6,*) 'nomega:', nomega
-
-    allocate(datat(1:ntimes, 1:ntraces))
-    allocate(dataf(1:nomega, 1:ntraces))
-
-    datat = 0
-    datat(2,:) = 1
-
-    do i=1, ntraces
-       write(6,'(100(f5.1))') datat(:,i)
-    enddo
-
-    call fftt%rfft(datat, dataf)
-
-    do i=1, ntraces
-       write(6,'(100("(", f5.1, f5.1, ")"))') dataf(:,i)
-    enddo
-
-    datat = 1
-    call fftt%irfft(dataf, datat)
-
-    do i=1, ntraces
-       write(6,'(100(f5.1))') datat(:,i)
-    enddo
-
-    call fftt%freeme()
-
-end program
