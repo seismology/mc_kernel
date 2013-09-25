@@ -8,15 +8,14 @@ OBJS =	ab.o fft_type.o ftnunit.o mc_integration.o random_tetrahedron.o \
 	test_fft_type.o test_ftnunit.o test_mc.o test_tetrahedra.o
 
 #Example to include specific netcdf libraries: 
-LIBS = -lm -lfftw3 -lfftw3f #-L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib 
-
+LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local/lib 
 
 # set unc to compile with netcdf: 
 #F90FLAGS = -Dunc 
 CC = gcc
 CFLAGS = -O3 -DF_UNDERSCORE
-F90 = gfortran-4.7.1 -O3  -fbacktrace 
-FC = gfortran-4.7.1 -O3 -fbacktrace 
+F90 = mpif90 -O3  -fbacktrace 
+FC = gfortran -O3 -fbacktrace 
 INCLUDE = -I /usr/include 
 # to include local built of netcdf you might want to use sth like this: 
 #INCLUDE = -I $(HOME)/local/include -I /usr/include 
@@ -48,6 +47,6 @@ ftnunit.o:  Makefile
 mc_integration.o:  Makefile 
 random_tetrahedron.o:  Makefile 
 test_fft_type.o: fft_type.o ftnunit.o Makefile 
-test_ftnunit.o: ftnunit.o test_fft_type.o test_mc.o Makefile 
+test_ftnunit.o: ftnunit.o test_fft_type.o test_mc.o test_tetrahedra.o Makefile 
 test_mc.o: ftnunit.o mc_integration.o Makefile 
 test_tetrahedra.o: ftnunit.o random_tetrahedron.o Makefile 
