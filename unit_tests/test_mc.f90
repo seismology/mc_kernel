@@ -1,4 +1,4 @@
-module test_mc
+module test_montecarlo
 
   use montecarlo, only: integrated_type
   use ftnunit, only   : test, assert_comparable_real1d
@@ -13,12 +13,16 @@ subroutine test_unit_hexagon
     real(kind=8), dimension(100,1)            :: values
     real(kind=4), dimension(1)                :: integral
     real(kind=8), parameter                   :: pitominusthreehalf = 0.063493635934240969389d0
+    real(kind=8), parameter, dimension(2)     :: bounds = [-0.2d0, 0.2d0]
+    real(kind=8)                              :: volume
+
+    volume = (bounds(2) - bounds(1))**3
 
     print *, 'In test_unit_hexagon'
 
     ! Integrate a gaussian function with sigma = 1 over [-5,5]^3
     
-    call mc_integral%initialize_montecarlo(1, 1000d0, 1d-5)
+    call mc_integral%initialize_montecarlo(1, volume, 1d-3)
 
     iiter = 0
 
@@ -26,7 +30,7 @@ subroutine test_unit_hexagon
         iiter = iiter + 1
         print *, 'Iteration ', iiter 
         call random_number(coords)
-        coords = coords * 10 - 5
+        coords = coords * (bounds(2)-bounds(1)) + bounds(1)
         values(:,1) = exp(-sum(coords**2,2)/2) * pitominusthreehalf
         call mc_integral%check_montecarlo_integral(values)
         print *, 'Value of the integral:', mc_integral%getintegral(), &
@@ -36,10 +40,6 @@ subroutine test_unit_hexagon
 
     integral = mc_integral%getintegral()
     call assert_comparable_real1d(integral, [1.0], 1e-5, 'Integral == 1')
-end subroutine
-
-subroutine test_all
-  call test(test_unit_hexagon, 'TEST MC_unit_hexagon')
 end subroutine
 
 end module

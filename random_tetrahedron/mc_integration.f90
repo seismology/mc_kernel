@@ -16,6 +16,8 @@ module montecarlo
         contains
         procedure, pass                      :: check_montecarlo_integral
         procedure, pass                      :: initialize_montecarlo
+        procedure, pass                      :: areallconverged
+        procedure, pass                      :: getintegral, getvariance
 
     end type
 
@@ -23,7 +25,7 @@ contains
 
 subroutine check_montecarlo_integral(this, func_values)
     class(integrated_type)                    :: this
-    real(kind=sp), dimension(:,:), intent(in) :: func_values
+    real(kind=dp), dimension(:,:), intent(in) :: func_values !(npoints, nfuncs)
 
     integer                                   :: npoints, ifuncs
 
@@ -49,20 +51,22 @@ subroutine check_montecarlo_integral(this, func_values)
 
 end subroutine check_montecarlo_integral
 
-subroutine initialize_montecarlo(this, nfuncs, volume)
+subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error)
     class(integrated_type), intent(inout) :: this 
     integer, intent(in)                   :: nfuncs
-    real(kind=dp), intent(in)             :: volume
+    real(kind=dp), intent(in)             :: volume, allowed_error
 
-    deallocate(this%fsum)
-    deallocate(this%f2sum)
-    deallocate(this%converged)
-    deallocate(this%variance)
-    deallocate(this%allowed_error)
+    if(allocated(this%fsum)) deallocate(this%fsum)
+    if(allocated(this%f2sum)) deallocate(this%f2sum)
+    if(allocated(this%converged)) deallocate(this%converged)
+    if(allocated(this%integral)) deallocate(this%integral)
+    if(allocated(this%variance)) deallocate(this%variance)
+    if(allocated(this%allowed_error)) deallocate(this%allowed_error)
     
     allocate(this%fsum(nfuncs))
     allocate(this%f2sum(nfuncs))
     allocate(this%converged(nfuncs))
+    allocate(this%integral(nfuncs))
     allocate(this%variance(nfuncs))
     allocate(this%allowed_error(nfuncs))
 
@@ -70,7 +74,7 @@ subroutine initialize_montecarlo(this, nfuncs, volume)
     this%nfuncs        = nfuncs
     this%fsum          = 0
     this%f2sum         = 0
-    this%allowed_error = 1d-10
+    this%allowed_error = allowed_error
     this%converged     = .false.
     this%nmodels       = 0
 
@@ -83,4 +87,27 @@ function areallconverged(this)
     areallconverged = all(this%converged)
 end function
 
+function getintegral(this)
+    class(integrated_type)                :: this
+    real(kind=dp), dimension(this%nfuncs) :: getintegral
+
+    getintegral = this%integral
+
+end function
+
+function isconverged(this, ifunc)
+    class(integrated_type)                :: this
+    integer                               :: ifunc
+    real(kind=dp)                         :: isconverged
+
+    isconverged = this%converged(ifunc)
+end function
+
+function getvariance(this)
+    class(integrated_type)                :: this
+    real(kind=dp), dimension(this%nfuncs) :: getvariance
+
+    getvariance = this%variance
+
+end function
 end module
