@@ -87,6 +87,7 @@ subroutine dump_tet_mesh_xdmf(this, filename)
   if (.not. this%initialized) &
      stop 'ERROR: trying to dump a non initialized mesh'
 
+  ! XML Data
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
   write(iinput_xdmf, 732) this%nelements, this%nelements, 'binary', &
                       trim(filename)//'_grid.dat', this%nvertices, 'binary', &
@@ -98,9 +99,7 @@ subroutine dump_tet_mesh_xdmf(this, filename)
     '<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>',/&
     '<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">',/&
     '<Domain>',/&
-    '<Grid Name="CellsTime" GridType="Collection" CollectionType="Temporal">',/&
     '  <Grid GridType="Uniform">',/&
-    '    <Time Value="0.000" />',/&
     '    <Topology TopologyType="Tetrahedron" NumberOfElements="',i10,'">',/&
     '      <DataItem Dimensions="',i10,' 4" NumberType="Int" Format="',A,'">',/&
     '        ',A,/&
@@ -112,15 +111,16 @@ subroutine dump_tet_mesh_xdmf(this, filename)
     '      </DataItem>',/&
     '    </Geometry>',/&
     '  </Grid>',/&
-    '</Grid>',/&
     '</Domain>',/&
     '</Xdmf>')
 
+  ! VERTEX data
   open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
   write(iinput_heavy_data) this%vertices
   close(iinput_heavy_data)
 
+  ! CONNECTIVITY data
   open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
   write(iinput_heavy_data) this%connectivity
