@@ -10,7 +10,8 @@ module readfields
 
     type ncparamtype
         integer                           :: ncid
-        integer                           :: snap, surf, mesh
+        integer                           :: snap, surf, mesh  ! Group IDs
+        integer                           :: straintrace, dev_strain ! Variable IDs
         character(len=200)                :: meshdir
         integer                           :: ndumps
         logical                           :: ordered_output
@@ -35,31 +36,155 @@ module readfields
         logical                           :: files_open
         logical                           :: meshes_read
         logical                           :: kdtree_built
-        logical                           :: bw_field_rotated
 
         contains 
 !            procedure, pass               :: set_params
             procedure, pass               :: open_files
             procedure, pass               :: read_meshes
-            procedure, pass               :: build_fwdtree
-!            procedure, pass               :: load_fw_points
-!            procedure, pass               :: load_bw_points
-!            procedure, pass               :: rotate_bw_field
+            procedure, pass               :: build_kdtree
+            procedure, pass               :: load_fw_points
+            procedure, pass               :: load_bw_points
 
     end type
 
 contains
 
-subroutine build_fwdtree(this)
-    class(netcdf_type)                                    :: this
+!-----------------------------------------------------------------------------------------
+function load_fw_points(this, coordinates, sourceparams)
+    class(netcdf_type)         :: this
+    real(kind=dp), intent(in)  :: coordinates(:,:)
+    type(src_param_type)       :: source_params
+    real(kind=sp), allocatable :: load_fw_points
+    real(kind=sp)              :: utemp(this%fwd%ndumps)
+
+    integer                    :: npoints = size(coordinates,2)
+
+    allocate(load_fw_points(this%fwd(1)%ndumps,npoints))
+    load_fw_points(:) = 0.0
+    
+    ! Rotate points to FWD coordinate system
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,           &
+                          coordinates(1,:), coordinates(2,:), coordinates(3,:), &
+                          phi, theta)
+
+
+    do ipoint = 1, npoints
+        
+        call kdtree2_n_nearest( this%fwdtree,                           &
+                                [rotmesh_s(ipoint), rotmesh_z(ipoint)], &
+                                nn = 1,                                 &
+                                results = nextpoint )
+        
+        pointid(ipoint) = nextpoint(1)%idx
+
+        do isim = 1, this%fwd%nsim
+            call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
+                                      varid  = this%fwd(isim)%straintrace, &
+                                      start  = [1, pointid(ipoint)],       &
+                                      count  = [this%fwd%ndumps, 1],       &
+                                      values = utemp) )
+            load_fw_points(ipoint) = load_fw_points(ipoint) &
+                                     + azim_factor(rotmesh_phi(ipoint), source_params%mij, isim) &
+                                     * utemp
+        end do !isim
+        
+    end do !ipoint
+
+end function load_fw_points
+
+!-----------------------------------------------------------------------------------------
+function load_bw_points(this, coordinates, receiver)
+    class(netcdf_type)         :: this
+    real(kind=dp), intent(in)  :: coordinates(:,:)
+    type(rec_param_type)       :: receiver
+    real(kind=sp), allocatable :: load_bw_points
+    real(kind=sp)              :: utemp(this%bwd%ndumps)
+
+    integer                    :: npoints = size(coordinates,2)
+
+    allocate(load_bw_points(this%bwd(1)%ndumps,npoints))
+    load_bw_points(:) = 0.0
+    
+    ! Rotate points to BWD coordinate system
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,           &
+                          coordinates(1,:), coordinates(2,:), coordinates(3,:), &
+                          phi, theta)
+
+
+    do ipoint = 1, npoints
+        
+        call kdtree2_n_nearest( this%bwdtree,                           &
+                                [rotmesh_s(ipoint), rotmesh_z(ipoint)], &
+                                nn = 1,                                 &
+                                results = nextpoint )
+        
+        pointid(ipoint) = nextpoint(1)%idx
+
+        call check( nf90_get_var( ncid   = this%bwd%snap,        & 
+                                  varid  = this%bwd%straintrace, &
+                                  start  = [1, pointid(ipoint)],       &
+                                  count  = [this%bwd%ndumps, 1],       &
+                                  values = utemp) )
+
+        select case(receiver%component)
+        case('Z')
+            load_bw_points = utemp
+        case('R')
+            load_bw_points = cos(rotmesh_phi) * utemp
+        case('T')
+            load_bw_points = - sin(rotmesh_phi) * utemp 
+        end select
+
+    end do !ipoint
+
+end function load_bw_points
+
+function azim_factor(phi, mij, isim)
+    real(kind=sp), intent(in)    :: phi
+    real(kind=sp), intent(in)    :: mij(6)
+    integer, intent(in)          :: isim
+    real(kind=sp)                :: azim_factor
+
+
+    select case(isim)
+    case(1) ! Mzz
+       azim_factor = Mij(1)
+       
+    case(2) ! Mxx+Myy
+       azim_factor = 0.5*(Mij(2)+Mij(3))
+       
+    case(3) ! dipole
+       azim_factor = Mij(4)*cos(phi) + Mij(5)*sin(phi)
+       
+    case(4) ! quadrupole
+       azim_factor = 0.5*(Mij(2)-Mij(3))*cos(2.d0*phi) + Mij(6)*sin(2.d0*phi)
+
+    case default
+       write(6,*)mynum,'unknown number of simulations',isim
+    end select
+
+end function
+
+!-----------------------------------------------------------------------------------------
+subroutine build_kdtree(this)
+    class(netcdf_type)    :: this
 
     if (.not.this%meshes_read) then
         print *, 'ERROR in build_kdtree(): Meshes have not been read yet'
         print *, 'Call read_meshes() before build_kdtree!'
         stop
     end if
+
+    ! KDtree in forward field
     this%fwdtree => kdtree2_create(reshape([this%fwdmesh%s, this%fwdmesh%z], &
                                            [2, this%fwdmesh%npoints]    ),&
+                                   dim = 2, &
+                                   sort = .false.,&
+                                   rearrange = .true.)
+
+    ! KDtree in backward field
+    this%bwdtree => kdtree2_create(reshape([this%bwdmesh%s, this%bwdmesh%z], &
+                                           [2, this%bwdmesh%npoints]    ),&
                                    dim = 2, &
                                    sort = .false.,&
                                    rearrange = .true.)
@@ -92,21 +217,27 @@ subroutine open_files(this)
         end if
         
         write(6,format20) filename, mynum
-        status = nf90_open(path=filename, &
-                           mode=nf90_nowrite, &
-                           ncid=this%fwd(isim)%ncid)
-        call check(nf90_inq_ncid(this%fwd(isim)%ncid,  &
-                                 name="Snapshots",  &
-                                 grp_ncid=this%fwd(isim)%snap))
-        call check(nf90_inq_ncid(this%fwd(isim)%ncid,&
-                                 name="Surface", &
-                                 grp_ncid=this%fwd(isim)%surf))
-        call check(nf90_inq_ncid(this%fwd(isim)%ncid,&
-                                 name="Mesh", &
-                                 grp_ncid=this%fwd(isim)%mesh))
-        call nc_read_att_int(this%fwd(isim)%ndumps, &
-                             'number of strain dumps', &
-                             this%fwd(isim))
+        status = nf90_open(       path     = filename, &
+                                  mode     = nf90_nowrite, &
+                                  ncid     = this%fwd(isim)%ncid)
+
+        call check(nf90_inq_ncid( ncid     = this%fwd(isim)%ncid,  &
+                                  name     = "Snapshots",  &
+                                  grp_ncid = this%fwd(isim)%snap))
+        call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap  &
+                                  name     = "straintrace", &
+                                  varid    = this%fwd(isim)%straintrace) )
+        
+        call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,&
+                                 name      = "Surface", &
+                                 grp_ncid  = this%fwd(isim)%surf))
+        call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,&
+                                 name      = "Mesh", &
+                                 grp_ncid  = this%fwd(isim)%mesh))
+
+        call nc_read_att_int(    this%fwd(isim)%ndumps, &
+                                 'number of strain dumps', &
+                                 this%fwd(isim))
         write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
     end do
         
@@ -121,21 +252,26 @@ subroutine open_files(this)
         end if
 
         write(6,format20) filename, mynum
-        call check( nf90_open(path=filename, &
-                              mode=nf90_nowrite, &
-                              ncid=this%bwd(isim)%ncid) )
-        call check(nf90_inq_ncid(this%bwd(isim)%ncid, &
-                                 name="Surface", &
-                                 grp_ncid=this%bwd(isim)%surf))
-        call check(nf90_inq_ncid(this%bwd(isim)%ncid, &
-                                 name="Snapshots", &
-                                 grp_ncid=this%bwd(isim)%snap))
-        call check(nf90_inq_ncid(this%bwd(isim)%ncid,    &
-                                 name="Mesh",            &
-                                 grp_ncid=this%bwd(isim)%mesh))
-        call nc_read_att_int(this%bwd(isim)%ndumps,    &
-                             'number of strain dumps', &
-                             this%bwd(isim))
+        call check( nf90_open(    path     = filename, &
+                                  mode     = nf90_nowrite, &
+                                  ncid     = this%bwd(isim)%ncid) )
+
+        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,  &
+                                  name     = "Snapshots",  &
+                                  grp_ncid = this%bwd(isim)%snap))
+        call check(nf90_inq_varid(ncid     = this%bwd(isim)%snap  &
+                                  name     = "straintrace", &
+                                  varid    = this%bwd(isim)%straintrace) )
+        
+        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,&
+                                  name     = "Surface", &
+                                  grp_ncid = this%bwd(isim)%surf))
+        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,&
+                                  name     = "Mesh", &
+                                  grp_ncid = this%bwd(isim)%mesh))
+        call nc_read_att_int(     this%bwd(isim)%ndumps,    &
+                                  'number of strain dumps', &
+                                  this%bwd(isim))
         write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
     end do
 

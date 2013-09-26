@@ -75,11 +75,17 @@ subroutine calc_kernel(inv_points, receiver_info, parameters)
     real(kind=dp), dimension(4), intent(in)         :: inv_points
 
     type(kernelspec_type)                           :: kernel
+    type(sem_type)                                  :: sem_data
     real(kind=dp), dimension(100)                   :: random_points
     integer                                         :: ireceiver, nreceiver, ikernel, nkernel
     logical, dimension(:), allocatable              :: converged
 
     nreceiver = size(receiver_info)
+    ! Has to be called before: 
+    ! call sem_data%set_params
+    ! call sem_data%read_meshes
+    ! call sem_data%build_tree
+
 
     do ireceiver = 1, nreceiver
 
@@ -91,13 +97,15 @@ subroutine calc_kernel(inv_points, receiver_info, parameters)
 
         do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
 
-            random_point = generate_random_point(inv_points, n)
+            random_points = generate_random_point(inv_points, n)
 
-            fw_fields = load_fw_fields(random_point, parameters%netcdf_info)
-            summed_fw_field = sum_over_6_src_comp(fw_fields, src_info%Mij, receiver_info(ireceiver))
+            !fw_fields = load_fw_fields(random_point, parameters%netcdf_info)
+            fw_fields = sem_data%load_fw_points(random_points, parameters%source)
+
             summed_fw_field_fd = FFT(summed_fw_field, parameters%FFT_plan)
 
-            bw_field = load_bw_field(random_point, receiver_info(ireceiver), parameters%netcdf_info)
+            bw_fields = sem_data%load_bw_points(random_points, parameters%receiver(ireceiver))
+            !bw_field = load_bw_field(random_point, receiver_info(ireceiver), parameters%netcdf_info)
 
             bw_field_fd = FFT(bw_field, parameters%FFT_plan)
 
