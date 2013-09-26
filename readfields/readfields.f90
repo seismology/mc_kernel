@@ -59,7 +59,7 @@ module readfields
 
 contains
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, sourceparams)
     class(netcdf_type)            :: this
     real(kind=dp), intent(in)     :: coordinates(:,:)
@@ -106,7 +106,7 @@ function load_fw_points(this, coordinates, sourceparams)
 
 end function load_fw_points
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 function load_bw_points(this, coordinates, receiver)
     class(netcdf_type)            :: this
     real(kind=dp), intent(in)     :: coordinates(:,:)
@@ -156,6 +156,7 @@ function load_bw_points(this, coordinates, receiver)
 
 end function load_bw_points
 
+!-------------------------------------------------------------------------------
 function azim_factor(phi, mij, isim)
     real(kind=sp), intent(in)    :: phi
     real(kind=sp), intent(in)    :: mij(6)
@@ -182,7 +183,7 @@ function azim_factor(phi, mij, isim)
 
 end function
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 subroutine build_kdtree(this)
     class(netcdf_type)    :: this
 
@@ -208,7 +209,7 @@ subroutine build_kdtree(this)
 
 end subroutine build_kdtree
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 subroutine open_files(this)
 
     class(netcdf_type)               :: this
@@ -299,7 +300,7 @@ subroutine open_files(this)
 
 end subroutine
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
 subroutine read_meshes(this)
     use netcdf
@@ -369,22 +370,7 @@ subroutine read_meshes(this)
 end subroutine
  
 
-
-!function load_fw_fields(coordinate, netcdf_info)
-!    class(netcdf_type)                                    :: this
-!    real(kind=sp), dimension(:,:), intent(in)             :: coordinate
-!    real(kind=sp), dimension(:,:,:), intent(out)          :: load_fw_fields
-!end function
-!
-!function load_bw_fields(coordinate, receiver_info, netcdf_info)
-!    real(kind=sp), dimension(:,:), intent(in)             :: coordinate
-!    type(receiver_type), intent(in)                       :: receiver_info
-!    type(netcdf_type) , intent(in)                        :: netcdf_info
-!    real(kind=sp), dimension(:,:,:), intent(out)          :: load_fw_fields
-!end function
-
-
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 subroutine check(status)
 ! Translates netcdf error codes into error messages
 
@@ -396,7 +382,7 @@ subroutine check(status)
      stop 2
   end if
 end subroutine check  
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
 subroutine getvarid(ncid, name, varid)
     integer, intent(in)          :: ncid
@@ -419,7 +405,7 @@ end subroutine
 
 
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
 subroutine nc_read_att_int(attribute_value, attribute_name, nc)
   character(len=*),  intent(in)     :: attribute_name
@@ -434,9 +420,9 @@ subroutine nc_read_att_int(attribute_value, attribute_name, nc)
       stop
   end if
 end subroutine nc_read_att_int
-!-----------------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Character
 subroutine nc_read_att_char(attribute_value, attribute_name, nc)
   character(len=*),  intent(in)     :: attribute_name
@@ -451,9 +437,9 @@ subroutine nc_read_att_char(attribute_value, attribute_name, nc)
       stop
   end if
 end subroutine nc_read_att_char
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Real
 subroutine nc_read_att_real(attribute_value, attribute_name, nc)
   character(len=*),  intent(in)     :: attribute_name
@@ -468,7 +454,7 @@ subroutine nc_read_att_real(attribute_value, attribute_name, nc)
       stop
   end if
 end subroutine nc_read_att_real
-!-----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
 
 end module
