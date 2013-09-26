@@ -29,6 +29,8 @@ contains
 !-----------------------------------------------------------------------------------------
 integer function get_nomega(this)
   class(rfft_type)        :: this
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing fft type that is not initialized'
   get_nomega = this%nomega
 end function
 !-----------------------------------------------------------------------------------------
@@ -36,6 +38,8 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntimes(this)
   class(rfft_type)        :: this
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing fft type that is not initialized'
   get_ntimes = this%ntimes
 end function
 !-----------------------------------------------------------------------------------------
@@ -43,6 +47,8 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntraces(this)
   class(rfft_type)        :: this
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing fft type that is not initialized'
   get_ntraces = this%ntraces
 end function
 !-----------------------------------------------------------------------------------------
@@ -150,7 +156,7 @@ subroutine freeme(this)
 
   call dfftw_destroy_plan(this%plan_fft)
   call dfftw_destroy_plan(this%plan_ifft)
-  this%initialized = .true.
+  this%initialized = .false.
 end subroutine
 !-----------------------------------------------------------------------------------------
 
