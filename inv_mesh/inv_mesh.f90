@@ -3,21 +3,32 @@ module inversion_mesh
 
   private
   public :: inversion_mesh_type
+  public :: inversion_mesh_data_type
 
-  integer, parameter    :: sp = 4, dp = 8
+  integer, parameter :: sp = 4, dp = 8
 
   type :: inversion_mesh_type
      private
-     integer                        :: nelements, nvertices
-     integer, allocatable           :: connectivity(:,:)
-     real(kind=sp), allocatable     :: vertices(:,:)
-     logical                        :: initialized = .false.
+     integer                            :: nelements, nvertices
+     integer, allocatable               :: connectivity(:,:)
+     real(kind=sp), allocatable         :: vertices(:,:)
+     logical                            :: initialized = .false.
      contains
      procedure, pass :: get_nelements
      procedure, pass :: get_nvertices
      procedure, pass :: read_tet_mesh
      procedure, pass :: dump_tet_mesh_xdmf
      procedure, pass :: freeme
+  end type
+
+  type, extends(inversion_mesh_type)    :: inversion_mesh_data_type
+     private
+     integer                            :: ntimes
+     real(kind=sp), allocatable         :: datat(:,:)
+     contains
+     procedure, pass :: get_ntimes
+     procedure, pass :: init_data
+     procedure, pass :: set_data_snap
   end type
 
 contains
@@ -37,6 +48,15 @@ integer function get_nvertices(this)
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
   get_nvertices = this%nvertices
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+integer function get_ntimes(this)
+  class(inversion_mesh_data_type)        :: this
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing inversion mesh data type that is not initialized'
+  get_ntimes = this%ntimes
 end function
 !-----------------------------------------------------------------------------------------
 
@@ -132,24 +152,65 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine freeme(this)
   class(inversion_mesh_type)        :: this
-  deallocate(this%vertices)
-  deallocate(this%connectivity)
+
+  if (allocated(this%vertices)) deallocate(this%vertices)
+  if (allocated(this%connectivity)) deallocate(this%connectivity)
+
+  select type (this)
+  type is (inversion_mesh_data_type)
+     if (allocated(this%datat)) deallocate(this%datat)
+  end select
+
   this%initialized = .false.
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine init_data(this, ntimes)
+  class(inversion_mesh_data_type)   :: this
+  integer, intent(in)               :: ntimes
+
+  this%ntimes = ntimes
+
+  allocate(this%datat(this%nvertices, ntimes))
+  this%datat = 0
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine set_data_snap(this, data_snap, isnap)
+  class(inversion_mesh_data_type)   :: this
+  real(kind=sp), intent(in)         :: data_snap(:)
+  integer, intent(in)               :: isnap
+
+  if (.not. allocated(this%datat)) &
+     stop 'ERROR: trying to write data without initialization!'
+
+  if (size(data_snap) /= this%nvertices) &
+     stop 'ERROR: wrong dimensions of input data_snap for writing vertex data'
+
+  this%datat(:,isnap) = data_snap(:)
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 
 end module
 !=========================================================================================
 
+!=========================================================================================
 program test_inversion_mesh
   use inversion_mesh
-  type(inversion_mesh_type) :: inv_mesh
+  type(inversion_mesh_data_type) :: inv_mesh
 
   !call inv_mesh%read_tet_mesh('vertices.TEST', 'facets.TEST')
   call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
 
   call inv_mesh%dump_tet_mesh_xdmf('testmesh')
+  call inv_mesh%init_data(10)
   
   call inv_mesh%freeme()
 
 end program
+!=========================================================================================
