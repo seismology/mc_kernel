@@ -47,6 +47,8 @@ function init_work_type(nkern, ndim, nverts)
 
   allocate(init_work_type%vertices(ndimensions, nvertices))
   allocate(init_work_type%kernel_values(ntotal_kernel, nvertices))
+  init_work_type%vertices = 0
+  init_work_type%kernel_values = 0
   
   allocate(oldtypes(nblocks))
   allocate(blocklengths(nblocks))
@@ -229,11 +231,18 @@ program master_slave
   use mpi
   use master_module
   use slave_module
+  use work_type_mod
+
   implicit none
   integer               :: myrank, ierror
+  integer               :: nkern = 1
+  type(work_type)       :: wt
 
   call MPI_INIT(ierror)
   call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierror)
+
+  wt = init_work_type(nkern, 3, 4)
+  write(6,*) 'mpi_worktype = ', work_mpitype
 
   if (myrank == 0) then
      print *, 'MASTER'
