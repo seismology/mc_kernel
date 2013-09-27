@@ -1,4 +1,3 @@
-
 !=========================================================================================
 module parameters
   implicit none
@@ -8,6 +7,63 @@ module parameters
 end module
 !=========================================================================================
 
+!=========================================================================================
+module work_type_mod
+  use global_parameters
+  implicit none
+  private
+
+  public :: init_work_type
+  public :: work_type
+  public :: ntotal_kernel
+  public :: work_mpitype
+
+  integer, protected :: ntotal_kernel, ndimensions, nvertices
+  integer, protected :: work_mpitype
+
+  type work_type
+     sequence           ! force the derived type to be stored contiguously
+     ! can't make the init function a member of work_type, because then it is
+     ! impossible to use the seqeuence keyword
+     real(kind=dp), allocatable :: vertices(:,:)
+     real(kind=dp), allocatable :: kernel_values(:,:)
+  end type
+
+contains
+
+!-----------------------------------------------------------------------------------------
+function init_work_type(nkern, ndim, nverts)
+  use mpi
+  
+  type(work_type)       :: init_work_type
+  integer, intent(in)   :: ndim, nverts, nkern
+  integer               :: ierr
+  integer, allocatable  :: oldtypes(:), blocklengths(:), offsets(:)
+  integer, parameter    :: nblocks = 1
+
+  ntotal_kernel = nkern
+  nvertices = nverts
+  ndimensions = ndim
+
+  allocate(init_work_type%vertices(ndimensions, nvertices))
+  allocate(init_work_type%kernel_values(ntotal_kernel, nvertices))
+  
+  allocate(oldtypes(nblocks))
+  allocate(blocklengths(nblocks))
+  allocate(offsets(nblocks))
+
+  blocklengths(1) = ndimensions * nvertices + ntotal_kernel * nvertices
+  oldtypes(1) = MPI_DOUBLE_PRECISION
+  offsets(1) = 0
+
+  call MPI_TYPE_STRUCT(nblocks, blocklengths, offsets, oldtypes, work_mpitype, ierr)
+  call MPI_TYPE_COMMIT(work_mpitype, ierr)
+
+end function init_work_type
+!-----------------------------------------------------------------------------------------
+
+end module
+!=========================================================================================
 
 !=========================================================================================
 module master_module
@@ -125,8 +181,6 @@ end subroutine
 end module
 !=========================================================================================
 
-
-
 !=========================================================================================
 module slave_module
   implicit none
@@ -169,7 +223,6 @@ end function
 
 end module
 !=========================================================================================
-
 
 !=========================================================================================
 program master_slave
