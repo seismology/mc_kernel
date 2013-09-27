@@ -332,6 +332,25 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
     endif
 end subroutine assert_comparable_real1d
 
+! assert_file_exists --
+!     Subroutine to check if a condition is true
+! Arguments:
+!     cond          Condition to be checked
+!     text          Text describing the assertion
+! Side effects:
+!     If the assertion fails, this is reported to standard
+!     output. Also, nofails is increased by one.
+!
+subroutine assert_file_exists( filename, text )
+    character(len=*), intent(in) :: filename, text
+
+    if ( .not. ftnunit_file_exists(trim(filename)) ) then
+        nofails = nofails + 1
+        write(*,*) '    Condition "',trim(text), '" failed'
+        write(*,*) '    File "', trim(filename) ,'" does not exist'
+    endif
+end subroutine assert_file_exists
+
 ! ftnunit_file_exists --
 !     Auxiliary function to see if a file exists
 ! Arguments:
