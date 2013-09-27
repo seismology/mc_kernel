@@ -51,35 +51,25 @@ subroutine test( proc, text )
     integer           :: lun
     integer           :: ierr
 
-    !
     ! Check if the test should run
-    !
     testno = testno + 1
     if ( testno <= last_test ) then
         return
     endif
 
-    !
     ! Record the fact that we started the test
-    !
-    call ftnunit_get_lun( lun )
-    open( lun, file = 'ftnunit.lst' )
+    open( newunit=lun, file = 'ftnunit.lst' )
     write( lun, * ) testno, nofails, noruns
     close( lun )
 
-    !
     ! Run the test
-    !
     write( *, '(2a)' ) 'Test: ', trim(text)
 
     call proc
 
-    !
     ! No runtime error or premature end of
     ! the program ...
-    !
-    call ftnunit_get_lun( lun )
-    open( lun, file = 'ftnunit.lst' )
+    open( newunit=lun, file = 'ftnunit.lst' )
     write( lun, * ) testno, nofails, noruns
     close( lun )
 
@@ -139,8 +129,7 @@ subroutine runtests( testproc )
 
     if ( ftnunit_file_exists("ftnunit.run") ) then
         if ( ftnunit_file_exists("ftnunit.lst") ) then
-            call ftnunit_get_lun( lun )
-            open( lun, file = "ftnunit.lst", iostat = ierr )
+            open( newunit=lun, file = "ftnunit.lst", iostat = ierr )
             if ( ierr == 0 ) then
                 read( lun, *, iostat = ierr ) last_test, nofails, noruns
                 if ( ierr /= 0 ) then
@@ -364,35 +353,6 @@ logical function ftnunit_file_exists( filename )
     inquire( file = filename, exist = ftnunit_file_exists )
 end function ftnunit_file_exists
 
-! ftnunit_get_lun --
-!     Auxiliary subroutine to get a free LU-number
-! Arguments:
-!     lun           The value that can be used
-!
-subroutine ftnunit_get_lun( lun )
-    integer, intent(out) :: lun
-
-    logical       :: opend
-    integer, save :: prevlun = 0
-
-    if ( prevlun /= 0 ) then
-        inquire( unit = lun, opened = opend )
-        if ( .not. opend ) then
-            lun = prevlun
-            return
-        endif
-    endif
-
-    do prevlun = 10,99
-        inquire( unit = prevlun, opened = opend )
-        if ( .not. opend ) then
-            lun = prevlun
-            return
-        endif
-    enddo
-
-end subroutine ftnunit_get_lun
-
 ! ftnunit_remove_file --
 !     Auxiliary subroutine to remove a file
 ! Arguments:
@@ -404,8 +364,7 @@ subroutine ftnunit_remove_file( filename )
     integer                      :: lun
     integer                      :: ierr
 
-    call ftnunit_get_lun( lun )
-    open( lun, file = filename, iostat = ierr )
+    open( newunit=lun, file = filename, iostat = ierr )
     if ( ierr /= 0 ) then
         write(*,*) '    Could not open file for removal: ', trim(filename)
         nofails = nofails + 1
@@ -433,8 +392,7 @@ subroutine ftnunit_make_empty_file( filename )
     if ( ftnunit_file_exists( filename ) ) then
         call ftnunit_remove_file( filename )
     endif
-    call ftnunit_get_lun( lun )
-    open( lun, file = filename, iostat = ierr, status = 'new' )
+    open( newunit=lun, file = filename, iostat = ierr, status = 'new' )
     if ( ierr /= 0 ) then
         write(*,*) '    Failed to create empty file: ', trim(filename)
         nofails = nofails + 1
