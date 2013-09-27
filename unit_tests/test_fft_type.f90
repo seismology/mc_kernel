@@ -1,3 +1,4 @@
+!=========================================================================================
 module test_fft
 
   use fft
@@ -6,6 +7,7 @@ module test_fft
   public
 contains
 
+!-----------------------------------------------------------------------------------------
 subroutine test_fft_dirac
     integer     :: nomega, ntimes, ntraces
     integer     :: i, j
@@ -57,7 +59,9 @@ subroutine test_fft_dirac
 
     call fftt%freeme()
 end subroutine
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 subroutine test_fft_inverse
     integer     :: nomega, ntimes, ntraces
     integer     :: i, j
@@ -92,11 +96,14 @@ subroutine test_fft_inverse
     call fftt%irfft(dataf, datat_ref)
 
     do i=1, ntraces
-        call assert_comparable_real1d(real(datat(:,i), 4) + 1, real(datat_ref(:,i), 4) + 1, &
-                1e-5, 'ifft(fft(datat)) = datat')
+        call assert_comparable_real1d(real(datat(:,i), 4) + 1, &
+                                      real(datat_ref(:,i), 4) + 1, &
+                                      1e-5, 'ifft(fft(datat)) = datat')
     enddo
 
     call fftt%freeme()
 end subroutine
+!-----------------------------------------------------------------------------------------
 
 end module
+!=========================================================================================
