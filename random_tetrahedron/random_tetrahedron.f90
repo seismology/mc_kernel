@@ -1,7 +1,13 @@
 !=========================================================================================
 module tetrahedra
 
-  integer, parameter :: dp = 8, sp = 4
+  use global_parameters
+  implicit none
+  private
+
+  public :: generate_random_point
+  public :: tetra_volume_3d
+  public :: rmat4_det
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -20,8 +26,6 @@ function generate_random_point(v, n)
 !    Generating Random Points in a Tetrahedron,
 !    Journal of Graphics Tools,
 !    Volume 5, Number 5, 2000, pages 9-12.
-
-  implicit none
 
   integer, intent(in)        ::  n
   real(kind=dp), intent(in)  ::  v(3,4)
@@ -69,7 +73,6 @@ end function
 !-----------------------------------------------------------------------------------------
 function rmat4_det ( a )
 ! RMAT4_DET computes the determinant of a 4 by 4 matrix.
-  implicit none
   real(kind=dp), intent(in)  :: a(4,4)
   real(kind=dp)              :: rmat4_det
 
@@ -97,8 +100,6 @@ end function rmat4_det
 !-----------------------------------------------------------------------------------------
 function tetra_volume_3d ( v )
 ! TETRA_VOLUME_3D computes the volume of a tetrahedron in 3D.
-  implicit none
-
   real(kind=dp), intent(in)  ::  v(3,4)
   real(kind=dp)              ::  a(4,4)
   real(kind=dp)              ::  tetra_volume_3d

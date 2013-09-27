@@ -1,7 +1,7 @@
 module montecarlo
     
+    use global_parameters
     implicit none
-    integer, parameter                           :: dp = 8, sp = 4
 
     type                                         :: integrated_type
         private

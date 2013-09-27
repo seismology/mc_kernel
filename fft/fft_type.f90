@@ -1,5 +1,6 @@
 !=========================================================================================
 module fft
+  use global_parameters
   use, intrinsic :: iso_c_binding
   implicit none
   include 'fftw3.f03'
@@ -67,8 +68,8 @@ subroutine init(this, ntimes_in, ntraces)
   integer                 :: ntimes_np2, nomega_np2
   integer                 :: rank, istride, ostride, np2
 
-  real(kind=8), dimension(:,:), allocatable       :: datat
-  complex(kind=8), dimension(:,:), allocatable    :: dataf
+  real(kind=dp), dimension(:,:), allocatable       :: datat
+  complex(kind=dp), dimension(:,:), allocatable    :: dataf
 
   np2 = nextpow2(ntimes_in)
   nomega_np2 = np2 + 1
@@ -106,8 +107,8 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine rfft(this, datat, dataf)
   class(rfft_type) :: this
-  real(kind=8), intent(in)        :: datat(:,:)
-  complex(kind=8), intent(out)    :: dataf(:,:)
+  real(kind=dp), intent(in)        :: datat(:,:)
+  complex(kind=dp), intent(out)    :: dataf(:,:)
 
   if (.not. this%initialized) &
      stop 'ERROR: trying fft on a plan that was not initialized'
@@ -126,9 +127,9 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine irfft(this, dataf, datat)
-  class(rfft_type) :: this
-  complex(kind=8), intent(in)     :: dataf(:,:)
-  real(kind=8), intent(out)       :: datat(:,:)
+  class(rfft_type)              :: this
+  complex(kind=dp), intent(in)  :: dataf(:,:)
+  real(kind=dp), intent(out)    :: datat(:,:)
 
   if (.not. this%initialized) then
      stop 'ERROR: trying inverse fft on a plan that was not initialized'

@@ -1,12 +1,12 @@
 !=========================================================================================
 module inversion_mesh
 
+  use global_parameters
+
   implicit none
   private
   public :: inversion_mesh_type
   public :: inversion_mesh_data_type
-
-  integer, parameter :: sp = 4, dp = 8
 
   type :: inversion_mesh_type
      private
