@@ -1,3 +1,4 @@
+!=========================================================================================
 ! ftnunit.f90 --
 !     Module that implements part of the "ftnunit" framework:
 !     It is inspired by the well-known JUnit framework for
@@ -10,13 +11,11 @@
 !     - resources that keep track of the status
 !
 !     Related files:
-!     ftnunit_test.f90 -- deprecated
-!     runtests.bat
 !     runtests.sh
-!     runtests.tcl
 !
+!     Modified version of:
 !     $Id: ftnunit.f90,v 1.3 2008/01/27 09:08:31 arjenmarkus Exp $
-!
+!     
 module ftnunit
     implicit none
 
@@ -38,12 +37,12 @@ module ftnunit
 
 contains
 
+!-----------------------------------------------------------------------------------------
 ! test --
 !     Routine to run a unit test
 ! Arguments:
 !     proc          The subroutine implementing the unit test
 !     text          Text describing the test
-!
 subroutine test( proc, text )
     external          :: proc
     character(len=*)  :: text
@@ -74,7 +73,9 @@ subroutine test( proc, text )
     close( lun )
 
 end subroutine test
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! runtests_init --
 !     Subroutine to initialise the ftnunit system
 ! Arguments:
@@ -84,11 +85,12 @@ end subroutine test
 !     to the runtests subroutine. This makes it easier to run tests
 !     from different modules, as you have more than one subroutine to
 !     do the actual tests.
-!
 subroutine runtests_init
     call_final = .false.
 end subroutine
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! runtests_final --
 !     Subroutine to report the overall statistics
 ! Arguments:
@@ -98,7 +100,6 @@ end subroutine
 !     to the runtests subroutine. This makes it easier to run tests
 !     from different modules, as you have more than one subroutine to
 !     do the actual tests.
-!
 subroutine runtests_final
     if ( ftnunit_file_exists("ftnunit.run") ) then
         write(*,'(a,i5)') 'Number of failed assertions:                ', nofails
@@ -107,12 +108,13 @@ subroutine runtests_final
         stop
     endif
 end subroutine
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! runtests --
 !     Subroutine to run the tests if requested
 ! Arguments:
 !     testproc      The test subroutine that actually runs the unit test
-!
 subroutine runtests( testproc )
     interface
         subroutine testproc
@@ -152,7 +154,9 @@ subroutine runtests( testproc )
     endif
 
 end subroutine runtests
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! assert_true --
 !     Subroutine to check if a condition is true
 ! Arguments:
@@ -161,7 +165,6 @@ end subroutine runtests
 ! Side effects:
 !     If the assertion fails, this is reported to standard
 !     output. Also, nofails is increased by one.
-!
 subroutine assert_true( cond, text )
     logical, intent(in)          :: cond
     character(len=*), intent(in) :: text
@@ -172,7 +175,9 @@ subroutine assert_true( cond, text )
         write(*,*) '    It should have been true'
     endif
 end subroutine assert_true
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! assert_false --
 !     Subroutine to check if a condition is false
 ! Arguments:
@@ -181,7 +186,6 @@ end subroutine assert_true
 ! Side effects:
 !     If the assertion fails, this is reported to standard
 !     output. Also, nofails is increased by one.
-!
 subroutine assert_false( cond, text )
     logical, intent(in)          :: cond
     character(len=*), intent(in) :: text
@@ -192,7 +196,9 @@ subroutine assert_false( cond, text )
         write(*,*) '    It should have been false'
     endif
 end subroutine assert_false
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! assert_equal_int --
 !     Subroutine to check if two integers are equal
 ! Arguments:
@@ -214,7 +220,9 @@ subroutine assert_equal_int( value1, value2, text )
         write(*,*) '    Values: ', value1, ' and ', value2
     endif
 end subroutine assert_equal_int
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! assert_equal_int1d --
 !     Subroutine to check if two integer arrays are equal
 ! Arguments:
@@ -224,7 +232,6 @@ end subroutine assert_equal_int
 ! Side effects:
 !     If the assertion fails, this is reported to standard
 !     output. Also, nofails is increased by one.
-!
 subroutine assert_equal_int1d( array1, array2, text )
     integer, dimension(:), intent(in) :: array1
     integer, dimension(:), intent(in) :: array2
@@ -254,7 +261,9 @@ subroutine assert_equal_int1d( array1, array2, text )
         endif
     endif
 end subroutine assert_equal_int1d
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! assert_comparable_real --
 !     Subroutine to check if two reals are approximately equal
 ! Arguments:
@@ -265,7 +274,6 @@ end subroutine assert_equal_int1d
 ! Side effects:
 !     If the assertion fails, this is reported to standard
 !     output. Also, nofails is increased by one.
-!
 subroutine assert_comparable_real( value1, value2, margin, text )
     real, intent(in)             :: value1
     real, intent(in)             :: value2
@@ -278,7 +286,9 @@ subroutine assert_comparable_real( value1, value2, margin, text )
         write(*,*) '    Values: ', value1, ' and ', value2
     endif
 end subroutine assert_comparable_real
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! assert_compatable_real1d --
 !     Subroutine to check if two real arrays are comparable
 ! Arguments:
@@ -289,7 +299,6 @@ end subroutine assert_comparable_real
 ! Side effects:
 !     If the assertion fails, this is reported to standard
 !     output. Also, nofails is increased by one.
-!
 subroutine assert_comparable_real1d( array1, array2, margin, text )
     real, dimension(:), intent(in)    :: array1
     real, dimension(:), intent(in)    :: array2
@@ -321,7 +330,9 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
         endif
     endif
 end subroutine assert_comparable_real1d
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! assert_file_exists --
 !     Subroutine to check if a condition is true
 ! Arguments:
@@ -330,7 +341,6 @@ end subroutine assert_comparable_real1d
 ! Side effects:
 !     If the assertion fails, this is reported to standard
 !     output. Also, nofails is increased by one.
-!
 subroutine assert_file_exists( filename, text )
     character(len=*), intent(in) :: filename, text
 
@@ -340,25 +350,27 @@ subroutine assert_file_exists( filename, text )
         write(*,*) '    File "', trim(filename) ,'" does not exist'
     endif
 end subroutine assert_file_exists
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! ftnunit_file_exists --
 !     Auxiliary function to see if a file exists
 ! Arguments:
 !     filename      Name of the file to check
 ! Returns:File to be checked for existence
 !     .true. if the file exists, .false. otherwise
-!
 logical function ftnunit_file_exists( filename )
     character(len=*), intent(in) :: filename
 
     inquire( file = filename, exist = ftnunit_file_exists )
 end function ftnunit_file_exists
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! ftnunit_remove_file --
 !     Auxiliary subroutine to remove a file
 ! Arguments:
 !     filename      Name of the file to be removed
-!
 subroutine ftnunit_remove_file( filename )
     character(len=*), intent(in) :: filename
 
@@ -378,12 +390,13 @@ subroutine ftnunit_remove_file( filename )
     endif
 
 end subroutine ftnunit_remove_file
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 ! ftnunit_make_empty_file --
 !     Auxiliary subroutine to make an empty file
 ! Arguments:
 !     filename      Name of the file to be created
-!
 subroutine ftnunit_make_empty_file( filename )
     character(len=*), intent(in) :: filename
 
@@ -402,5 +415,7 @@ subroutine ftnunit_make_empty_file( filename )
     endif
 
 end subroutine ftnunit_make_empty_file
+!-----------------------------------------------------------------------------------------
 
 end module ftnunit
+!=========================================================================================
