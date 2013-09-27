@@ -289,7 +289,7 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
   class(inversion_mesh_data_type)   :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput_xdmf, iinput_heavy_data
-  integer                           :: i
+  integer                           :: i, igroup, itime, isnap, n
 
   if (.not. this%initialized) &
      stop 'ERROR: trying to dump a non initialized mesh'
@@ -302,11 +302,30 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
   write(iinput_xdmf, 733) this%nelements, 'binary', trim(filename)//'_grid.dat', &
                           this%nvertices, 'binary', trim(filename)//'_points.dat'
 
-  do i=1, this%ntimes
-     write(iinput_xdmf, 734) 'data', dble(i), this%nelements, &
-                             "'", "'", "'", "'", this%data_group_names(i), &
-                             this%nvertices, i-1, this%nvertices, this%ntimes, &
-                             this%nvertices, trim(filename)//'_data.dat'
+  i = 1
+  itime = 1
+
+  do while(i <= this%ntimes)
+     write(iinput_xdmf, 7341) 'grid', dble(itime), this%nelements, "'", "'", "'", "'"
+
+     igroup = 1
+     do while(igroup <= this%ngroups)
+        if (count(this%group_id == igroup) >= itime) then
+           n = 0
+           do isnap=1, this%ntimes
+              if (this%group_id(isnap) == igroup) n = n + 1
+              if (n == itime) exit
+           enddo
+
+           write(iinput_xdmf, 7342) this%data_group_names(igroup), &
+                                    this%nvertices, isnap-1, this%nvertices, this%ntimes, &
+                                    this%nvertices, trim(filename)//'_data.dat'
+           i = i + 1
+        endif
+        igroup = igroup + 1
+     enddo
+     write(iinput_xdmf, 7343)
+     itime = itime + 1
   enddo
 
   write(iinput_xdmf, 736)
@@ -325,7 +344,7 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
     '</DataItem>',/,/&
     '<Grid Name="CellsTime" GridType="Collection" CollectionType="Temporal">',/)
 
-734 format(&    
+7341 format(&    
     '    <Grid Name="', A,'" GridType="Uniform">',/&
     '        <Time Value="',F8.2,'" />',/&
     '        <Topology TopologyType="Tetrahedron" NumberOfElements="',i10,'">',/&
@@ -333,7 +352,9 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
     '        </Topology>',/&
     '        <Geometry GeometryType="XYZ">',/&
     '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'points', A,']" />',/&
-    '        </Geometry>',/&
+    '        </Geometry>')
+
+7342 format(&    
     '        <Attribute Name="', A,'" AttributeType="Scalar" Center="Node">',/&
     '            <DataItem ItemType="HyperSlab" Dimensions="',i10,'" Type="HyperSlab">',/&
     '                <DataItem Dimensions="3 2" Format="XML">',/&
@@ -345,7 +366,9 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
     '                   ', A,/&
     '                </DataItem>',/&
     '            </DataItem>',/&
-    '        </Attribute>',/&
+    '        </Attribute>')
+
+7343 format(&    
     '    </Grid>',/)
 
 736 format(&    
@@ -400,8 +423,8 @@ program test_inversion_mesh
 
   datat(:,:) = inv_mesh%get_vertices()
   call inv_mesh%set_data_snap(datat(1,:), 1, 'x')
-  call inv_mesh%set_data_snap(datat(2,:), 2, 'y')
-  call inv_mesh%set_data_snap(datat(3,:), 3, 'z')
+  call inv_mesh%set_data_snap(datat(2,:), 2, 'x')
+  call inv_mesh%set_data_snap(datat(3,:), 3, 'x')
 
   call inv_mesh%dump_tet_mesh_data_xdmf('testdata')
   
