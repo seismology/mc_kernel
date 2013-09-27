@@ -1,6 +1,7 @@
 !=========================================================================================
 module test_fft
 
+  use global_parameters
   use fft
   use ftnunit
   implicit none
@@ -14,8 +15,8 @@ subroutine test_fft_dirac
 
     type(rfft_type) :: fftt
 
-    real(kind=8), dimension(:,:), allocatable       :: datat
-    complex(kind=8), dimension(:,:), allocatable    :: dataf, dataf_ref
+    real(kind=dp), dimension(:,:), allocatable       :: datat
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf, dataf_ref
 
     ntimes = 4
     ntraces = 2
@@ -68,8 +69,8 @@ subroutine test_fft_inverse
 
     type(rfft_type) :: fftt
 
-    real(kind=8), dimension(:,:), allocatable       :: datat, datat_ref
-    complex(kind=8), dimension(:,:), allocatable    :: dataf
+    real(kind=dp), dimension(:,:), allocatable       :: datat, datat_ref
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf
 
     ntimes = 4
     ntraces = 1

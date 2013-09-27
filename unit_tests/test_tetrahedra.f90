@@ -1,5 +1,7 @@
 !=========================================================================================
 module test_tetrahedra
+
+  use global_parameters
   use tetrahedra
   use ftnunit
   implicit none

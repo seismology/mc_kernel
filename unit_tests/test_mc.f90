@@ -1,6 +1,7 @@
 !=========================================================================================
 module test_montecarlo
 
+  use global_parameters
   use montecarlo, only: integrated_type
   use ftnunit, only   : test, assert_comparable_real1d
   implicit none
@@ -11,13 +12,13 @@ contains
 subroutine test_unit_hexagon
     type(integrated_type)                    :: mc_integral 
     integer                                   :: ipoint, iiter
-    real(kind=8), dimension(100,3)            :: coords
-    real(kind=8), dimension(100,1)            :: values
-    real(kind=4), dimension(1)                :: integral
-    real(kind=8), parameter                   :: pitominusthreehalf &
-                                                    = 0.063493635934240969389d0
-    real(kind=8), parameter, dimension(2)     :: bounds = [-0.2d0, 0.2d0]
-    real(kind=8)                              :: volume
+    real(kind=dp), dimension(100,3)            :: coords
+    real(kind=dp), dimension(100,1)            :: values
+    real(kind=sp), dimension(1)                :: integral
+    real(kind=dp), parameter                   :: pitominusthreehalf &
+                                                     = 0.063493635934240969389d0
+    real(kind=dp), parameter, dimension(2)     :: bounds = [-0.2d0, 0.2d0]
+    real(kind=dp)                              :: volume
 
     volume = (bounds(2) - bounds(1))**3
 
@@ -51,12 +52,12 @@ subroutine test_sphere_in_tetrahedron
     use tetrahedra, only                       : generate_random_point
     type(integrated_type)                     :: mc_integral 
     integer                                   :: ipoint, iiter
-    real(kind=8), dimension(100,3)            :: coords
-    real(kind=8), dimension(100,1)            :: values
-    real(kind=4), dimension(1)                :: integral
-    real(kind=8)                              :: volume
-    real(kind=8), dimension(3,4)              :: vertices
-    real(kind=4), parameter                   :: pi = 3.141419265
+    real(kind=dp), dimension(100,3)            :: coords
+    real(kind=dp), dimension(100,1)            :: values
+    real(kind=sp), dimension(1)                :: integral
+    real(kind=dp)                              :: volume
+    real(kind=dp), dimension(3,4)              :: vertices
+    real(kind=sp), parameter                   :: pi = 3.141419265
 
     vertices(:,1) = [1, 0, 0]
     vertices(:,2) = [0, 1, 0]

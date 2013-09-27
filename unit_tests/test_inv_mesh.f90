@@ -1,6 +1,7 @@
 !=========================================================================================
 module test_inversion_mesh
 
+  use global_parameters
   use inversion_mesh
   use ftnunit
   implicit none
@@ -54,7 +55,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_mesh_data_dump
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=4), allocatable         :: datat(:,:)
+  real(kind=sp), allocatable         :: datat(:,:)
   integer                           :: npoints, myunit, ierr
 
   call inv_mesh%read_tet_mesh('vertices.TEST', 'facets.TEST')
