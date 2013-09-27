@@ -1,3 +1,4 @@
+!=========================================================================================
 module test_montecarlo
 
   use montecarlo, only: integrated_type
@@ -6,13 +7,15 @@ module test_montecarlo
   public
 contains
 
+!-----------------------------------------------------------------------------------------
 subroutine test_unit_hexagon
     type(integrated_type)                    :: mc_integral 
     integer                                   :: ipoint, iiter
     real(kind=8), dimension(100,3)            :: coords
     real(kind=8), dimension(100,1)            :: values
     real(kind=4), dimension(1)                :: integral
-    real(kind=8), parameter                   :: pitominusthreehalf = 0.063493635934240969389d0
+    real(kind=8), parameter                   :: pitominusthreehalf &
+                                                    = 0.063493635934240969389d0
     real(kind=8), parameter, dimension(2)     :: bounds = [-0.2d0, 0.2d0]
     real(kind=8)                              :: volume
 
@@ -41,9 +44,9 @@ subroutine test_unit_hexagon
     integral = mc_integral%getintegral()
     call assert_comparable_real1d(integral, [3.98343E-003], 1e-3, 'Integral == 1')
 end subroutine test_unit_hexagon
+!-----------------------------------------------------------------------------------------
 
-!------------------------------------------------------------------------------
-
+!-----------------------------------------------------------------------------------------
 subroutine test_sphere_in_tetrahedron
     use tetrahedra, only                       : generate_random_point
     type(integrated_type)                     :: mc_integral 
@@ -85,6 +88,10 @@ subroutine test_sphere_in_tetrahedron
  
 
     integral = mc_integral%getintegral()
-    call assert_comparable_real1d(integral, [pi*(1./3.)**(1.5)*real(volume)], 1e-2, 'Integral == 1')
+    call assert_comparable_real1d(integral, [pi*(1./3.)**(1.5)*real(volume)], &
+                                  1e-2, 'Integral == 1')
 end subroutine test_sphere_in_tetrahedron
+!-----------------------------------------------------------------------------------------
+
 end module
+!=========================================================================================
