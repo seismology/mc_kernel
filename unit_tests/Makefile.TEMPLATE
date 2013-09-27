@@ -1,14 +1,15 @@
 PROG=test_ftnunit
 
-SRCS =	ab.f90 fft_type.f90 ftnunit.f90 mc_integration.f90 \
-	random_tetrahedron.f90 test_fft_type.f90 test_ftnunit.f90 test_mc.f90 \
-	test_tetrahedra.f90
+SRCS =	fft_type.f90 ftnunit.f90 global_parameters.f90 inv_mesh.f90 \
+	mc_integration.f90 random_tetrahedron.f90 test_fft_type.f90 \
+	test_ftnunit.f90 test_inv_mesh.f90 test_mc.f90 test_tetrahedra.f90
 
-OBJS =	ab.o fft_type.o ftnunit.o mc_integration.o random_tetrahedron.o \
-	test_fft_type.o test_ftnunit.o test_mc.o test_tetrahedra.o
+OBJS =	fft_type.o ftnunit.o global_parameters.o inv_mesh.o mc_integration.o \
+	random_tetrahedron.o test_fft_type.o test_ftnunit.o test_inv_mesh.o \
+	test_mc.o test_tetrahedra.o
 
 #Example to include specific netcdf libraries: 
-LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local/lib 
+LIBS = -lm -lfftw3 -lfftw3f
 
 # set unc to compile with netcdf: 
 #F90FLAGS = -Dunc 
@@ -41,12 +42,16 @@ clean:
 .F90.o:
 	$(F90) $(F90FLAGS) -c $(INCLUDE) $<
 
-ab.o:  Makefile 
-fft_type.o:  Makefile 
+fft_type.o: global_parameters.o  Makefile 
 ftnunit.o:  Makefile 
-mc_integration.o:  Makefile 
-random_tetrahedron.o:  Makefile 
-test_fft_type.o: fft_type.o ftnunit.o Makefile 
-test_ftnunit.o: ftnunit.o test_fft_type.o test_mc.o test_tetrahedra.o Makefile 
-test_mc.o: ftnunit.o mc_integration.o Makefile 
-test_tetrahedra.o: ftnunit.o random_tetrahedron.o Makefile 
+global_parameters.o:  Makefile 
+inv_mesh.o: global_parameters.o Makefile 
+mc_integration.o: global_parameters.o Makefile 
+random_tetrahedron.o: global_parameters.o Makefile 
+test_fft_type.o: fft_type.o ftnunit.o global_parameters.o Makefile 
+test_ftnunit.o: ftnunit.o test_fft_type.o test_inv_mesh.o test_mc.o \
+	test_tetrahedra.o Makefile 
+test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o Makefile 
+test_mc.o: ftnunit.o global_parameters.o mc_integration.o \
+	random_tetrahedron.o Makefile 
+test_tetrahedra.o: ftnunit.o global_parameters.o random_tetrahedron.o Makefile 
