@@ -299,24 +299,30 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
 
   ! XML header
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
+  ! start xdmf file, write header
   write(iinput_xdmf, 733) this%nelements, 'binary', trim(filename)//'_grid.dat', &
                           this%nvertices, 'binary', trim(filename)//'_points.dat'
 
   i = 1
   itime = 1
 
+  ! loop over all data
   do while(i <= this%ntimes)
+     ! create new snapshot in the temporal collection
      write(iinput_xdmf, 7341) 'grid', dble(itime), this%nelements, "'", "'", "'", "'"
 
      igroup = 1
+     ! loop over groups, that have more items then itime
      do while(igroup <= this%ngroups)
         if (count(this%group_id == igroup) >= itime) then
+           ! find the itime'th item in the group
            n = 0
            do isnap=1, this%ntimes
               if (this%group_id(isnap) == igroup) n = n + 1
               if (n == itime) exit
            enddo
 
+           ! write attribute
            write(iinput_xdmf, 7342) this%data_group_names(igroup), &
                                     this%nvertices, isnap-1, this%nvertices, this%ntimes, &
                                     this%nvertices, trim(filename)//'_data.dat'
@@ -324,10 +330,12 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
         endif
         igroup = igroup + 1
      enddo
+     ! finish snapshot
      write(iinput_xdmf, 7343)
      itime = itime + 1
   enddo
 
+  ! finish xdmf file
   write(iinput_xdmf, 736)
   close(iinput_xdmf)
 
