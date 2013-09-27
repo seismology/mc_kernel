@@ -16,6 +16,8 @@ module inversion_mesh
      logical                            :: initialized = .false.
      contains
      procedure, pass :: get_nelements
+     procedure, pass :: get_element
+     procedure, pass :: get_elements
      procedure, pass :: get_nvertices
      procedure, pass :: get_vertices
      procedure, pass :: read_tet_mesh
@@ -27,7 +29,9 @@ module inversion_mesh
      private
      integer                            :: ntimes
      real(kind=sp), allocatable         :: datat(:,:)
-     character(len=16), allocatable     :: data_names(:)
+     integer, allocatable               :: group_id(:)
+     character(len=16), allocatable     :: data_group_names(:)
+     integer                            :: ngroups
      contains
      procedure, pass :: get_ntimes
      procedure, pass :: init_data
@@ -43,6 +47,22 @@ integer function get_nelements(this)
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
   get_nelements = this%nelements
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_element(this, ielement)
+  class(inversion_mesh_type)        :: this
+  real(kind=sp)                     :: get_element(3,4)
+  integer, intent(in)               :: ielement
+
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing inversion mesh type that is not initialized'
+
+  get_element(:,1) = this%vertices(:, this%connectivity(1,ielement)) 
+  get_element(:,2) = this%vertices(:, this%connectivity(2,ielement)) 
+  get_element(:,3) = this%vertices(:, this%connectivity(3,ielement)) 
+  get_element(:,4) = this%vertices(:, this%connectivity(4,ielement)) 
 end function
 !-----------------------------------------------------------------------------------------
 
@@ -217,9 +237,13 @@ subroutine init_data(this, ntimes)
   allocate(this%datat(this%nvertices, ntimes))
   this%datat = 0
 
-  allocate(this%data_names(ntimes))
-  this%data_names = 'data'
+  allocate(this%data_group_names(ntimes))
+  this%data_group_names = 'data'
 
+  allocate(this%group_id(ntimes))
+  this%group_id = 1
+
+  this%ngroups = 1
 end subroutine
 !-----------------------------------------------------------------------------------------
 
@@ -229,6 +253,8 @@ subroutine set_data_snap(this, data_snap, isnap, data_name)
   real(kind=sp), intent(in)                 :: data_snap(:)
   integer, intent(in)                       :: isnap
   character(len=*), intent(in), optional    :: data_name
+  integer                                   :: i
+  logical                                   :: name_exists
 
   if (.not. allocated(this%datat)) &
      stop 'ERROR: trying to write data without initialization!'
@@ -238,8 +264,22 @@ subroutine set_data_snap(this, data_snap, isnap, data_name)
 
   this%datat(:,isnap) = data_snap(:)
 
-  if (present(data_name)) &
-     this%data_names(isnap) = data_name
+  if (present(data_name)) then
+     name_exists = .false.
+     do i=1, this%ngroups
+        if (this%data_group_names(i) == data_name) then
+           name_exists = .true.
+           exit
+        endif
+     enddo
+     if (name_exists) then
+        this%group_id(isnap) = i
+     else
+        this%ngroups = this%ngroups + 1
+        this%group_id(isnap) = this%ngroups
+        this%data_group_names(this%ngroups) = data_name
+     endif
+  endif
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -263,8 +303,8 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
                           this%nvertices, 'binary', trim(filename)//'_points.dat'
 
   do i=1, this%ntimes
-     write(iinput_xdmf, 734) this%data_names(i), dble(i), this%nelements, &
-                             "'", "'", "'", "'", this%data_names(i), &
+     write(iinput_xdmf, 734) 'data', dble(i), this%nelements, &
+                             "'", "'", "'", "'", this%data_group_names(i), &
                              this%nvertices, i-1, this%nvertices, this%ntimes, &
                              this%nvertices, trim(filename)//'_data.dat'
   enddo
