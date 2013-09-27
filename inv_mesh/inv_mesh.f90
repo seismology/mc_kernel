@@ -47,6 +47,23 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function get_elements(this)
+  class(inversion_mesh_type)        :: this
+  real(kind=sp)                     :: get_elements(3,4,this%nelements)
+  integer                           :: ielement
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing inversion mesh type that is not initialized'
+
+  do ielement = 1, this%nelements
+      get_elements(:,1,ielement) = this%vertices(:, this%connectivity(1,ielement)) 
+      get_elements(:,2,ielement) = this%vertices(:, this%connectivity(2,ielement)) 
+      get_elements(:,3,ielement) = this%vertices(:, this%connectivity(3,ielement)) 
+      get_elements(:,4,ielement) = this%vertices(:, this%connectivity(4,ielement)) 
+  end do
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 integer function get_nvertices(this)
   class(inversion_mesh_type)        :: this
   if (.not. this%initialized) &
@@ -62,6 +79,16 @@ function get_vertices(this)
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
   get_vertices = this%vertices
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_connectivity(this)
+  class(inversion_mesh_type)        :: this
+  real(kind=sp)                     :: get_connectivity(4,this%nelements)
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  get_connectivity = this%connectivity
 end function
 !-----------------------------------------------------------------------------------------
 
