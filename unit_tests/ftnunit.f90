@@ -284,6 +284,7 @@ end subroutine assert_comparable_real
 ! Arguments:
 !     array1        First array
 !     array2        Second array
+!     margin        Allowed margin (relative)
 !     text          Text describing the assertion
 ! Side effects:
 !     If the assertion fails, this is reported to standard
@@ -324,7 +325,7 @@ end subroutine assert_comparable_real1d
 ! assert_file_exists --
 !     Subroutine to check if a condition is true
 ! Arguments:
-!     cond          Condition to be checked
+!     filename      File to be checked for existence
 !     text          Text describing the assertion
 ! Side effects:
 !     If the assertion fails, this is reported to standard
@@ -344,7 +345,7 @@ end subroutine assert_file_exists
 !     Auxiliary function to see if a file exists
 ! Arguments:
 !     filename      Name of the file to check
-! Returns:
+! Returns:File to be checked for existence
 !     .true. if the file exists, .false. otherwise
 !
 logical function ftnunit_file_exists( filename )

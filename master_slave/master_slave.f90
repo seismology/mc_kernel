@@ -110,13 +110,13 @@ subroutine master()
   ! Tell all the slaves to exit by sending an empty message with the DIETAG.
   do rank=1, nslaves
     call MPI_Send(0,               & !
-                   0,               & ! empty message
-                   MPI_INT,         & !
-                   rank,            & ! destination
-                   DIETAG,          & ! the tag conatains the actual information
-                   MPI_COMM_WORLD,  & ! default communicator
-                   sendrequest(rank), &
-                   ierror)
+                  0,               & ! empty message
+                  MPI_INT,         & !
+                  rank,            & ! destination
+                  DIETAG,          & ! the tag conatains the actual information
+                  MPI_COMM_WORLD,  & ! default communicator
+                  sendrequest(rank), &
+                  ierror)
   enddo
 
 end subroutine

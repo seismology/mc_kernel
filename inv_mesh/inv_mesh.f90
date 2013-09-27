@@ -127,10 +127,15 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   character(len=*), intent(in)      :: filename_vertices
   character(len=*), intent(in)      :: filename_connectivity
   integer                           :: iinput_vertices, iinput_connectivity
-  integer                           :: i
+  integer                           :: i, ierr
 
   ! read vertices
-  open(newunit=iinput_vertices, file=trim(filename_vertices), status='old', action='read')
+  open(newunit=iinput_vertices, file=trim(filename_vertices), status='old', &
+       action='read', iostat=ierr)
+  if ( ierr /= 0 ) then
+     write(*,*) 'ERROR: Could not open file: ', trim(filename_vertices)
+     stop
+  endif
 
   read(iinput_vertices,*) this%nvertices
 
@@ -143,7 +148,11 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
 
   ! read connectivity (tetrahedral elements)
   open(newunit=iinput_connectivity, file=trim(filename_connectivity), status='old', &
-       action='read')
+       action='read', iostat=ierr)
+  if ( ierr /= 0 ) then
+     write(*,*) 'ERROR: Could not open file: ', trim(filename_connectivity)
+     stop
+  endif
 
   read(iinput_connectivity,*) this%nelements
 
@@ -412,31 +421,31 @@ end subroutine
 end module
 !=========================================================================================
 
-!=========================================================================================
-program test_inversion_mesh
-  use inversion_mesh
-  implicit none
-  type(inversion_mesh_data_type)    :: inv_mesh
-
-  real(kind=4), allocatable         :: datat(:,:)
-  integer                           :: npoints
-
-  !call inv_mesh%read_tet_mesh('vertices.TEST', 'facets.TEST')
-  call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
-
-  call inv_mesh%init_data(10)
-
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat(3,npoints))
-
-  datat(:,:) = inv_mesh%get_vertices()
-  call inv_mesh%set_data_snap(datat(1,:), 1, 'x')
-  call inv_mesh%set_data_snap(datat(2,:), 2, 'x')
-  call inv_mesh%set_data_snap(datat(3,:), 3, 'x')
-
-  call inv_mesh%dump_tet_mesh_data_xdmf('testdata')
-  
-  call inv_mesh%freeme()
-
-end program
-!=========================================================================================
+!!=========================================================================================
+!program test_inversion_mesh
+!  use inversion_mesh
+!  implicit none
+!  type(inversion_mesh_data_type)    :: inv_mesh
+!
+!  real(kind=4), allocatable         :: datat(:,:)
+!  integer                           :: npoints
+!
+!  call inv_mesh%read_tet_mesh('vertices.TEST', 'facets.TEST')
+!  !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+!
+!  call inv_mesh%init_data(3)
+!
+!  npoints = inv_mesh%get_nvertices()
+!  allocate(datat(3,npoints))
+!
+!  datat(:,:) = inv_mesh%get_vertices()
+!  call inv_mesh%set_data_snap(datat(1,:), 1, 'x')
+!  call inv_mesh%set_data_snap(datat(2,:), 2, 'x')
+!  call inv_mesh%set_data_snap(datat(3,:), 3, 'x')
+!
+!  call inv_mesh%dump_tet_mesh_data_xdmf('testdata')
+!  
+!  call inv_mesh%freeme()
+!
+!end program
+!!=========================================================================================

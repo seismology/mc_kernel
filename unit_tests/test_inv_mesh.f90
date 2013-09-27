@@ -23,7 +23,7 @@ end subroutine
 
 subroutine test_mesh_dump
   type(inversion_mesh_type)    :: inv_mesh
-  integer                      :: npoints, nelems
+  integer                      :: npoints, nelems, myunit, ierr
 
   call inv_mesh%read_tet_mesh('vertices.TEST', 'facets.TEST')
 
@@ -32,6 +32,16 @@ subroutine test_mesh_dump
   call assert_file_exists('testmesh.xdmf', 'test xdmf dump')
   call assert_file_exists('testmesh_points.dat', 'test xdmf dump')
   call assert_file_exists('testmesh_grid.dat', 'test xdmf dump')
+
+  ! tidy up
+  open(newunit=myunit, file='testmesh.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='testmesh_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='testmesh_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%freeme()
 end subroutine
