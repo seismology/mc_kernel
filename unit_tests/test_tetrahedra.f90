@@ -1,3 +1,4 @@
+!=========================================================================================
 module test_tetrahedra
   use tetrahedra
   use ftnunit
@@ -5,8 +6,7 @@ module test_tetrahedra
   public
 contains
 
-!******************************************************************************
-  
+!-----------------------------------------------------------------------------------------
 subroutine test_generate_random_point
 
   real(kind=dp), dimension(3,1000)  :: points
@@ -22,9 +22,9 @@ subroutine test_generate_random_point
   call assert_true(all(sum(points,1)<1), 'Random points are in tetrahedron')
 
 end subroutine test_generate_random_point
+!-----------------------------------------------------------------------------------------
 
-!******************************************************************************
-
+!-----------------------------------------------------------------------------------------
 subroutine test_rmat4_det
   real(kind=dp), dimension(4,4)    :: matrix
   real(kind=sp)                    :: determinant
@@ -40,9 +40,9 @@ subroutine test_rmat4_det
                               'Determinant of random matrix')
 
 end subroutine test_rmat4_det
+!-----------------------------------------------------------------------------------------
 
-!******************************************************************************
-
+!-----------------------------------------------------------------------------------------
 subroutine test_tetra_volume_3d
   real(kind=dp), dimension(3,4)  :: vertices
 
@@ -65,12 +65,7 @@ subroutine test_tetra_volume_3d
                               ' Volume of tetrahedron 2')
 
 end subroutine
-
-
-
-
-
-
-
+!-----------------------------------------------------------------------------------------
 
 end module
+!=========================================================================================
