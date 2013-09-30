@@ -1,8 +1,8 @@
 PROG=master_slave
 
-SRCS =	master_slave.f90
+SRCS =	global_parameters.f90 master_slave.f90
 
-OBJS =	master_slave.o
+OBJS =	global_parameters.o master_slave.o
 
 #Example to include specific netcdf libraries: 
 #LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib 
@@ -40,4 +40,5 @@ clean:
 .F90.o:
 	$(F90) $(F90FLAGS) -c $(INCLUDE) $<
 
-master_slave.o: master_slave.o Makefile 
+global_parameters.o:  Makefile 
+master_slave.o: global_parameters.o master_slave.o Makefile 

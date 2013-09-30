@@ -14,54 +14,67 @@ module work_type_mod
   private
 
   public :: init_work_type
-  public :: work_type
-  public :: ntotal_kernel
-  public :: work_mpitype
-
-  integer, protected :: ntotal_kernel, ndimensions, nvertices
-  integer, protected :: work_mpitype
+  public :: wt          ! essentially implementing the singleton pattern by
+                        ! providing a single variable of the private type work_type
 
   type work_type
      sequence           ! force the derived type to be stored contiguously
      ! can't make the init function a member of work_type, because then it is
      ! impossible to use the seqeuence keyword
+     integer :: ntotal_kernel, ndimensions, nvertices
+     integer :: mpitype
      real(kind=dp), allocatable :: vertices(:,:)
      real(kind=dp), allocatable :: kernel_values(:,:)
   end type
 
+  type(work_type) :: wt
+
 contains
 
 !-----------------------------------------------------------------------------------------
-function init_work_type(nkern, ndim, nverts)
+subroutine init_work_type(nkern, ndim, nverts)
   use mpi
   
-  type(work_type)       :: init_work_type
   integer, intent(in)   :: ndim, nverts, nkern
   integer               :: ierr
   integer, allocatable  :: oldtypes(:), blocklengths(:), offsets(:)
-  integer, parameter    :: nblocks = 1
+  integer, parameter    :: nblocks = 2
 
-  ntotal_kernel = nkern
-  nvertices = nverts
-  ndimensions = ndim
+  wt%ntotal_kernel = nkern
+  wt%nvertices = nverts
+  wt%ndimensions = ndim
 
-  allocate(init_work_type%vertices(ndimensions, nvertices))
-  allocate(init_work_type%kernel_values(ntotal_kernel, nvertices))
-  init_work_type%vertices = 0
-  init_work_type%kernel_values = 0
+  allocate(wt%vertices(wt%ndimensions, wt%nvertices))
+  allocate(wt%kernel_values(wt%ntotal_kernel, wt%nvertices))
+  wt%vertices = 0
+  wt%kernel_values = 0
   
   allocate(oldtypes(nblocks))
   allocate(blocklengths(nblocks))
   allocate(offsets(nblocks))
 
-  blocklengths(1) = ndimensions * nvertices + ntotal_kernel * nvertices
-  oldtypes(1) = MPI_DOUBLE_PRECISION
+  !blocklengths(1) = wt%ndimensions * wt%nvertices + wt%ntotal_kernel * wt%nvertices
+  !oldtypes(1) = MPI_DOUBLE_PRECISION
+  !offsets(1) = 0
+
+  blocklengths(1) = 4
+  blocklengths(2) = wt%ndimensions * wt%nvertices + wt%ntotal_kernel * wt%nvertices
+
+  oldtypes(1) = MPI_INTEGER
+  oldtypes(2) = MPI_DOUBLE_PRECISION
+
+  ! find memory offsets, more stable then computing with MPI_TYPE_EXTEND
+  call MPI_ADDRESS(wt%ntotal_kernel, offsets(1), ierr)
+  call MPI_ADDRESS(wt%vertices, offsets(2), ierr)
+
+  ! make relative
+  offsets(2) = offsets(2) - offsets(1)
   offsets(1) = 0
 
-  call MPI_TYPE_STRUCT(nblocks, blocklengths, offsets, oldtypes, work_mpitype, ierr)
-  call MPI_TYPE_COMMIT(work_mpitype, ierr)
+  call MPI_TYPE_STRUCT(nblocks, blocklengths, offsets, oldtypes, wt%mpitype, ierr)
+  call MPI_TYPE_COMMIT(wt%mpitype, ierr)
 
-end function init_work_type
+end subroutine init_work_type
 !-----------------------------------------------------------------------------------------
 
 end module
@@ -114,7 +127,7 @@ subroutine master()
     ! Send it to each rank (nonblocking)
     call MPI_ISend(tasks(itask),      & ! message buffer
                    1,                 & ! one data item
-                   MPI_INT,           & ! data item is an integer
+                   MPI_INTEGER,       & ! data item is an integer
                    rank,              & ! destination process rank
                    WORKTAG,           & ! user chosen message tag
                    MPI_COMM_WORLD,    & ! default communicator
@@ -130,7 +143,7 @@ subroutine master()
     ioutput = ioutput + 1
     call MPI_Recv(output(ioutput),  & ! message buffer
                   1,                & ! one data item
-                  MPI_INT,          & ! data item is an integer
+                  MPI_INTEGER,      & ! data item is an integer
                   MPI_ANY_SOURCE,   & ! receive from any sender
                   MPI_ANY_TAG,      & ! any type of message
                   MPI_COMM_WORLD,   & ! default communicator
@@ -140,7 +153,7 @@ subroutine master()
     ! Send the same slave some more work to do (nonblocking)
     call MPI_ISend(tasks(itask),     & ! message buffer
                    1,                & ! one data item
-                   MPI_INT,          & ! data item is an integer
+                   MPI_INTEGER,      & ! data item is an integer
                    mpistatus(MPI_SOURCE), & ! to who we just received from
                    WORKTAG,          & ! user chosen message tag
                    MPI_COMM_WORLD,   & ! default communicator
@@ -155,7 +168,7 @@ subroutine master()
     ioutput = ioutput + 1
     call MPI_Recv(output(ioutput), & ! message buffer
                   1,               & ! one data item
-                  MPI_INT,         & ! data item is an integer
+                  MPI_INTEGER,     & ! data item is an integer
                   MPI_ANY_SOURCE,  & ! receive from any sender
                   MPI_ANY_TAG,     & ! any type of message
                   MPI_COMM_WORLD,  & ! default communicator
@@ -169,7 +182,7 @@ subroutine master()
   do rank=1, nslaves
     call MPI_Send(0,               & !
                   0,               & ! empty message
-                  MPI_INT,         & !
+                  MPI_INTEGER,     & !
                   rank,            & ! destination
                   DIETAG,          & ! the tag conatains the actual information
                   MPI_COMM_WORLD,  & ! default communicator
@@ -200,7 +213,7 @@ subroutine slave()
 
   do while (.true.)
     ! Receive a message from the master
-    call MPI_Recv(task, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
+    call MPI_Recv(task, 1, MPI_INTEGER, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
 
     ! Check the tag of the received message. If no more work to do, exit loop
     ! and return to main programm
@@ -210,7 +223,7 @@ subroutine slave()
     output = work(task)
 
     ! Send the result back
-    call MPI_Send(output, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, ierror)
+    call MPI_Send(output, 1, MPI_INTEGER, 0, 0, MPI_COMM_WORLD, ierror)
   enddo
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -236,13 +249,12 @@ program master_slave
   implicit none
   integer               :: myrank, ierror
   integer               :: nkern = 1
-  type(work_type)       :: wt
 
   call MPI_INIT(ierror)
   call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierror)
 
-  wt = init_work_type(nkern, 3, 4)
-  write(6,*) 'mpi_worktype = ', work_mpitype
+  call init_work_type(nkern, 3, 4)
+  write(6,*) 'mpi_worktype = ', wt%mpitype
 
   if (myrank == 0) then
      print *, 'MASTER'
