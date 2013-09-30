@@ -21,7 +21,11 @@ module work_type_mod
      sequence           ! force the derived type to be stored contiguously
      ! can't make the init function a member of work_type, because then it is
      ! impossible to use the seqeuence keyword
-     integer :: ntotal_kernel, ndimensions, nvertices
+     ! maybe can get around this by defining one block for each variable in the
+     ! derived type and dropping the sequence statement
+     integer :: ntotal_kernel
+     integer :: ndimensions
+     integer :: nvertices
      integer :: mpitype
      real(kind=dp), allocatable :: vertices(:,:)
      real(kind=dp), allocatable :: kernel_values(:,:)
@@ -36,15 +40,16 @@ subroutine init_work_type(nkern, ndim, nverts)
   use mpi
   
   integer, intent(in)   :: ndim, nverts, nkern
-  integer               :: ierr
-  integer, allocatable  :: oldtypes(:), blocklengths(:), offsets(:)
+  integer               :: ierr, i
+  integer, allocatable  :: oldtypes(:), blocklengths(:)
+  integer(kind=MPI_ADDRESS_KIND), allocatable  :: offsets(:)
   integer, parameter    :: nblocks = 3
 
   wt%ntotal_kernel = nkern
   wt%nvertices = nverts
   wt%ndimensions = ndim
 
-  allocate(wt%vertices(wt%ndimensions, wt%nvertices))
+  allocate(wt%vertices(1:wt%ndimensions, 1:wt%nvertices))
   allocate(wt%kernel_values(wt%ntotal_kernel, wt%nvertices))
   wt%vertices = 0
   wt%kernel_values = 0
@@ -64,16 +69,17 @@ subroutine init_work_type(nkern, ndim, nverts)
   oldtypes(3) = MPI_DOUBLE_PRECISION
 
   ! find memory offsets, more stable then computing with MPI_TYPE_EXTEND
-  call MPI_ADDRESS(wt%ntotal_kernel, offsets(1), ierr)
-  call MPI_ADDRESS(wt%vertices, offsets(2), ierr)
-  call MPI_ADDRESS(wt%kernel_values, offsets(3), ierr)
+  call MPI_GET_ADDRESS(wt%ntotal_kernel, offsets(1), ierr)
+  call MPI_GET_ADDRESS(wt%vertices,      offsets(2), ierr)
+  call MPI_GET_ADDRESS(wt%kernel_values, offsets(3), ierr)
 
-  ! make relative
-  offsets(3) = offsets(3) - offsets(2)
-  offsets(2) = offsets(2) - offsets(1)
+  ! make offsets relative
+  do i=2, size(offsets)
+      offsets(i) = offsets(i) - offsets(1)
+  end do
   offsets(1) = 0
 
-  call MPI_TYPE_STRUCT(nblocks, blocklengths, offsets, oldtypes, wt%mpitype, ierr)
+  call MPI_TYPE_CREATE_STRUCT(nblocks, blocklengths, offsets, oldtypes, wt%mpitype, ierr)
   call MPI_TYPE_COMMIT(wt%mpitype, ierr)
 
 end subroutine init_work_type
@@ -101,7 +107,7 @@ subroutine master()
   integer               :: itask, ntasks, ioutput
 
   ! initialize work
-  ntasks = 10
+  ntasks = 20
   allocate(tasks(ntasks))
   do itask=1, ntasks
      tasks(itask) = itask
@@ -117,6 +123,9 @@ subroutine master()
 
   if (nslaves > ntasks) then
      write(6,*) 'ERROR: more slaves then tasks'
+     stop
+  elseif (nslaves < 1) then
+     write(6,*) 'ERROR: need at least 1 slave'
      stop
   endif
 
@@ -160,6 +169,7 @@ subroutine master()
      ! extract from receive buffer
      output(ioutput,1) = wt%ntotal_kernel
      output(ioutput,2) = wt%ndimensions
+
      
      ! fill sendbuffer
      wt%ntotal_kernel = tasks(itask)
@@ -248,7 +258,8 @@ subroutine slave()
     output = work(task)
     
     wt%ntotal_kernel = output
-    wt%ndimensions= task
+    wt%ndimensions = task
+    wt%vertices = task
 
     ! Send the result back
     call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
@@ -278,7 +289,7 @@ program master_slave
   integer               :: myrank, ierror
   integer               :: nkern
   
-  nkern = 5
+  nkern = 10
 
   call MPI_INIT(ierror)
   call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierror)
