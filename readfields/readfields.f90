@@ -1,17 +1,11 @@
 module readfields
     use kdtree2_module
-    use netcdf
+    !use netcdf
+    include 'netcdf.h'
 
     integer, parameter                    :: sp = 4, dp = 8
 
     ! Should be moved to somewhere else later
-    type src_param_type
-        real(kind=sp)                     :: mij(6)
-    end type
-    type rec_param_type
-        character(len=1)                  :: component
-    end type
-
 
     type meshtype
         real(kind=sp), allocatable        :: s(:), z(:)
@@ -29,10 +23,7 @@ module readfields
 
     type netcdf_type
         private
-        integer                           :: ncid
 
-        character(len=200)                :: dir_fwdmesh
-        character(len=200)                :: dir_bwdmesh
         integer                           :: nsim_fwd, nsim_bwd
         type(ncparamtype), allocatable    :: fwd(:)
         type(ncparamtype), allocatable    :: bwd(:)
@@ -48,7 +39,7 @@ module readfields
         logical                           :: kdtree_built
 
         contains 
-!            procedure, pass               :: set_params
+            procedure, pass               :: set_params
             procedure, pass               :: open_files
             procedure, pass               :: read_meshes
             procedure, pass               :: build_kdtree
@@ -58,6 +49,133 @@ module readfields
     end type
 
 contains
+
+subroutine set_params(this, parameters)
+    class(netcdf_type)            :: this
+    class(parameter_type)         :: parameters
+
+
+    this%nsim_fwd = parameters%nsim_fwd
+    this%nsim_bwd =  1 !parameters%nsim_bwd
+    
+    allocate( this%fwd(this%nsim_fwd) )
+    allocate( this%bwd(this%nsim_bwd) )
+
+    select case(this%nsim_fwd)
+    case(1)
+        this%fwd(1)%meshdir = parameters%dir_fwdmesh
+
+    case(2) 
+        this%fwd(1)%meshdir = trim(parameters%fwd_dir)//'PZ/'
+        this%fwd(2)%meshdir = trim(parameters%fwd_dir)//'PX/'
+
+    case(4)
+        this%fwd(1)%meshdir = trim(parameters%fwd_dir)//'MZZ/'
+        this%fwd(2)%meshdir = trim(parameters%fwd_dir)//'MXX_P_MYY/'
+        this%fwd(3)%meshdir = trim(parameters%fwd_dir)//'MXZ_MYZ/'
+        this%fwd(4)%meshdir = trim(parameters%fwd_dir)//'MXY_MXX_M_MYY/'
+    end select
+    
+    do isim = 1, this%nsim_bwd
+        this%bwd(isim)%meshdir = parameters%dir_bwdmesh
+    end do
+
+    this%params_set = .true.
+
+end subroutine
+
+
+!-------------------------------------------------------------------------------
+subroutine open_files(this)
+
+    class(netcdf_type)               :: this
+    integer                          :: status, isim
+    character(len=200)               :: format20, format21, filename
+
+    if (.not.this%params_set) then
+        print *, 'ERROR in open_files(): Parameters have to be set first'
+        print *, 'Call set_params before open_files()'
+        stop
+    end if
+
+    format20 = "('Trying to open NetCDF file ', A, ' on CPU ', I5)"
+    format21 = "('Succeded,  has NCID ', I6, ', Snapshots group NCID:', I6)"
+
+    do isim = 1, this%nsim_fwd
+        ! Forward wavefield
+        filename=trim(this%fwd(isim)%meshdir)//'ordered_output.nc4'
+        
+        inquire(file=filename, exist=this%fwd(isim)%ordered_output)
+        if (.not.this%fwd(isim)%ordered_output) then
+            filename = trim(this%fwd(isim)%meshdir)//'Data/axisem_output.nc4'
+        end if
+        
+        write(6,format20) filename, mynum
+        status = nf90_open(       path     = filename,              &
+                                  mode     = nf90_nowrite,          &
+                                  ncid     = this%fwd(isim)%ncid)
+
+        call check(nf90_inq_ncid( ncid     = this%fwd(isim)%ncid,   &
+                                  name     = "Snapshots",           &
+                                  grp_ncid = this%fwd(isim)%snap))
+        call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
+                                  name     = "straintrace",         &
+                                  varid    = this%fwd(isim)%straintrace) )
+        
+        call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,   &
+                                 name      = "Surface",             &
+                                 grp_ncid  = this%fwd(isim)%surf))
+
+        call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,   &
+                                 name      = "Mesh",                &
+                                 grp_ncid  = this%fwd(isim)%mesh))
+
+        call nc_read_att_int(    this%fwd(isim)%ndumps,             &
+                                 'number of strain dumps',          &
+                                 this%fwd(isim))
+        write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
+    end do
+        
+
+    do isim = 1, this%nsim_bwd
+        ! Backward wavefield
+        filename=trim(this%bwd(isim)%meshdir)//'ordered_output.nc4'
+        
+        inquire(file=filename, exist=this%bwd(isim)%ordered_output)
+        if (.not.this%bwd(isim)%ordered_output) then
+            filename = trim(this%bwd(isim)%meshdir)//'Data/axisem_output.nc4'
+        end if
+
+        write(6,format20) filename, mynum
+        call check( nf90_open(    path     = filename,              &
+                                  mode     = nf90_nowrite,          &
+                                  ncid     = this%bwd(isim)%ncid) )
+
+        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
+                                  name     = "Snapshots",           &
+                                  grp_ncid = this%bwd(isim)%snap))
+
+        call check(nf90_inq_varid(ncid     = this%bwd(isim)%snap,   &
+                                  name     = "straintrace",         &
+                                  varid    = this%bwd(isim)%straintrace) )
+        
+        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
+                                  name     = "Surface",             &
+                                  grp_ncid = this%bwd(isim)%surf))
+        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
+                                  name     = "Mesh",                &
+                                  grp_ncid = this%bwd(isim)%mesh))
+        call nc_read_att_int(     this%bwd(isim)%ndumps,            &
+                                  'number of strain dumps',         &
+                                  this%bwd(isim))
+        write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
+    end do
+
+    call flush(6) 
+    this%files_open = .true.
+
+end subroutine
+
 
 !-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, sourceparams)
@@ -208,97 +326,6 @@ subroutine build_kdtree(this)
                                    rearrange = .true.)
 
 end subroutine build_kdtree
-
-!-------------------------------------------------------------------------------
-subroutine open_files(this)
-
-    class(netcdf_type)               :: this
-    integer                          :: status, isim
-    character(len=200)               :: format20, format21, filename
-
-    if (.not.this%params_set) then
-        print *, 'ERROR in open_files(): Parameters have to be set first'
-        print *, 'Call set_params before open_files()'
-        stop
-    end if
-
-    format20 = "('Trying to open NetCDF file ', A, ' on CPU ', I5)"
-    format21 = "('Succeded,  has NCID ', I6, ', Snapshots group NCID:', I6)"
-
-    do isim = 1, this%nsim_fwd
-        ! Forward wavefield
-        filename=trim(this%fwd(isim)%meshdir)//'ordered_output.nc4'
-        
-        inquire(file=filename, exist=this%fwd(isim)%ordered_output)
-        if (.not.this%fwd(isim)%ordered_output) then
-            filename = trim(this%fwd(isim)%meshdir)//'Data/axisem_output.nc4'
-        end if
-        
-        write(6,format20) filename, mynum
-        status = nf90_open(       path     = filename,              &
-                                  mode     = nf90_nowrite,          &
-                                  ncid     = this%fwd(isim)%ncid)
-
-        call check(nf90_inq_ncid( ncid     = this%fwd(isim)%ncid,   &
-                                  name     = "Snapshots",           &
-                                  grp_ncid = this%fwd(isim)%snap))
-        call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
-                                  name     = "straintrace",         &
-                                  varid    = this%fwd(isim)%straintrace) )
-        
-        call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,   &
-                                 name      = "Surface",             &
-                                 grp_ncid  = this%fwd(isim)%surf))
-
-        call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,   &
-                                 name      = "Mesh",                &
-                                 grp_ncid  = this%fwd(isim)%mesh))
-
-        call nc_read_att_int(    this%fwd(isim)%ndumps,             &
-                                 'number of strain dumps',          &
-                                 this%fwd(isim))
-        write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
-    end do
-        
-
-    do isim = 1, this%nsim_bwd
-        ! Backward wavefield
-        filename=trim(this%bwd(isim)%meshdir)//'ordered_output.nc4'
-        
-        inquire(file=filename, exist=this%bwd(isim)%ordered_output)
-        if (.not.this%bwd(isim)%ordered_output) then
-            filename = trim(this%bwd(isim)%meshdir)//'Data/axisem_output.nc4'
-        end if
-
-        write(6,format20) filename, mynum
-        call check( nf90_open(    path     = filename,              &
-                                  mode     = nf90_nowrite,          &
-                                  ncid     = this%bwd(isim)%ncid) )
-
-        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
-                                  name     = "Snapshots",           &
-                                  grp_ncid = this%bwd(isim)%snap))
-
-        call check(nf90_inq_varid(ncid     = this%bwd(isim)%snap,   &
-                                  name     = "straintrace",         &
-                                  varid    = this%bwd(isim)%straintrace) )
-        
-        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
-                                  name     = "Surface",             &
-                                  grp_ncid = this%bwd(isim)%surf))
-        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
-                                  name     = "Mesh",                &
-                                  grp_ncid = this%bwd(isim)%mesh))
-        call nc_read_att_int(     this%bwd(isim)%ndumps,            &
-                                  'number of strain dumps',         &
-                                  this%bwd(isim))
-        write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
-    end do
-
-    call flush(6) 
-    this%files_open = .true.
-
-end subroutine
 
 !-------------------------------------------------------------------------------
 
