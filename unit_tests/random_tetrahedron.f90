@@ -1,1 +1,1 @@
-../random_tetrahedron/random_tetrahedron.f90
+../random_tetrahedron.f90

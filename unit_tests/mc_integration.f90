@@ -1,1 +1,1 @@
-../random_tetrahedron/mc_integration.f90
+../mc_integration.f90
