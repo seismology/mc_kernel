@@ -252,7 +252,7 @@ subroutine init_data(this, ntimes)
   allocate(this%group_id(ntimes))
   this%group_id = 1
 
-  this%ngroups = 1
+  this%ngroups = 0
 end subroutine
 !-----------------------------------------------------------------------------------------
 
@@ -268,22 +268,27 @@ subroutine set_data_snap(this, data_snap, isnap, data_name)
   if (.not. allocated(this%datat)) &
      stop 'ERROR: trying to write data without initialization!'
 
-  if (size(data_snap) /= this%nvertices) &
+  if (size(data_snap) /= this%nvertices) then
+     write(*,*) 'size(data_snap):', size(data_snap), '; this%nvertices', this%nvertices
      stop 'ERROR: wrong dimensions of input data_snap for writing vertex data'
+  end if
 
   this%datat(:,isnap) = data_snap(:)
 
   if (present(data_name)) then
      name_exists = .false.
      do i=1, this%ngroups
+        write(*,*) 'Trying ', trim(this%data_group_names(i))
         if (this%data_group_names(i) == data_name) then
            name_exists = .true.
+           write(*,*) 'Name ', trim(data_name), ' exists as no. ', i
            exit
         endif
      enddo
      if (name_exists) then
         this%group_id(isnap) = i
      else
+        write(*,*) 'Did not find name ', trim(data_name)
         this%ngroups = this%ngroups + 1
         this%group_id(isnap) = this%ngroups
         this%data_group_names(this%ngroups) = data_name
