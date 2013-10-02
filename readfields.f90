@@ -178,26 +178,29 @@ subroutine open_files(this)
     call flush(6) 
     this%files_open = .true.
 
-    status = this%fwd(1)%buffer%init(100, this%fwd(1)%ndumps)
-    status = this%fwd(2)%buffer%init(100, this%fwd(1)%ndumps)
-    status = this%fwd(3)%buffer%init(100, this%fwd(1)%ndumps)
-    status = this%fwd(4)%buffer%init(100, this%fwd(1)%ndumps)
+    status = this%fwd(1)%buffer%init(1000, this%fwd(1)%ndumps)
+    status = this%fwd(2)%buffer%init(1000, this%fwd(1)%ndumps)
+    status = this%fwd(3)%buffer%init(1000, this%fwd(1)%ndumps)
+    status = this%fwd(4)%buffer%init(1000, this%fwd(1)%ndumps)
+    status = this%bwd(1)%buffer%init(1000, this%bwd(1)%ndumps)
 
 end subroutine
 
 
 !-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
-    class(netcdf_type)                :: this
-    real(kind=dp), intent(in)         :: coordinates(:,:)
-    type(src_param_type)              :: source_params
-    real(kind=sp)                     :: load_fw_points(this%fwd(1)%ndumps, size(coordinates,2))
-    real(kind=sp)                     :: utemp(this%fwd(1)%ndumps)
-    type(kdtree2_result), allocatable :: nextpoint(:)
+    use sorting, only                               : mergesort_3
+    class(netcdf_type)                             :: this
+    real(kind=dp), intent(in)                      :: coordinates(:,:)
+    type(src_param_type)                           :: source_params
+    real(kind=sp)                                  :: load_fw_points(this%fwd(1)%ndumps, size(coordinates,2))
+    real(kind=sp)                                  :: utemp(this%fwd(1)%ndumps)
+    type(kdtree2_result), allocatable              :: nextpoint(:)
 
-    integer                           :: npoints, pointid(size(coordinates,2))
-    integer                           :: ipoint, isim, status
-    real(kind=sp), dimension(size(coordinates,2))     :: rotmesh_s, rotmesh_phi, rotmesh_z
+    integer                                        :: npoints
+    integer, dimension(size(coordinates,2))        :: pointid, idx
+    integer                                        :: ipoint, isim, status
+    real(kind=sp), dimension(size(coordinates,2))  :: rotmesh_s, rotmesh_phi, rotmesh_z
     
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
@@ -213,19 +216,28 @@ function load_fw_points(this, coordinates, source_params)
                           coordinates(1,:)*1d3, coordinates(2,:)*1d3, coordinates(3,:)*1d3, &
                           source_params%lon, source_params%colat)
 
-
     allocate(nextpoint(1))
     do ipoint = 1, npoints
-        
         call kdtree2_n_nearest( this%fwdtree,                           &
                                 [rotmesh_s(ipoint), rotmesh_z(ipoint)], &
                                 nn = 1,                                 &
                                 results = nextpoint )
         
         pointid(ipoint) = nextpoint(1)%idx
-        print *, 'Original coordinates: ', coordinates(:,ipoint)
-        print *, 'Coordinates: ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
+        !print *, 'Original coordinates: ', coordinates(:,ipoint)
+        !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
+        !print *, 'CO of SEM point:', this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint))
 
+        idx(ipoint) = ipoint
+
+    end do
+
+    !call mergesort_3(pointid, idx)
+
+    do ipoint = 1, npoints
+        
+
+        isim = 1
         !print *, 'Azim factors: '
         do isim = 1, this%nsim_fwd
            !write(*,*) 'Reading point ', pointid(ipoint), ' (', ipoint, ') with ', &
@@ -238,16 +250,15 @@ function load_fw_points(this, coordinates, source_params)
                                          start  = [pointid(ipoint), 1],       &
                                          count  = [1, this%fwd(isim)%ndumps], &
                                          values = utemp) )
-                                         !start  = [1, pointid(ipoint)],       &
-                                         !count  = [this%fwd(isim)%ndumps, 1], &
                status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
             else
                write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
             end if
-            load_fw_points(:, ipoint) = load_fw_points(:,ipoint) &
+            load_fw_points(:, (ipoint)) = load_fw_points(:,ipoint) &
                                         + azim_factor(rotmesh_phi(ipoint), &
                                                       source_params%mij, isim) &
                                         * utemp
+            !load_fw_points(:, ipoint) = utemp
             !print *, 'isim', isim, '; azim. factor:', azim_factor(rotmesh_phi(ipoint),&
             !                                                      source_params%mij, isim)
         end do !isim
@@ -258,16 +269,18 @@ end function load_fw_points
 
 !-------------------------------------------------------------------------------
 function load_bw_points(this, coordinates, receiver)
-    class(netcdf_type)                :: this
-    real(kind=dp), intent(in)         :: coordinates(:,:)
-    type(rec_param_type)              :: receiver
-    real(kind=sp)                     :: load_bw_points(this%bwd(1)%ndumps, size(coordinates,2))
-    real(kind=sp)                     :: utemp(this%bwd(1)%ndumps)
-    type(kdtree2_result), allocatable :: nextpoint(:)
+    use sorting, only                               : mergesort_3
+    class(netcdf_type)                             :: this
+    real(kind=dp), intent(in)                      :: coordinates(:,:)
+    type(rec_param_type)                           :: receiver
+    real(kind=sp)                                  :: load_bw_points(this%bwd(1)%ndumps, size(coordinates,2))
+    real(kind=sp)                                  :: utemp(this%bwd(1)%ndumps)
+    type(kdtree2_result), allocatable              :: nextpoint(:)
 
-    integer                           :: npoints, pointid(size(coordinates,2))
-    integer                           :: ipoint
-    real(kind=sp), dimension(size(coordinates,2))     :: rotmesh_s, rotmesh_phi, rotmesh_z
+    integer, dimension(size(coordinates,2))        :: pointid, idx
+    integer                                        :: npoints
+    integer                                        :: ipoint, status
+    real(kind=sp), dimension(size(coordinates,2))  :: rotmesh_s, rotmesh_phi, rotmesh_z
 
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_bw_points: input variable coordinates has to be a '
@@ -284,30 +297,42 @@ function load_bw_points(this, coordinates, receiver)
                           coordinates(1,:), coordinates(2,:), coordinates(3,:), &
                           receiver%lon, receiver%colat)
 
-
-    allocate(nextpoint(1))
     do ipoint = 1, npoints
-        
         call kdtree2_n_nearest( this%bwdtree,                           &
                                 [rotmesh_s(ipoint), rotmesh_z(ipoint)], &
                                 nn = 1,                                 &
                                 results = nextpoint )
-        
         pointid(ipoint) = nextpoint(1)%idx
+    end do
+    
+    !call mergesort_3(pointid, idx)
 
-        call check( nf90_get_var( ncid   = this%bwd(1)%snap,           & 
-                                  varid  = this%bwd(1)%straintrace,    &
-                                  start  = [1, pointid(ipoint)],       &
-                                  count  = [this%bwd%ndumps, 1],       &
-                                  values = utemp) )
+
+    allocate(nextpoint(1))
+    do ipoint = 1, npoints
+        
+        
+        status = this%bwd(1)%buffer%get(pointid(ipoint), utemp)
+        if (status.ne.0) then
+           write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
+           call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
+                                     varid  = this%bwd(1)%straintrace, &
+                                     start  = [pointid(ipoint), 1],       &
+                                     count  = [1, this%bwd(1)%ndumps], &
+                                     values = utemp) )
+           status = this%bwd(1)%buffer%put(pointid(ipoint), utemp)
+        else
+           write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
+        end if
+
 
         select case(receiver%component)
         case('Z')
-            load_bw_points(:,ipoint) = utemp
+            load_bw_points(:,(ipoint)) = utemp
         case('R')
-            load_bw_points(:,ipoint) = cos(rotmesh_phi) * utemp
+            load_bw_points(:,(ipoint)) = cos(rotmesh_phi) * utemp
         case('T')
-            load_bw_points(:,ipoint) = - sin(rotmesh_phi) * utemp 
+            load_bw_points(:,(ipoint)) = - sin(rotmesh_phi) * utemp 
         end select
 
     end do !ipoint
@@ -343,8 +368,9 @@ end function
 
 !-------------------------------------------------------------------------------
 subroutine build_kdtree(this)
-    class(netcdf_type)    :: this
+    class(netcdf_type)         :: this
     real(kind=sp), allocatable :: mesh(:,:)
+    integer                    :: ipoint
 
     if (.not.this%meshes_read) then
         print *, 'ERROR in build_kdtree(): Meshes have not been read yet'
@@ -353,22 +379,27 @@ subroutine build_kdtree(this)
     end if
 
     allocate(mesh(2, this%fwdmesh%npoints))
-    mesh = reshape([this%fwdmesh%s, this%fwdmesh%z], [2, this%fwdmesh%npoints])
+    mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
+
+    !do ipoint = 1, this%fwdmesh%npoints
+    !   write(41,*) mesh(:,ipoint)
+    !   write(42,*) this%fwdmesh%s(ipoint), this%fwdmesh%z(ipoint)
+    !end do
     write(*,*) 'Building forward KD-Tree'
     ! KDtree in forward field
     !this%fwdtree => kdtree2_create(reshape([this%fwdmesh%s, this%fwdmesh%z], &
     !                                       [2, this%fwdmesh%npoints]    ),&
-    this%fwdtree => kdtree2_create(mesh, &
-                                   dim = 2, &
-                                   sort = .true., &
+    this%fwdtree => kdtree2_create(mesh,              &
+                                   dim = 2,           &
+                                   sort = .true.,     &
                                    rearrange = .true.)
 
     ! KDtree in backward field
     write(*,*) 'Building backward KD-Tree'
-    this%bwdtree => kdtree2_create(reshape([this%bwdmesh%s, this%bwdmesh%z], &
-                                           [2, this%bwdmesh%npoints]    ),&
-                                   dim = 2, &
-                                   sort = .true., &
+    mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
+    this%bwdtree => kdtree2_create(mesh,              &
+                                   dim = 2,           &
+                                   sort = .true.,     &
                                    rearrange = .true.)
 
 end subroutine build_kdtree

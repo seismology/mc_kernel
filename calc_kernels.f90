@@ -14,6 +14,7 @@ use readfields
     real(kind=sp), allocatable      :: element_points(:,:,:)
     real(kind=sp), allocatable      :: co_points(:,:)
     real(kind=sp), allocatable      :: fw_field(:,:)
+    real(kind=sp), allocatable      :: bw_field(:,:)
 
 
     call inversion_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
@@ -27,14 +28,22 @@ use readfields
     !element_points = inversion_mesh%get_elements()
     allocate(co_points(3,npoints))
     co_points = inversion_mesh%get_vertices()
-    call inversion_mesh%init_data(ndumps)
 
     parameters%allowed_error = 1e-3
 
+    parameters%source%lat = 50
+    parameters%source%lon = -90
+    parameters%source%colat = 90 - parameters%source%lat
     parameters%source%mij = [0, 0, 0, 0, 1, 0]
 
     allocate(parameters%receiver(1))
     parameters%receiver(1)%component = 'Z'
+
+    parameters%receiver(1)%lat = -30
+    parameters%receiver(1)%colat = 90 - parameters%receiver(1)%lat
+    parameters%receiver(1)%lon = 120
+
+
     parameters%nsim_fwd = 4
     parameters%nsim_bwd = 1
 
@@ -47,17 +56,23 @@ use readfields
     call sem_data%build_kdtree()
 
     allocate(fw_field(ndumps, npoints))
+    allocate(bw_field(ndumps, npoints))
 
     fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
-    !fw_field = 1.0
-
+    bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
+    
+    call inversion_mesh%init_data(ndumps)
     do idump = 1, ndumps
        write(*,*) ' Writing dump ', idump
+        !Test of planar wave , works
+        !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
         call inversion_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
+        call inversion_mesh%set_data_snap(bw_field(idump,:), idump, 'bwd_wavefield')
     end do
-
-    call inversion_mesh%dump_tet_mesh_data_xdmf('fwd_wavefield')
+    call inversion_mesh%dump_tet_mesh_data_xdmf('wavefield')
     call inversion_mesh%freeme
+
+
 
     
     return
