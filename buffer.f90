@@ -16,7 +16,7 @@ module buffer
     end type
 
  contains
-
+    
     function init(this, nbuffer, nvalues)
         class(buffer_type)       :: this
         integer, intent(in)     :: nbuffer, nvalues
@@ -31,6 +31,21 @@ module buffer
 
         this%initialized = .true.
         init = 0
+    end function
+
+    function freeme(this)
+        class(buffer_type)       :: this
+        integer                  :: freeme
+
+        freeme = -1
+        deallocate(this%val)
+        deallocate(this%idx)
+
+        this%nvalues = 0
+        this%nbuffer = 0 
+
+        this%initialized = .false.
+        freeme = 0
     end function
 
     function get(this, iindex, values)

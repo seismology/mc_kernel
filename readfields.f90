@@ -123,9 +123,21 @@ subroutine open_files(this)
                                   name     = "Snapshots",           &
                                   grp_ncid = this%fwd(isim)%snap))
 
+        
         call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
                                   name     = "straintrace",         &
                                   varid    = this%fwd(isim)%straintrace) )
+        write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
+        
+        if (this%fwd(isim)%ordered_output) then
+            filename = trim(this%fwd(isim)%meshdir)//'Data/axisem_output.nc4'
+       
+            write(6,format20) trim(filename), mynum
+            status = nf90_open(   path     = filename,              &
+                                  mode     = nf90_nowrite,          &
+                                  ncid     = this%fwd(isim)%ncid)
+
+        end if
         
         call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,   &
                                  name      = "Surface",             &
@@ -138,7 +150,6 @@ subroutine open_files(this)
         call nc_read_att_int(    this%fwd(isim)%ndumps,             &
                                  'number of strain dumps',          &
                                  this%fwd(isim))
-        write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
     end do
         
 
@@ -163,7 +174,18 @@ subroutine open_files(this)
         call check(nf90_inq_varid(ncid     = this%bwd(isim)%snap,   &
                                   name     = "straintrace",         &
                                   varid    = this%bwd(isim)%straintrace) )
+        write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
         
+        if (this%bwd(isim)%ordered_output) then
+            filename = trim(this%bwd(isim)%meshdir)//'Data/axisem_output.nc4'
+       
+            write(6,format20) trim(filename), mynum
+            status = nf90_open(   path     = filename,              &
+                                  mode     = nf90_nowrite,          &
+                                  ncid     = this%bwd(isim)%ncid)
+
+        end if
+
         call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
                                   name     = "Surface",             &
                                   grp_ncid = this%bwd(isim)%surf))
@@ -173,17 +195,16 @@ subroutine open_files(this)
         call nc_read_att_int(     this%bwd(isim)%ndumps,            &
                                   'number of strain dumps',         &
                                   this%bwd(isim))
-        write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
     end do
 
     call flush(6) 
     this%files_open = .true.
 
-    status = this%fwd(1)%buffer%init(1000, this%fwd(1)%ndumps)
-    status = this%fwd(2)%buffer%init(1000, this%fwd(1)%ndumps)
-    status = this%fwd(3)%buffer%init(1000, this%fwd(1)%ndumps)
-    status = this%fwd(4)%buffer%init(1000, this%fwd(1)%ndumps)
-    status = this%bwd(1)%buffer%init(1000, this%bwd(1)%ndumps)
+    status = this%fwd(1)%buffer%init(100, this%fwd(1)%ndumps)
+    status = this%fwd(2)%buffer%init(100, this%fwd(1)%ndumps)
+    status = this%fwd(3)%buffer%init(100, this%fwd(1)%ndumps)
+    status = this%fwd(4)%buffer%init(100, this%fwd(1)%ndumps)
+    status = this%bwd(1)%buffer%init(100, this%bwd(1)%ndumps)
 
 end subroutine
 
@@ -245,12 +266,20 @@ function load_fw_points(this, coordinates, source_params)
            !           this%fwd(isim)%ndumps, ' values'
             status = this%fwd(isim)%buffer%get(pointid(ipoint), utemp)
             if (status.ne.0) then
-               write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
-               call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
-                                         varid  = this%fwd(isim)%straintrace, &
-                                         start  = [pointid(ipoint), 1],       &
-                                         count  = [1, this%fwd(isim)%ndumps], &
-                                         values = utemp) )
+               !write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
+               if (this%fwd(isim)%ordered_output) then
+                  call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
+                                            varid  = this%fwd(isim)%straintrace, &
+                                            start  = [1, pointid(ipoint)],       &
+                                            count  = [this%fwd(isim)%ndumps, 1], &
+                                            values = utemp) )
+               else
+                  call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
+                                            varid  = this%fwd(isim)%straintrace, &
+                                            start  = [pointid(ipoint), 1],       &
+                                            count  = [1, this%fwd(isim)%ndumps], &
+                                            values = utemp) )
+               end if
                status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
             else
                write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
@@ -298,6 +327,7 @@ function load_bw_points(this, coordinates, receiver)
                           coordinates(1,:), coordinates(2,:), coordinates(3,:), &
                           receiver%lon, receiver%colat)
 
+    allocate(nextpoint(1))
     do ipoint = 1, npoints
         call kdtree2_n_nearest( this%bwdtree,                           &
                                 [rotmesh_s(ipoint), rotmesh_z(ipoint)], &
@@ -309,18 +339,25 @@ function load_bw_points(this, coordinates, receiver)
     !call mergesort_3(pointid, idx)
 
 
-    allocate(nextpoint(1))
     do ipoint = 1, npoints
         
         
         status = this%bwd(1)%buffer%get(pointid(ipoint), utemp)
         if (status.ne.0) then
            write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
-           call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
-                                     varid  = this%bwd(1)%straintrace, &
-                                     start  = [pointid(ipoint), 1],       &
-                                     count  = [1, this%bwd(1)%ndumps], &
-                                     values = utemp) )
+           if (this%bwd(1)%ordered_output) then
+              call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
+                                        varid  = this%bwd(1)%straintrace, &
+                                        start  = [1, pointid(ipoint)],       &
+                                        count  = [this%bwd(1)%ndumps, 1], &
+                                        values = utemp) )
+           else
+              call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
+                                        varid  = this%bwd(1)%straintrace, &
+                                        start  = [pointid(ipoint), 1],       &
+                                        count  = [1, this%bwd(1)%ndumps], &
+                                        values = utemp) )
+           end if
            status = this%bwd(1)%buffer%put(pointid(ipoint), utemp)
         else
            write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'

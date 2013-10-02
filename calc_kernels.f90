@@ -22,7 +22,7 @@ use readfields
 
     npoints = inversion_mesh%get_nvertices()
     nelems  = inversion_mesh%get_nelements()
-    ndumps  = 100
+    ndumps  = 200
     
     !allocate(element_points(3,4,nelems))
     !
@@ -59,18 +59,22 @@ use readfields
     allocate(fw_field(ndumps, npoints))
     allocate(bw_field(ndumps, npoints))
 
-    fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
-    bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
+    !fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
+    !bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
     
     call inversion_mesh%init_data(ndumps)
     do idump = 1, ndumps
-       write(*,*) ' Writing dump ', idump
+        write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
         !Test of planar wave , works
-        !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
+        fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
+        bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
         call inversion_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
         call inversion_mesh%set_data_snap(bw_field(idump,:), idump, 'bwd_wavefield')
     end do
+    write(*,*) ' Writing data to disk'
     call inversion_mesh%dump_tet_mesh_data_xdmf('wavefield')
+
+    write(*,*) ' Free memory of inversion mesh datatype'
     call inversion_mesh%freeme
 
 
