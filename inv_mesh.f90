@@ -1,7 +1,7 @@
 !=========================================================================================
 module inversion_mesh
 
-
+  use global_parameters, only: sp, dp
   use type_parameter
   implicit none
   private

@@ -1,5 +1,6 @@
 program kerner
 
+use global_parameters
 use inversion_mesh
 use readfields
 

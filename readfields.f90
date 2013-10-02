@@ -1,4 +1,5 @@
 module readfields
+    use global_parameters
     use kdtree2_module
     use type_parameter
     use netcdf

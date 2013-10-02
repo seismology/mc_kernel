@@ -1,8 +1,5 @@
 module type_parameter
-    integer, parameter         :: sp = selected_real_kind(6, 37)
-    integer, parameter         :: dp = selected_real_kind(15, 307)
-    integer, parameter         :: qp = selected_real_kind(33, 4931)
-    integer, parameter         :: realkind = sp  !< Choose solver precision here
+    use global_parameters, only : sp, dp
     real(kind=dp), parameter   :: pi = 3.1415926535898D0
     
     type src_param_type

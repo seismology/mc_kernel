@@ -1,5 +1,5 @@
 module buffer
-   use type_parameter, only:                 sp
+   use global_parameters, only:                 sp
 
     type buffer_type
        private

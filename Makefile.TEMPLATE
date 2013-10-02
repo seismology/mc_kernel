@@ -1,11 +1,13 @@
 PROG=test_ftnunit
 
 SRCS =	buffer.f90 calc_kernels.f90 global_parameters.f90 inv_mesh.f90 \
-	kdtree2.f90 mc_integration.f90 random_tetrahedron.f90 readfields.f90 \
+	kdtree2.f90 master_slave.f90 mc_integration.f90 \
+	random_tetrahedron.f90 readfields.f90 sorting.f90 struct_allo.f90 \
 	type_parameter.f90
 
 OBJS =	buffer.o calc_kernels.o global_parameters.o inv_mesh.o kdtree2.o \
-	mc_integration.o random_tetrahedron.o readfields.o type_parameter.o
+	master_slave.o mc_integration.o random_tetrahedron.o readfields.o \
+	sorting.o struct_allo.o type_parameter.o
 
 #Example to include specific netcdf libraries: 
 LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib 
@@ -14,8 +16,8 @@ LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/lo
 #F90FLAGS = -Dunc 
 CC = gcc
 CFLAGS = -O3 -DF_UNDERSCORE
-F90 = mpif90 -O3  -fbacktrace 
-FC = gfortran -O3 -fbacktrace 
+F90 = mpif90 -O3  -fbacktrace -g
+FC = gfortran -O3 -fbacktrace -g
  
 # to include local built of netcdf you might want to use sth like this: 
 INCLUDE = -I $(HOME)/local/include -I /usr/include 
@@ -41,12 +43,16 @@ clean:
 .F90.o:
 	$(F90) $(F90FLAGS) -c $(INCLUDE) $<
 
-buffer.o: type_parameter.o Makefile 
-calc_kernels.o: inv_mesh.o readfields.o Makefile 
+buffer.o: global_parameters.o Makefile 
+calc_kernels.o: global_parameters.o inv_mesh.o readfields.o Makefile 
 global_parameters.o:  Makefile 
-inv_mesh.o: type_parameter.o Makefile 
+inv_mesh.o: global_parameters.o type_parameter.o Makefile 
 kdtree2.o: kdtree2.o Makefile 
+master_slave.o: global_parameters.o master_slave.o Makefile 
 mc_integration.o: global_parameters.o Makefile 
 random_tetrahedron.o: global_parameters.o Makefile 
-readfields.o: buffer.o kdtree2.o type_parameter.o Makefile 
-type_parameter.o:  Makefile 
+readfields.o: buffer.o global_parameters.o kdtree2.o sorting.o \
+	type_parameter.o Makefile 
+sorting.o: global_parameters.o Makefile 
+struct_allo.o:  Makefile 
+type_parameter.o: global_parameters.o Makefile 
