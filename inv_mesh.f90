@@ -1,8 +1,8 @@
 !=========================================================================================
 module inversion_mesh
 
-  use global_parameters
 
+  use type_parameter
   implicit none
   private
   public :: inversion_mesh_type
