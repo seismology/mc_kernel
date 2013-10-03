@@ -17,7 +17,6 @@ module inversion_mesh
      contains
      procedure, pass :: get_nelements
      procedure, pass :: get_element
-     procedure, pass :: get_elements
      procedure, pass :: get_nvertices
      procedure, pass :: get_vertices
      procedure, pass :: get_valence
@@ -64,23 +63,6 @@ function get_element(this, ielement)
   do ivert=1, this%nvertices_per_elem
      get_element(:,ivert) = this%vertices(:, this%connectivity(ivert,ielement)) 
   enddo
-end function
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-function get_elements(this)
-  class(inversion_mesh_type)        :: this
-  real(kind=sp)                     :: get_elements(3,this%nvertices_per_elem, &
-                                                    this%nelements)
-  integer                           :: ielement, ivert
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
-
-  do ielement = 1, this%nelements
-     do ivert=1, this%nvertices_per_elem
-        get_elements(:,ivert,ielement) = this%vertices(:, this%connectivity(ivert,ielement)) 
-     enddo
-  end do
 end function
 !-----------------------------------------------------------------------------------------
 
