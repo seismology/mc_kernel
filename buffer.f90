@@ -10,6 +10,7 @@ module buffer
 
        contains
           procedure, pass                 :: init
+          procedure, pass                 :: freeme
           procedure, pass                 :: get
           procedure, pass                 :: put
 
