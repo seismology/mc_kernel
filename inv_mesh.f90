@@ -20,7 +20,6 @@ module inversion_mesh
      procedure, pass :: get_elements
      procedure, pass :: get_nvertices
      procedure, pass :: get_vertices
-     !procedure, pass :: get_vertices_element
      procedure, pass :: get_valence
      procedure, pass :: read_tet_mesh
      procedure, pass :: dump_tet_mesh_xdmf
@@ -98,21 +97,12 @@ end function
 function get_vertices(this)
   class(inversion_mesh_type)        :: this
   real(kind=sp)                     :: get_vertices(3,this%nvertices)
+  integer, intent(in)               :: ielem
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
   get_vertices = this%vertices
 end function
 !-----------------------------------------------------------------------------------------
-
-!!-----------------------------------------------------------------------------------------
-!function get_vertices_element(this)
-!  class(inversion_mesh_type)        :: this
-!  real(kind=sp)                     :: get_vertices(3,this%nvertices)
-!  if (.not. this%initialized) &
-!     stop 'ERROR: accessing inversion mesh type that is not initialized'
-!  get_vertices = this%vertices
-!end function
-!!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function get_valence(this, ielem)
