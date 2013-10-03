@@ -1,15 +1,16 @@
 module type_parameter
-    use global_parameters, only : sp, dp
-    real(kind=dp), parameter   :: pi = 3.1415926535898D0
+    use global_parameters,               only : sp, dp
     
     type src_param_type
         real(kind=sp)                        :: mij(6)
         real(kind=dp)                        :: colat, lat, lon
+        real(kind=dp)                        :: colatd, latd, lond
     end type
 
     type rec_param_type
         character(len=1)                     :: component
         real(kind=dp)                        :: colat, lat, lon
+        real(kind=dp)                        :: colatd, latd, lond
         integer                              :: nkernel
         type(kernelspec_type), pointer       :: kernel(:)
     end type
@@ -22,8 +23,6 @@ module type_parameter
         character(len=512)                   :: dir_fwdmesh
         character(len=512)                   :: dir_bwdmesh
         integer                              :: nsim_fwd, nsim_bwd
-
-
     end type
 
     type kernelspec_type
@@ -37,6 +36,5 @@ module type_parameter
         type(rec_param_type), pointer        :: receiver
         !pointer                              :: filter
     end type
-
 
 end module

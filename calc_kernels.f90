@@ -1,12 +1,12 @@
 program kerner
 
-use global_parameters
-use inversion_mesh
-use readfields
+use global_parameters,           only: sp, dp, pi, deg2rad
+use inversion_mesh,              only: inversion_mesh_data_type
+use readfields,                  only: netcdf_type
+use type_parameter,              only: parameter_type
 
     implicit none
     type(inversion_mesh_data_type)  :: inversion_mesh
-    !type(inversion_mesh_type)       :: inversion_mesh
     type(parameter_type)            :: parameters
     type(netcdf_type)               :: sem_data
 
@@ -32,18 +32,23 @@ use readfields
 
     parameters%allowed_error = 1e-3
 
-    parameters%source%lat = 50
-    parameters%source%lon = -90
-    parameters%source%colat = 90 - parameters%source%lat
+    parameters%source%latd   = 30
+    parameters%source%lond   = -100
+    parameters%source%colatd = 90 - parameters%source%latd
+    parameters%source%colat = parameters%source%colatd * deg2rad
+    parameters%source%lon   = parameters%source%lond   * deg2rad
+
     parameters%source%mij = [0, 0, 0, 0, 1, 0]
 
     allocate(parameters%receiver(1))
     parameters%receiver(1)%component = 'Z'
 
-    parameters%receiver(1)%lat = -30
-    parameters%receiver(1)%colat = 90 - parameters%receiver(1)%lat
-    parameters%receiver(1)%lon = 120
+    parameters%receiver(1)%latd   = -30 
+    parameters%receiver(1)%lond   = -100
+    parameters%receiver(1)%colatd = 90 - parameters%receiver(1)%latd
 
+    parameters%receiver(1)%colat = parameters%receiver(1)%colatd * deg2rad
+    parameters%receiver(1)%lon   = parameters%receiver(1)%lond   * deg2rad
 
     parameters%nsim_fwd = 4
     parameters%nsim_bwd = 1
@@ -59,17 +64,17 @@ use readfields
     allocate(fw_field(ndumps, npoints))
     allocate(bw_field(ndumps, npoints))
 
-    !fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
-    !bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
+    fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
+    bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
     
     call inversion_mesh%init_data(ndumps*2)
     do idump = 1, ndumps
         write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
         !Test of planar wave , works
-        fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
-        bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
+        !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
+        !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
         call inversion_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
-        call inversion_mesh%set_data_snap(bw_field(idump,:), ndumps + idump, 'bwd_wavefield')
+        call inversion_mesh%set_data_snap(bw_field(idump,:), idump+ndumps, 'bwd_wavefield')
     end do
     write(*,*) ' Writing data to disk'
     call inversion_mesh%dump_tet_mesh_data_xdmf('wavefield')
@@ -77,7 +82,7 @@ use readfields
     write(*,*) ' Free memory of inversion mesh datatype'
     call inversion_mesh%freeme
 
-
+    write(*,*) ' Finished!'
 
     
     return

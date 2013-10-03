@@ -1,9 +1,9 @@
 module readfields
-    use global_parameters
-    use kdtree2_module
-    use type_parameter
+    use global_parameters, only            : sp, dp, pi
+    use type_parameter, only               : src_param_type, rec_param_type, parameter_type
+    use buffer, only                       : buffer_type
     use netcdf
-    use buffer
+    use kdtree2_module                     
 
     implicit none
 
@@ -46,6 +46,7 @@ module readfields
             procedure, pass               :: build_kdtree
             procedure, pass               :: load_fw_points
             procedure, pass               :: load_bw_points
+            procedure, pass               :: close_files
 
     end type
 
@@ -83,6 +84,8 @@ subroutine set_params(this, parameters)
     do isim = 1, this%nsim_bwd
         this%bwd(isim)%meshdir = parameters%dir_bwdmesh
     end do
+
+    
 
     this%params_set = .true.
 
@@ -200,14 +203,32 @@ subroutine open_files(this)
     call flush(6) 
     this%files_open = .true.
 
-    status = this%fwd(1)%buffer%init(100, this%fwd(1)%ndumps)
-    status = this%fwd(2)%buffer%init(100, this%fwd(1)%ndumps)
-    status = this%fwd(3)%buffer%init(100, this%fwd(1)%ndumps)
-    status = this%fwd(4)%buffer%init(100, this%fwd(1)%ndumps)
-    status = this%bwd(1)%buffer%init(100, this%bwd(1)%ndumps)
+    do isim = 1, this%nsim_fwd
+       status = this%fwd(isim)%buffer%init(100, this%fwd(isim)%ndumps)
+    end do
+    do isim = 1, this%nsim_bwd
+       status = this%bwd(isim)%buffer%init(100, this%bwd(isim)%ndumps)
+    end do
 
-end subroutine
+end subroutine open_files
 
+!-------------------------------------------------------------------------------
+subroutine close_files(this)
+    class(netcdf_type)   :: this
+    integer              :: status, isim
+
+    do isim = 1, this%nsim_fwd
+       status = nf90_close(this%fwd(isim)%ncid)
+       status = this%fwd(isim)%buffer%freeme()
+    end do
+    deallocate(this%fwd)
+    do isim = 1, this%nsim_bwd
+       status = nf90_close(this%bwd(isim)%ncid)
+       status = this%bwd(isim)%buffer%freeme()
+    end do
+    deallocate(this%bwd)
+
+end subroutine close_files
 
 !-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
@@ -266,7 +287,7 @@ function load_fw_points(this, coordinates, source_params)
            !           this%fwd(isim)%ndumps, ' values'
             status = this%fwd(isim)%buffer%get(pointid(ipoint), utemp)
             if (status.ne.0) then
-               !write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
+               write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
                if (this%fwd(isim)%ordered_output) then
                   call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
                                             varid  = this%fwd(isim)%straintrace, &
@@ -341,7 +362,6 @@ function load_bw_points(this, coordinates, receiver)
 
     do ipoint = 1, npoints
         
-        
         status = this%bwd(1)%buffer%get(pointid(ipoint), utemp)
         if (status.ne.0) then
            write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
@@ -366,9 +386,9 @@ function load_bw_points(this, coordinates, receiver)
 
         select case(receiver%component)
         case('Z')
-            load_bw_points(:,(ipoint)) = utemp
+            load_bw_points(:,(ipoint)) =                      utemp
         case('R')
-            load_bw_points(:,(ipoint)) = cos(rotmesh_phi) * utemp
+            load_bw_points(:,(ipoint)) =   cos(rotmesh_phi) * utemp
         case('T')
             load_bw_points(:,(ipoint)) = - sin(rotmesh_phi) * utemp 
         end select
