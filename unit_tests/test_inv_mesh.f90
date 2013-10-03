@@ -18,8 +18,8 @@ subroutine test_mesh_read
   npoints = inv_mesh%get_nvertices()
   nelems = inv_mesh%get_nelements()
 
-  call assert_equal(npoints, 4, 'number of vertices in vertices.TEST')
-  call assert_equal(nelems, 1, 'number of elements in facets.TEST')
+  call assert_equal(npoints, 5, 'number of vertices in vertices.TEST')
+  call assert_equal(nelems, 2, 'number of elements in facets.TEST')
 
   call inv_mesh%freeme()
 end subroutine
@@ -99,10 +99,29 @@ subroutine test_valence
 
   call inv_mesh%read_tet_mesh('vertices.TEST', 'facets.TEST')
 
-  call assert_equal(inv_mesh%get_valence(1), 1, 'valence of firt vertex in facets.TEST')
-  call assert_equal(inv_mesh%get_valence(2), 1, 'valence of firt vertex in facets.TEST')
-  call assert_equal(inv_mesh%get_valence(3), 1, 'valence of firt vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(1), 2, 'valence of firt vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(2), 2, 'valence of firt vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(3), 2, 'valence of firt vertex in facets.TEST')
   call assert_equal(inv_mesh%get_valence(4), 1, 'valence of firt vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(5), 1, 'valence of firt vertex in facets.TEST')
+
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_get_connected_elements
+  type(inversion_mesh_type)    :: inv_mesh
+  integer, allocatable         :: cn_elems(:)
+
+  call inv_mesh%read_tet_mesh('vertices.TEST', 'facets.TEST')
+
+  allocate(cn_elems(inv_mesh%get_valence(1)))
+  cn_elems = inv_mesh%get_connected_elements(1)
+
+  call assert_equal(inv_mesh%get_connected_elements(1), (/1 ,2/), 'get connected elements')
+  call assert_equal(inv_mesh%get_connected_elements(4), (/1/), 'get connected elements')
+  call assert_equal(inv_mesh%get_connected_elements(5), (/2/), 'get connected elements')
 
   call inv_mesh%freeme()
 end subroutine
