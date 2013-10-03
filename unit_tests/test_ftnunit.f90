@@ -9,10 +9,7 @@ program test_ftnunit
   implicit none
 
   call runtests_init
-  write(6,'(a,/,a)') 'TEST DETAILS', '------------'
   call runtests( test_all )
-
-  write(6,'(/,a,/,a)') 'TEST SUMMARY', '------------'
   call runtests_final
 
 contains

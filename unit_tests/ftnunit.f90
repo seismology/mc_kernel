@@ -102,6 +102,7 @@ end subroutine
 !     do the actual tests.
 subroutine runtests_final
     if ( ftnunit_file_exists("ftnunit.run") ) then
+        write(6,'(/,a,/,a)') 'TEST SUMMARY', '------------'
         write(*,'(a,i5)') 'Number of failed assertions:                ', nofails
         write(*,'(a,i5)') 'Number of runs needed to complete the tests:', noruns
         call ftnunit_remove_file( "ftnunit.lst" )
@@ -130,6 +131,9 @@ subroutine runtests( testproc )
     testno    = 0
 
     if ( ftnunit_file_exists("ftnunit.run") ) then
+
+        if (noruns == 0) write(6,'(a,/,a)') 'TEST DETAILS', '------------'
+
         if ( ftnunit_file_exists("ftnunit.lst") ) then
             open( newunit=lun, file = "ftnunit.lst", iostat = ierr )
             if ( ierr == 0 ) then
