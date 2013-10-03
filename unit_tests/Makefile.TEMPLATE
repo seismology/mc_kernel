@@ -2,11 +2,12 @@ PROG=test_ftnunit
 
 SRCS =	fft_type.f90 ftnunit.f90 global_parameters.f90 inv_mesh.f90 \
 	mc_integration.f90 random_tetrahedron.f90 test_fft_type.f90 \
-	test_ftnunit.f90 test_inv_mesh.f90 test_mc.f90 test_tetrahedra.f90
+	test_ftnunit.f90 test_inv_mesh.f90 test_mc.f90 test_tetrahedra.f90 \
+	type_parameter.f90
 
 OBJS =	fft_type.o ftnunit.o global_parameters.o inv_mesh.o mc_integration.o \
 	random_tetrahedron.o test_fft_type.o test_ftnunit.o test_inv_mesh.o \
-	test_mc.o test_tetrahedra.o
+	test_mc.o test_tetrahedra.o type_parameter.o
 
 #Example to include specific netcdf libraries: 
 LIBS = -lm -lfftw3 -lfftw3f
@@ -45,7 +46,7 @@ clean:
 fft_type.o: global_parameters.o  Makefile 
 ftnunit.o:  Makefile 
 global_parameters.o:  Makefile 
-inv_mesh.o: global_parameters.o Makefile 
+inv_mesh.o: global_parameters.o type_parameter.o Makefile 
 mc_integration.o: global_parameters.o Makefile 
 random_tetrahedron.o: global_parameters.o Makefile 
 test_fft_type.o: fft_type.o ftnunit.o global_parameters.o Makefile 
@@ -55,3 +56,4 @@ test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o Makefile
 test_mc.o: ftnunit.o global_parameters.o mc_integration.o \
 	random_tetrahedron.o Makefile 
 test_tetrahedra.o: ftnunit.o global_parameters.o random_tetrahedron.o Makefile 
+type_parameter.o: global_parameters.o Makefile 
