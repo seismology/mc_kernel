@@ -18,25 +18,26 @@ contains
 subroutine test_all
   ! test_montecarlo
   write(6,'(/,a)') 'TEST MONTECARLO MODULE'
-  call test(test_unit_hexagon, 'TEST MC_unit_hexagon')
-  call test(test_sphere_in_tetrahedron, 'TEST MC sphere in tetrahedron')
+  call test(test_unit_hexagon, 'MC_unit_hexagon')
+  call test(test_sphere_in_tetrahedron, 'MC sphere in tetrahedron')
 
   ! test_fft
   write(6,'(/,a)') 'TEST FFT MODULE'
-  call test(test_fft_dirac, 'TEST FFT_dirac')
-  call test(test_fft_inverse, 'TEST FFT_inverse')
+  call test(test_fft_dirac, 'FFT_dirac')
+  call test(test_fft_inverse, 'FFT_inverse')
 
   ! test_tetrahedra
   write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'
-  call test(test_generate_random_point, 'TEST Random points in Tetrahedra')
-  call test(test_rmat4_det, 'TEST Matrix determinant')
-  call test(test_tetra_volume_3d, 'TEST Tetrahedron volume')
+  call test(test_generate_random_point, 'Random points in Tetrahedra')
+  call test(test_rmat4_det, 'Matrix determinant')
+  call test(test_tetra_volume_3d, 'Tetrahedron volume')
 
   ! test_inversion_mesh
   write(6,'(/,a)') 'TEST INVERSION MESH MODULE'
-  call test(test_mesh_read, 'TEST reading tetrahedral mesh')
-  call test(test_mesh_dump, 'TEST reading/dumping tetrahedral mesh')
-  call test(test_mesh_data_dump, 'TEST reading/dumping tetrahedral mesh with data')
+  call test(test_mesh_read, 'reading tetrahedral mesh')
+  call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
+  call test(test_mesh_data_dump, 'reading/dumping tetrahedral mesh with data')
+  call test(test_valence, 'computation of valence')
 end subroutine
 !-----------------------------------------------------------------------------------------
 

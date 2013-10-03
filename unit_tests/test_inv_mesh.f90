@@ -93,11 +93,21 @@ subroutine test_mesh_data_dump
 end subroutine
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_valence
+  type(inversion_mesh_type)    :: inv_mesh
 
+  call inv_mesh%read_tet_mesh('vertices.TEST', 'facets.TEST')
 
-!
-!  
-!  call inv_mesh%freeme()
+  call assert_equal(inv_mesh%get_valence(1), 1, 'valence of firt vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(2), 1, 'valence of firt vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(3), 1, 'valence of firt vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(4), 1, 'valence of firt vertex in facets.TEST')
+
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
 
 end module
 !=========================================================================================
