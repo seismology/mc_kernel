@@ -62,14 +62,14 @@ use readfields
     !fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
     !bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
     
-    call inversion_mesh%init_data(ndumps)
+    call inversion_mesh%init_data(ndumps*2)
     do idump = 1, ndumps
         write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
         !Test of planar wave , works
         fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
         bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
         call inversion_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
-        call inversion_mesh%set_data_snap(bw_field(idump,:), idump, 'bwd_wavefield')
+        call inversion_mesh%set_data_snap(bw_field(idump,:), ndumps + idump, 'bwd_wavefield')
     end do
     write(*,*) ' Writing data to disk'
     call inversion_mesh%dump_tet_mesh_data_xdmf('wavefield')
