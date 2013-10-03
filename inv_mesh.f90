@@ -10,7 +10,7 @@ module inversion_mesh
 
   type :: inversion_mesh_type
      private
-     integer                            :: nelements, nvertices
+     integer                            :: nelements, nvertices, nvertices_per_elem
      integer, allocatable               :: connectivity(:,:)
      real(kind=sp), allocatable         :: vertices(:,:)
      logical                            :: initialized = .false.
@@ -20,6 +20,7 @@ module inversion_mesh
      procedure, pass :: get_elements
      procedure, pass :: get_nvertices
      procedure, pass :: get_vertices
+     !procedure, pass :: get_vertices_element
      procedure, pass :: get_valence
      procedure, pass :: read_tet_mesh
      procedure, pass :: dump_tet_mesh_xdmf
@@ -54,32 +55,32 @@ end function
 !-----------------------------------------------------------------------------------------
 function get_element(this, ielement)
   class(inversion_mesh_type)        :: this
-  real(kind=sp)                     :: get_element(3,4)
+  real(kind=sp)                     :: get_element(3,this%nvertices_per_elem)
   integer, intent(in)               :: ielement
+  integer                           :: ivert
 
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
 
-  get_element(:,1) = this%vertices(:, this%connectivity(1,ielement)) 
-  get_element(:,2) = this%vertices(:, this%connectivity(2,ielement)) 
-  get_element(:,3) = this%vertices(:, this%connectivity(3,ielement)) 
-  get_element(:,4) = this%vertices(:, this%connectivity(4,ielement)) 
+  do ivert=1, this%nvertices_per_elem
+     get_element(:,ivert) = this%vertices(:, this%connectivity(ivert,ielement)) 
+  enddo
 end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function get_elements(this)
   class(inversion_mesh_type)        :: this
-  real(kind=sp)                     :: get_elements(3,4,this%nelements)
-  integer                           :: ielement
+  real(kind=sp)                     :: get_elements(3,this%nvertices_per_elem, &
+                                                    this%nelements)
+  integer                           :: ielement, ivert
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
 
   do ielement = 1, this%nelements
-      get_elements(:,1,ielement) = this%vertices(:, this%connectivity(1,ielement)) 
-      get_elements(:,2,ielement) = this%vertices(:, this%connectivity(2,ielement)) 
-      get_elements(:,3,ielement) = this%vertices(:, this%connectivity(3,ielement)) 
-      get_elements(:,4,ielement) = this%vertices(:, this%connectivity(4,ielement)) 
+     do ivert=1, this%nvertices_per_elem
+        get_elements(:,ivert,ielement) = this%vertices(:, this%connectivity(ivert,ielement)) 
+     enddo
   end do
 end function
 !-----------------------------------------------------------------------------------------
@@ -103,6 +104,16 @@ function get_vertices(this)
 end function
 !-----------------------------------------------------------------------------------------
 
+!!-----------------------------------------------------------------------------------------
+!function get_vertices_element(this)
+!  class(inversion_mesh_type)        :: this
+!  real(kind=sp)                     :: get_vertices(3,this%nvertices)
+!  if (.not. this%initialized) &
+!     stop 'ERROR: accessing inversion mesh type that is not initialized'
+!  get_vertices = this%vertices
+!end function
+!!-----------------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 function get_valence(this, ielem)
   class(inversion_mesh_type)        :: this
@@ -122,7 +133,7 @@ end function
 !-----------------------------------------------------------------------------------------
 function get_connectivity(this)
   class(inversion_mesh_type)        :: this
-  real(kind=sp)                     :: get_connectivity(4,this%nelements)
+  real(kind=sp)                     :: get_connectivity(this%nvertices,this%nelements)
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
   get_connectivity = this%connectivity
@@ -146,6 +157,8 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   integer                           :: iinput_vertices, iinput_connectivity
   integer                           :: i, ierr
 
+  this%nvertices_per_elem = 4
+  
   ! read vertices
   open(newunit=iinput_vertices, file=trim(filename_vertices), status='old', &
        action='read', iostat=ierr)
@@ -173,7 +186,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
 
   read(iinput_connectivity,*) this%nelements
 
-  allocate(this%connectivity(4,this%nelements))
+  allocate(this%connectivity(this%nvertices_per_elem,this%nelements))
   do i=1, this%nelements
      read(iinput_connectivity,*) this%connectivity(:,i)
   enddo
@@ -193,6 +206,9 @@ subroutine dump_tet_mesh_xdmf(this, filename)
 
   if (.not. this%initialized) &
      stop 'ERROR: trying to dump a non initialized mesh'
+
+  if (this%nvertices_per_elem /= 4) &
+     stop 'ERROR: nvertices_per_elem /= 4, so this seems not to be a tet mesh'
 
   ! XML Data
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
@@ -327,6 +343,9 @@ subroutine dump_tet_mesh_data_xdmf(this, filename)
 
   if (.not. allocated(this%datat)) &
      stop 'ERROR: no data to dump available'
+  
+  if (this%nvertices_per_elem /= 4) &
+     stop 'ERROR: nvertices_per_elem /= 4, so this seems not to be a tet mesh'
 
   ! XML header
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
