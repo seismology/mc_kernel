@@ -20,6 +20,7 @@ module inversion_mesh
      procedure, pass :: get_nvertices
      procedure, pass :: get_vertices
      procedure, pass :: get_valence
+     procedure, pass :: get_connected_elements
      procedure, pass :: read_tet_mesh
      procedure, pass :: dump_tet_mesh_xdmf
      procedure, pass :: freeme
@@ -79,7 +80,7 @@ end function
 function get_vertices(this)
   class(inversion_mesh_type)        :: this
   real(kind=sp)                     :: get_vertices(3,this%nvertices)
-  integer, intent(in)               :: ielem
+
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
   get_vertices = this%vertices
@@ -87,17 +88,40 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function get_valence(this, ielem)
+function get_valence(this, ivert)
   class(inversion_mesh_type)        :: this
   integer                           :: get_valence
-  integer, intent(in)               :: ielem
-  integer                           :: ielement
+  integer, intent(in)               :: ivert
   
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
 
-  get_valence = count(this%connectivity == ielem - 1) ! -1 because counting in
+  get_valence = count(this%connectivity == ivert - 1) ! -1 because counting in
                                                       ! the mesh starts from 0
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_connected_elements(this, ivert)
+  class(inversion_mesh_type)        :: this
+  integer, allocatable              :: get_connected_elements(:)
+  integer, intent(in)               :: ivert
+  integer                           :: ielement, ct
+  
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing inversion mesh type that is not initialized'
+
+  allocate(get_connected_elements(this%get_valence(ivert)))
+  get_connected_elements = -1
+
+  ct = 1
+  do ielement=1, this%nelements
+     if (any(this%connectivity(:,ielement) == ivert - 1)) then
+        get_connected_elements(ct) = ielement
+        ct = ct + 1
+     endif
+  enddo
 
 end function
 !-----------------------------------------------------------------------------------------

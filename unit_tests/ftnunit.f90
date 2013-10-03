@@ -34,6 +34,11 @@ module ftnunit
         module procedure assert_comparable_real
         module procedure assert_comparable_real1d
     end interface
+    
+    interface assert_true
+        module procedure assert_true_log
+        module procedure assert_alltrue_log1d
+    end interface
 
 contains
 
@@ -252,16 +257,16 @@ subroutine assert_equal_int1d( array1, array2, text )
             nofails = nofails + 1
             write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'
             count = 0
+            write(*,'(3a10)')    '    Index', '     First', '    Second'
             do i = 1,size(array1)
                 if ( array1(i) /= array2(i) ) then
                     count = count + 1
-                    write(*,'(3a10)')    '    Index', '     First', '    Second'
                     if ( count < 50 ) then
                         write(*,'(3i10)')    i, array1(i), array2(i)
                     endif
-                    write(*,*) 'Number of differences: ', count
                 endif
             enddo
+            write(*,*) '    Number of differences: ', count
         endif
     endif
 end subroutine assert_equal_int1d
@@ -335,6 +340,62 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
     endif
 end subroutine assert_comparable_real1d
 !-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! assert_true_log --
+!     Subroutine to check if two integers are equal
+! Arguments:
+!     logi          logical to be tested
+!     text          Text describing the assertion
+! Side effects:
+!     If the assertion fails, this is reported to standard
+!     output. Also, nofails is increased by one.
+!
+subroutine assert_true_log( logi, text )
+    logical, intent(in)          :: logi
+    character(len=*), intent(in) :: text
+
+    if ( .not. logi) then
+        nofails = nofails + 1
+        write(*,*) '    Logical is not TRUE: "',trim(text), '" - assertion failed'
+    endif
+end subroutine assert_true_log
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! assert_alltrue_log1d --
+!     Subroutine to check if two integer arrays are equal
+! Arguments:
+!     logiarray     Logical array
+!     text          Text describing the assertion
+! Side effects:
+!     If the assertion fails, this is reported to standard
+!     output. Also, nofails is increased by one.
+subroutine assert_alltrue_log1d( logiarray, text )
+    logical, dimension(:), intent(in) :: logiarray
+    character(len=*), intent(in)      :: text
+
+    integer                           :: i
+    integer                           :: count
+
+    if ( any(.not. logiarray) ) then
+        nofails = nofails + 1
+        write(*,*) '    One or more logicals are false: "',trim(text), '" - assertion failed'
+        count = 0
+        write(*,*) '    Indices of false values:' 
+        do i = 1,size(logiarray)
+            if ( .not. logiarray(i) ) then
+                count = count + 1
+                if ( count < 50 ) then
+                    write(*,'(i10)')    i
+                endif
+            endif
+        enddo
+        write(*,*) '    Number of false values: ', count
+    endif
+end subroutine assert_alltrue_log1d
+!-----------------------------------------------------------------------------------------
+
 
 !-----------------------------------------------------------------------------------------
 ! assert_file_exists --

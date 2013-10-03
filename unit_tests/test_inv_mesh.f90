@@ -119,6 +119,10 @@ subroutine test_get_connected_elements
   allocate(cn_elems(inv_mesh%get_valence(1)))
   cn_elems = inv_mesh%get_connected_elements(1)
 
+  ! somewhat redundant two tests, for now to test ftnunit :)
+  call assert_true(.not. any(cn_elems == -1), 'get connected elements')
+  call assert_true(cn_elems /= -1, 'get connected elements')
+
   call assert_equal(inv_mesh%get_connected_elements(1), (/1 ,2/), 'get connected elements')
   call assert_equal(inv_mesh%get_connected_elements(4), (/1/), 'get connected elements')
   call assert_equal(inv_mesh%get_connected_elements(5), (/2/), 'get connected elements')
