@@ -39,7 +39,6 @@ module inversion_mesh
      procedure, pass :: get_ntimes
      procedure, pass :: init_data
      procedure, pass :: set_data_snap
-     !procedure, pass :: dump_tet_mesh_data_xdmf
      procedure, pass :: dump_mesh_data_xdmf
   end type
 
@@ -242,6 +241,9 @@ subroutine read_abaqus_mesh(this, filename)
   case('STRI3')
      this%nvertices_per_elem = 3
      this%element_type = 'tri'
+  case('S4R')
+     this%nvertices_per_elem = 4
+     this%element_type = 'quad'
   case default
      write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
                 'not yet implemented'
@@ -311,6 +313,8 @@ subroutine dump_mesh_xdmf(this, filename)
      xdmf_elem_type = 'Triangle'
   case('tet')
      xdmf_elem_type = 'Tetrahedron'
+  case('quad')
+     xdmf_elem_type = 'Quadrilateral'
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
                 ' not implemented'
@@ -458,6 +462,8 @@ subroutine dump_mesh_data_xdmf(this, filename)
      xdmf_elem_type = 'Triangle'
   case('tet')
      xdmf_elem_type = 'Tetrahedron'
+  case('quad')
+     xdmf_elem_type = 'Quadrilateral'
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
                 ' not implemented'
