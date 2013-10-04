@@ -69,7 +69,7 @@ subroutine test_mesh_data_dump
   call inv_mesh%set_data_snap(datat(2,:), 2, 'x')
   call inv_mesh%set_data_snap(datat(3,:), 3, 'x')
 
-  call inv_mesh%dump_tet_mesh_data_xdmf('testdata')
+  call inv_mesh%dump_mesh_data_xdmf('testdata')
 
   call assert_file_exists('testdata.xdmf', 'test xdmf data dump')
   call assert_file_exists('testdata_points.dat', 'test xdmf data dump')
