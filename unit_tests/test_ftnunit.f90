@@ -37,9 +37,12 @@ subroutine test_all
   call test(test_mesh_read, 'reading tetrahedral mesh')
   call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
   call test(test_mesh_data_dump, 'reading/dumping tetrahedral mesh with data')
-  call test(test_mesh_data_dump2, 'reading/dumping triangular mesh from abaqus file with data')
-  call test(test_mesh_data_dump3, 'reading/dumping quadrilateral mesh from abaqus file with data')
-  call test(test_mesh_data_dump4, 'reading/dumping hexahedral mesh from abaqus file with data')
+  call test(test_mesh_data_dump2, &
+            'reading/dumping triangular mesh from abaqus file with data')
+  call test(test_mesh_data_dump3, &
+            'reading/dumping quadrilateral mesh from abaqus file with data')
+  call test(test_mesh_data_dump4, &
+            'reading/dumping hexahedral mesh from abaqus file with data')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
 end subroutine
