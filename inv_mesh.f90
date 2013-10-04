@@ -13,6 +13,7 @@ module inversion_mesh
      integer                            :: nelements, nvertices, nvertices_per_elem
      integer, allocatable               :: connectivity(:,:)
      real(kind=sp), allocatable         :: vertices(:,:)
+     character(len=4)                   :: element_type
      logical                            :: initialized = .false.
      contains
      procedure, pass :: get_nelements
@@ -23,8 +24,7 @@ module inversion_mesh
      procedure, pass :: get_connected_elements
      procedure, pass :: read_tet_mesh
      procedure, pass :: read_abaqus_mesh
-     procedure, pass :: dump_tet_mesh_xdmf
-     procedure, pass :: dump_tri_mesh_xdmf
+     procedure, pass :: dump_mesh_xdmf
      procedure, pass :: freeme
   end type
 
@@ -156,6 +156,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   integer                           :: i, ierr
 
   this%nvertices_per_elem = 4
+  this%element_type = 'tet'
   
   ! read vertices
   open(newunit=iinput_vertices, file=trim(filename_vertices), status='old', &
@@ -239,6 +240,7 @@ subroutine read_abaqus_mesh(this, filename)
   select case (trim(elem_type))
   case('STRI3')
      this%nvertices_per_elem = 3
+     this%element_type = 'tri'
   case default
      write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
                 'not yet implemented'
@@ -293,21 +295,31 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine dump_tet_mesh_xdmf(this, filename)
+subroutine dump_mesh_xdmf(this, filename)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput_xdmf, iinput_heavy_data
   integer                           :: i
+  character(len=16)                 :: xdmf_elem_type
 
   if (.not. this%initialized) &
      stop 'ERROR: trying to dump a non initialized mesh'
 
-  if (this%nvertices_per_elem /= 4) &
-     stop 'ERROR: nvertices_per_elem /= 4, so this seems not to be a tet mesh'
+  select case(this%element_type)
+  case('tri')
+     xdmf_elem_type = 'Triangle'
+  case('tet')
+     xdmf_elem_type = 'Tetrahedron'
+  case default
+     write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
+                ' not implemented'
+     stop
+  end select
 
   ! XML Data
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
-  write(iinput_xdmf, 732) this%nelements, this%nelements, 'binary', &
+  write(iinput_xdmf, 732) trim(xdmf_elem_type), this%nelements, this%nelements, &
+                      this%nvertices_per_elem, 'binary', &
                       trim(filename)//'_grid.dat', this%nvertices, 'binary', &
                       trim(filename)//'_points.dat'
   close(iinput_xdmf)
@@ -318,63 +330,8 @@ subroutine dump_tet_mesh_xdmf(this, filename)
     '<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">',/&
     '<Domain>',/&
     '  <Grid GridType="Uniform">',/&
-    '    <Topology TopologyType="Tetrahedron" NumberOfElements="',i10,'">',/&
-    '      <DataItem Dimensions="',i10,' 4" NumberType="Int" Format="',A,'">',/&
-    '        ',A,/&
-    '      </DataItem>',/&
-    '    </Topology>',/&
-    '    <Geometry GeometryType="XYZ">',/&
-    '      <DataItem Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
-    '        ',A/&
-    '      </DataItem>',/&
-    '    </Geometry>',/&
-    '  </Grid>',/&
-    '</Domain>',/&
-    '</Xdmf>')
-
-  ! VERTEX data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%vertices
-  close(iinput_heavy_data)
-
-  ! CONNECTIVITY data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%connectivity
-  close(iinput_heavy_data)
-  
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine dump_tri_mesh_xdmf(this, filename)
-  class(inversion_mesh_type)        :: this
-  character(len=*), intent(in)      :: filename
-  integer                           :: iinput_xdmf, iinput_heavy_data
-  integer                           :: i
-
-  if (.not. this%initialized) &
-     stop 'ERROR: trying to dump a non initialized mesh'
-
-  if (this%nvertices_per_elem /= 3) &
-     stop 'ERROR: nvertices_per_elem /= 3, so this seems not to be a tri mesh'
-
-  ! XML Data
-  open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
-  write(iinput_xdmf, 732) this%nelements, this%nelements, 'binary', &
-                      trim(filename)//'_grid.dat', this%nvertices, 'binary', &
-                      trim(filename)//'_points.dat'
-  close(iinput_xdmf)
-
-732 format(&    
-    '<?xml version="1.0" ?>',/&
-    '<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>',/&
-    '<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">',/&
-    '<Domain>',/&
-    '  <Grid GridType="Uniform">',/&
-    '    <Topology TopologyType="Triangle" NumberOfElements="',i10,'">',/&
-    '      <DataItem Dimensions="',i10,' 3" NumberType="Int" Format="',A,'">',/&
+    '    <Topology TopologyType="', A, '" NumberOfElements="',i10,'">',/&
+    '      <DataItem Dimensions="',i10, i3, '" NumberType="Int" Format="',A,'">',/&
     '        ',A,/&
     '      </DataItem>',/&
     '    </Topology>',/&
