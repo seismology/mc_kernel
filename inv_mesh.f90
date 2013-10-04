@@ -24,6 +24,7 @@ module inversion_mesh
      procedure, pass :: read_tet_mesh
      procedure, pass :: read_abaqus_mesh
      procedure, pass :: dump_tet_mesh_xdmf
+     procedure, pass :: dump_tri_mesh_xdmf
      procedure, pass :: freeme
   end type
 
@@ -284,6 +285,8 @@ subroutine read_abaqus_mesh(this, filename)
 
   close(iinput)
 
+  ! abaqus starts counting at 1
+  this%connectivity(:,:) = this%connectivity(:,:) - 1
 
   this%initialized = .true.
 end subroutine
@@ -317,6 +320,61 @@ subroutine dump_tet_mesh_xdmf(this, filename)
     '  <Grid GridType="Uniform">',/&
     '    <Topology TopologyType="Tetrahedron" NumberOfElements="',i10,'">',/&
     '      <DataItem Dimensions="',i10,' 4" NumberType="Int" Format="',A,'">',/&
+    '        ',A,/&
+    '      </DataItem>',/&
+    '    </Topology>',/&
+    '    <Geometry GeometryType="XYZ">',/&
+    '      <DataItem Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
+    '        ',A/&
+    '      </DataItem>',/&
+    '    </Geometry>',/&
+    '  </Grid>',/&
+    '</Domain>',/&
+    '</Xdmf>')
+
+  ! VERTEX data
+  open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
+      status='replace', form='unformatted', convert='little_endian')
+  write(iinput_heavy_data) this%vertices
+  close(iinput_heavy_data)
+
+  ! CONNECTIVITY data
+  open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
+      status='replace', form='unformatted', convert='little_endian')
+  write(iinput_heavy_data) this%connectivity
+  close(iinput_heavy_data)
+  
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine dump_tri_mesh_xdmf(this, filename)
+  class(inversion_mesh_type)        :: this
+  character(len=*), intent(in)      :: filename
+  integer                           :: iinput_xdmf, iinput_heavy_data
+  integer                           :: i
+
+  if (.not. this%initialized) &
+     stop 'ERROR: trying to dump a non initialized mesh'
+
+  if (this%nvertices_per_elem /= 3) &
+     stop 'ERROR: nvertices_per_elem /= 3, so this seems not to be a tri mesh'
+
+  ! XML Data
+  open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
+  write(iinput_xdmf, 732) this%nelements, this%nelements, 'binary', &
+                      trim(filename)//'_grid.dat', this%nvertices, 'binary', &
+                      trim(filename)//'_points.dat'
+  close(iinput_xdmf)
+
+732 format(&    
+    '<?xml version="1.0" ?>',/&
+    '<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>',/&
+    '<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">',/&
+    '<Domain>',/&
+    '  <Grid GridType="Uniform">',/&
+    '    <Topology TopologyType="Triangle" NumberOfElements="',i10,'">',/&
+    '      <DataItem Dimensions="',i10,' 3" NumberType="Int" Format="',A,'">',/&
     '        ',A,/&
     '      </DataItem>',/&
     '    </Topology>',/&
