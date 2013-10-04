@@ -30,7 +30,6 @@ module readfields
         type(ncparamtype), allocatable    :: bwd(:)
 
         type(kdtree2), pointer            :: fwdtree, bwdtree
-        !type(kdtree2_result), allocatable :: nextpoint(:)
 
         type(meshtype)                    :: fwdmesh, bwdmesh
 
@@ -219,11 +218,15 @@ subroutine close_files(this)
 
     do isim = 1, this%nsim_fwd
        status = nf90_close(this%fwd(isim)%ncid)
+       write(*,'(A,I1,A,F9.7)') ' Buffer efficiency fwd(', isim, '): ',  &
+                                this%fwd(isim)%buffer%efficiency()
        status = this%fwd(isim)%buffer%freeme()
     end do
     deallocate(this%fwd)
     do isim = 1, this%nsim_bwd
        status = nf90_close(this%bwd(isim)%ncid)
+       write(*,'(A,F9.7)') ' Buffer efficiency bwd   : ', & 
+                           this%bwd(1)%buffer%efficiency()
        status = this%bwd(isim)%buffer%freeme()
     end do
     deallocate(this%bwd)
@@ -232,18 +235,22 @@ end subroutine close_files
 
 !-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
-    use sorting, only                               : mergesort_3
-    class(netcdf_type)                             :: this
-    real(kind=dp), intent(in)                      :: coordinates(:,:)
-    type(src_param_type)                           :: source_params
-    real(kind=sp)                                  :: load_fw_points(this%fwd(1)%ndumps, size(coordinates,2))
-    real(kind=sp)                                  :: utemp(this%fwd(1)%ndumps)
-    type(kdtree2_result), allocatable              :: nextpoint(:)
+    use sorting, only                  : mergesort_3
+    class(netcdf_type)                :: this
+    real(kind=dp), intent(in)         :: coordinates(:,:)
+    type(src_param_type)              :: source_params
+    real(kind=sp)                     :: load_fw_points(this%fwd(1)%ndumps, &
+                                                        size(coordinates,2))
+    real(kind=sp)                     :: utemp(this%fwd(1)%ndumps)
+    type(kdtree2_result), allocatable :: nextpoint(:)
 
-    integer                                        :: npoints
-    integer, dimension(size(coordinates,2))        :: pointid, idx
-    integer                                        :: ipoint, isim, status
-    real(kind=sp), dimension(size(coordinates,2))  :: rotmesh_s, rotmesh_phi, rotmesh_z
+    integer                           :: npoints
+    integer                           :: pointid(size(coordinates,2))
+    integer                           :: idx((size(coordinates,2)))
+    integer                           :: ipoint, isim, status
+    real(kind=sp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=sp)                     :: rotmesh_phi(size(coordinates,2))
+    real(kind=sp)                     :: rotmesh_z(size(coordinates,2))
     
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
@@ -255,8 +262,8 @@ function load_fw_points(this, coordinates, source_params)
     load_fw_points(:,:) = 0.0
     
     ! Rotate points to FWD coordinate system
-    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,           &
-                          coordinates(1,:)*1d3, coordinates(2,:)*1d3, coordinates(3,:)*1d3, &
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
+                          coordinates*1d3,                              &
                           source_params%lon, source_params%colat)
 
     allocate(nextpoint(1))
@@ -289,17 +296,17 @@ function load_fw_points(this, coordinates, source_params)
             if (status.ne.0) then
                write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
                if (this%fwd(isim)%ordered_output) then
-                  call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
-                                            varid  = this%fwd(isim)%straintrace, &
-                                            start  = [1, pointid(ipoint)],       &
-                                            count  = [this%fwd(isim)%ndumps, 1], &
-                                            values = utemp) )
+                  call check( nf90_get_var( ncid  =this%fwd(isim)%snap,        & 
+                                            varid =this%fwd(isim)%straintrace, &
+                                            start =[1, pointid(ipoint)],       &
+                                            count =[this%fwd(isim)%ndumps, 1], &
+                                            values=utemp) )
                else
-                  call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
-                                            varid  = this%fwd(isim)%straintrace, &
-                                            start  = [pointid(ipoint), 1],       &
-                                            count  = [1, this%fwd(isim)%ndumps], &
-                                            values = utemp) )
+                  call check( nf90_get_var( ncid  =this%fwd(isim)%snap,        & 
+                                            varid =this%fwd(isim)%straintrace, &
+                                            start =[pointid(ipoint), 1],       &
+                                            count =[1, this%fwd(isim)%ndumps], &
+                                            values=utemp) )
                end if
                status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
             else
@@ -331,7 +338,9 @@ function load_bw_points(this, coordinates, receiver)
     integer, dimension(size(coordinates,2))        :: pointid, idx
     integer                                        :: npoints
     integer                                        :: ipoint, status
-    real(kind=sp), dimension(size(coordinates,2))  :: rotmesh_s, rotmesh_phi, rotmesh_z
+    real(kind=sp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=sp)                     :: rotmesh_phi(size(coordinates,2))
+    real(kind=sp)                     :: rotmesh_z(size(coordinates,2))
 
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_bw_points: input variable coordinates has to be a '
@@ -344,8 +353,8 @@ function load_bw_points(this, coordinates, receiver)
     load_bw_points(:,:) = 0.0
     
     ! Rotate points to BWD coordinate system
-    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,           &
-                          coordinates(1,:), coordinates(2,:), coordinates(3,:), &
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
+                          coordinates*1e3,                              &
                           receiver%lon, receiver%colat)
 
     allocate(nextpoint(1))
@@ -355,6 +364,9 @@ function load_bw_points(this, coordinates, receiver)
                                 nn = 1,                                 &
                                 results = nextpoint )
         pointid(ipoint) = nextpoint(1)%idx
+        print *, 'Original coordinates: ', coordinates(:,ipoint)
+        print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
+        print *, 'CO of SEM point:', this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint))
     end do
     
     !call mergesort_3(pointid, idx)
@@ -368,13 +380,13 @@ function load_bw_points(this, coordinates, receiver)
            if (this%bwd(1)%ordered_output) then
               call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
                                         varid  = this%bwd(1)%straintrace, &
-                                        start  = [1, pointid(ipoint)],       &
+                                        start  = [1, pointid(ipoint)],    &
                                         count  = [this%bwd(1)%ndumps, 1], &
                                         values = utemp) )
            else
               call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
                                         varid  = this%bwd(1)%straintrace, &
-                                        start  = [pointid(ipoint), 1],       &
+                                        start  = [pointid(ipoint), 1],    &
                                         count  = [1, this%bwd(1)%ndumps], &
                                         values = utemp) )
            end if
@@ -620,30 +632,31 @@ end subroutine nc_read_att_real
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-subroutine rotate_frame_rd(npts, srd,phird,zrd, xgd,ygd,zgd, phigr,thetagr)
+subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
 
     implicit none
-    integer, intent(in)                         :: npts
+    integer, intent(in)                            :: npts
     !< Number of points to rotate
     
-    real(kind=dp), dimension(npts), intent(in)  :: xgd, ygd, zgd 
+    real(kind=dp), dimension(3, npts), intent(in)  :: rgd
     !< Coordinates to rotate (in x, y, z)
     
-    real(kind=dp), intent(in)                   :: phigr, thetagr
+    real(kind=dp), intent(in)                      :: phigr, thetagr
     !< Rotation angles phi and theta
     
-    real(kind=sp), dimension(npts), intent(out) :: srd, zrd, phird
+    real(kind=sp), dimension(npts), intent(out)    :: srd, zrd, phird
     !< Rotated coordinates (in s, z, phi)
 
-    real(kind=dp), dimension(npts)              :: xp, yp, zp, xp_cp, yp_cp, zp_cp
-    real(kind=dp)                               :: phi_cp, rgd, thetagd
-    integer                                     :: ipt
+    real(kind=dp), dimension(npts)                 :: xp, yp, zp
+    real(kind=dp), dimension(npts)                 :: xp_cp, yp_cp, zp_cp
+    real(kind=dp)                                  :: phi_cp
+    integer                                        :: ipt
 
 
     !!first rotation (longitude)
-    xp_cp =  xgd * dcos(phigr) + ygd * dsin(phigr)
-    yp_cp = -xgd * dsin(phigr) + ygd * dcos(phigr)
-    zp_cp =  zgd
+    xp_cp =  rgd(1,:) * dcos(phigr) + rgd(1,:) * dsin(phigr)
+    yp_cp = -rgd(2,:) * dsin(phigr) + rgd(2,:) * dcos(phigr)
+    zp_cp =  rgd(3,:)
 
     !second rotation (colat)
     xp = xp_cp * dcos(thetagr) - zp_cp * dsin(thetagr)
@@ -659,7 +672,7 @@ subroutine rotate_frame_rd(npts, srd,phird,zrd, xgd,ygd,zgd, phigr,thetagr)
        else
           phird(ipt) = phi_cp
        endif
-       if (phigr==0.0 .and. ygd(ipt)==0.0)  phird(ipt)=0.
+       if (phigr==0.0 .and. rgd(2,ipt)==0.0)  phird(ipt)=0.
     enddo
 
     write(6,*)'Done with rotating frame rd.'
