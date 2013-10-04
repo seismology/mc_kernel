@@ -244,6 +244,9 @@ subroutine read_abaqus_mesh(this, filename)
   case('S4R')
      this%nvertices_per_elem = 4
      this%element_type = 'quad'
+  case('C3D8R')
+     this%nvertices_per_elem = 8
+     this%element_type = 'hex'
   case default
      write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
                 'not yet implemented'
@@ -315,6 +318,8 @@ subroutine dump_mesh_xdmf(this, filename)
      xdmf_elem_type = 'Tetrahedron'
   case('quad')
      xdmf_elem_type = 'Quadrilateral'
+  case('hex')
+     xdmf_elem_type = 'Hexahedron'
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
                 ' not implemented'
@@ -464,6 +469,8 @@ subroutine dump_mesh_data_xdmf(this, filename)
      xdmf_elem_type = 'Tetrahedron'
   case('quad')
      xdmf_elem_type = 'Quadrilateral'
+  case('hex')
+     xdmf_elem_type = 'Hexahedron'
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
                 ' not implemented'

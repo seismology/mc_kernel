@@ -176,6 +176,47 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_mesh_data_dump4
+  type(inversion_mesh_data_type)    :: inv_mesh
+  real(kind=sp), allocatable         :: datat(:,:)
+  integer                           :: npoints, myunit, ierr
+
+  call inv_mesh%read_abaqus_mesh('sphere.inp')
+  call inv_mesh%init_data(3)
+
+  npoints = inv_mesh%get_nvertices()
+  allocate(datat(3,npoints))
+
+  datat(:,:) = inv_mesh%get_vertices()
+  call inv_mesh%set_data_snap(datat(1,:), 1, 'x')
+  call inv_mesh%set_data_snap(datat(2,:), 2, 'x')
+  call inv_mesh%set_data_snap(datat(3,:), 3, 'x')
+
+  call inv_mesh%dump_mesh_data_xdmf('testsphere')
+
+  call assert_file_exists('testsphere.xdmf', 'test xdmf data dump')
+  call assert_file_exists('testsphere_points.dat', 'test xdmf data dump')
+  call assert_file_exists('testsphere_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('testsphere_data.dat', 'test xdmf data dump')
+
+  !! tidy up
+  !open(newunit=myunit, file='testsphere.xdmf', iostat=ierr)
+  !if (ierr == 0) close(myunit, status='delete')
+
+  !open(newunit=myunit, file='testsphere_points.dat', iostat=ierr)
+  !if (ierr == 0) close(myunit, status='delete')
+
+  !open(newunit=myunit, file='testsphere_grid.dat', iostat=ierr)
+  !if (ierr == 0) close(myunit, status='delete')
+  !
+  !open(newunit=myunit, file='testsphere_data.dat', iostat=ierr)
+  !if (ierr == 0) close(myunit, status='delete')
+  
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_valence
   type(inversion_mesh_type)    :: inv_mesh
 
