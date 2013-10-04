@@ -22,6 +22,7 @@ module inversion_mesh
      procedure, pass :: get_valence
      procedure, pass :: get_connected_elements
      procedure, pass :: read_tet_mesh
+     procedure, pass :: read_abaqus_mesh
      procedure, pass :: dump_tet_mesh_xdmf
      procedure, pass :: freeme
   end type
@@ -188,6 +189,101 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   enddo
 
   close(iinput_connectivity)
+
+  this%initialized = .true.
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine read_abaqus_mesh(this, filename)
+  class(inversion_mesh_type)        :: this
+  character(len=*), intent(in)      :: filename
+  integer                           :: iinput
+  integer                           :: i, ierr, ct
+  character(len=128)                :: line
+  character(len=16)                 :: elem_type
+
+  ! open file 
+  open(newunit=iinput, file=trim(filename), status='old', &
+       action='read', iostat=ierr)
+  if ( ierr /= 0 ) then
+     write(*,*) 'ERROR: Could not open file: ', trim(filename)
+     stop
+  endif
+
+  ! go to vertex block
+  do
+    read(iinput,*) line
+    if (index(line, '*NODE') == 1) exit
+  enddo
+
+  ! scan number of vertices
+  ct = 0
+  do
+    read(iinput,*) line
+    if (index(line, '**') == 1) exit
+    ct = ct + 1
+  enddo
+  this%nvertices = ct
+  
+  ! go to element block
+  do
+    read(iinput,*) line, elem_type
+    if (index(line, '*ELEMENT') == 1) exit
+  enddo
+ 
+  ! get element type
+  elem_type = trim(elem_type(6:))
+
+  select case (trim(elem_type))
+  case('STRI3')
+     this%nvertices_per_elem = 3
+  case default
+     write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
+                'not yet implemented'
+     stop
+  end select
+
+  ! scan number of elements
+  ct = 0
+  do
+    read(iinput,*) line
+    if (index(line, '**') == 1) exit
+    ct = ct + 1
+  enddo
+  this%nelements = ct
+
+  ! prepare arrays
+  allocate(this%vertices(3,this%nvertices))
+  allocate(this%connectivity(this%nvertices_per_elem,this%nelements))
+
+  ! reset to beginning of file
+  rewind(iinput)
+  
+  ! go to node block
+  do
+    read(iinput,*) line
+    if (index(line, '*NODE') == 1) exit
+  enddo
+ 
+  ! read vertices
+  do i=1, this%nvertices
+    read(iinput,*) line, this%vertices(:,i)
+  enddo
+
+  ! go to element block
+  do
+    read(iinput,*) line, elem_type
+    if (index(line, '*ELEMENT') == 1) exit
+  enddo
+
+  ! read elements
+  do i=1, this%nelements
+     read(iinput,*) line, this%connectivity(:,i)
+  enddo
+
+  close(iinput)
+
 
   this%initialized = .true.
 end subroutine
