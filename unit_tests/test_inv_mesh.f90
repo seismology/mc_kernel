@@ -94,6 +94,47 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_mesh_data_dump2
+  type(inversion_mesh_data_type)    :: inv_mesh
+  real(kind=sp), allocatable         :: datat(:,:)
+  integer                           :: npoints, myunit, ierr
+
+  call inv_mesh%read_abaqus_mesh('circle.inp')
+  call inv_mesh%init_data(3)
+
+  npoints = inv_mesh%get_nvertices()
+  allocate(datat(3,npoints))
+
+  datat(:,:) = inv_mesh%get_vertices()
+  call inv_mesh%set_data_snap(datat(1,:), 1, 'x')
+  call inv_mesh%set_data_snap(datat(2,:), 2, 'x')
+  call inv_mesh%set_data_snap(datat(3,:), 3, 'x')
+
+  call inv_mesh%dump_mesh_data_xdmf('testcircle')
+
+  call assert_file_exists('testcircle.xdmf', 'test xdmf data dump')
+  call assert_file_exists('testcircle_points.dat', 'test xdmf data dump')
+  call assert_file_exists('testcircle_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('testcircle_data.dat', 'test xdmf data dump')
+
+  ! tidy up
+  open(newunit=myunit, file='testcircle.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='testcircle_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='testcircle_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  open(newunit=myunit, file='testcircle_data.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_valence
   type(inversion_mesh_type)    :: inv_mesh
 

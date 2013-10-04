@@ -77,7 +77,7 @@ use type_parameter,              only: parameter_type
         call inversion_mesh%set_data_snap(bw_field(idump,:), idump+ndumps, 'bwd_wavefield')
     end do
     write(*,*) ' Writing data to disk'
-    call inversion_mesh%dump_tet_mesh_data_xdmf('wavefield')
+    call inversion_mesh%dump_mesh_data_xdmf('wavefield')
 
     write(*,*) ' Free memory of inversion mesh datatype'
     call inversion_mesh%freeme
