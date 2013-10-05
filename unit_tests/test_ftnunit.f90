@@ -25,6 +25,8 @@ subroutine test_all
   write(6,'(/,a)') 'TEST FFT MODULE'
   call test(test_fft_dirac, 'FFT_dirac')
   call test(test_fft_inverse, 'FFT_inverse')
+  call test(test_fft_convolve, 'FFT_convolve')
+  call test(test_fft_taperandzeropad, 'FFT_taperandzeropad')
 
   ! test_tetrahedra
   write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'

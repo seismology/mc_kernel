@@ -2,7 +2,7 @@
 module test_fft
 
   use global_parameters
-  use fft
+  use fft, only: rfft_type, taperandzeropad
   use ftnunit
   implicit none
   public
@@ -105,6 +105,73 @@ subroutine test_fft_inverse
     call fftt%freeme()
 end subroutine
 !-----------------------------------------------------------------------------------------
+
+subroutine test_fft_convolve
+    integer     :: nomega, ntimes, ntraces, ntimes_fft
+    integer     :: i, j
+
+    type(rfft_type) :: fftt
+
+    real(kind=sp), dimension(:,:), allocatable       :: datat1, datat2
+    real(kind=dp), dimension(:,:), allocatable       :: dataconv, dataconv_ref
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf1, dataf2
+
+    ntimes = 6
+    ntraces = 1
+
+    call fftt%init(ntimes, ntraces)
+    
+    ntimes_fft = fftt%get_ntimes()
+    nomega = fftt%get_nomega()
+
+    allocate(datat1(1:ntimes, 1:ntraces))
+    allocate(datat2(1:ntimes, 1:ntraces))
+    allocate(dataconv(1:ntimes_fft, 1:ntraces))
+    allocate(dataconv_ref(1:ntimes_fft, 1:ntraces))
+
+    allocate(dataf1(1:nomega, 1:ntraces))
+    allocate(dataf2(1:nomega, 1:ntraces))
+   
+    datat1(1,:) = 0
+    datat1(2,:) = 1
+    datat1(3,:) = 1
+    datat1(4,:) = 1
+    datat1(5,:) = 1
+    datat1(6,:) = 0
+
+    datat2 = datat1
+
+    dataconv_ref(:,1) = [0, 0, 1, 2, 3, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0]
+
+    call fftt%rfft(taperandzeropad(datat1, ntimes_fft), dataf1)
+    call fftt%rfft(taperandzeropad(datat2, ntimes_fft), dataf2)
+    call fftt%irfft(dataf1 * dataf2, dataconv)
+
+    do i=1, ntraces
+        call assert_comparable_real1d(real(dataconv(:,i), sp) + 1, &
+                                      real(dataconv_ref(:,i), sp) + 1, &
+                                      1e-5, 'convolution of rectangular pulses')
+    enddo
+
+end subroutine
+
+
+subroutine test_fft_taperandzeropad
+    integer, parameter :: len_orig = 32, len_padded = 64
+    real(kind=sp) :: data_orig(len_orig,1), data_padded(len_padded,1)
+    integer       :: i
+
+    data_orig = 1
+
+    data_padded = taperandzeropad(data_orig, len_padded)
+
+    call assert_equal(len_orig/2, count(abs(data_padded-1)<1e-8), &
+                     'length of flat part in tapering window is 50%')
+
+    call assert_comparable_real(real(sum(data_padded(len_orig+1:,1))), 0.0, &
+                                  1e-8, 'zeropadded part is really zero')
+
+end subroutine
 
 end module
 !=========================================================================================
