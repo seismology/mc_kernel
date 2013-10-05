@@ -8,6 +8,7 @@ program test_ftnunit
   use test_inversion_mesh
   use test_buffer
   use test_filter
+  use test_kernel
   implicit none
 
   call runtests_init
@@ -34,6 +35,10 @@ subroutine test_all
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
   call test(test_filter_gabor_response, 'Test Gabor filter')
+  
+  ! test kernel
+  write(6,'(/,a)') 'TEST KERNEL MODULE'
+  call test(test_kernel_cut_timewindow, 'Test Time window cutting')
 
   ! test_tetrahedra
   write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'

@@ -26,7 +26,7 @@ subroutine test_unit_hexagon
 
     ! Integrate a gaussian function with sigma = 1 over [-5,5]^3
     
-    call mc_integral%initialize_montecarlo(1, volume, 1d-3)
+    call mc_integral%initialize_montecarlo(1, volume, 1e-3)
 
     iiter = 0
 
@@ -69,7 +69,7 @@ subroutine test_sphere_in_tetrahedron
 
     ! Integrate a gaussian function with sigma = 1 over [-5,5]^3
     
-    call mc_integral%initialize_montecarlo(1, volume, 1d-3)
+    call mc_integral%initialize_montecarlo(1, volume, 1e-3)
 
     iiter = 0
 

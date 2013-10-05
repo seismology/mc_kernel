@@ -14,10 +14,10 @@ module montecarlo
         logical, dimension(:), allocatable       :: converged
         integer                                  :: nmodels
         contains
-        procedure, pass                      :: check_montecarlo_integral
-        procedure, pass                      :: initialize_montecarlo
-        procedure, pass                      :: areallconverged
-        procedure, pass                      :: getintegral, getvariance
+        procedure, pass                          :: check_montecarlo_integral
+        procedure, pass                          :: initialize_montecarlo
+        procedure, pass                          :: areallconverged
+        procedure, pass                          :: getintegral, getvariance
 
     end type
 
@@ -54,7 +54,8 @@ end subroutine check_montecarlo_integral
 subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error)
     class(integrated_type), intent(inout) :: this 
     integer, intent(in)                   :: nfuncs
-    real(kind=dp), intent(in)             :: volume, allowed_error
+    real(kind=dp), intent(in)             :: volume
+    real(kind=sp), intent(in)             :: allowed_error
 
     if(allocated(this%fsum)) deallocate(this%fsum)
     if(allocated(this%f2sum)) deallocate(this%f2sum)
