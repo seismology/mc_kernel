@@ -6,6 +6,8 @@ program test_ftnunit
   use test_fft
   use test_tetrahedra
   use test_inversion_mesh
+  use test_buffer
+  use test_filter
   implicit none
 
   call runtests_init
@@ -24,9 +26,14 @@ subroutine test_all
   ! test_fft
   write(6,'(/,a)') 'TEST FFT MODULE'
   call test(test_fft_dirac, 'FFT_dirac')
+  call test(test_fft_sine, 'FFT_sine')
   call test(test_fft_inverse, 'FFT_inverse')
   call test(test_fft_convolve, 'FFT_convolve')
   call test(test_fft_taperandzeropad, 'FFT_taperandzeropad')
+
+  ! test filter
+  write(6,'(/,a)') 'TEST FILTER MODULE'
+  call test(test_filter_gabor_response, 'Test Gabor filter')
 
   ! test_tetrahedra
   write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'
@@ -47,6 +54,11 @@ subroutine test_all
             'reading/dumping hexahedral mesh from abaqus file with data')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
+
+  ! test_buffer
+  write(6,'(/,a)') 'TEST BUFFER MODULE'
+  call test(test_buffer_storage, 'put data into the buffer')
+  call test(test_buffer_retrieval, 'get data back from the buffer')
 end subroutine
 !-----------------------------------------------------------------------------------------
 
