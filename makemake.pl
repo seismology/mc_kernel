@@ -66,8 +66,8 @@ else {
 	$F90_strg = 'mpif90 -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic -fbacktrace';
 	$FC_strg =  'gfortran -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic -fbacktrace';
     } else {
-	$F90_strg = 'mpif90 -O3  -fbacktrace';
-	$FC_strg = 'gfortran -O3 -fbacktrace';	
+	$F90_strg = 'mpif90 -O3  -fbacktrace -g';
+	$FC_strg = 'gfortran -O3 -fbacktrace -g';	
     }
 }
 ###################################################################################
