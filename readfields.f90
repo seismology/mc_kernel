@@ -20,6 +20,7 @@ module readfields
         integer                           :: ndumps
         logical                           :: ordered_output
         type(buffer_type)                 :: buffer
+        real(kind=sp)                     :: dt
     end type
 
     type netcdf_type
@@ -37,10 +38,14 @@ module readfields
         logical                           :: files_open
         logical                           :: meshes_read
         logical                           :: kdtree_built
+        real(kind=sp), public             :: dt
+        integer,       public             :: ndumps
+        real(kind=sp), public             :: windowlength
 
         contains 
             procedure, pass               :: set_params
             procedure, pass               :: open_files
+            procedure, pass               :: check_consistency
             procedure, pass               :: read_meshes
             procedure, pass               :: build_kdtree
             procedure, pass               :: load_fw_points
@@ -152,6 +157,11 @@ subroutine open_files(this)
         call nc_read_att_int(    this%fwd(isim)%ndumps,             &
                                  'number of strain dumps',          &
                                  this%fwd(isim))
+
+        call nc_read_att_real(    this%fwd(isim)%dt,               &
+                                  'strain dump sampling rate in sec', &
+                                  this%fwd(isim))
+
     end do
         
 
@@ -197,7 +207,14 @@ subroutine open_files(this)
         call nc_read_att_int(     this%bwd(isim)%ndumps,            &
                                   'number of strain dumps',         &
                                   this%bwd(isim))
+
+        call nc_read_att_real(    this%bwd(isim)%dt,                &
+                                  'strain dump sampling rate in sec', &
+                                  this%bwd(isim))
     end do
+
+
+    call this%check_consistency()
 
     call flush(6) 
     this%files_open = .true.
@@ -232,6 +249,66 @@ subroutine close_files(this)
     deallocate(this%bwd)
 
 end subroutine close_files
+
+!------------------------------------------------------------------------------
+subroutine check_consistency(this)
+    !< Checks consistency of the wavefield dumps
+    class(netcdf_type)                :: this
+    integer                           :: isim
+    real(kind=sp)                     :: dt_agreed
+    character(len=512)                :: fmtstring
+    integer                           :: ndumps_agreed
+
+    ! Check whether the sampling period is the same in all files
+    dt_agreed = this%fwd(1)%dt
+    fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
+    do isim = 1, this%nsim_fwd
+       if (dt_agreed.ne.this%fwd(isim)%dt) then
+          write(*,fmtstring) 'dt', isim, dt_agreed, this%fwd(isim)%dt
+          stop
+       end if
+    end do
+
+    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the forward case")' 
+
+    do isim = 1, this%nsim_bwd
+       if (dt_agreed.ne.this%bwd(isim)%dt) then
+          write(*,fmtstring) 'dt', isim, dt_agreed, this%bwd(isim)%dt
+          stop
+       end if
+    end do
+
+    this%dt = dt_agreed
+
+    ndumps_agreed = this%fwd(1)%ndumps
+
+
+    ! Check whether the number of dumps (time samples) is the same in all files
+    fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",I7,") vs ", I7, " in the others")' 
+    do isim = 1, this%nsim_fwd
+       if (ndumps_agreed.ne.this%fwd(1)%ndumps) then
+          write(*,fmtstring) 'ndumps', isim, ndumps_agreed, this%fwd(isim)%ndumps
+          stop
+       end if
+    end do
+
+    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",I7,"s) vs ", I7, " in the forward case")' 
+
+    do isim = 1, this%nsim_bwd
+       if (ndumps_agreed.ne.this%bwd(1)%ndumps) then
+          write(*,fmtstring) 'ndumps', isim, ndumps_agreed, this%bwd(isim)%ndumps
+          stop
+       end if
+    end do
+
+    this%ndumps = ndumps_agreed
+    this%windowlength = ndumps_agreed * dt_agreed
+
+end subroutine
 
 !-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
@@ -294,7 +371,7 @@ function load_fw_points(this, coordinates, source_params)
            !           this%fwd(isim)%ndumps, ' values'
             status = this%fwd(isim)%buffer%get(pointid(ipoint), utemp)
             if (status.ne.0) then
-               write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
+               !write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
                if (this%fwd(isim)%ordered_output) then
                   call check( nf90_get_var( ncid  =this%fwd(isim)%snap,        & 
                                             varid =this%fwd(isim)%straintrace, &
@@ -309,8 +386,8 @@ function load_fw_points(this, coordinates, source_params)
                                             values=utemp) )
                end if
                status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
-            else
-               write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
+            !else
+            !   write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
             end if
             load_fw_points(:, (ipoint)) = load_fw_points(:,ipoint) &
                                         + azim_factor(rotmesh_phi(ipoint), &
@@ -364,9 +441,9 @@ function load_bw_points(this, coordinates, receiver)
                                 nn = 1,                                 &
                                 results = nextpoint )
         pointid(ipoint) = nextpoint(1)%idx
-        print *, 'Original coordinates: ', coordinates(:,ipoint)
-        print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
-        print *, 'CO of SEM point:', this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint))
+        !print *, 'Original coordinates: ', coordinates(:,ipoint)
+        !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
+        !print *, 'CO of SEM point:', this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint))
     end do
     
     !call mergesort_3(pointid, idx)
@@ -376,7 +453,7 @@ function load_bw_points(this, coordinates, receiver)
         
         status = this%bwd(1)%buffer%get(pointid(ipoint), utemp)
         if (status.ne.0) then
-           write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
+           !write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
            if (this%bwd(1)%ordered_output) then
               call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
                                         varid  = this%bwd(1)%straintrace, &
@@ -391,8 +468,8 @@ function load_bw_points(this, coordinates, receiver)
                                         values = utemp) )
            end if
            status = this%bwd(1)%buffer%put(pointid(ipoint), utemp)
-        else
-           write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
+        !else
+        !   write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
         end if
 
 
