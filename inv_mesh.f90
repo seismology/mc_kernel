@@ -428,17 +428,14 @@ subroutine set_data_snap(this, data_snap, isnap, data_name)
   if (present(data_name)) then
      name_exists = .false.
      do i=1, this%ngroups
-        write(*,*) 'Trying ', trim(this%data_group_names(i))
         if (this%data_group_names(i) == data_name) then
            name_exists = .true.
-           write(*,*) 'Name ', trim(data_name), ' exists as no. ', i
            exit
         endif
      enddo
      if (name_exists) then
         this%group_id(isnap) = i
      else
-        write(*,*) 'Did not find name ', trim(data_name)
         this%ngroups = this%ngroups + 1
         this%group_id(isnap) = this%ngroups
         this%data_group_names(this%ngroups) = data_name
