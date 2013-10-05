@@ -63,6 +63,94 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_fft_sine
+    integer     :: nomega, ntimes, ntraces
+    integer     :: i, j
+
+    type(rfft_type) :: fftt
+
+    real(kind=sp), dimension(:,:), allocatable       :: datat
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf, dataf_ref
+    real(kind=dp), dimension(:,:), allocatable       :: T
+    real(kind=dp), dimension(:), allocatable         :: F
+    real(kind=dp)                                    :: dt, df
+    real(kind=sp)                                    :: f_max, f_ref
+
+    ntimes = 100
+    ntraces = 1
+
+    dt = 0.1
+    call fftt%init(ntimes, ntraces, dt)
+
+    ntimes = fftt%get_ntimes()
+    nomega = fftt%get_nomega()
+
+    allocate(datat(1:ntimes, 1:ntraces))
+    allocate(dataf(1:nomega, 1:ntraces))
+    allocate(T(1:ntimes, 1:ntraces))
+    allocate(F(1:nomega))
+
+
+    do i = 1, ntimes
+       T(i,1) = dt * i
+    end do
+
+    !df = 1. / (dt*fftt%get_ntimes())
+
+    !do i = 1, nomega
+    !   F(i) = df * (i-1)
+    !end do
+    df = fftt%get_df()
+    F = fftt%get_f()
+
+    ! Sine with period 1s
+    f_ref = 1.0
+    datat = sin(2*pi*T * f_ref)
+
+    call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
+
+    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+
+    call assert_comparable_real(f_max, f_ref, &
+                                real(dF/2), 'Maximum amplitude at 1 Hz (Sine)')
+
+    ! Cosine with period 1s
+    f_ref = 1.0
+    datat = cos(2*pi*T * f_ref)
+
+    call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
+
+    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+
+    call assert_comparable_real(f_max, f_ref, &
+                                real(dF/2), 'Maximum amplitude at 1 Hz (Cosine)')
+
+    ! Sine with period 2s
+    f_ref = 0.5
+    datat = sin(2*pi*T * f_ref)
+
+    call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
+
+    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+
+    call assert_comparable_real(f_max, f_ref, &
+                                real(dF/2), 'Maximum amplitude at 0.5 Hz')
+
+    ! Sine with period 0.5s
+    f_ref = 2
+    datat = sin(2*pi*T * f_ref)
+
+    call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
+
+    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+
+    call assert_comparable_real(f_max, f_ref, &
+                                real(dF/2), 'Maximum amplitude at 2 Hz')
+
+    call fftt%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine test_fft_inverse
     integer     :: nomega, ntimes, ntraces
     integer     :: i, j
@@ -154,7 +242,7 @@ subroutine test_fft_convolve
     enddo
 
 end subroutine
-
+!-----------------------------------------------------------------------------------------
 
 subroutine test_fft_taperandzeropad
     integer, parameter :: len_orig = 32, len_padded = 64
