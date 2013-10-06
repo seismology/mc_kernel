@@ -9,14 +9,6 @@ module test_filter
   public
 contains
 
-subroutine test_filter_gabor_transferfunction
-   type(filter_type)             :: gabor
-
-
-
-
-end subroutine test_filter_gabor_transferfunction
-
 subroutine test_filter_gabor_response
    ! Compares transfer and response functions with solutions from Karin's 
    ! Matlab code. Tries log-Gabor filters with 5s and 2.5s central period
