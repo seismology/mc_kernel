@@ -135,7 +135,7 @@ function get_connectivity(this)
   integer                           :: get_connectivity(this%nvertices_per_elem, this%nelements)
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
-  get_connectivity = this%connectivity
+  get_connectivity = this%connectivity + 1
 end function
 !-----------------------------------------------------------------------------------------
 
