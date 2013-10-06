@@ -22,6 +22,7 @@ module inversion_mesh
      procedure, pass :: get_vertices
      procedure, pass :: get_valence
      procedure, pass :: get_connected_elements
+     procedure, pass :: get_connectivity
      procedure, pass :: read_tet_mesh
      procedure, pass :: read_abaqus_mesh
      procedure, pass :: dump_mesh_xdmf
@@ -64,7 +65,7 @@ function get_element(this, ielement)
      stop 'ERROR: accessing inversion mesh type that is not initialized'
 
   do ivert=1, this%nvertices_per_elem
-     get_element(:,ivert) = this%vertices(:, this%connectivity(ivert,ielement)) 
+     get_element(:,ivert) = this%vertices(:, this%connectivity(ivert,ielement)+1) 
   enddo
 end function
 !-----------------------------------------------------------------------------------------
@@ -131,7 +132,7 @@ end function
 !-----------------------------------------------------------------------------------------
 function get_connectivity(this)
   class(inversion_mesh_type)        :: this
-  real(kind=sp)                     :: get_connectivity(this%nvertices,this%nelements)
+  integer                           :: get_connectivity(this%nvertices,this%nelements)
   if (.not. this%initialized) &
      stop 'ERROR: accessing inversion mesh type that is not initialized'
   get_connectivity = this%connectivity
@@ -189,7 +190,6 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   do i=1, this%nelements
      read(iinput_connectivity,*) this%connectivity(:,i)
   enddo
-
   close(iinput_connectivity)
 
   this%initialized = .true.
