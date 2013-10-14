@@ -78,9 +78,10 @@ subroutine deleteme(this)
 end subroutine
 
 ! -----------------------------------------------------------------------------
-subroutine apply_1d(this, freq_series)
+function apply_1d(this, freq_series)
    class(filter_type)               :: this
-   complex(kind=dp), intent(inout)  :: freq_series(:)
+   complex(kind=dp), intent(in)     :: freq_series(:)
+   complex(kind=dp)                 :: apply_1d(size(freq_series))
    if (.not.this%initialized) then
       write(*,*) 'Filter is not initialized yet'
       stop
@@ -89,13 +90,14 @@ subroutine apply_1d(this, freq_series)
       write(*,*) 'Filter length: ', this%nomega, ', data length: ', size(freq_series, 1)
       stop
    end if
-   freq_series = freq_series * this%transferfunction
-end subroutine
+   apply_1d = freq_series * this%transferfunction
+end function apply_1d 
 
 ! -----------------------------------------------------------------------------
-subroutine apply_2d(this, freq_series)
+function apply_2d(this, freq_series)
    class(filter_type)               :: this
-   complex(kind=dp), intent(inout)  :: freq_series(:,:)
+   complex(kind=dp), intent(in)     :: freq_series(:,:)
+   complex(kind=dp)                 :: apply_2d(size(freq_series,1), size(freq_series,2))
    integer                          :: itrace
 
    if (.not.this%initialized) then
@@ -107,10 +109,10 @@ subroutine apply_2d(this, freq_series)
       stop
    end if
    do itrace = 1, (size(freq_series, 2))
-      freq_series(:,itrace) = freq_series(:,itrace) * this%transferfunction(:)
+      apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction(:)
    end do
 
-end subroutine
+end function apply_2d
 
 ! -----------------------------------------------------------------------------
 function get_transferfunction(this)
