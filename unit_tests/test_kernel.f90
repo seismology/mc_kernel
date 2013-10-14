@@ -12,15 +12,15 @@ contains
 
 subroutine test_kernel_cut_timewindow
    integer, parameter         :: ntimes = 100
-   real(kind=sp)              :: timeseries(ntimes), dataseries(ntimes,1)
+   real(kind=sp)              :: timeseries(ntimes), dataseries(ntimes)
    real(kind=sp)              :: dt = 0.1
-   real(kind=sp), allocatable :: cut_dataseries(:,:), cut_dataseries_ref(:)
+   real(kind=sp), allocatable :: cut_dataseries(:), cut_dataseries_ref(:)
    integer                    :: i
 
    ! Time window with normal length
    do i=1, ntimes
       timeseries(i) = i * dt
-      dataseries(i,1) = i 
+      dataseries(i) = i 
    end do
 
    
@@ -29,7 +29,7 @@ subroutine test_kernel_cut_timewindow
 
    cut_dataseries = cut_timewindow(timeseries, dataseries, [1.45, 2.01])
 
-   call assert_comparable_real1d(cut_dataseries(:,1), cut_dataseries_ref, 1e-9, &
+   call assert_comparable_real1d(cut_dataseries(:), cut_dataseries_ref, 1e-9, &
                                  'cut_dataseries == cut_dataseries_ref')
 
    deallocate(cut_dataseries_ref)
@@ -39,7 +39,7 @@ subroutine test_kernel_cut_timewindow
 
    cut_dataseries = cut_timewindow(timeseries, dataseries, [1.45, 2.00])
 
-   call assert_comparable_real1d(cut_dataseries(:,1), cut_dataseries_ref, 1e-9, &
+   call assert_comparable_real1d(cut_dataseries(:), cut_dataseries_ref, 1e-9, &
                                  'cut_dataseries == cut_dataseries_ref')
 
    deallocate(cut_dataseries_ref)
@@ -49,7 +49,7 @@ subroutine test_kernel_cut_timewindow
 
    cut_dataseries = cut_timewindow(timeseries, dataseries, [1.45, 1.99])
 
-   call assert_comparable_real1d(cut_dataseries(:,1), cut_dataseries_ref, 1e-9, &
+   call assert_comparable_real1d(cut_dataseries(:), cut_dataseries_ref, 1e-9, &
                                  'cut_dataseries == cut_dataseries_ref')
 
    deallocate(cut_dataseries_ref)
@@ -60,7 +60,7 @@ subroutine test_kernel_cut_timewindow
 
    cut_dataseries = cut_timewindow(timeseries, dataseries, [7.95, 8.05])
 
-   call assert_comparable_real1d(cut_dataseries(:,1), cut_dataseries_ref, 1e-9, &
+   call assert_comparable_real1d(cut_dataseries(:), cut_dataseries_ref, 1e-9, &
                                  'cut_dataseries == cut_dataseries_ref')
 
 
@@ -78,7 +78,7 @@ subroutine test_kernel_cut_timewindow
 
    cut_dataseries = cut_timewindow(timeseries, dataseries, [-0.39, 0.29])
 
-   call assert_comparable_real1d(cut_dataseries(:,1), cut_dataseries_ref, 1e-9, &
+   call assert_comparable_real1d(cut_dataseries(:), cut_dataseries_ref, 1e-9, &
                                  'cut_dataseries == cut_dataseries_ref')
 
 end subroutine test_kernel_cut_timewindow

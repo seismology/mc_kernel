@@ -50,25 +50,31 @@ subroutine freeme(this)
    this%initialized = .false.
 end subroutine
 
-function calc_misfit_kernel(this, t, timeseries)
+function calc_misfit_kernel(this, t, timeseries, veloseis)
    !< This routine can take multiple time series and calculate the kernel at each
    class(kernelspec_type)                  :: this
-   real(kind=sp), intent(in)               :: timeseries(:,:), t(:)
+   real(kind=dp), intent(in)               :: timeseries(:,:), t(:), veloseis(:)
    real(kind=sp)                           :: calc_misfit_kernel(size(timeseries,2))
    real(kind=sp)                           :: dt
+   integer                                 :: lenseis
+
+   lenseis = size(veloseis,1)
 
    select case(trim(this%misfit_type))
    case('CC')
       dt = t(2) - t(1)
-      calc_misfit_kernel = sum( cut_timewindow(t, timeseries, &
-                                               this%time_window), 1) &
+      calc_misfit_kernel = sum(  cut_timewindow(t, timeseries,          &
+                                                this%time_window)       & 
+                               * cut_timewindow(t(1:lenseis),          &
+                                                reshape(veloseis, [lenseis,1]),              &
+                                                this%time_window), 1)  &
                            * dt
    end select
 
 end function
 
 function cut_timewindow(t, f, timewindow)
-   real(kind=sp), intent(in)  :: t(:), f(:,:)
+   real(kind=dp), intent(in)  :: t(:), f(:,:)
    real(kind=sp), intent(in)  :: timewindow(2)
    real(kind=sp), allocatable :: cut_timewindow(:,:)
    real(kind=sp), allocatable :: cut_timewindow_temp(:,:)
