@@ -1,5 +1,5 @@
 module readfields
-    use global_parameters, only            : sp, dp, pi
+    use global_parameters, only            : sp, dp, pi, deg2rad
     use type_parameter, only               : src_param_type, rec_param_type, parameter_type
     use buffer, only                       : buffer_type
     use netcdf
@@ -10,20 +10,24 @@ module readfields
     type meshtype
         real(kind=sp), allocatable        :: s(:), z(:)
         integer                           :: npoints
+        real(kind=dp), allocatable        :: theta(:)
+        integer                           :: nsurfelem
     end type
 
     type ncparamtype
         integer                           :: ncid
-        integer                           :: snap, surf, mesh  ! Group IDs
+        integer                           :: snap, surf, mesh        ! Group IDs
         integer                           :: straintrace, dev_strain ! Variable IDs
+        integer                           :: seis_disp, seis_velo    ! Variable IDs
         character(len=200)                :: meshdir
-        integer                           :: ndumps
+        integer                           :: ndumps, nseis
         logical                           :: ordered_output
         type(buffer_type)                 :: buffer
         real(kind=sp)                     :: dt
+        real(kind=dp)                     :: amplitude
     end type
 
-    type netcdf_type
+    type semdata_type
         private
 
         integer                           :: nsim_fwd, nsim_bwd
@@ -38,9 +42,12 @@ module readfields
         logical                           :: files_open
         logical                           :: meshes_read
         logical                           :: kdtree_built
-        real(kind=sp), public             :: dt
-        integer,       public             :: ndumps
-        real(kind=sp), public             :: windowlength
+        real(kind=dp), public             :: dt
+        integer,       public             :: ndumps, decimate_factor
+        integer,       public             :: nseis ! ndumps * decimate_factor
+        real(kind=dp), public             :: windowlength
+         
+        real(kind=dp), dimension(3,3)     :: rot_mat, trans_rot_mat
 
         contains 
             procedure, pass               :: set_params
@@ -51,6 +58,7 @@ module readfields
             procedure, pass               :: load_fw_points
             procedure, pass               :: load_bw_points
             procedure, pass               :: close_files
+            procedure, pass               :: load_seismogram
 
     end type
 
@@ -59,7 +67,7 @@ module readfields
 contains
 
 subroutine set_params(this, parameters)
-    class(netcdf_type)            :: this
+    class(semdata_type)           :: this
     class(parameter_type)         :: parameters
     integer                       :: isim
 
@@ -99,7 +107,7 @@ end subroutine
 !-------------------------------------------------------------------------------
 subroutine open_files(this)
 
-    class(netcdf_type)               :: this
+    class(semdata_type)               :: this
     integer                          :: status, isim
     character(len=200)               :: format20, format21, filename
 
@@ -131,9 +139,12 @@ subroutine open_files(this)
                                   grp_ncid = this%fwd(isim)%snap))
 
         
-        call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
+        call getvarid            (ncid     = this%fwd(isim)%snap,   &
                                   name     = "straintrace",         &
-                                  varid    = this%fwd(isim)%straintrace) )
+                                  varid    = this%fwd(isim)%straintrace) 
+        !call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
+        !                          name     = "straintrace",         &
+        !                          varid    = this%fwd(isim)%straintrace) )
         write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
         
         if (this%fwd(isim)%ordered_output) then
@@ -150,6 +161,24 @@ subroutine open_files(this)
                                  name      = "Surface",             &
                                  grp_ncid  = this%fwd(isim)%surf))
 
+
+
+        !call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
+        !                          name     = "displacement",         &
+        !                          varid    = this%fwd(isim)%seis_disp) )
+        !
+        !call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
+        !                          name     = "velocity",            &
+        !                          varid    = this%fwd(isim)%seis_velo) )
+        call getvarid(ncid     = this%fwd(isim)%surf,   &
+                      name     = "displacement",         &
+                      varid    = this%fwd(isim)%seis_disp) 
+        
+        call getvarid(ncid     = this%fwd(isim)%surf,   &
+                                 name     = "velocity",            &
+                                 varid    = this%fwd(isim)%seis_velo) 
+
+
         call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,   &
                                  name      = "Mesh",                &
                                  grp_ncid  = this%fwd(isim)%mesh))
@@ -161,6 +190,10 @@ subroutine open_files(this)
         call nc_read_att_real(    this%fwd(isim)%dt,               &
                                   'strain dump sampling rate in sec', &
                                   this%fwd(isim))
+
+        call nc_read_att_int(    this%fwd(isim)%nseis,             &
+                                 'length of seismogram  in time samples', &
+                                 this%fwd(isim))
 
     end do
         
@@ -183,9 +216,12 @@ subroutine open_files(this)
                                   name     = "Snapshots",           &
                                   grp_ncid = this%bwd(isim)%snap))
 
-        call check(nf90_inq_varid(ncid     = this%bwd(isim)%snap,   &
-                                  name     = "straintrace",         &
-                                  varid    = this%bwd(isim)%straintrace) )
+        !call check(nf90_inq_varid(ncid     = this%bwd(isim)%snap,   &
+        !                          name     = "straintrace",         &
+        !                          varid    = this%bwd(isim)%straintrace) )
+        call getvarid(ncid     = this%bwd(isim)%snap,   &
+                      name     = "straintrace",         &
+                      varid    = this%bwd(isim)%straintrace) 
         write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
         
         if (this%bwd(isim)%ordered_output) then
@@ -206,6 +242,10 @@ subroutine open_files(this)
                                   grp_ncid = this%bwd(isim)%mesh))
         call nc_read_att_int(     this%bwd(isim)%ndumps,            &
                                   'number of strain dumps',         &
+                                  this%bwd(isim))
+
+        call nc_read_att_int(     this%bwd(isim)%nseis,             &
+                                  'length of seismogram  in time samples', &
                                   this%bwd(isim))
 
         call nc_read_att_real(    this%bwd(isim)%dt,                &
@@ -230,7 +270,7 @@ end subroutine open_files
 
 !-------------------------------------------------------------------------------
 subroutine close_files(this)
-    class(netcdf_type)   :: this
+    class(semdata_type)   :: this
     integer              :: status, isim
 
     do isim = 1, this%nsim_fwd
@@ -253,11 +293,11 @@ end subroutine close_files
 !------------------------------------------------------------------------------
 subroutine check_consistency(this)
     !< Checks consistency of the wavefield dumps
-    class(netcdf_type)                :: this
+    class(semdata_type)                :: this
     integer                           :: isim
-    real(kind=sp)                     :: dt_agreed
+    real(kind=dp)                     :: dt_agreed
     character(len=512)                :: fmtstring
-    integer                           :: ndumps_agreed
+    integer                           :: ndumps_agreed, nseis_agreed
 
     ! Check whether the sampling period is the same in all files
     dt_agreed = this%fwd(1)%dt
@@ -283,6 +323,7 @@ subroutine check_consistency(this)
     this%dt = dt_agreed
 
     ndumps_agreed = this%fwd(1)%ndumps
+    nseis_agreed  = this%fwd(1)%nseis
 
 
     ! Check whether the number of dumps (time samples) is the same in all files
@@ -293,7 +334,12 @@ subroutine check_consistency(this)
           write(*,fmtstring) 'ndumps', isim, ndumps_agreed, this%fwd(isim)%ndumps
           stop
        end if
+       if (nseis_agreed.ne.this%fwd(1)%nseis) then
+          write(*,fmtstring) 'nseis', isim, nseis_agreed, this%fwd(isim)%nseis
+          stop
+       end if
     end do
+
 
     fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
                 '  in simulation ", I1, "(",I7,"s) vs ", I7, " in the forward case")' 
@@ -303,17 +349,24 @@ subroutine check_consistency(this)
           write(*,fmtstring) 'ndumps', isim, ndumps_agreed, this%bwd(isim)%ndumps
           stop
        end if
+       if (nseis_agreed.ne.this%bwd(1)%nseis) then
+          write(*,fmtstring) 'nseis', isim, nseis_agreed, this%bwd(isim)%nseis
+          stop
+       end if
     end do
 
     this%ndumps = ndumps_agreed
     this%windowlength = ndumps_agreed * dt_agreed
+
+    this%decimate_factor = nseis_agreed / ndumps_agreed
+    this%nseis  = ndumps_agreed * this%decimate_factor        
 
 end subroutine
 
 !-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
     use sorting, only                  : mergesort_3
-    class(netcdf_type)                :: this
+    class(semdata_type)                :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type)              :: source_params
     real(kind=sp)                     :: load_fw_points(this%fwd(1)%ndumps, &
@@ -403,13 +456,81 @@ function load_fw_points(this, coordinates, source_params)
 end function load_fw_points
 
 !-------------------------------------------------------------------------------
+function load_seismogram(this, receiver, src)
+!< This function loads a seismogram and samples it down to the dump rate of 
+!! the kernel wavefields (usually a factor around 10).
+   class(semdata_type)      :: this
+   type(rec_param_type)     :: receiver
+   type(src_param_type)     :: src
+   real(kind=sp)            :: load_seismogram(this%ndumps)
+   real(kind=sp)            :: seismogram_hr(this%nseis)
+   real(kind=dp)            :: utemp(this%nseis)
+   real(kind=dp)            :: Mij_scale(6), mij_prefact(4)
+   integer                  :: reccomp, isurfelem, iseis, isim
+   
+   Mij_scale = src%mij / this%fwd(1)%amplitude
+   
+   select case(receiver%component)
+   case('Z')
+      mij_prefact(1) = Mij_scale(1)
+      mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
+      mij_prefact(3) =   Mij_scale(4) * cos(receiver%phi) &
+                       + Mij_scale(5) * sin(receiver%phi)
+      mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receiver%phi)  &
+                       + 2. * Mij_scale(6) * sin(2. * receiver%phi) 
+      reccomp = 1
+   case('T')
+      mij_prefact(1) = 0.0
+      mij_prefact(2) = 0.0
+      mij_prefact(3) = - Mij_scale(4) * sin(receiver%phi) &
+                       + Mij_scale(5) * cos(receiver%phi)
+      mij_prefact(4) =  (Mij_scale(3) - Mij_scale(2)) * sin(2. * receiver%phi) &
+                       + 2. * Mij_scale(6)            * cos(2. * receiver%phi)
+      reccomp = 2
+   case('R')
+      mij_prefact(1) = Mij_scale(1)
+      mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
+      mij_prefact(3) =   Mij_scale(4) * cos(receiver%phi) &
+                       + Mij_scale(5) * sin(receiver%phi)
+      mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receiver%phi)  &
+                       + 2. * Mij_scale(6)            * sin(2. * receiver%phi) 
+      reccomp = 3
+   end select
+   
+   isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receiver%theta), 1 )
+   print *, 'Receiver with theta ', receiver%theta/deg2rad, ' has element ', isurfelem, &
+            ' with theta: ', this%fwdmesh%theta(isurfelem)
+   
+   seismogram_hr = 0.0
+   
+   do isim = 1, this%nsim_fwd
+      call check( nf90_get_var( ncid  = this%fwd(isim)%snap,        & 
+                                varid = this%fwd(isim)%seis_velo,   &
+                                start = [1, reccomp, isurfelem],    &
+                                count = [this%nseis, 1, 1],         &
+                                values= utemp) )
+   
+      seismogram_hr = utemp * mij_prefact(isim) + seismogram_hr
+   end do
+   
+   ! Decimate seismogram_hr to get load_seismogram
+   do iseis = 1, this%nseis
+   
+      load_seismogram(iseis) = sum( seismogram_hr( (iseis-1)*this%decimate_factor+1:& 
+                                                   iseis*this%decimate_factor) ) & 
+                               / this%decimate_factor
+   end do
+
+end function load_seismogram
+
+!-------------------------------------------------------------------------------
 function load_bw_points(this, coordinates, receiver)
     use sorting, only                               : mergesort_3
-    class(netcdf_type)                             :: this
+    class(semdata_type)                             :: this
     real(kind=dp), intent(in)                      :: coordinates(:,:)
     type(rec_param_type)                           :: receiver
-    real(kind=sp)                                  :: load_bw_points(this%bwd(1)%ndumps, size(coordinates,2))
-    real(kind=sp)                                  :: utemp(this%bwd(1)%ndumps)
+    real(kind=sp)                                  :: load_bw_points(this%ndumps, size(coordinates,2))
+    real(kind=sp)                                  :: utemp(this%ndumps)
     type(kdtree2_result), allocatable              :: nextpoint(:)
 
     integer, dimension(size(coordinates,2))        :: pointid, idx
@@ -515,7 +636,7 @@ end function
 
 !-------------------------------------------------------------------------------
 subroutine build_kdtree(this)
-    class(netcdf_type)         :: this
+    class(semdata_type)         :: this
     real(kind=sp), allocatable :: mesh(:,:)
     integer                    :: ipoint
 
@@ -555,10 +676,9 @@ end subroutine build_kdtree
 
 subroutine read_meshes(this)
     use netcdf
-
-    class(netcdf_type)             :: this
-
-    integer                        :: ncvarid_mesh_s, ncvarid_mesh_z
+    class(semdata_type)    :: this
+    integer                :: ncvarid_mesh_s, ncvarid_mesh_z
+    integer                :: surfdimid, ncvarid_theta
    
     if (.not.this%files_open) then
         print *, 'ERROR in read_meshes(): Files have not been opened!'
@@ -608,15 +728,55 @@ subroutine read_meshes(this)
                     varid = ncvarid_mesh_z) 
 
     call check( nf90_get_var(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_s, &
+                             varid  = ncvarid_mesh_s,   &
                              values = this%bwdmesh%s )) 
     call check( nf90_get_var(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_z, &
+                             varid  = ncvarid_mesh_z,   &
                              values = this%bwdmesh%z )) 
 
+   
+   ! Read surface element theta
+   ! Forward mesh
+   call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
+                               name  = 'surf_elems',     &
+                               dimid = surfdimid) ) 
+
+   call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
+                                      dimid = surfdimid,               &
+                                      len   = this%fwdmesh%nsurfelem) )
+
+   call  getvarid( ncid  = this%fwd(1)%surf, &
+                   name  = "elem_theta",     &
+                   varid = ncvarid_theta) 
+
+   allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
+   call check( nf90_get_var( ncid   = this%fwd(1)%surf,    &
+                             varid  = ncvarid_theta,       &
+                             values = this%fwdmesh%theta) )
+   
+   ! Backward mesh
+   call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
+                               name  = 'surf_elems',     &
+                               dimid = surfdimid) ) 
+
+   call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
+                                      dimid = surfdimid,               &
+                                      len   = this%fwdmesh%nsurfelem) )
+
+   call  getvarid(ncid  = this%bwd(1)%surf, &
+                  name  = "elem_theta",     &
+                  varid = ncvarid_theta) 
+
+   allocate( this%bwdmesh%theta(this%fwdmesh%nsurfelem) )
+   call check( nf90_get_var( ncid   = this%bwd(1)%surf,    &
+                             varid  = ncvarid_theta,       &
+                             values = this%bwdmesh%theta) )
+                             
+
+                                   
     this%meshes_read = .true.
 
-end subroutine
+end subroutine read_meshes
  
 
 !-------------------------------------------------------------------------------
@@ -751,12 +911,8 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
        endif
        if (phigr==0.0 .and. rgd(2,ipt)==0.0)  phird(ipt)=0.
     enddo
-
-    write(6,*)'Done with rotating frame rd.'
-
 end subroutine rotate_frame_rd
 !-------------------------------------------------------------------------------
 
-
-
+!=============================================================================
 end module
