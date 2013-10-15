@@ -1,14 +1,15 @@
 PROG=test_ftnunit
 
 SRCS =	buffer.f90 calc_kernels.f90 fft_type.f90 filtering.f90 \
-	global_parameters.f90 inv_mesh.f90 kdtree2.f90 master_slave.f90 \
-	mc_integration.f90 random_tetrahedron.f90 readfields.f90 sorting.f90 \
-	struct_allo.f90 type_parameter.f90
+	global_parameters.f90 inv_mesh.f90 kdtree2.f90 kernel.f90 \
+	master_slave.f90 mc_integration.f90 random_tetrahedron.f90 \
+	readfields.f90 sorting.f90 sourceandreceiver.f90 struct_allo.f90 \
+	type_parameter.f90
 
 OBJS =	buffer.o calc_kernels.o fft_type.o filtering.o global_parameters.o \
-	inv_mesh.o kdtree2.o master_slave.o mc_integration.o \
-	random_tetrahedron.o readfields.o sorting.o struct_allo.o \
-	type_parameter.o
+	inv_mesh.o kdtree2.o kernel.o master_slave.o mc_integration.o \
+	random_tetrahedron.o readfields.o sorting.o sourceandreceiver.o \
+	struct_allo.o type_parameter.o
 
 #Example to include specific netcdf libraries: 
 LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib 
@@ -46,17 +47,20 @@ clean:
 
 buffer.o: global_parameters.o Makefile 
 calc_kernels.o: fft_type.o filtering.o global_parameters.o inv_mesh.o \
-	random_tetrahedron.o readfields.o type_parameter.o Makefile 
+	kernel.o mc_integration.o random_tetrahedron.o readfields.o \
+	type_parameter.o Makefile 
 fft_type.o: global_parameters.o  Makefile 
 filtering.o: global_parameters.o Makefile 
 global_parameters.o:  Makefile 
 inv_mesh.o: global_parameters.o type_parameter.o Makefile 
 kdtree2.o: kdtree2.o Makefile 
+kernel.o: filtering.o global_parameters.o Makefile 
 master_slave.o: global_parameters.o master_slave.o Makefile 
 mc_integration.o: global_parameters.o Makefile 
 random_tetrahedron.o: global_parameters.o Makefile 
 readfields.o: buffer.o global_parameters.o kdtree2.o sorting.o \
 	type_parameter.o Makefile 
 sorting.o: global_parameters.o Makefile 
+sourceandreceiver.o: global_parameters.o sourceandreceiver.o Makefile 
 struct_allo.o:  Makefile 
-type_parameter.o: global_parameters.o Makefile 
+type_parameter.o: global_parameters.o sourceandreceiver.o Makefile 

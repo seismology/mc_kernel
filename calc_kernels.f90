@@ -45,14 +45,11 @@ use kernel,                      only: kernelspec_type
     nvertices = inversion_mesh%get_nvertices()
     nelems  = inversion_mesh%get_nelements()
 
-    !allocate(element_points(3,4,nelems))
-    !
-    !element_points = inversion_mesh%get_elements()
     allocate(co_points(3,nptperstep))
     co_points = inversion_mesh%get_vertices()
 
     ! Set testing parameters
-    parameters%allowed_error = 1e-15
+    parameters%allowed_error = 1e-06
 
     call parameters%source%init(lat = 30.d0,   &
                                 lon = -90.d0,  &
@@ -60,16 +57,12 @@ use kernel,                      only: kernelspec_type
 
     allocate(parameters%receiver(1))
 
-    parameters%receiver(1)%component = 'Z'
+    call parameters%receiver(1)%init(lat       = -30.0, &
+                                     lon       = -90.0, &
+                                     component = 'Z')
 
-    parameters%receiver(1)%latd   = -30
-    parameters%receiver(1)%lond   = -90
-    parameters%receiver(1)%colatd = 90 - parameters%receiver(1)%latd
 
-    parameters%receiver(1)%colat = parameters%receiver(1)%colatd * deg2rad
-    parameters%receiver(1)%lon   = parameters%receiver(1)%lond   * deg2rad
-
-    call parameters%receiver(1)%rotate_receiver(parameters%source)
+    call parameters%receiver(1)%rotate_receiver(parameters%source%trans_rot_mat)
 
     parameters%nsim_fwd = 4
     parameters%nsim_bwd = 1
@@ -97,12 +90,6 @@ use kernel,                      only: kernelspec_type
     df     = fft_data%get_df()
     print *, 'ntimes: ', ntimes, ', nomega: ', nomega
     print *, 'dt: ', sem_data%dt, ', df: ', df
-
-    allocate(conv_field   (ntimes, nptperstep))
-    allocate(fw_field_fd  (nomega, nptperstep))
-    allocate(bw_field_fd  (nomega, nptperstep))
-    allocate(conv_field_fd(nomega, nptperstep))
-    allocate(conv_field_fd_filt(nomega, nptperstep))
 
     write(*,*) ' Define filters and kernelspecs'
     filtername = 'Gabor'
@@ -150,21 +137,14 @@ use kernel,                      only: kernelspec_type
        allocate(connectivity(4, nelems))
        allocate(veloseis(ndumps))
        
+       allocate(conv_field   (ntimes, nptperstep))
+       allocate(fw_field_fd  (nomega, nptperstep))
+       allocate(bw_field_fd  (nomega, nptperstep))
+       allocate(conv_field_fd(nomega, nptperstep))
+       allocate(conv_field_fd_filt(nomega, nptperstep))
+
        write(*,*) 'Loading Connectivity'
        connectivity = inversion_mesh%get_connectivity()
-   
-       !do ivertex = 1, nvertices
-       !   nelems  = inversion_mesh%get_valence(ivertex)
-       !   elems   = inversion_mesh%get_connected_elements(ivertex)
-       !   volume  = 0.0
-       !   allocate(random_points(3, npoints * nvertices))
-       !   do ielement = 1, nelems
-       !      co_element = inversion_mesh%get_element(elems(ielement))
-       !      volume = volume + tetra_volume_3d(dble(co_element))
-
-       !      random_points((ielement-1)*npoints+1:ielement*npoints) = &
-       !                   generate_random_point(dble(co_element), npoints)
-       !   end do
 
        veloseis = sem_data%load_seismogram(parameters%receiver(1), parameters%source)
 
@@ -184,16 +164,23 @@ use kernel,                      only: kernelspec_type
              conv_field_fd = fw_field_fd * bw_field_fd
 
              do ikernel = 1, nkernel
+                if (int_kernel%isconverged(ikernel)) cycle
+
+                ! Apply Filter
                 conv_field_fd_filt = kernelspec(ikernel)%filter%apply_2d(conv_field_fd)
 
+                ! Backward FFT
                 call fft_data%irfft(conv_field_fd_filt, conv_field)
 
-                kernelvalue(:,ikernel) = kernelspec(ikernel)%calc_misfit_kernel(fft_data%get_t(), &
-                                                                                conv_field,       &
-                                                                                dble(veloseis))
+                ! Calculate Scalar kernel from convolved time traces
+                kernelvalue(:,ikernel) = &
+                    kernelspec(ikernel)%calc_misfit_kernel(fft_data%get_t(), &
+                                                           conv_field,       &
+                                                           dble(veloseis))
              end do
+             ! Check for convergence
              call int_kernel%check_montecarlo_integral(kernelvalue)
-             print *, 'Converged ? ', int_kernel%areallconverged(), int_kernel%getintegral(), &
+             print '(A,L1,5(E10.3),A,5(E10.3))', 'Converged? ', int_kernel%areallconverged(), int_kernel%getintegral(), &
                       '+-', sqrt(int_kernel%getvariance())
 
           end do
@@ -203,8 +190,12 @@ use kernel,                      only: kernelspec_type
           end do
           if (mod(ielement, 100)==0) then
              write(*,*) 'Write Kernel to disk'
-             call inversion_mesh%set_data_snap(K_x(:,1), 1, 'gabor_20')
-             call inversion_mesh%set_data_snap(K_x(:,2), 2, 'gabor_40')
+             call inversion_mesh%set_data_snap(K_x(:,1), 1, 'P_gabor_20')
+             call inversion_mesh%set_data_snap(K_x(:,2), 2, 'P_gabor_40')
+             call inversion_mesh%set_data_snap(K_x(:,3), 3, 'PcP_gabor_20')
+             call inversion_mesh%set_data_snap(K_x(:,4), 4, 'PKIKP_gabor_20')
+             call inversion_mesh%set_data_snap(K_x(:,5), 5, 'S_gabor_20')
+
              call inversion_mesh%dump_mesh_data_xdmf('gaborkernel')
           end if
        end do
