@@ -13,8 +13,10 @@ module filtering
 
    contains
 
-       procedure, pass   :: create, deleteme
-       procedure, pass   :: apply_1d, apply_2d
+       procedure, pass   :: create
+       procedure, pass   :: deleteme
+       procedure, pass   :: apply_1d
+       procedure, pass   :: apply_2d
        procedure, pass   :: isinitialized
        procedure, pass   :: get_transferfunction
 
