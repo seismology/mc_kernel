@@ -19,6 +19,7 @@ module montecarlo
         procedure, pass                          :: areallconverged
         procedure, pass                          :: getintegral
         procedure, pass                          :: getvariance
+        procedure, pass                          :: isconverged
 
     end type
 
