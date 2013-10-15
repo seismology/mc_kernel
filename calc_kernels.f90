@@ -17,7 +17,7 @@ use kernel,                      only: kernelspec_type
     type(rfft_type)                 :: fft_data
     type(filter_type)               :: gabor40, gabor20 
     type(integrated_type)           :: int_kernel
-    type(kernelspec_type)           :: kernelspec(2)
+    type(kernelspec_type), allocatable :: kernelspec(:)
 
     integer                         :: npoints, nelems, ntimes, nomega
     integer                         :: idump, ipoint, ielement, ndumps
@@ -56,14 +56,14 @@ use kernel,                      only: kernelspec_type
 
     call parameters%source%init(lat = 30.d0,   &
                                 lon = -90.d0,  &
-                                mij = dble([0., 0., 0., 0., 1., 0.] ))
+                                mij = dble([1., 0., 0., 0., 1., 0.] ))
 
     allocate(parameters%receiver(1))
 
     parameters%receiver(1)%component = 'Z'
 
-    parameters%receiver(1)%latd   = 90
-    parameters%receiver(1)%lond   = 0
+    parameters%receiver(1)%latd   = -30
+    parameters%receiver(1)%lond   = -90
     parameters%receiver(1)%colatd = 90 - parameters%receiver(1)%latd
 
     parameters%receiver(1)%colat = parameters%receiver(1)%colatd * deg2rad
@@ -107,21 +107,38 @@ use kernel,                      only: kernelspec_type
     write(*,*) ' Define filters and kernelspecs'
     filtername = 'Gabor'
     call gabor40%create(df, nomega, filtername, [40.0, 0.5, 0., 0.])
+    call gabor20%create(df, nomega, filtername, [20.0, 0.5, 0., 0.])
+
+    nkernel =  5
+    allocate(kernelspec(nkernel))
 
     call kernelspec(1)%init(time_window     = [590.0, 650.0], &
                             filter          = gabor40,        &
                             misfit_type     = 'CC  ',         &  
                             model_parameter = 'vp  ')
 
-    call gabor20%create(df, nomega, filtername, [20.0, 0.5, 0., 0.])
 
     call kernelspec(2)%init(time_window     = [590.0, 620.0], &
                             filter          = gabor20,        &
                             misfit_type     = 'CC  ',         &  
                             model_parameter = 'vp  ')
 
+    call kernelspec(3)%init(time_window     = [635.0, 665.0], &
+                            filter          = gabor20,        &
+                            misfit_type     = 'CC  ',         &  
+                            model_parameter = 'vp  ')
+
+    call kernelspec(4)%init(time_window     = [1015.0, 1045.0], &
+                            filter          = gabor20,        &
+                            misfit_type     = 'CC  ',         &  
+                            model_parameter = 'vp  ')
+
+    call kernelspec(5)%init(time_window     = [1075.0, 1105.0], &
+                            filter          = gabor20,        &
+                            misfit_type     = 'CC  ',         &  
+                            model_parameter = 'vp  ')
+
     whattodo = 'integratekernel'
-    nkernel = 2
     select case(trim(whattodo))
     case('integratekernel')
        write(*,*) 'Initialize output file'

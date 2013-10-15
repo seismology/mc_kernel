@@ -464,12 +464,15 @@ function load_seismogram(this, receiver, src)
    type(src_param_type)     :: src
    real(kind=sp)            :: load_seismogram(this%ndumps)
    real(kind=sp)            :: seismogram_hr(this%nseis)
-   real(kind=dp)            :: utemp(this%nseis)
-   real(kind=dp)            :: Mij_scale(6), mij_prefact(4)
+   real(kind=sp)            :: utemp(this%nseis)
+   real(kind=sp)            :: Mij_scale(6), mij_prefact(4)
    integer                  :: reccomp, isurfelem, iseis, isim
    
-   Mij_scale = src%mij / this%fwd(1)%amplitude
-   
+   Mij_scale = src%mij !/ this%fwd(1)%amplitude
+  
+   print '(A,F8.4,A,F8.4)', 'Receiver theta:', receiver%theta/deg2rad, ', phi: ', receiver%phi/deg2rad
+   print '(A,6(F8.5,/))',     'Mij:       ', src%mij
+   print '(A,6(F8.5,/))',     'Mij_scale: ', Mij_scale
    select case(receiver%component)
    case('Z')
       mij_prefact(1) = Mij_scale(1)
@@ -498,13 +501,16 @@ function load_seismogram(this, receiver, src)
    end select
    
    isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receiver%theta), 1 )
-   print *, 'Receiver with theta ', receiver%theta/deg2rad, ' has element ', isurfelem, &
-            ' with theta: ', this%fwdmesh%theta(isurfelem)
+   print '(A,F8.4,A,I5,A,F8.4)', 'Receiver with theta ', receiver%theta/deg2rad, ' has element ', isurfelem, &
+                                 ' with theta: ', this%fwdmesh%theta(isurfelem)
    
    seismogram_hr = 0.0
+
+   print '(A,4(F8.5))', 'Mij prefactors: ', mij_prefact
    
    do isim = 1, this%nsim_fwd
-      call check( nf90_get_var( ncid  = this%fwd(isim)%snap,        & 
+      print '(A,I5,A,I2,A,I6)', 'Read element', isurfelem, ', component: ', reccomp, ', no of samples:', this%nseis
+      call check( nf90_get_var( ncid  = this%fwd(isim)%surf,        & 
                                 varid = this%fwd(isim)%seis_velo,   &
                                 start = [1, reccomp, isurfelem],    &
                                 count = [this%nseis, 1, 1],         &
@@ -513,13 +519,19 @@ function load_seismogram(this, receiver, src)
       seismogram_hr = utemp * mij_prefact(isim) + seismogram_hr
    end do
    
-   ! Decimate seismogram_hr to get load_seismogram
-   do iseis = 1, this%nseis
-   
-      load_seismogram(iseis) = sum( seismogram_hr( (iseis-1)*this%decimate_factor+1:& 
-                                                   iseis*this%decimate_factor) ) & 
-                               / this%decimate_factor
-   end do
+   !! Decimate seismogram_hr to get load_seismogram
+   !do iseis = 1, this%ndumps
+   !
+   !   load_seismogram(iseis) = sum( seismogram_hr( (iseis-1)*this%decimate_factor+1:& 
+   !                                                iseis*this%decimate_factor) ) & 
+   !                            / this%decimate_factor
+   !end do
+
+   ! Is written out with the same sampling rate as the kernel wavefields in the solver
+   load_seismogram = seismogram_hr(1:this%ndumps)
+
+   !write(20,*) load_seismogram
+   !write(21,*) seismogram_hr(1:this%ndumps)
 
 end function load_seismogram
 
