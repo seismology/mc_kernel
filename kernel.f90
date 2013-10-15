@@ -31,6 +31,9 @@ subroutine init(this, time_window, filter, misfit_type, model_parameter)
    character(len=4), intent(in)            :: misfit_type
    character(len=4), intent(in)            :: model_parameter
 
+   if(this%initialized) then
+      stop 'This kernel is already initialized'
+   end if
    this%time_window       = time_window
    this%filter            => filter
    this%misfit_type       = misfit_type
@@ -56,34 +59,39 @@ function calc_misfit_kernel(this, t, timeseries, veloseis)
    real(kind=dp), intent(in)               :: timeseries(:,:), t(:), veloseis(:)
    real(kind=sp)                           :: calc_misfit_kernel(size(timeseries,2))
    real(kind=sp)                           :: dt
-   integer                                 :: lenseis
+   integer                                 :: lenseis, itrace, ntrace
 
    lenseis = size(veloseis,1)
+   ntrace  = size(timeseries,2)
 
    select case(trim(this%misfit_type))
    case('CC')
       dt = t(2) - t(1)
-      calc_misfit_kernel = sum(  cut_timewindow(t, timeseries,          &
-                                                this%time_window)       & 
-                               * cut_timewindow(t(1:lenseis),          &
-                                                reshape(veloseis, [lenseis,1]),              &
-                                                this%time_window), 1)  &
-                           * dt
+      do itrace = 1, ntrace
+         
+         calc_misfit_kernel(itrace) = sum(  cut_timewindow(t,                               &
+                                                           timeseries(:, itrace),           &
+                                                           this%time_window)                & 
+                                          * cut_timewindow(t(1:lenseis),                    &
+                                                           veloseis,  &
+                                                           this%time_window), 1)            &
+                                      * dt
+         !print *, 'Kernel value: ', calc_misfit_kernel(itrace), ', dt:', dt
+      end do
    end select
 
 end function
 
 function cut_timewindow(t, f, timewindow)
-   real(kind=dp), intent(in)  :: t(:), f(:,:)
+   real(kind=dp), intent(in)  :: t(:), f(:)
    real(kind=sp), intent(in)  :: timewindow(2)
-   real(kind=sp), allocatable :: cut_timewindow(:,:)
-   real(kind=sp), allocatable :: cut_timewindow_temp(:,:)
+   real(kind=sp), allocatable :: cut_timewindow(:)
+   real(kind=sp), allocatable :: cut_timewindow_temp(:)
    integer                    :: ntimes, i, iintimewindow
    integer                    :: ntraces
    real(kind=sp)              :: dt
    
    ntimes = size(t)
-   ntraces = size(f,2)
    dt = t(2) - t(1)
    if(timewindow(1).lt.t(1)) then
       write(*,*) 'Time window starts before beginning of time series'
@@ -102,20 +110,20 @@ function cut_timewindow(t, f, timewindow)
       stop
    end if
 
-   allocate(cut_timewindow_temp(ntimes, ntraces))
+   allocate(cut_timewindow_temp(ntimes))
    iintimewindow = 0
    do i = 1, ntimes
       if (t(i).le.timewindow(2).and.t(i).ge.timewindow(1)) then
          iintimewindow = iintimewindow + 1
-         cut_timewindow_temp(iintimewindow,:) = f(i,:)
+         cut_timewindow_temp(iintimewindow) = f(i)
       end if
       if (t(i).gt.timewindow(2)) exit
    end do
 
    if (allocated(cut_timewindow)) deallocate(cut_timewindow)
-   allocate(cut_timewindow(iintimewindow, ntraces))
+   allocate(cut_timewindow(iintimewindow))
 
-   cut_timewindow(:,:) = cut_timewindow_temp(1:iintimewindow, :)
+   cut_timewindow(:) = cut_timewindow_temp(1:iintimewindow)
    
 
 end function
