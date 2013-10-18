@@ -21,6 +21,8 @@ module readfields
         integer                           :: seis_disp, seis_velo    ! Variable IDs
         character(len=200)                :: meshdir
         integer                           :: ndumps, nseis
+        integer                           :: source_shift_samples    
+        real(kind=sp)                     :: source_shift_t
         logical                           :: ordered_output
         type(buffer_type)                 :: buffer
         real(kind=sp)                     :: dt
@@ -195,6 +197,13 @@ subroutine open_files(this)
                                  'length of seismogram  in time samples', &
                                  this%fwd(isim))
 
+        call nc_read_att_real(   this%fwd(isim)%source_shift_t, &
+                                 'source shift factor in sec',     &
+                                 this%fwd(isim))
+        
+        call nc_read_att_int(    this%fwd(isim)%source_shift_samples,    &
+                                 'source shift factor for deltat_coarse',     &
+                                 this%fwd(isim))
     end do
         
 
@@ -251,6 +260,14 @@ subroutine open_files(this)
         call nc_read_att_real(    this%bwd(isim)%dt,                &
                                   'strain dump sampling rate in sec', &
                                   this%bwd(isim))
+        
+        call nc_read_att_real(   this%bwd(isim)%source_shift_t, &
+                                 'source shift factor in sec',     &
+                                 this%bwd(isim))
+        
+        call nc_read_att_int(    this%bwd(isim)%source_shift_samples,    &
+                                 'source shift factor for deltat_coarse',     &
+                                 this%bwd(isim))
     end do
 
 
@@ -661,14 +678,9 @@ subroutine build_kdtree(this)
     allocate(mesh(2, this%fwdmesh%npoints))
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
 
-    !do ipoint = 1, this%fwdmesh%npoints
-    !   write(41,*) mesh(:,ipoint)
-    !   write(42,*) this%fwdmesh%s(ipoint), this%fwdmesh%z(ipoint)
     !end do
     write(*,*) 'Building forward KD-Tree'
     ! KDtree in forward field
-    !this%fwdtree => kdtree2_create(reshape([this%fwdmesh%s, this%fwdmesh%z], &
-    !                                       [2, this%fwdmesh%npoints]    ),&
     this%fwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
                                    sort = .true.,     &
