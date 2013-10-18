@@ -37,7 +37,7 @@ use kernel,                      only: kernelspec_type
     integer, allocatable            :: connectivity(:,:)
     character(len=32)               :: filtername, whattodo
 
-    integer, parameter              :: nptperstep = 10
+    integer, parameter              :: nptperstep = 50
 
 
     call inversion_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
@@ -49,7 +49,7 @@ use kernel,                      only: kernelspec_type
     co_points = inversion_mesh%get_vertices()
 
     ! Set testing parameters
-    parameters%allowed_error = 1e-06
+    parameters%allowed_error = 1e-00
 
     call parameters%source%init(lat = 30.d0,   &
                                 lon = -90.d0,  &
@@ -96,34 +96,52 @@ use kernel,                      only: kernelspec_type
     call gabor40%create(df, nomega, filtername, [40.0, 0.5, 0., 0.])
     call gabor20%create(df, nomega, filtername, [20.0, 0.5, 0., 0.])
 
-    nkernel =  5
+    nkernel =  4
     allocate(kernelspec(nkernel))
+    allocate(veloseis(ndumps))
+    veloseis = sem_data%load_seismogram(parameters%receiver(1), parameters%source)
+
+    write(30,*) veloseis
 
     call kernelspec(1)%init(time_window     = [590.0, 650.0], &
                             filter          = gabor40,        &
                             misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ')
-
+                            model_parameter = 'vp  ',         &
+                            veloseis        = veloseis,       &
+                            dt              = sem_data%dt)
+    write(31,*) kernelspec(1)%veloseis
 
     call kernelspec(2)%init(time_window     = [590.0, 620.0], &
                             filter          = gabor20,        &
                             misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ')
+                            model_parameter = 'vp  ',         &
+                            veloseis        = veloseis,       &
+                            dt              = sem_data%dt)
+    write(32,*) kernelspec(2)%veloseis
 
     call kernelspec(3)%init(time_window     = [635.0, 665.0], &
                             filter          = gabor20,        &
                             misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ')
+                            model_parameter = 'vp  ',         &
+                            veloseis        = veloseis,       &
+                            dt              = sem_data%dt)
+    write(33,*) kernelspec(3)%veloseis
 
     call kernelspec(4)%init(time_window     = [1015.0, 1045.0], &
                             filter          = gabor20,        &
                             misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ')
+                            model_parameter = 'vp  ',         &
+                            veloseis        = veloseis,       &
+                            dt              = sem_data%dt)
+    write(34,*) kernelspec(4)%veloseis
 
-    call kernelspec(5)%init(time_window     = [1075.0, 1105.0], &
-                            filter          = gabor20,        &
-                            misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ')
+!    call kernelspec(5)%init(time_window     = [1075.0, 1105.0], &
+!                            filter          = gabor20,        &
+!                            misfit_type     = 'CC  ',         &  
+!                            model_parameter = 'vp  ',         &
+!                            veloseis        = veloseis,       &
+!                            dt              = sem_data%dt)
+!    write(35,*) kernelspec(5)%veloseis
 
     whattodo = 'integratekernel'
     select case(trim(whattodo))
@@ -135,7 +153,6 @@ use kernel,                      only: kernelspec_type
        allocate(K_x(nvertices, nkernel))
        allocate(kernelvalue(nptperstep, nkernel))
        allocate(connectivity(4, nelems))
-       allocate(veloseis(ndumps))
        
        allocate(conv_field   (ntimes, nptperstep))
        allocate(fw_field_fd  (nomega, nptperstep))
@@ -146,12 +163,12 @@ use kernel,                      only: kernelspec_type
        write(*,*) 'Loading Connectivity'
        connectivity = inversion_mesh%get_connectivity()
 
-       veloseis = sem_data%load_seismogram(parameters%receiver(1), parameters%source)
 
        write (*,*) 'Start loop over elements'
        do ielement = 1, nelems
           co_element = inversion_mesh%get_element(ielement)
-          volume = volume + tetra_volume_3d(dble(co_element))
+          volume = tetra_volume_3d(dble(co_element))
+          
           call int_kernel%initialize_montecarlo(nkernel, volume, parameters%allowed_error) 
          
           do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
@@ -175,13 +192,12 @@ use kernel,                      only: kernelspec_type
                 ! Calculate Scalar kernel from convolved time traces
                 kernelvalue(:,ikernel) = &
                     kernelspec(ikernel)%calc_misfit_kernel(fft_data%get_t(), &
-                                                           conv_field,       &
-                                                           dble(veloseis))
+                                                           conv_field)
              end do
              ! Check for convergence
              call int_kernel%check_montecarlo_integral(kernelvalue)
-             print '(A,L1,5(E10.3),A,5(E10.3))', 'Converged? ', int_kernel%areallconverged(), int_kernel%getintegral(), &
-                      '+-', sqrt(int_kernel%getvariance())
+             print '(I6,E11.3,A,L1,4(E11.3),A,4(E11.3))', ielement, volume, ' Converged? ', int_kernel%areallconverged(), &
+                                                    int_kernel%getintegral(), '+-', sqrt(int_kernel%getvariance())
 
           end do
          
@@ -194,7 +210,7 @@ use kernel,                      only: kernelspec_type
              call inversion_mesh%set_data_snap(K_x(:,2), 2, 'P_gabor_40')
              call inversion_mesh%set_data_snap(K_x(:,3), 3, 'PcP_gabor_20')
              call inversion_mesh%set_data_snap(K_x(:,4), 4, 'PKIKP_gabor_20')
-             call inversion_mesh%set_data_snap(K_x(:,5), 5, 'S_gabor_20')
+             !call inversion_mesh%set_data_snap(K_x(:,5), 5, 'S_gabor_20')
 
              call inversion_mesh%dump_mesh_data_xdmf('gaborkernel')
           end if
