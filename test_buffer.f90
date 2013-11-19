@@ -31,6 +31,8 @@ subroutine test_buffer_storage
 
 end subroutine
 
+!-----------------------------------------------------------------------------------------
+
 subroutine test_buffer_retrieval
    type(buffer_type)                   :: buffer
    integer, parameter                  :: nbuffer = 100
@@ -38,32 +40,57 @@ subroutine test_buffer_retrieval
    real(kind=sp), dimension(lenbuffer) :: stufftostore, stuffretrieved
    integer                             :: iwrite, status
 
-   status = buffer%init(nbuffer, lenbuffer)
+   status = buffer%init(nbuffer = nbuffer, nvalues = lenbuffer)
 
+   stuffretrieved = 0.0
    call random_number(stufftostore)
 
    ! After ten other writes to the buffer, the data should still be there
    status = buffer%put(1, stufftostore)
    call assert_equal(status, 0, 'Buffer put succeeds')
-   do iwrite = 1, nbuffer/10
+   do iwrite = 2, nbuffer/10
       status = buffer%put(iwrite, stufftostore*iwrite)
+      call assert_equal(status, 0, 'Buffer put succeeds')
    end do
    status = buffer%get(1, stuffretrieved)
    call assert_equal(status, 0, 'Buffer get succeeds')
    call assert_comparable_real1d(stufftostore, stuffretrieved, &
-                                 1e-7, 'Buffer gives data back (5% chance of random failure)')
+                                 1e-7, 'Buffer gives correct data back')
+   status = buffer%freeme()
+
+end subroutine test_buffer_retrieval
+
+!-----------------------------------------------------------------------------------------
+
+subroutine test_buffer_overwrite
+   type(buffer_type)                   :: buffer
+   integer, parameter                  :: nbuffer = 100
+   integer, parameter                  :: lenbuffer = 1000
+   real(kind=sp), dimension(lenbuffer) :: stufftostore, stuffretrieved
+   integer                             :: iwrite, status
+
+   status = buffer%init(nbuffer = nbuffer, nvalues = lenbuffer)
+
+   stuffretrieved = 0.0
+   call random_number(stufftostore)
   
    ! After 1000 other writes to the buffer, the data should be overwritten
+   stuffretrieved = 0.0
    status = buffer%put(1, stufftostore)
    call assert_equal(status, 0, 'Buffer put succeeds')
-   do iwrite = 1, nbuffer*10
+   do iwrite = 2, nbuffer*10
       status = buffer%put(iwrite, stufftostore*iwrite)
+      call assert_equal(status, 0, 'Buffer put succeeds')
    end do
    
    status = buffer%get(1, stuffretrieved)
    call assert_equal(status, -1, 'Buffer overwritten after reasonable time')
 
-end subroutine test_buffer_retrieval
+   status = buffer%freeme()
+
+end subroutine test_buffer_overwrite
+
+!-----------------------------------------------------------------------------------------
 
 
 end module

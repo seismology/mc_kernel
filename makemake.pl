@@ -14,7 +14,7 @@
 #
 open(MAKEFILE, "> Makefile");
 
-print MAKEFILE "PROG=test_ftnunit\n\n";
+print MAKEFILE "PROG = kerner\n\n";
 #
 # Source listing
 #

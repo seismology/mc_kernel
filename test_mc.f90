@@ -3,13 +3,65 @@ module test_montecarlo
 
   use global_parameters
   use montecarlo, only: integrated_type
-  use ftnunit, only   : test, assert_comparable_real1d
+  use ftnunit,    only: test, assert_comparable_real1d
   implicit none
   public
+
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine test_unit_hexagon
+subroutine test_mc_meanandvariance
+    type(integrated_type)            :: mc_integral 
+    integer, parameter               :: N = 10000
+    real(kind=dp)                    :: values(N,1), volume, randa(N), randb(N)
+    real(kind=sp)                    :: variance(1), integral(1), mean_an, variance_an 
+
+    volume = 1.0
+    
+
+    ! Generate values with mean=5 and std=0
+    
+    values(:,1) = 5.0
+
+    call mc_integral%initialize_montecarlo(1, volume, 1e-3)
+    call mc_integral%check_montecarlo_integral(values)
+
+    integral = mc_integral%getintegral()
+    call assert_comparable_real1d(integral, [5.0], 1.e-7, 'Mean == 5.0')
+    variance = mc_integral%getvariance()
+    call assert_comparable_real1d(variance, [0.0], 1.e-7, 'Variance == 0.0')
+
+    call mc_integral%freeme()
+
+
+
+    ! Generate normal distributed values with mean=1 and std=2
+    
+    call random_number(randa)
+    call random_number(randb)
+    ! Produces normal distributed values with mean 1 and std 2
+    values(:,1) = sqrt(-2*log(randa)) * cos(2*pi*randb) * 2.0 + 1.0
+    
+    call mc_integral%initialize_montecarlo(1, volume, 1e-3)
+    call mc_integral%check_montecarlo_integral(values)
+
+    mean_an = sum(values) / N
+    variance_an = sum((values-mean_an)**2) / (N-1)
+    !print *, 'Analytical mean     : ', mean_an
+    !print *, 'Analytical variance : ', variance_an
+
+    integral = mc_integral%getintegral()
+    call assert_comparable_real1d(integral, [mean_an], 1.e-4, 'Mean == 1.0')
+    variance = mc_integral%getvariance()
+    call assert_comparable_real1d(sqrt(variance), [sqrt(variance_an/N)], 1.e-4, 'Error == 2/sqrt(N)')
+
+    call mc_integral%freeme()
+
+end subroutine test_mc_meanandvariance
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_mc_unit_hexagon
     type(integrated_type)                    :: mc_integral 
     integer                                   :: ipoint, iiter
     real(kind=dp), dimension(100,3)            :: coords
@@ -22,11 +74,7 @@ subroutine test_unit_hexagon
 
     volume = (bounds(2) - bounds(1))**3
 
-    !print *, 'In test_unit_hexagon'
-
-    ! Integrate a gaussian function with sigma = 1 over [-5,5]^3
-    
-    call mc_integral%initialize_montecarlo(1, volume, 1e-3)
+    call mc_integral%initialize_montecarlo(1, volume, 5e-4)
 
     iiter = 0
 
@@ -38,17 +86,17 @@ subroutine test_unit_hexagon
         values(:,1) = exp(-sum(coords**2,2)/2) * pitominusthreehalf
         call mc_integral%check_montecarlo_integral(values)
         !print *, 'Value of the integral:', mc_integral%getintegral(), &
-        !         '; Variance:', mc_integral%getvariance()
+        !         '; standard dev.:', sqrt(mc_integral%getvariance())
     end do
  
 
     integral = mc_integral%getintegral()
-    call assert_comparable_real1d(integral, [3.98343E-003], 1e-3, 'Integral == 1')
-end subroutine test_unit_hexagon
+    call assert_comparable_real1d(1+integral, 1+[3.98343E-003], 1e-4, 'Integral == reference value')
+end subroutine test_mc_unit_hexagon
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_sphere_in_tetrahedron
+subroutine test_mc_sphere_in_tetrahedron
     use tetrahedra, only                       : generate_random_point
     type(integrated_type)                     :: mc_integral 
     integer                                   :: ipoint, iiter
@@ -65,11 +113,7 @@ subroutine test_sphere_in_tetrahedron
     vertices(:,4) = [0, 0, 0]
     volume = 1./6.
 
-    !print *, 'In test_unit_hexagon'
-
-    ! Integrate a gaussian function with sigma = 1 over [-5,5]^3
-    
-    call mc_integral%initialize_montecarlo(1, volume, 1e-3)
+    call mc_integral%initialize_montecarlo(1, volume, 2e-4)
 
     iiter = 0
 
@@ -84,15 +128,16 @@ subroutine test_sphere_in_tetrahedron
 
         call mc_integral%check_montecarlo_integral(values)
         !print *, 'Value of the integral:', mc_integral%getintegral(), &
-        !         '; Variance:', mc_integral%getvariance()
+        !         '; std. dev:', sqrt(mc_integral%getvariance())
     end do
  
 
     integral = mc_integral%getintegral()
-    call assert_comparable_real1d(integral, [pi*(1./3.)**(1.5)*real(volume)], &
-                                  1e-2, 'Integral == 1')
-end subroutine test_sphere_in_tetrahedron
+    call assert_comparable_real1d(1+integral, 1+[pi*(1./3.)**(1.5)*real(volume)], &
+                                  1e-3, 'Integral == 1.10076')
+end subroutine test_mc_sphere_in_tetrahedron
 !-----------------------------------------------------------------------------------------
+
 
 end module
 !=========================================================================================

@@ -1,270 +1,447 @@
 program kerner
 
-use global_parameters,           only: sp, dp, pi, deg2rad
-use inversion_mesh,              only: inversion_mesh_data_type
-use readfields,                  only: semdata_type
-use type_parameter,              only: parameter_type
-use tetrahedra,                  only: tetra_volume_3d, generate_random_point
-use fft,                         only: rfft_type, taperandzeropad
-use filtering,                   only: filter_type
-use montecarlo,                  only: integrated_type
-use kernel,                      only: kernelspec_type
+    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed
+    use inversion_mesh,              only: inversion_mesh_data_type
+    use readfields,                  only: semdata_type
+    use type_parameter,              only: parameter_type
+    use tetrahedra,                  only: tetra_volume_3d, generate_random_point
+    use fft,                         only: rfft_type, taperandzeropad
+    use filtering,                   only: timeshift
+    use montecarlo,                  only: integrated_type
+    !use kernel,                      only: kernelspec_type
+
+    use ftnunit,                     only: runtests_init, runtests, runtests_final
+    use unit_tests,                  only: test_all
 
     implicit none
-    type(inversion_mesh_data_type)  :: inversion_mesh
-    type(parameter_type)            :: parameters
-    type(semdata_type)              :: sem_data
-    type(rfft_type)                 :: fft_data
-    type(filter_type)               :: gabor40, gabor20 
-    type(integrated_type)           :: int_kernel
-    type(kernelspec_type), allocatable :: kernelspec(:)
+    type(inversion_mesh_data_type)      :: inversion_mesh
+    type(parameter_type)                :: parameters
+    type(semdata_type)                  :: sem_data
+    type(rfft_type)                     :: fft_data
+    !type(filter_type)                   :: gabor40, gabor20, gabor10
+    type(integrated_type)               :: int_kernel
+    !type(kernelspec_type), allocatable  :: kernelspec(:)
 
-    integer                         :: npoints, nelems, ntimes, nomega
-    integer                         :: idump, ipoint, ielement, ndumps
-    integer                         :: nkernel, ikernel, ivertex, nvertices
-    real(kind=sp), allocatable      :: element_points(:,:,:)
-    real(kind=sp), allocatable      :: co_points(:,:), K_x(:,:), veloseis(:)
-    real(kind=sp), allocatable      :: fw_field(:,:)
-    real(kind=sp), allocatable      :: bw_field(:,:)
-    complex(kind=dp), allocatable   :: fw_field_fd(:,:)
-    complex(kind=dp), allocatable   :: bw_field_fd(:,:)
-    complex(kind=dp), allocatable   :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
-    real(kind=dp), allocatable      :: conv_field(:,:)
-    real(kind=dp), allocatable      :: random_points(:,:), kernelvalue(:,:)
-    real(kind=sp)                   :: co_element(3,4)
-    real(kind=dp)                   :: volume
-    real(kind=sp)                   :: df
-    integer, allocatable            :: connectivity(:,:)
-    character(len=32)               :: filtername, whattodo
+    integer                             :: npoints, nelems, ntimes, nomega
+    integer                             :: idump, ipoint, ielement, ndumps, irec
+    integer                             :: nkernel, ikernel, ivertex, nvertices
+    real(kind=sp),    allocatable       :: element_points(:,:,:)
+    real(kind=sp),    allocatable       :: co_points(:,:), K_x(:,:), veloseis(:)
+    real(kind=sp),    allocatable       :: fw_field(:,:)
+    real(kind=sp),    allocatable       :: bw_field(:,:)
+    complex(kind=dp), allocatable       :: fw_field_fd(:,:)
+    complex(kind=dp), allocatable       :: bw_field_fd(:,:)
+    complex(kind=dp), allocatable       :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
+    real(kind=dp),    allocatable       :: conv_field(:,:)
+    real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:)
+    integer,          allocatable       :: connectivity(:,:), niterations(:,:)
+    real(kind=sp)                       :: co_element(3,4)
+    real(kind=dp)                       :: volume
+    real(kind=dp)                       :: df
+    character(len=32)                   :: filtername, whattodo
+    character(len=64)                   :: fmtstring
 
-    integer, parameter              :: nptperstep = 50
+    integer, parameter                  :: nptperstep = 25, lu_iterations = 400
 
+    verbose = 0
 
-    call inversion_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+    call init_random_seed()
 
-    nvertices = inversion_mesh%get_nvertices()
-    nelems  = inversion_mesh%get_nelements()
+    call runtests_init
+    call runtests( test_all )
+    call runtests_final
 
-    allocate(co_points(3,nptperstep))
-    co_points = inversion_mesh%get_vertices()
+    verbose = 1
 
-    ! Set testing parameters
-    parameters%allowed_error = 1e-00
-
-    call parameters%source%init(lat = 30.d0,   &
-                                lon = -90.d0,  &
-                                mij = dble([1., 0., 0., 0., 1., 0.] ))
-
-    allocate(parameters%receiver(1))
-
-    call parameters%receiver(1)%init(lat       = -30.0, &
-                                     lon       = -90.0, &
-                                     component = 'Z')
+    write(*,*) '***************************************************************'
+    write(*,*) ' Read input files for parameters, source and receivers'
+    write(*,*) '***************************************************************'
+    call parameters%read_parameters('inparam_basic')
+    call parameters%read_source()
+    call parameters%read_receiver()
 
 
-    call parameters%receiver(1)%rotate_receiver(parameters%source%trans_rot_mat)
-
-    parameters%nsim_fwd = 4
-    parameters%nsim_bwd = 1
-
-    !parameters%dir_fwdmesh = 'wavefield_example/fwd/'
-    !parameters%dir_bwdmesh = 'wavefield_example/bwd/'
-    parameters%dir_fwdmesh = 'wavefield_example_10s/fwd'
-    parameters%dir_bwdmesh = 'wavefield_example_10s/bwd/'
-
-    ! Test parameters set
-
-    call sem_data%set_params(parameters)
+    write(*,*) '***************************************************************'
+    write(*,*) ' Initialize and open AxiSEM wavefield files'
+    write(*,*) '***************************************************************'
+    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir)
     call sem_data%open_files()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
 
+    call sem_data%load_seismogram(parameters%receiver, parameters%source)
+
     ndumps = sem_data%ndumps
 
-    allocate(fw_field(ndumps, nptperstep))
-    allocate(bw_field(ndumps, nptperstep))
 
+    write(*,*) '***************************************************************'
+    write(*,*) ' Read inversion mesh'
+    write(*,*) '***************************************************************'
+    call inversion_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+
+    nvertices = inversion_mesh%get_nvertices()
+    nelems    = inversion_mesh%get_nelements()
+    fmtstring = '(A, I8, A, I8)'
+    print fmtstring, '  nvertices: ',  nvertices, ', nelems: ', nelems
+
+    write(*,*) '***************************************************************'
+    write(*,*) ' Initialize FFT'
+    write(*,*) '***************************************************************'
     call fft_data%init(ndumps, nptperstep, sem_data%dt)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()
-    print *, 'ntimes: ', ntimes, ', nomega: ', nomega
-    print *, 'dt: ', sem_data%dt, ', df: ', df
+    fmtstring = '(A, I8, A, I8)'
+    print fmtstring, '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
+    fmtstring = '(A, F8.3, A, F8.3, A)'
+    print fmtstring, '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
-    write(*,*) ' Define filters and kernelspecs'
-    filtername = 'Gabor'
-    call gabor40%create(df, nomega, filtername, [40.0, 0.5, 0., 0.])
-    call gabor20%create(df, nomega, filtername, [20.0, 0.5, 0., 0.])
 
-    nkernel =  4
-    allocate(kernelspec(nkernel))
-    allocate(veloseis(ndumps))
-    veloseis = sem_data%load_seismogram(parameters%receiver(1), parameters%source)
+    write(*,*) '***************************************************************'
+    write(*,*) ' Define filters'
+    write(*,*) '***************************************************************'
+    
+    call parameters%read_filter(nomega, df)
 
-    write(30,*) veloseis
 
-    call kernelspec(1)%init(time_window     = [590.0, 650.0], &
-                            filter          = gabor40,        &
-                            misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ',         &
-                            veloseis        = veloseis,       &
-                            dt              = sem_data%dt)
-    write(31,*) kernelspec(1)%veloseis
+    write(*,*) '***************************************************************'
+    write(*,*) ' Define kernels'
+    write(*,*) '***************************************************************'
 
-    call kernelspec(2)%init(time_window     = [590.0, 620.0], &
-                            filter          = gabor20,        &
-                            misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ',         &
-                            veloseis        = veloseis,       &
-                            dt              = sem_data%dt)
-    write(32,*) kernelspec(2)%veloseis
+    call parameters%read_kernel(sem_data, parameters%filter)
 
-    call kernelspec(3)%init(time_window     = [635.0, 665.0], &
-                            filter          = gabor20,        &
-                            misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ',         &
-                            veloseis        = veloseis,       &
-                            dt              = sem_data%dt)
-    write(33,*) kernelspec(3)%veloseis
 
-    call kernelspec(4)%init(time_window     = [1015.0, 1045.0], &
-                            filter          = gabor20,        &
-                            misfit_type     = 'CC  ',         &  
-                            model_parameter = 'vp  ',         &
-                            veloseis        = veloseis,       &
-                            dt              = sem_data%dt)
-    write(34,*) kernelspec(4)%veloseis
 
-!    call kernelspec(5)%init(time_window     = [1075.0, 1105.0], &
-!                            filter          = gabor20,        &
-!                            misfit_type     = 'CC  ',         &  
-!                            model_parameter = 'vp  ',         &
-!                            veloseis        = veloseis,       &
-!                            dt              = sem_data%dt)
-!    write(35,*) kernelspec(5)%veloseis
+    !allocate(parameters%receiver(1))
+
+    !!ANMO       IU       34.9459   -106.4572    1720.0   100.0
+    !! Distance 112.577
+    !call parameters%receiver(1)%init(lat       = 34.9459 , &
+    !                                 lon       = -106.4572, &
+    !                                 component = 'Z')
+    !! Station Pitcairn PTCN
+    !call parameters%receiver(1)%init(lat       = -25.08 , &
+    !                                 lon       = 229.890, &
+    !                                 component = 'Z')
+
+
+
+
+    ! Test parameters set
+
+    !write(*,*) '***************************************************************'
+    !write(*,*) ' Define kernelspecs'
+    !write(*,*) '***************************************************************'
+    !nkernel = 08
+    !allocate(kernelspec(nkernel))
+    !allocate(veloseis(ndumps))
+    !veloseis = sem_data%load_seismogram(parameters%receiver(1), parameters%source)
+
+    !call kernelspec(1)%init(name            = 'P_40s           ',     &
+    !                        time_window     = [675.0, 735.0],         &
+    !                        filter          = gabor40,                &
+    !                        misfit_type     = 'CC  ',                 &  
+    !                        model_parameter = 'vp  ',                 &
+    !                        veloseis        = veloseis,               &
+    !                        dt              = sem_data%dt,            &
+    !                        timeshift_fwd   = sem_data%timeshift_fwd)
+
+    !call kernelspec(2)%init(name            = 'P_20s           ',     &
+    !                        time_window     = [675.0, 705.0],         &
+    !                        filter          = gabor20,                &
+    !                        misfit_type     = 'CC  ',                 &  
+    !                        model_parameter = 'vp  ',                 &
+    !                        veloseis        = veloseis,               &
+    !                        dt              = sem_data%dt,            &
+    !                        timeshift_fwd   = sem_data%timeshift_fwd)
+
+    !call kernelspec(3)%init(name            = 'P_10s           ',     &
+    !                        time_window     = [675.0, 690.0],         &
+    !                        filter          = gabor10,                &
+    !                        misfit_type     = 'CC  ',                 &  
+    !                        model_parameter = 'vp  ',                 &
+    !                        veloseis        = veloseis,               &
+    !                        dt              = sem_data%dt,            &
+    !                        timeshift_fwd   = sem_data%timeshift_fwd)
+
+    !call kernelspec(4)%init(name            = 'PP_10s          ',     &
+    !                        time_window     = [837.00,0852.00],       &
+    !                        filter          = gabor10,                &
+    !                        misfit_type     = 'CC  ',                 &  
+    !                        model_parameter = 'vp  ',                 &
+    !                        veloseis        = veloseis,               &
+    !                        dt              = sem_data%dt,            &
+    !                        timeshift_fwd   = sem_data%timeshift_fwd)
+
+    !call kernelspec(5)%init(name            = 'PP_20s          ',     &
+    !                        time_window     = [837.00, 0867.0],       &
+    !                        filter          = gabor20,                &
+    !                        misfit_type     = 'CC  ',                 &  
+    !                        model_parameter = 'vp  ',                 &
+    !                        veloseis        = veloseis,               &
+    !                        dt              = sem_data%dt,            &
+    !                        timeshift_fwd   = sem_data%timeshift_fwd)
+
+    !call kernelspec(6)%init(name            = 'PP_40s          ',     &
+    !                        time_window     = [837.00, 877.00],       &
+    !                        filter          = gabor40,                &
+    !                        misfit_type     = 'CC  ',                 &  
+    !                        model_parameter = 'vp  ',                 &
+    !                        veloseis        = veloseis,               &
+    !                        dt              = sem_data%dt,            &
+    !                        timeshift_fwd   = sem_data%timeshift_fwd)
+
+    !call kernelspec(7)%init(name            = 'PPP_10s         ',     &
+    !                        time_window     = [944.00, 0959.0],       &
+    !                        filter          = gabor10,                &
+    !                        misfit_type     = 'CC  ',                 &  
+    !                        model_parameter = 'vp  ',                 &
+    !                        veloseis        = veloseis,               &
+    !                        dt              = sem_data%dt,            &
+    !                        timeshift_fwd   = sem_data%timeshift_fwd)
+
+    !call kernelspec(8)%init(name            = 'PPP_20s         ',     &
+    !                        time_window     = [944.00, 974.00],       &
+    !                        filter          = gabor20,                &
+    !                        misfit_type     = 'CC  ',                 &  
+    !                        model_parameter = 'vp  ',                 &
+    !                        veloseis        = veloseis,               &
+    !                        dt              = sem_data%dt,            &
+    !                        timeshift_fwd   = sem_data%timeshift_fwd)
+
+!    call kernelspec(9)%init(name            = 'PPP_20s         ',     &
+!                            time_window     = [2215.0, 2245.0],       &
+!                            filter          = gabor20,                &
+!                            misfit_type     = 'CC  ',                 &  
+!                            model_parameter = 'vp  ',                 &
+!                            veloseis        = veloseis,               &
+!                            dt              = sem_data%dt,            &
+!                            timeshift_fwd   = sem_data%timeshift_fwd)
+!
+!    call kernelspec(10)%init(name           = 'PPP_40s         ',     &
+!                            time_window     = [2215.0, 2275.0],       &
+!                            filter          = gabor40,                &
+!                            misfit_type     = 'CC  ',                 &  
+!                            model_parameter = 'vp  ',                 &
+!                            veloseis        = veloseis,               &
+!                            dt              = sem_data%dt,            &
+!                            timeshift_fwd   = sem_data%timeshift_fwd)
 
     whattodo = 'integratekernel'
+    !whattodo = 'plot_wavefield'
     select case(trim(whattodo))
     case('integratekernel')
+       write(*,*) '***************************************************************'
        write(*,*) 'Initialize output file'
+       write(*,*) '***************************************************************'
        call inversion_mesh%init_data(nkernel)
        
+       write(*,*) '***************************************************************'
        write (*,*) 'Initialize Kernel variables'
+       write(*,*) '***************************************************************'
+       allocate(niterations(nkernel, nelems))
+       niterations = 0
+       open(unit=lu_iterations, file='niterations.txt', action='write')
        allocate(K_x(nvertices, nkernel))
        allocate(kernelvalue(nptperstep, nkernel))
        allocate(connectivity(4, nelems))
        
+       allocate(fw_field(ndumps, nptperstep))
+       allocate(bw_field(ndumps, nptperstep))
+
        allocate(conv_field   (ntimes, nptperstep))
        allocate(fw_field_fd  (nomega, nptperstep))
        allocate(bw_field_fd  (nomega, nptperstep))
        allocate(conv_field_fd(nomega, nptperstep))
        allocate(conv_field_fd_filt(nomega, nptperstep))
 
-       write(*,*) 'Loading Connectivity'
+       write(*,*) '***************************************************************'
+       write(*,*) ' Loading Connectivity'
+       write(*,*) '***************************************************************'
        connectivity = inversion_mesh%get_connectivity()
 
 
-       write (*,*) 'Start loop over elements'
+       write(*,*) '***************************************************************'
+       write(*,*) ' Start loop over elements'
+       write(*,*) '***************************************************************'
+
        do ielement = 1, nelems
+
           co_element = inversion_mesh%get_element(ielement)
           volume = tetra_volume_3d(dble(co_element))
+
+          ! Omit elements in the core
+          if (all( sum(co_element**2, 1).lt.2890.0**2 )) then
+             print '(I6,E11.3,A)', ielement, volume, ' in core, skipping'
+             print '(4(" ", F6.1))', sqrt(sum(co_element**2, 1))
+             cycle
+          end if
           
+          ! Initialize Monte Carlo integral for this element
           call int_kernel%initialize_montecarlo(nkernel, volume, parameters%allowed_error) 
          
           do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
-             random_points =  generate_random_point(dble(co_element), nptperstep)
-             fw_field = sem_data%load_fw_points(random_points, parameters%source)
-             bw_field = sem_data%load_bw_points(random_points, parameters%receiver(1))
-             call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
-             call fft_data%rfft(taperandzeropad(bw_field, ntimes), bw_field_fd)
+             random_points = generate_random_point( dble(co_element), nptperstep )
              
-             conv_field_fd = fw_field_fd * bw_field_fd
+             ! Load, FT and timeshift forward field
+             fw_field = sem_data%load_fw_points( random_points, parameters%source )
+             call fft_data%rfft( taperandzeropad(fw_field, ntimes), fw_field_fd )
+             call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
+           
+             do irec = 1, parameters%nrec
 
-             do ikernel = 1, nkernel
-                if (int_kernel%isconverged(ikernel)) cycle
+                if (int_kernel%areallconverged([ (ikernel, ikernel =                        &
+                                                  parameters%receiver(irec)%firstkernel,    &
+                                                  parameters%receiver(irec)%lastkernel) ])) &
+                                               cycle
+            
+                ! Load, FT and timeshift backward field
+                bw_field = sem_data%load_bw_points( random_points, parameters%receiver(irec) )
+                call fft_data%rfft( taperandzeropad(bw_field, ntimes), bw_field_fd )
+                call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
 
-                ! Apply Filter
-                conv_field_fd_filt = kernelspec(ikernel)%filter%apply_2d(conv_field_fd)
+                ! Convolve forward and backward fields
+                conv_field_fd = fw_field_fd * bw_field_fd
 
-                ! Backward FFT
-                call fft_data%irfft(conv_field_fd_filt, conv_field)
+                do ikernel = parameters%receiver(irec)%firstkernel, &
+                             parameters%receiver(irec)%lastkernel !, nkernel
+                   if (int_kernel%isconverged(ikernel)) cycle
+                   !niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
 
-                ! Calculate Scalar kernel from convolved time traces
-                kernelvalue(:,ikernel) = &
-                    kernelspec(ikernel)%calc_misfit_kernel(fft_data%get_t(), &
-                                                           conv_field)
-             end do
+                   ! Apply Filter 
+                   conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
+
+                   ! Backward FFT
+                   call fft_data%irfft(conv_field_fd_filt, conv_field)
+
+                   ! Calculate Scalar kernel from convolved time traces
+                   kernelvalue(:,ikernel) = &
+                       parameters%kernel(ikernel)%calc_misfit_kernel(conv_field)
+                end do ! ikernel
+
+             end do ! irec
              ! Check for convergence
              call int_kernel%check_montecarlo_integral(kernelvalue)
-             print '(I6,E11.3,A,L1,4(E11.3),A,4(E11.3))', ielement, volume, ' Converged? ', int_kernel%areallconverged(), &
-                                                    int_kernel%getintegral(), '+-', sqrt(int_kernel%getvariance())
+             
+             ! Print convergence info
+             fmtstring = '(I6, E10.3, A, L1, 8(E11.3), A, 8(E10.3))'
+             print fmtstring, ielement, volume, ' Converged? ', int_kernel%areallconverged(), &
+                              int_kernel%getintegral(), ' +- ', sqrt(int_kernel%getvariance())
 
-          end do
+          end do ! Kernel coverged
          
+          ! Save integral values to the big kernel variable
           do ivertex = 1, 4
-             K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) + int_kernel%getintegral()
+             K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) + int_kernel%getintegral() / volume
           end do
+
+          call int_kernel%freeme()
+
+          ! Save big kernel variable to disk
           if (mod(ielement, 100)==0) then
              write(*,*) 'Write Kernel to disk'
-             call inversion_mesh%set_data_snap(K_x(:,1), 1, 'P_gabor_20')
-             call inversion_mesh%set_data_snap(K_x(:,2), 2, 'P_gabor_40')
-             call inversion_mesh%set_data_snap(K_x(:,3), 3, 'PcP_gabor_20')
-             call inversion_mesh%set_data_snap(K_x(:,4), 4, 'PKIKP_gabor_20')
-             !call inversion_mesh%set_data_snap(K_x(:,5), 5, 'S_gabor_20')
+             do ikernel = 1, nkernel
+                call inversion_mesh%set_data_snap(K_x(:,ikernel), ikernel, parameters%kernel(ikernel)%name )
+             end do
 
              call inversion_mesh%dump_mesh_data_xdmf('gaborkernel')
           end if
-       end do
+
+          write(lu_iterations,*) ielement, niterations(:, ielement)
+       end do ! ielement
+       close(lu_iterations)
    
-    case('plot_wavefield')
+    !case('plot_wavefield')
 
-       write(*,*) ' Read in forward field'
-       fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
-       write(*,*) ' Read in backward field'
-       bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
-       write(*,*) ' FFT forward field'
-       call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
-       write(*,*) ' FFT forward field'
-       call fft_data%rfft(taperandzeropad(bw_field, ntimes), bw_field_fd)
+    !   print *, 'Initialize XDMF file'
+    !   allocate(co_points(3, nvertices))
+    !   co_points = inversion_mesh%get_vertices()
+    !   call inversion_mesh%init_data(ndumps*2 + ntimes)
 
-       write(*,*) ' Apply filter'
-       fw_field_fd = gabor20%apply_2d(fw_field_fd)
+    !   write(*,*) ' Read in forward field'
+    !   allocate(fw_field(ndumps, nvertices))
+    !   fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
+    !   
+    !   ! Dump forward field to XDMF file
+    !   do idump = 1, ndumps
+    !       write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
+    !       !Test of planar wave , works
+    !       !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
+    !       !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
+    !       call inversion_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
+    !   end do
+    !   write(*,*) ' FFT forward field'
+    !   allocate(fw_field_fd  (nomega, nptperstep))
+    !   call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
+    !   deallocate(fw_field)
 
-       write(*,*) ' iFFT product of fields'
-       call fft_data%irfft(fw_field_fd*bw_field_fd, conv_field)
-    
-       write(*,*) ' Write pickpoint to disc'
-       write(41,*) fw_field(:,10000)
-       write(42,*) bw_field(:,10000)
-       write(43,*) conv_field(:,10000)
-       read(*,*)
+    !   write(*,*) ' Read in backward field'
+    !   allocate(bw_field(ndumps, nvertices))
+    !   bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
+    !   ! Dump backward field to XDMF file
+    !   do idump = 1, ndumps
+    !       write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
+    !       !Test of planar wave , works
+    !       !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
+    !       !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
+    !       call inversion_mesh%set_data_snap(bw_field(idump,:), idump+ndumps, 'bwd_wavefield')
+    !   end do
+    !   write(*,*) ' FFT backward field'
+    !   allocate(bw_field_fd  (nomega, nptperstep))
+    !   call fft_data%rfft(taperandzeropad(bw_field, ntimes), bw_field_fd)
+    !   deallocate(bw_field)
 
-       ! Dump to XDMF file
-       call inversion_mesh%init_data(ndumps*2 + ntimes)
-       do idump = 1, ndumps
-           write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
-           !Test of planar wave , works
-           !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
-           !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-           call inversion_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
-           call inversion_mesh%set_data_snap(bw_field(idump,:), idump+ndumps, 'bwd_wavefield')
-       end do
+    !   write(*,*) ' Apply filter'
+    !   fw_field_fd = gabor20%apply_2d(fw_field_fd)
 
-       do idump = 1, ntimes
-          write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
-          call inversion_mesh%set_data_snap(real(conv_field(idump,:)), idump+ndumps*2, 'field_convolved')
-       end do 
+    !   write(*,*) ' iFFT product of fields'
+    !   allocate(conv_field   (ntimes, nptperstep))
+    !   call fft_data%irfft(fw_field_fd*bw_field_fd, conv_field)
+    !
+    !   !write(*,*) ' Write pickpoint to disc'
+    !   !write(41,*) fw_field(:,10000)
+    !   !write(42,*) bw_field(:,10000)
+    !   !write(43,*) conv_field(:,10000)
+    !   !read(*,*)
 
-       write(*,*)
-       write(*,*) ' Writing data to disk'
-       call inversion_mesh%dump_mesh_data_xdmf('wavefield')
+
+    !   do idump = 1, ntimes
+    !      write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
+    !      call inversion_mesh%set_data_snap(real(conv_field(idump,:)), idump+ndumps*2, 'field_convolved')
+    !   end do 
+
+    !   write(*,*)
+    !   write(*,*) ' Writing data to disk'
+    !   call inversion_mesh%dump_mesh_data_xdmf('wavefield')
+    !   call inversion_mesh%freeme()
 
     end select
+
     write(*,*)
+    write(*,*) '***************************************************************'
+    write(*,*) ' Free memory of Kernelspecs'
+    write(*,*) '***************************************************************'
+    do ikernel = 1, nkernel
+       call parameters%kernel(ikernel)%freeme() 
+    end do
+
+    write(*,*)
+    write(*,*) '***************************************************************'
     write(*,*) ' Free memory of inversion mesh datatype'
+    write(*,*) '***************************************************************'
     call inversion_mesh%freeme
 
+    write(*,*)
+    write(*,*) '***************************************************************'
+    write(*,*) ' Close AxiSEM wavefield files'
+    write(*,*) '***************************************************************'
     call sem_data%close_files()
+
+    write(*,*)
+    write(*,*) '***************************************************************'
+    write(*,*) ' Free memory of FFT datatype'
+    write(*,*) '***************************************************************'
+    call fft_data%freeme()
 
     write(*,*)
     write(*,*) ' Finished!'

@@ -1,6 +1,8 @@
 module readfields
-    use global_parameters, only            : sp, dp, pi, deg2rad
-    use type_parameter, only               : src_param_type, rec_param_type, parameter_type
+    use global_parameters, only            : sp, dp, pi, deg2rad, verbose
+    !use type_parameter, only               : src_param_type, rec_param_type, parameter_type
+    use source_class,          only        : src_param_type
+    use receiver_class,        only        : rec_param_type
     use buffer, only                       : buffer_type
     use netcdf
     use kdtree2_module                     
@@ -16,7 +18,7 @@ module readfields
 
     type ncparamtype
         integer                           :: ncid
-        integer                           :: snap, surf, mesh        ! Group IDs
+        integer                           :: snap, surf, mesh, seis  ! Group IDs
         integer                           :: straintrace, dev_strain ! Variable IDs
         integer                           :: seis_disp, seis_velo    ! Variable IDs
         character(len=200)                :: meshdir
@@ -25,56 +27,68 @@ module readfields
         real(kind=sp)                     :: source_shift_t
         logical                           :: ordered_output
         type(buffer_type)                 :: buffer
-        real(kind=sp)                     :: dt
-        real(kind=dp)                     :: amplitude
+        real(kind=dp)                     :: dt
+        real(kind=sp)                     :: amplitude
     end type
 
     type semdata_type
         private
 
-        integer                           :: nsim_fwd, nsim_bwd
-        type(ncparamtype), allocatable    :: fwd(:)
-        type(ncparamtype), allocatable    :: bwd(:)
+        integer, public                    :: nsim_fwd, nsim_bwd
+        type(ncparamtype), allocatable     :: fwd(:)
+        type(ncparamtype), allocatable     :: bwd(:)
 
-        type(kdtree2), pointer            :: fwdtree, bwdtree
+        type(kdtree2), pointer             :: fwdtree, bwdtree
+        type(meshtype)                     :: fwdmesh, bwdmesh
 
-        type(meshtype)                    :: fwdmesh, bwdmesh
-
-        logical                           :: params_set
-        logical                           :: files_open
-        logical                           :: meshes_read
-        logical                           :: kdtree_built
-        real(kind=dp), public             :: dt
-        integer,       public             :: ndumps, decimate_factor
-        integer,       public             :: nseis ! ndumps * decimate_factor
-        real(kind=dp), public             :: windowlength
+        logical                            :: params_set
+        logical                            :: files_open
+        logical                            :: meshes_read
+        logical                            :: kdtree_built
+        real(kind=dp), public              :: dt
+        integer,       public              :: ndumps, decimate_factor
+        integer,       public              :: nseis ! ndumps * decimate_factor
+        real(kind=dp), public              :: windowlength
+        real(kind=sp), public              :: timeshift_fwd, timeshift_bwd
+        real(kind=sp), public, allocatable :: veloseis(:,:)
          
-        real(kind=dp), dimension(3,3)     :: rot_mat, trans_rot_mat
+        real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
 
         contains 
-            procedure, pass               :: set_params
-            procedure, pass               :: open_files
-            procedure, pass               :: check_consistency
-            procedure, pass               :: read_meshes
-            procedure, pass               :: build_kdtree
-            procedure, pass               :: load_fw_points
-            procedure, pass               :: load_bw_points
-            procedure, pass               :: close_files
-            procedure, pass               :: load_seismogram
+            procedure, pass                :: set_params
+            procedure, pass                :: open_files
+            procedure, pass                :: check_consistency
+            procedure, pass                :: read_meshes
+            procedure, pass                :: build_kdtree
+            procedure, pass                :: load_fw_points
+            procedure, pass                :: load_bw_points
+            procedure, pass                :: close_files
+            procedure, pass                :: load_seismogram
 
     end type
 
-    integer, parameter                    :: mynum = 0
+    integer, parameter                     :: mynum = 0
 
 contains
 
-subroutine set_params(this, parameters)
-    class(semdata_type)           :: this
-    class(parameter_type)         :: parameters
-    integer                       :: isim
+!-------------------------------------------------------------------------------
+subroutine set_params(this, fwd_dir, bwd_dir)
+    class(semdata_type)            :: this
+    character(len=512), intent(in) :: fwd_dir, bwd_dir
+    integer                        :: isim
+    logical                        :: moment, force
 
+    inquire( file = trim(fwd_dir)//'/MZZ', exist = moment)
+    inquire( file = trim(fwd_dir)//'/PZ',  exist = force)
+    if (moment) then
+       this%nsim_fwd = 4
+    elseif (force) then
+       this%nsim_fwd = 2
+    else 
+       this%nsim_fwd = 1
+    end if
 
-    this%nsim_fwd = parameters%nsim_fwd
+    !this%nsim_fwd = parameters%nsim_fwd
     this%nsim_bwd =  1 !parameters%nsim_bwd
     
     allocate( this%fwd(this%nsim_fwd) )
@@ -82,34 +96,33 @@ subroutine set_params(this, parameters)
 
     select case(this%nsim_fwd)
     case(1)
-        this%fwd(1)%meshdir = parameters%dir_fwdmesh
+        this%fwd(1)%meshdir = fwd_dir//'/'
 
     case(2) 
-        this%fwd(1)%meshdir = trim(parameters%dir_fwdmesh)//'/PZ/'
-        this%fwd(2)%meshdir = trim(parameters%dir_fwdmesh)//'/PX/'
+        this%fwd(1)%meshdir = trim(fwd_dir)//'/PZ/'
+        this%fwd(2)%meshdir = trim(fwd_dir)//'/PX/'
 
     case(4)
-        this%fwd(1)%meshdir = trim(parameters%dir_fwdmesh)//'/MZZ/'
-        this%fwd(2)%meshdir = trim(parameters%dir_fwdmesh)//'/MXX_P_MYY/'
-        this%fwd(3)%meshdir = trim(parameters%dir_fwdmesh)//'/MXZ_MYZ/'
-        this%fwd(4)%meshdir = trim(parameters%dir_fwdmesh)//'/MXY_MXX_M_MYY/'
+        this%fwd(1)%meshdir = trim(fwd_dir)//'/MZZ/'
+        this%fwd(2)%meshdir = trim(fwd_dir)//'/MXX_P_MYY/'
+        this%fwd(3)%meshdir = trim(fwd_dir)//'/MXZ_MYZ/'
+        this%fwd(4)%meshdir = trim(fwd_dir)//'/MXY_MXX_M_MYY/'
     end select
     
     do isim = 1, this%nsim_bwd
-        this%bwd(isim)%meshdir = parameters%dir_bwdmesh
+        this%bwd(isim)%meshdir = trim(bwd_dir)//'/'
     end do
-
-    
 
     this%params_set = .true.
 
 end subroutine
+!-------------------------------------------------------------------------------
 
 
 !-------------------------------------------------------------------------------
 subroutine open_files(this)
 
-    class(semdata_type)               :: this
+    class(semdata_type)              :: this
     integer                          :: status, isim
     character(len=200)               :: format20, format21, filename
 
@@ -119,8 +132,8 @@ subroutine open_files(this)
         stop
     end if
 
-    format20 = "('Trying to open NetCDF file ', A, ' on CPU ', I5)"
-    format21 = "('Succeded,  has NCID ', I6, ', Snapshots group NCID:', I6)"
+    format20 = "('  Trying to open NetCDF file ', A, ' on CPU ', I5)"
+    format21 = "('  Succeded,  has NCID ', I6, ', Snapshots group NCID:', I6)"
 
     do isim = 1, this%nsim_fwd
         ! Forward wavefield
@@ -131,10 +144,9 @@ subroutine open_files(this)
             filename = trim(this%fwd(isim)%meshdir)//'Data/axisem_output.nc4'
         end if
         
-        write(6,format20) trim(filename), mynum
-        status = nf90_open(       path     = filename,              &
-                                  mode     = nf90_nowrite,          &
-                                  ncid     = this%fwd(isim)%ncid)
+        if (verbose>0) write(6,format20) trim(filename), mynum
+        call nc_open_for_read(    filename = filename,              &
+                                  ncid     = this%fwd(isim)%ncid) 
 
         call check(nf90_inq_ncid( ncid     = this%fwd(isim)%ncid,   &
                                   name     = "Snapshots",           &
@@ -144,18 +156,14 @@ subroutine open_files(this)
         call getvarid            (ncid     = this%fwd(isim)%snap,   &
                                   name     = "straintrace",         &
                                   varid    = this%fwd(isim)%straintrace) 
-        !call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
-        !                          name     = "straintrace",         &
-        !                          varid    = this%fwd(isim)%straintrace) )
-        write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
+        if (verbose>0) write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
         
         if (this%fwd(isim)%ordered_output) then
             filename = trim(this%fwd(isim)%meshdir)//'Data/axisem_output.nc4'
        
-            write(6,format20) trim(filename), mynum
-            status = nf90_open(   path     = filename,              &
-                                  mode     = nf90_nowrite,          &
-                                  ncid     = this%fwd(isim)%ncid)
+            if (verbose>0) write(6,format20) trim(filename), mynum
+            call nc_open_for_read(filename = filename,              &
+                                  ncid     = this%fwd(isim)%ncid) 
 
         end if
         
@@ -164,14 +172,6 @@ subroutine open_files(this)
                                  grp_ncid  = this%fwd(isim)%surf))
 
 
-
-        !call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
-        !                          name     = "displacement",         &
-        !                          varid    = this%fwd(isim)%seis_disp) )
-        !
-        !call check(nf90_inq_varid(ncid     = this%fwd(isim)%snap,   &
-        !                          name     = "velocity",            &
-        !                          varid    = this%fwd(isim)%seis_velo) )
         call getvarid(ncid     = this%fwd(isim)%surf,   &
                       name     = "displacement",         &
                       varid    = this%fwd(isim)%seis_disp) 
@@ -189,9 +189,10 @@ subroutine open_files(this)
                                  'number of strain dumps',          &
                                  this%fwd(isim))
 
-        call nc_read_att_real(    this%fwd(isim)%dt,               &
-                                  'strain dump sampling rate in sec', &
-                                  this%fwd(isim))
+        call nc_read_att_dble(   this%fwd(isim)%dt,               &
+                                 'strain dump sampling rate in sec', &
+                                 this%fwd(isim))
+        this%fwd(isim)%dt = 1.7064171433448792
 
         call nc_read_att_int(    this%fwd(isim)%nseis,             &
                                  'length of seismogram  in time samples', &
@@ -204,6 +205,21 @@ subroutine open_files(this)
         call nc_read_att_int(    this%fwd(isim)%source_shift_samples,    &
                                  'source shift factor for deltat_coarse',     &
                                  this%fwd(isim))
+        
+        call nc_read_att_real(   this%fwd(isim)%amplitude,      &
+                                 'scalar source magnitude',     &
+                                 this%fwd(isim))
+        
+        !call check(nf90_inq_ncid( ncid     = this%fwd(isim)%ncid,   &
+        !                          name     = "Seismograms",         &
+        !                          grp_ncid = this%fwd(isim)%seis))
+
+        !call getvarid(            ncid     = this%fwd(isim)%surf,   &
+        !                          name     = "stf_seis",         &
+        !                          varid    = varid_stf)
+        !
+        !call check(nf90_get_var(  ncid   = this%fwd(isim)%seis, &
+        !                          varid  = this%fwd(isim)%stf
     end do
         
 
@@ -216,30 +232,25 @@ subroutine open_files(this)
             filename = trim(this%bwd(isim)%meshdir)//'Data/axisem_output.nc4'
         end if
 
-        write(6,format20) trim(filename), mynum
-        call check( nf90_open(    path     = filename,              &
-                                  mode     = nf90_nowrite,          &
-                                  ncid     = this%bwd(isim)%ncid) )
+        if (verbose>0) write(6,format20) trim(filename), mynum
+        call nc_open_for_read(filename = filename,              &
+                              ncid     = this%bwd(isim)%ncid) 
 
         call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
                                   name     = "Snapshots",           &
                                   grp_ncid = this%bwd(isim)%snap))
 
-        !call check(nf90_inq_varid(ncid     = this%bwd(isim)%snap,   &
-        !                          name     = "straintrace",         &
-        !                          varid    = this%bwd(isim)%straintrace) )
         call getvarid(ncid     = this%bwd(isim)%snap,   &
                       name     = "straintrace",         &
                       varid    = this%bwd(isim)%straintrace) 
-        write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
+        if (verbose>0) write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
         
         if (this%bwd(isim)%ordered_output) then
             filename = trim(this%bwd(isim)%meshdir)//'Data/axisem_output.nc4'
        
-            write(6,format20) trim(filename), mynum
-            status = nf90_open(   path     = filename,              &
-                                  mode     = nf90_nowrite,          &
-                                  ncid     = this%bwd(isim)%ncid)
+            if (verbose>0) write(6,format20) trim(filename), mynum
+            call nc_open_for_read(filename = filename,              &
+                                  ncid     = this%bwd(isim)%ncid) 
 
         end if
 
@@ -249,6 +260,10 @@ subroutine open_files(this)
         call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
                                   name     = "Mesh",                &
                                   grp_ncid = this%bwd(isim)%mesh))
+        call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
+                                  name     = "Seismograms",         &
+                                  grp_ncid = this%bwd(isim)%seis))
+
         call nc_read_att_int(     this%bwd(isim)%ndumps,            &
                                   'number of strain dumps',         &
                                   this%bwd(isim))
@@ -257,10 +272,11 @@ subroutine open_files(this)
                                   'length of seismogram  in time samples', &
                                   this%bwd(isim))
 
-        call nc_read_att_real(    this%bwd(isim)%dt,                &
+        call nc_read_att_dble(    this%bwd(isim)%dt,                &
                                   'strain dump sampling rate in sec', &
                                   this%bwd(isim))
-        
+        this%bwd(isim)%dt = 1.7064171433448792
+
         call nc_read_att_real(   this%bwd(isim)%source_shift_t, &
                                  'source shift factor in sec',     &
                                  this%bwd(isim))
@@ -292,15 +308,19 @@ subroutine close_files(this)
 
     do isim = 1, this%nsim_fwd
        status = nf90_close(this%fwd(isim)%ncid)
-       write(*,'(A,I1,A,F9.7)') ' Buffer efficiency fwd(', isim, '): ',  &
-                                this%fwd(isim)%buffer%efficiency()
+       if (verbose>0) then
+          write(*,'(A,I1,A,F9.7)') ' Buffer efficiency fwd(', isim, '): ',  &
+                                   this%fwd(isim)%buffer%efficiency()
+       end if
        status = this%fwd(isim)%buffer%freeme()
     end do
     deallocate(this%fwd)
     do isim = 1, this%nsim_bwd
        status = nf90_close(this%bwd(isim)%ncid)
+       if (verbose>0) then
        write(*,'(A,F9.7)') ' Buffer efficiency bwd   : ', & 
                            this%bwd(1)%buffer%efficiency()
+       end if
        status = this%bwd(isim)%buffer%freeme()
     end do
     deallocate(this%bwd)
@@ -310,11 +330,12 @@ end subroutine close_files
 !------------------------------------------------------------------------------
 subroutine check_consistency(this)
     !< Checks consistency of the wavefield dumps
-    class(semdata_type)                :: this
-    integer                           :: isim
-    real(kind=dp)                     :: dt_agreed
-    character(len=512)                :: fmtstring
-    integer                           :: ndumps_agreed, nseis_agreed
+    class(semdata_type)    :: this
+    integer                :: isim
+    real(kind=dp)          :: dt_agreed
+    character(len=512)     :: fmtstring
+    integer                :: ndumps_agreed, nseis_agreed
+    real(kind=sp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
 
     ! Check whether the sampling period is the same in all files
     dt_agreed = this%fwd(1)%dt
@@ -375,6 +396,34 @@ subroutine check_consistency(this)
     this%ndumps = ndumps_agreed
     this%windowlength = ndumps_agreed * dt_agreed
 
+    ! Check whether the source time shift is the same in all files
+    source_shift_agreed_fwd = this%fwd(1)%source_shift_t
+    fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
+    do isim = 1, this%nsim_fwd
+       if (source_shift_agreed_fwd.ne.this%fwd(isim)%source_shift_t) then
+          write(*,fmtstring) 'source time shift', isim, source_shift_agreed_fwd, &
+                             this%fwd(isim)%source_shift_t
+          stop
+       end if
+    end do
+
+    source_shift_agreed_bwd = this%bwd(1)%source_shift_t
+    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
+
+    do isim = 1, this%nsim_bwd
+       if (source_shift_agreed_bwd.ne.this%bwd(isim)%source_shift_t) then
+          write(*,fmtstring) 'source time shift', isim, source_shift_agreed_bwd, &
+                             this%bwd(isim)%source_shift_t
+          stop
+       end if
+    end do
+
+    this%timeshift_fwd = source_shift_agreed_fwd
+    this%timeshift_bwd = source_shift_agreed_bwd
+
+    this%dt = dt_agreed
     this%decimate_factor = nseis_agreed / ndumps_agreed
     this%nseis  = ndumps_agreed * this%decimate_factor        
 
@@ -382,10 +431,10 @@ end subroutine
 
 !-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
-    use sorting, only                  : mergesort_3
-    class(semdata_type)                :: this
+    use source_class, only             : src_param_type
+    class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
-    type(src_param_type)              :: source_params
+    type(src_param_type), intent(in)  :: source_params
     real(kind=sp)                     :: load_fw_points(this%fwd(1)%ndumps, &
                                                         size(coordinates,2))
     real(kind=sp)                     :: utemp(this%fwd(1)%ndumps)
@@ -395,9 +444,9 @@ function load_fw_points(this, coordinates, source_params)
     integer                           :: pointid(size(coordinates,2))
     integer                           :: idx((size(coordinates,2)))
     integer                           :: ipoint, isim, status
-    real(kind=sp)                     :: rotmesh_s(size(coordinates,2))
-    real(kind=sp)                     :: rotmesh_phi(size(coordinates,2))
-    real(kind=sp)                     :: rotmesh_z(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
@@ -416,7 +465,7 @@ function load_fw_points(this, coordinates, source_params)
     allocate(nextpoint(1))
     do ipoint = 1, npoints
         call kdtree2_n_nearest( this%fwdtree,                           &
-                                [rotmesh_s(ipoint), rotmesh_z(ipoint)], &
+                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
                                 nn = 1,                                 &
                                 results = nextpoint )
         
@@ -429,11 +478,8 @@ function load_fw_points(this, coordinates, source_params)
 
     end do
 
-    !call mergesort_3(pointid, idx)
-
     do ipoint = 1, npoints
         
-
         isim = 1
         !print *, 'Azim factors: '
         do isim = 1, this%nsim_fwd
@@ -443,17 +489,17 @@ function load_fw_points(this, coordinates, source_params)
             if (status.ne.0) then
                !write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
                if (this%fwd(isim)%ordered_output) then
-                  call check( nf90_get_var( ncid  =this%fwd(isim)%snap,        & 
-                                            varid =this%fwd(isim)%straintrace, &
-                                            start =[1, pointid(ipoint)],       &
-                                            count =[this%fwd(isim)%ndumps, 1], &
-                                            values=utemp) )
+                  call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
+                                            varid  = this%fwd(isim)%straintrace, &
+                                            start  = [1, pointid(ipoint)],       &
+                                            count  = [this%fwd(isim)%ndumps, 1], &
+                                            values = utemp) )
                else
-                  call check( nf90_get_var( ncid  =this%fwd(isim)%snap,        & 
-                                            varid =this%fwd(isim)%straintrace, &
-                                            start =[pointid(ipoint), 1],       &
-                                            count =[1, this%fwd(isim)%ndumps], &
-                                            values=utemp) )
+                  call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
+                                            varid  = this%fwd(isim)%straintrace, &
+                                            start  = [pointid(ipoint), 1],       &
+                                            count  = [1, this%fwd(isim)%ndumps], &
+                                            values = utemp) )
                end if
                status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
             !else
@@ -473,89 +519,101 @@ function load_fw_points(this, coordinates, source_params)
 end function load_fw_points
 
 !-------------------------------------------------------------------------------
-function load_seismogram(this, receiver, src)
-!< This function loads a seismogram and samples it down to the dump rate of 
-!! the kernel wavefields (usually a factor around 10).
+subroutine load_seismogram(this, receivers, src)
+!< This function loads a seismogram 
    class(semdata_type)      :: this
-   type(rec_param_type)     :: receiver
+   type(rec_param_type)     :: receivers(:)
    type(src_param_type)     :: src
-   real(kind=sp)            :: load_seismogram(this%ndumps)
-   real(kind=sp)            :: seismogram_hr(this%nseis)
-   real(kind=sp)            :: utemp(this%nseis)
+   real(kind=sp)            :: seismogram_hr(this%ndumps)
+   real(kind=sp)            :: utemp(this%ndumps)
    real(kind=sp)            :: Mij_scale(6), mij_prefact(4)
-   integer                  :: reccomp, isurfelem, iseis, isim
-   
-   Mij_scale = src%mij !/ this%fwd(1)%amplitude
-  
-   print '(A,F8.4,A,F8.4)', 'Receiver theta:', receiver%theta/deg2rad, ', phi: ', receiver%phi/deg2rad
-   print '(A,6(F8.5,/))',     'Mij:       ', src%mij
-   print '(A,6(F8.5,/))',     'Mij_scale: ', Mij_scale
-   select case(receiver%component)
-   case('Z')
-      mij_prefact(1) = Mij_scale(1)
-      mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
-      mij_prefact(3) =   Mij_scale(4) * cos(receiver%phi) &
-                       + Mij_scale(5) * sin(receiver%phi)
-      mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receiver%phi)  &
-                       + 2. * Mij_scale(6) * sin(2. * receiver%phi) 
-      reccomp = 1
-   case('T')
-      mij_prefact(1) = 0.0
-      mij_prefact(2) = 0.0
-      mij_prefact(3) = - Mij_scale(4) * sin(receiver%phi) &
-                       + Mij_scale(5) * cos(receiver%phi)
-      mij_prefact(4) =  (Mij_scale(3) - Mij_scale(2)) * sin(2. * receiver%phi) &
-                       + 2. * Mij_scale(6)            * cos(2. * receiver%phi)
-      reccomp = 2
-   case('R')
-      mij_prefact(1) = Mij_scale(1)
-      mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
-      mij_prefact(3) =   Mij_scale(4) * cos(receiver%phi) &
-                       + Mij_scale(5) * sin(receiver%phi)
-      mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receiver%phi)  &
-                       + 2. * Mij_scale(6)            * sin(2. * receiver%phi) 
-      reccomp = 3
-   end select
-   
-   isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receiver%theta), 1 )
-   print '(A,F8.4,A,I5,A,F8.4)', 'Receiver with theta ', receiver%theta/deg2rad, ' has element ', isurfelem, &
-                                 ' with theta: ', this%fwdmesh%theta(isurfelem)
-   
-   seismogram_hr = 0.0
+   integer                  :: reccomp, isurfelem, irec, isim, nrec
 
-   print '(A,4(F8.5))', 'Mij prefactors: ', mij_prefact
+   if (.not.this%meshes_read) then
+       print *, 'ERROR in load_seismogram(): Meshes have not been read yet'
+       print *, 'Call read_meshes() before build_kdtree!'
+       stop
+   end if
+      
+   nrec = size(receivers)
+   allocate(this%veloseis(this%ndumps, nrec))
    
-   do isim = 1, this%nsim_fwd
-      print '(A,I5,A,I2,A,I6)', 'Read element', isurfelem, ', component: ', reccomp, ', no of samples:', this%nseis
-      call check( nf90_get_var( ncid  = this%fwd(isim)%surf,        & 
-                                varid = this%fwd(isim)%seis_velo,   &
-                                start = [1, reccomp, isurfelem],    &
-                                count = [this%nseis, 1, 1],         &
-                                values= utemp) )
-   
-      seismogram_hr = utemp * mij_prefact(isim) + seismogram_hr
+   Mij_scale = src%mij / this%fwd(1)%amplitude
+ 
+   do irec = 1, nrec
+      print '(A,F8.4,A,F8.4)', '  Receiver theta:', receivers(irec)%theta/deg2rad, &
+                               ', phi: ', receivers(irec)%phi/deg2rad
+      print '(A)',             '                  Mij    Mij_scaled'
+      print '(A,2(E11.3))',    '  Mrr:       ', src%mij(1), mij_scale(1) 
+      print '(A,2(E11.3))',    '  Mtt:       ', src%mij(2), mij_scale(2)
+      print '(A,2(E11.3))',    '  Mpp:       ', src%mij(3), mij_scale(3)
+      print '(A,2(E11.3))',    '  Mrt:       ', src%mij(4), mij_scale(4)
+      print '(A,2(E11.3))',    '  Mrp:       ', src%mij(5), mij_scale(5)
+      print '(A,2(E11.3))',    '  Mtp:       ', src%mij(6), mij_scale(6)
+
+
+      !print '(A,6(F8.5,/))',     'Mij_scale: ', Mij_scale
+      select case(receivers(irec)%component)
+      case('Z')
+         mij_prefact(1) = Mij_scale(1)
+         mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
+         mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
+                          + Mij_scale(5) * sin(receivers(irec)%phi)
+         mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
+                          + 2. * Mij_scale(6)            * sin(2. * receivers(irec)%phi) 
+         reccomp = 1
+      case('T')
+         mij_prefact(1) = 0.0
+         mij_prefact(2) = 0.0
+         mij_prefact(3) = - Mij_scale(4) * sin(receivers(irec)%phi) &
+                          + Mij_scale(5) * cos(receivers(irec)%phi)
+         mij_prefact(4) =  (Mij_scale(3) - Mij_scale(2)) * sin(2. * receivers(irec)%phi) &
+                          + 2. * Mij_scale(6)            * cos(2. * receivers(irec)%phi)
+         reccomp = 2
+      case('R')
+         mij_prefact(1) = Mij_scale(1)
+         mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
+         mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
+                          + Mij_scale(5) * sin(receivers(irec)%phi)
+         mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
+                          + 2. * Mij_scale(6)            * sin(2. * receivers(irec)%phi) 
+         reccomp = 3
+      case default
+         print *, 'ERROR: Unknown receiver component: ', receivers(irec)%component
+         stop
+      end select
+      
+      isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receivers(irec)%theta), 1 )
+      print '(A,F8.4,A,I5,A,F8.4)', 'Receiver with theta ', receivers(irec)%theta/deg2rad, &
+                                    ' has element ', isurfelem, &
+                                    ' with theta: ', this%fwdmesh%theta(isurfelem)
+      
+      seismogram_hr = 0.0
+
+      print '(A,4(E12.4))', 'Mij prefactors: ', mij_prefact
+      
+      do isim = 1, this%nsim_fwd
+         print '(A,I1,A,I5,A,I2,A,I6)', 'Sim: ', isim, ' Read element', isurfelem, &
+                                        ', component: ', reccomp, ', no of samples:', this%ndumps
+         call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
+                                   varid  = this%fwd(isim)%seis_velo,   &
+                                   start  = [1, reccomp, isurfelem],    &
+                                   count  = [this%ndumps, 1, 1],        &
+                                   values = utemp) )
+      
+         seismogram_hr = utemp * mij_prefact(isim) + seismogram_hr
+      end do
+
+      this%veloseis(:, irec) = seismogram_hr(1:this%ndumps)
    end do
-   
-   !! Decimate seismogram_hr to get load_seismogram
-   !do iseis = 1, this%ndumps
-   !
-   !   load_seismogram(iseis) = sum( seismogram_hr( (iseis-1)*this%decimate_factor+1:& 
-   !                                                iseis*this%decimate_factor) ) & 
-   !                            / this%decimate_factor
-   !end do
+  
 
-   ! Is written out with the same sampling rate as the kernel wavefields in the solver
-   load_seismogram = seismogram_hr(1:this%ndumps)
-
-   !write(20,*) load_seismogram
-   !write(21,*) seismogram_hr(1:this%ndumps)
-
-end function load_seismogram
+end subroutine load_seismogram
 
 !-------------------------------------------------------------------------------
 function load_bw_points(this, coordinates, receiver)
-    use sorting, only                               : mergesort_3
-    class(semdata_type)                             :: this
+    !use sorting, only                               : mergesort_3
+    class(semdata_type)                            :: this
     real(kind=dp), intent(in)                      :: coordinates(:,:)
     type(rec_param_type)                           :: receiver
     real(kind=sp)                                  :: load_bw_points(this%ndumps, size(coordinates,2))
@@ -565,9 +623,9 @@ function load_bw_points(this, coordinates, receiver)
     integer, dimension(size(coordinates,2))        :: pointid, idx
     integer                                        :: npoints
     integer                                        :: ipoint, status
-    real(kind=sp)                     :: rotmesh_s(size(coordinates,2))
-    real(kind=sp)                     :: rotmesh_phi(size(coordinates,2))
-    real(kind=sp)                     :: rotmesh_z(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
 
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_bw_points: input variable coordinates has to be a '
@@ -587,7 +645,7 @@ function load_bw_points(this, coordinates, receiver)
     allocate(nextpoint(1))
     do ipoint = 1, npoints
         call kdtree2_n_nearest( this%bwdtree,                           &
-                                [rotmesh_s(ipoint), rotmesh_z(ipoint)], &
+                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
                                 nn = 1,                                 &
                                 results = nextpoint )
         pointid(ipoint) = nextpoint(1)%idx
@@ -638,7 +696,7 @@ end function load_bw_points
 
 !-------------------------------------------------------------------------------
 function azim_factor(phi, mij, isim)
-    real(kind=sp), intent(in)    :: phi
+    real(kind=dp), intent(in)    :: phi
     real(kind=sp), intent(in)    :: mij(6)
     integer, intent(in)          :: isim
     real(kind=sp)                :: azim_factor
@@ -679,7 +737,7 @@ subroutine build_kdtree(this)
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
 
     !end do
-    write(*,*) 'Building forward KD-Tree'
+    write(*,*) ' Building forward KD-Tree'
     ! KDtree in forward field
     this%fwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
@@ -687,7 +745,7 @@ subroutine build_kdtree(this)
                                    rearrange = .true.)
 
     ! KDtree in backward field
-    write(*,*) 'Building backward KD-Tree'
+    write(*,*) ' Building backward KD-Tree'
     mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
     this%bwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
@@ -703,6 +761,7 @@ subroutine read_meshes(this)
     class(semdata_type)    :: this
     integer                :: ncvarid_mesh_s, ncvarid_mesh_z
     integer                :: surfdimid, ncvarid_theta
+    integer                :: ielem
    
     if (.not.this%files_open) then
         print *, 'ERROR in read_meshes(): Files have not been opened!'
@@ -711,7 +770,7 @@ subroutine read_meshes(this)
     end if
 
     ! Forward SEM mesh
-    if (mynum.eq.0) write(6,*) 'Read SEM mesh from first forward simulation'
+    if (mynum.eq.0) write(6,*) '  Read SEM mesh from first forward simulation'
     
     call nc_read_att_int(this%fwdmesh%npoints, &
                          'npoints', &
@@ -777,6 +836,10 @@ subroutine read_meshes(this)
    call check( nf90_get_var( ncid   = this%fwd(1)%surf,    &
                              varid  = ncvarid_theta,       &
                              values = this%fwdmesh%theta) )
+
+   !do  ielem = 1, this%fwdmesh%nsurfelem
+   !   print *, ielem, this%fwdmesh%theta(ielem)
+   !end do
    
    ! Backward mesh
    call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
@@ -830,13 +893,31 @@ subroutine getvarid(ncid, name, varid)
         write(6,100) mynum, trim(name), ncid
         stop
     elseif (mynum.eq.0) then
-        write(6,101) trim(name), ncid, varid
+        if (verbose>0) write(6,101) trim(name), ncid, varid
     end if
 100 format('ERROR: CPU ', I4, ' could not find variable: ''', A, ''' in NCID', I7)
-101 format('Variable ''', A, ''' found in NCID', I7, ', has ID:', I7)
+101 format('  Variable ''', A, ''' found in NCID', I7, ', has ID:', I7)
 end subroutine
 
+!-------------------------------------------------------------------------------
+subroutine nc_open_for_read(filename, ncid)
+   character(len=*), intent(in)  :: filename
+   integer, intent(out)          :: ncid
+   character(len=512)            :: fmtstring
+   integer                       :: status
 
+   status = nf90_open(path     = filename,              &
+                      mode     = nf90_nowrite,          &
+                      ncid     = ncid)
+
+   if (status.ne.nf90_noerr) then
+      fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', but could not find it')"
+      print fmtstring, mynum, trim(filename)
+      stop
+   end if
+
+end subroutine
+!-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
@@ -893,6 +974,24 @@ end subroutine nc_read_att_real
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
+!> Read NetCDF attribute of type Double
+subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
+  character(len=*),  intent(in)     :: attribute_name
+  real(kind=dp), intent(out)        :: attribute_value
+  type(ncparamtype), intent(in)     :: nc
+  integer                           :: status
+
+  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
+  if (status.ne.NF90_NOERR) then
+      write(6,*) 'Could not find attribute ', trim(attribute_name)
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' with NCID: ', nc%ncid
+      stop 2
+  end if
+end subroutine nc_read_att_dble
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
 
     implicit none
@@ -905,7 +1004,7 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
     real(kind=dp), intent(in)                      :: phigr, thetagr
     !< Rotation angles phi and theta
     
-    real(kind=sp), dimension(npts), intent(out)    :: srd, zrd, phird
+    real(kind=dp), dimension(npts), intent(out)    :: srd, zrd, phird
     !< Rotated coordinates (in s, z, phi)
 
     real(kind=dp), dimension(npts)                 :: xp, yp, zp
@@ -913,10 +1012,9 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
     real(kind=dp)                                  :: phi_cp
     integer                                        :: ipt
 
-
     !!first rotation (longitude)
-    xp_cp =  rgd(1,:) * dcos(phigr) + rgd(1,:) * dsin(phigr)
-    yp_cp = -rgd(2,:) * dsin(phigr) + rgd(2,:) * dcos(phigr)
+    xp_cp =  rgd(1,:) * dcos(phigr) + rgd(2,:) * dsin(phigr)
+    yp_cp = -rgd(1,:) * dsin(phigr) + rgd(2,:) * dcos(phigr)
     zp_cp =  rgd(3,:)
 
     !second rotation (colat)
@@ -926,6 +1024,10 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
 
     srd = dsqrt(xp*xp + yp*yp)
     zrd = zp
+    !do ipt = 1, npts
+    !   phi_cp = datan2(yp(ipt), xp(ipt))
+    !   if (phi_cp<0.d0) then
+    !      phird(ipt) = 2.d0 * pi + phi_cp
     do ipt = 1, npts
        phi_cp = datan2(yp(ipt), xp(ipt))
        if (phi_cp<0.d0) then
@@ -933,7 +1035,7 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
        else
           phird(ipt) = phi_cp
        endif
-       if (phigr==0.0 .and. rgd(2,ipt)==0.0)  phird(ipt)=0.
+       !if (phigr==0.0 .and. rgd(2,ipt)==0.0)  phird(ipt)=0.
     enddo
 end subroutine rotate_frame_rd
 !-------------------------------------------------------------------------------
