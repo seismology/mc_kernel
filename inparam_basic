@@ -1,0 +1,6 @@
+FWD_DIR         'wavefield/fwd/'
+BWD_DIR         'wavefield/bwd/'
+ALLOWED_ERROR   1e-1
+SOURCE_FILE     'CMTSOLUTION'
+RECEIVER_FILE   'receiver.dat'
+FILTER_FILE     'filters.dat'

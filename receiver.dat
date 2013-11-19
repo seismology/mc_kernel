@@ -1,0 +1,8 @@
+2                                  # Nr of receivers
+vp Z                               # model parameter, seismogram component
+ANMO  34.9459   -106.4572  3       # Name, lat, lon, nr of kernels
+P_40s Gabor_40 CC 675.0 735.0        # Kernel name, Filter name, time window begin and end
+P_20s Gabor_20 CC 675.0 705.0       
+P_10s Gabor_10 CC 675.0 690.0       
+BFO   48.3319  8.3311  1
+P_40s Gabor_40 CC 200.0 260.0
