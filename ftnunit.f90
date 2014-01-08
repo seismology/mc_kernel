@@ -174,16 +174,16 @@ end subroutine runtests
 ! Side effects:
 !     If the assertion fails, this is reported to standard
 !     output. Also, nofails is increased by one.
-subroutine assert_true( cond, text )
-    logical, intent(in)          :: cond
-    character(len=*), intent(in) :: text
-
-    if ( .not. cond ) then
-        nofails = nofails + 1
-        write(*,*) '    Condition "',trim(text), '" failed'
-        write(*,*) '    It should have been true'
-    endif
-end subroutine assert_true
+!subroutine assert_true( cond, text )
+!    logical, intent(in)          :: cond
+!    character(len=*), intent(in) :: text
+!
+!    if ( .not. cond ) then
+!        nofails = nofails + 1
+!        write(*,*) '    Condition "',trim(text), '" failed'
+!        write(*,*) '    It should have been true'
+!    endif
+!end subroutine assert_true
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

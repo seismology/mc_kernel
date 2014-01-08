@@ -14,7 +14,7 @@ program kerner
     use unit_tests,                  only: test_all
 
     implicit none
-    type(inversion_mesh_data_type)      :: inversion_mesh
+    type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
     type(semdata_type)                  :: sem_data
     type(rfft_type)                     :: fft_data
@@ -77,10 +77,10 @@ program kerner
     write(*,*) '***************************************************************'
     write(*,*) ' Read inversion mesh'
     write(*,*) '***************************************************************'
-    call inversion_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+    call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
 
-    nvertices = inversion_mesh%get_nvertices()
-    nelems    = inversion_mesh%get_nelements()
+    nvertices = inv_mesh%get_nvertices()
+    nelems    = inv_mesh%get_nelements()
     fmtstring = '(A, I8, A, I8)'
     print fmtstring, '  nvertices: ',  nvertices, ', nelems: ', nelems
 
@@ -228,13 +228,13 @@ program kerner
 !                            timeshift_fwd   = sem_data%timeshift_fwd)
 
     whattodo = 'integratekernel'
-    !whattodo = 'plot_wavefield'
+
     select case(trim(whattodo))
     case('integratekernel')
        write(*,*) '***************************************************************'
        write(*,*) 'Initialize output file'
        write(*,*) '***************************************************************'
-       call inversion_mesh%init_data(nkernel)
+       call inv_mesh%init_data(nkernel)
        
        write(*,*) '***************************************************************'
        write (*,*) 'Initialize Kernel variables'
@@ -258,7 +258,7 @@ program kerner
        write(*,*) '***************************************************************'
        write(*,*) ' Loading Connectivity'
        write(*,*) '***************************************************************'
-       connectivity = inversion_mesh%get_connectivity()
+       connectivity = inv_mesh%get_connectivity()
 
 
        write(*,*) '***************************************************************'
@@ -267,7 +267,7 @@ program kerner
 
        do ielement = 1, nelems
 
-          co_element = inversion_mesh%get_element(ielement)
+          co_element = inv_mesh%get_element(ielement)
           volume = tetra_volume_3d(dble(co_element))
 
           ! Omit elements in the core
@@ -341,10 +341,10 @@ program kerner
           if (mod(ielement, 100)==0) then
              write(*,*) 'Write Kernel to disk'
              do ikernel = 1, nkernel
-                call inversion_mesh%set_data_snap(K_x(:,ikernel), ikernel, parameters%kernel(ikernel)%name )
+                call inv_mesh%set_data_snap(K_x(:,ikernel), ikernel, parameters%kernel(ikernel)%name )
              end do
 
-             call inversion_mesh%dump_mesh_data_xdmf('gaborkernel')
+             call inv_mesh%dump_mesh_data_xdmf('gaborkernel')
           end if
 
           write(lu_iterations,*) ielement, niterations(:, ielement)
@@ -429,7 +429,7 @@ program kerner
     write(*,*) '***************************************************************'
     write(*,*) ' Free memory of inversion mesh datatype'
     write(*,*) '***************************************************************'
-    call inversion_mesh%freeme
+    call inv_mesh%freeme
 
     write(*,*)
     write(*,*) '***************************************************************'
@@ -447,11 +447,6 @@ program kerner
     write(*,*) ' Finished!'
 
     
-    return
-
-
-
-
 contains
 
 

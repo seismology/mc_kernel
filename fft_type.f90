@@ -3,7 +3,7 @@ module fft
   use global_parameters
   use, intrinsic :: iso_c_binding
   implicit none
-  include 'fftw3.f03'
+  include 'fftw3.f'
 
   private
   public :: rfft_type
@@ -22,7 +22,8 @@ module fft
      procedure, pass            :: get_ntimes
      procedure, pass            :: get_ntraces
      procedure, pass            :: get_initialized
-     procedure, pass            :: get_f, get_df
+     procedure, pass            :: get_f
+     procedure, pass            :: get_df
      procedure, pass            :: get_t
      procedure, pass            :: init
      procedure, pass            :: rfft

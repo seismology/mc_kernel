@@ -39,10 +39,10 @@ subroutine test_fft_dirac
     dataf_ref = 1
     
     do i=1, ntraces
-        call assert_comparable_real1d(real(dataf(:,i), 4), real(dataf_ref(:,i), 4), &
+        call assert_comparable_real1d(real(dataf(:,i), sp), real(dataf_ref(:,i), sp), &
                 1e-5, 'fft of dirac = 1 + 0j')
-        call assert_comparable_real1d(real(imagpart(dataf(:,i)), 4), &
-                real(imagpart(dataf_ref(:,i)), 4), 1e-5, 'fft of dirac = 1 + 0j')
+        call assert_comparable_real1d(real(aimag(dataf(:,i)), sp), &
+                real(aimag(dataf_ref(:,i)), sp), 1e-5, 'fft of dirac = 1 + 0j')
     enddo
 
     ! phase shifted dirac
@@ -52,7 +52,7 @@ subroutine test_fft_dirac
     call fftt%rfft(datat, dataf)
     
     do i=1, ntraces
-        call assert_comparable_real1d(real(abs(dataf(:,i)), 4), &
+        call assert_comparable_real1d(real(abs(dataf(:,i)), sp), &
                     real(dataf_ref(:,i), 4), 1e-5, &
                     'fft of dirac = 1 + 0j * phase shift')
     enddo
