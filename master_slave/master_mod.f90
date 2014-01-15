@@ -16,12 +16,7 @@ subroutine master()
   integer               :: mpistatus(MPI_STATUS_SIZE)
   integer               :: itask, ntasks, ioutput
 
-  ! initialize work
-  ntasks = 20
-  allocate(tasks(ntasks))
-  do itask=1, ntasks
-     tasks(itask) = itask
-  enddo
+  call init_work(ntasks, tasks)
 
   allocate(output(ntasks,2))
   output = -1
@@ -47,8 +42,7 @@ subroutine master()
      itask = itask + 1
 
      ! fill sendbuffer
-     wt%ntotal_kernel = tasks(itask)
-     wt%ndimensions = 10
+     call get_next_task(itask, tasks)
 
      ! Send it to each rank (blocking)
      call MPI_Send(wt,                & ! message buffer
@@ -76,14 +70,10 @@ subroutine master()
                    mpistatus,        & ! info about the received message
                    ierror)
 
-     ! extract from receive buffer
-     output(ioutput,1) = wt%ntotal_kernel
-     output(ioutput,2) = wt%ndimensions
-
+     call extract_receive_buffer(ioutput, output)
      
      ! fill sendbuffer
-     wt%ntotal_kernel = tasks(itask)
-     wt%ndimensions = 10
+     call get_next_task(itask, tasks)
 
      ! Send the same slave some more work to do (blocking)
      call MPI_Send(wt,               & ! message buffer
@@ -110,9 +100,7 @@ subroutine master()
                    mpistatus,       & ! info about the received message
                    ierror)
      
-     ! extract from receive buffer
-     output(ioutput,1) = wt%ntotal_kernel
-     output(ioutput,2) = wt%ndimensions
+     call extract_receive_buffer(ioutput, output)
   enddo
 
   do itask=1, ntasks
@@ -130,6 +118,50 @@ subroutine master()
                    sendrequest(rank), &
                    ierror)
   enddo
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine init_work(ntasks, tasks)
+  
+  integer, intent(out)                  :: ntasks
+  integer, allocatable, intent(inout)   :: tasks(:)
+
+  integer   :: itask
+  
+  ! initialize work
+  ntasks = 20
+  allocate(tasks(ntasks))
+  do itask=1, ntasks
+     tasks(itask) = itask
+  enddo
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine get_next_task(itask, tasks)
+  
+  use work_mod
+  integer, intent(in)   :: itask
+  integer, intent(in)   :: tasks(:)
+
+  wt%ntotal_kernel = tasks(itask)
+  wt%ndimensions = 10
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine extract_receive_buffer(ioutput, output)
+  
+  use work_mod
+  integer, intent(in)       :: ioutput
+  integer, intent(inout)    :: output(:,:)
+
+  output(ioutput,1) = wt%ntotal_kernel
+  output(ioutput,2) = wt%ndimensions
 
 end subroutine
 !-----------------------------------------------------------------------------------------
