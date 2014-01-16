@@ -9,7 +9,7 @@ contains
 subroutine master()
   use mpi
   use master_slave_parameters
-  use work_mod
+  use work_type_mod
   use master_queue
 
   integer               :: nslaves, rank, ierror
@@ -17,7 +17,7 @@ subroutine master()
   integer               :: mpistatus(MPI_STATUS_SIZE)
   integer               :: itask, ntasks, ioutput
 
-  call init_work(ntasks)
+  call init_queue(ntasks)
 
   allocate(output(ntasks,2))
   output = -1

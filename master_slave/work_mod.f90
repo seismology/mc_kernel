@@ -1,5 +1,5 @@
 !=========================================================================================
-module work_mod
+module work_type_mod
   use global_parameters
   implicit none
   private
@@ -23,12 +23,13 @@ module work_mod
   end type
 
   type(work_type) :: wt
-  
-  public :: work
+
 contains
 
 !-----------------------------------------------------------------------------------------
 subroutine init_work_type(nkern, ndim, nverts)
+! set up the type and the mpitype that is used for communication
+
   use mpi
   
   integer, intent(in)   :: ndim, nverts, nkern
@@ -75,16 +76,6 @@ subroutine init_work_type(nkern, ndim, nverts)
   call MPI_TYPE_COMMIT(wt%mpitype, ierr)
 
 end subroutine init_work_type
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine work()
-  
-  wt%ndimensions = wt%ntotal_kernel
-  wt%vertices = wt%ntotal_kernel
-  wt%ntotal_kernel = wt%ntotal_kernel ** 2
-
-end subroutine work
 !-----------------------------------------------------------------------------------------
 
 end module

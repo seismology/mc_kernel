@@ -3,7 +3,7 @@ program master_slave
   use mpi
   use master_module
   use slave_module
-  use work_mod
+  use work_type_mod
 
   implicit none
   integer               :: myrank, ierror

@@ -3,20 +3,21 @@ module master_queue
   implicit none
   private
   
-  public :: init_work, get_next_task, extract_receive_buffer
+  public :: init_queue, get_next_task, extract_receive_buffer
 
   integer, allocatable  :: tasks(:)
 
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine init_work(ntasks)
-  
-  integer, intent(out)  :: ntasks
+subroutine init_queue(ntasks)
+! anything that should be done before starting the loop over the work. for now,
+! the number of tasks is fixed here
 
+  integer, intent(out)  :: ntasks
   integer               :: itask
   
-  ! initialize work
+  ! initialize tasks
   ntasks = 20
   allocate(tasks(ntasks))
   do itask=1, ntasks
@@ -28,8 +29,9 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine get_next_task(itask)
+! put a new piece of work in the send buffer
   
-  use work_mod
+  use work_type_mod
   integer, intent(in)   :: itask
 
   wt%ntotal_kernel = tasks(itask)
@@ -40,8 +42,9 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine extract_receive_buffer(ioutput, output)
-  
-  use work_mod
+! extract information received back from a slave
+
+  use work_type_mod
   integer, intent(in)       :: ioutput
   integer, intent(inout)    :: output(:,:)
 

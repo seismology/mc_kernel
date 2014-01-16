@@ -9,9 +9,12 @@ contains
 subroutine slave()
   use mpi
   use master_slave_parameters
-  use work_mod
+  use work_type_mod
+  use slave_work
   
   integer   :: mpistatus(MPI_STATUS_SIZE), ierror
+
+  call init_work()
 
   do while (.true.)
     ! Receive a message from the master
