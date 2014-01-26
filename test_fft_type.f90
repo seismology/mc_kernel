@@ -150,6 +150,7 @@ subroutine test_fft_sine
     call fftt%freeme()
 end subroutine
 !-----------------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 subroutine test_fft_inverse
     integer     :: nomega, ntimes, ntraces
@@ -194,6 +195,7 @@ subroutine test_fft_inverse
 end subroutine
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 subroutine test_fft_convolve
     integer     :: nomega, ntimes, ntraces, ntimes_fft
     integer     :: i, j
@@ -244,6 +246,7 @@ subroutine test_fft_convolve
 end subroutine
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 subroutine test_fft_taperandzeropad
     integer, parameter :: len_orig = 32, len_padded = 64
     real(kind=sp) :: data_orig(len_orig,1), data_padded(len_padded,1)
@@ -260,6 +263,7 @@ subroutine test_fft_taperandzeropad
                                   1e-8, 'zeropadded part is really zero')
 
 end subroutine
+!-----------------------------------------------------------------------------------------
 
 end module
 !=========================================================================================

@@ -233,6 +233,7 @@ pure integer function nextpow2(n)
 end function
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 function taperandzeropad(array, ntimes)
   real(kind=sp), intent(in)     :: array(:,:)
   integer,       intent(in)     :: ntimes
@@ -267,5 +268,7 @@ function taperandzeropad(array, ntimes)
 
   
 end function taperandzeropad
+!-----------------------------------------------------------------------------------------
+
 end module fft
 !=========================================================================================

@@ -612,7 +612,6 @@ end subroutine load_seismogram
 
 !-------------------------------------------------------------------------------
 function load_bw_points(this, coordinates, receiver)
-    !use sorting, only                               : mergesort_3
     class(semdata_type)                            :: this
     real(kind=dp), intent(in)                      :: coordinates(:,:)
     type(rec_param_type)                           :: receiver
