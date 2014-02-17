@@ -97,9 +97,9 @@ end subroutine test_mc_unit_hexagon
 
 !-----------------------------------------------------------------------------------------
 subroutine test_mc_sphere_in_tetrahedron
-    use tetrahedra, only                       : generate_random_point
-    type(integrated_type)                     :: mc_integral 
-    integer                                   :: ipoint, iiter
+    use tetrahedra, only                        : generate_random_points_tet
+    type(integrated_type)                      :: mc_integral 
+    integer                                    :: ipoint, iiter
     real(kind=dp), dimension(100,3)            :: coords
     real(kind=dp), dimension(100,1)            :: values
     real(kind=sp), dimension(1)                :: integral
@@ -120,7 +120,7 @@ subroutine test_mc_sphere_in_tetrahedron
     do while (.not.mc_integral%areallconverged()) ! Beginning of Monte Carlo loop
         iiter = iiter + 1
         !print *, 'Iteration ', iiter 
-        coords = transpose(generate_random_point(vertices, 100))
+        coords = transpose(generate_random_points_tet(vertices, 100))
         values = 0
 
         ! Sphere with radius sqrt(1/3)

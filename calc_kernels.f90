@@ -4,7 +4,7 @@ program kerner
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
-    use tetrahedra,                  only: tetra_volume_3d, generate_random_point
+    !use tetrahedra,                  only: tetra_volume_3d, generate_random_point
     use fft,                         only: rfft_type, taperandzeropad
     use filtering,                   only: timeshift
     use montecarlo,                  only: integrated_type
@@ -110,123 +110,6 @@ program kerner
 
     call parameters%read_kernel(sem_data, parameters%filter)
 
-
-
-    !allocate(parameters%receiver(1))
-
-    !!ANMO       IU       34.9459   -106.4572    1720.0   100.0
-    !! Distance 112.577
-    !call parameters%receiver(1)%init(lat       = 34.9459 , &
-    !                                 lon       = -106.4572, &
-    !                                 component = 'Z')
-    !! Station Pitcairn PTCN
-    !call parameters%receiver(1)%init(lat       = -25.08 , &
-    !                                 lon       = 229.890, &
-    !                                 component = 'Z')
-
-
-
-
-    ! Test parameters set
-
-    !write(*,*) '***************************************************************'
-    !write(*,*) ' Define kernelspecs'
-    !write(*,*) '***************************************************************'
-    !nkernel = 08
-    !allocate(kernelspec(nkernel))
-    !allocate(veloseis(ndumps))
-    !veloseis = sem_data%load_seismogram(parameters%receiver(1), parameters%source)
-
-    !call kernelspec(1)%init(name            = 'P_40s           ',     &
-    !                        time_window     = [675.0, 735.0],         &
-    !                        filter          = gabor40,                &
-    !                        misfit_type     = 'CC  ',                 &  
-    !                        model_parameter = 'vp  ',                 &
-    !                        veloseis        = veloseis,               &
-    !                        dt              = sem_data%dt,            &
-    !                        timeshift_fwd   = sem_data%timeshift_fwd)
-
-    !call kernelspec(2)%init(name            = 'P_20s           ',     &
-    !                        time_window     = [675.0, 705.0],         &
-    !                        filter          = gabor20,                &
-    !                        misfit_type     = 'CC  ',                 &  
-    !                        model_parameter = 'vp  ',                 &
-    !                        veloseis        = veloseis,               &
-    !                        dt              = sem_data%dt,            &
-    !                        timeshift_fwd   = sem_data%timeshift_fwd)
-
-    !call kernelspec(3)%init(name            = 'P_10s           ',     &
-    !                        time_window     = [675.0, 690.0],         &
-    !                        filter          = gabor10,                &
-    !                        misfit_type     = 'CC  ',                 &  
-    !                        model_parameter = 'vp  ',                 &
-    !                        veloseis        = veloseis,               &
-    !                        dt              = sem_data%dt,            &
-    !                        timeshift_fwd   = sem_data%timeshift_fwd)
-
-    !call kernelspec(4)%init(name            = 'PP_10s          ',     &
-    !                        time_window     = [837.00,0852.00],       &
-    !                        filter          = gabor10,                &
-    !                        misfit_type     = 'CC  ',                 &  
-    !                        model_parameter = 'vp  ',                 &
-    !                        veloseis        = veloseis,               &
-    !                        dt              = sem_data%dt,            &
-    !                        timeshift_fwd   = sem_data%timeshift_fwd)
-
-    !call kernelspec(5)%init(name            = 'PP_20s          ',     &
-    !                        time_window     = [837.00, 0867.0],       &
-    !                        filter          = gabor20,                &
-    !                        misfit_type     = 'CC  ',                 &  
-    !                        model_parameter = 'vp  ',                 &
-    !                        veloseis        = veloseis,               &
-    !                        dt              = sem_data%dt,            &
-    !                        timeshift_fwd   = sem_data%timeshift_fwd)
-
-    !call kernelspec(6)%init(name            = 'PP_40s          ',     &
-    !                        time_window     = [837.00, 877.00],       &
-    !                        filter          = gabor40,                &
-    !                        misfit_type     = 'CC  ',                 &  
-    !                        model_parameter = 'vp  ',                 &
-    !                        veloseis        = veloseis,               &
-    !                        dt              = sem_data%dt,            &
-    !                        timeshift_fwd   = sem_data%timeshift_fwd)
-
-    !call kernelspec(7)%init(name            = 'PPP_10s         ',     &
-    !                        time_window     = [944.00, 0959.0],       &
-    !                        filter          = gabor10,                &
-    !                        misfit_type     = 'CC  ',                 &  
-    !                        model_parameter = 'vp  ',                 &
-    !                        veloseis        = veloseis,               &
-    !                        dt              = sem_data%dt,            &
-    !                        timeshift_fwd   = sem_data%timeshift_fwd)
-
-    !call kernelspec(8)%init(name            = 'PPP_20s         ',     &
-    !                        time_window     = [944.00, 974.00],       &
-    !                        filter          = gabor20,                &
-    !                        misfit_type     = 'CC  ',                 &  
-    !                        model_parameter = 'vp  ',                 &
-    !                        veloseis        = veloseis,               &
-    !                        dt              = sem_data%dt,            &
-    !                        timeshift_fwd   = sem_data%timeshift_fwd)
-
-!    call kernelspec(9)%init(name            = 'PPP_20s         ',     &
-!                            time_window     = [2215.0, 2245.0],       &
-!                            filter          = gabor20,                &
-!                            misfit_type     = 'CC  ',                 &  
-!                            model_parameter = 'vp  ',                 &
-!                            veloseis        = veloseis,               &
-!                            dt              = sem_data%dt,            &
-!                            timeshift_fwd   = sem_data%timeshift_fwd)
-!
-!    call kernelspec(10)%init(name           = 'PPP_40s         ',     &
-!                            time_window     = [2215.0, 2275.0],       &
-!                            filter          = gabor40,                &
-!                            misfit_type     = 'CC  ',                 &  
-!                            model_parameter = 'vp  ',                 &
-!                            veloseis        = veloseis,               &
-!                            dt              = sem_data%dt,            &
-!                            timeshift_fwd   = sem_data%timeshift_fwd)
-
     whattodo = 'integratekernel'
 
     select case(trim(whattodo))
@@ -268,7 +151,7 @@ program kerner
        do ielement = 1, nelems
 
           co_element = inv_mesh%get_element(ielement)
-          volume = tetra_volume_3d(dble(co_element))
+          volume = inv_mesh%get_volume(ielement)
 
           ! Omit elements in the core
           if (all( sum(co_element**2, 1).lt.2890.0**2 )) then
@@ -281,7 +164,8 @@ program kerner
           call int_kernel%initialize_montecarlo(nkernel, volume, parameters%allowed_error) 
          
           do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
-             random_points = generate_random_point( dble(co_element), nptperstep )
+             !random_points = generate_random_point( dble(co_element), nptperstep )
+             random_points = inv_mesh%generate_random_points( ielement, nptperstep )
              
              ! Load, FT and timeshift forward field
              fw_field = sem_data%load_fw_points( random_points, parameters%source )

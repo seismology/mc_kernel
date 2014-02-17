@@ -5,13 +5,13 @@ module tetrahedra
   implicit none
   private
 
-  public :: generate_random_point
-  public :: tetra_volume_3d
+  public :: generate_random_points_tet, generate_random_points_poly
+  public :: get_volume_tet, get_volume_poly
   public :: rmat4_det
 contains
 
 !-----------------------------------------------------------------------------------------
-function generate_random_point(v, n)
+function generate_random_points_tet(v, n)
 !  returns uniform points in a tetrahedron.
 !
 !    This code is distributed under the GNU LGPL license.
@@ -29,12 +29,11 @@ function generate_random_point(v, n)
 
   integer, intent(in)        ::  n
   real(kind=dp), intent(in)  ::  v(3,4)
-  real(kind=dp)              ::  generate_random_point(3,n)
+  real(kind=dp)              ::  generate_random_points_tet(3,n)
 
   real(kind=dp)              ::  c(4)
-  real(kind=sp)              ::  coordinates(3,n)
+  real(kind=dp)              ::  coordinates(3,n)
   integer                    ::  j
-  integer                    ::  seed
   real(kind=dp )             ::  t
 
   call random_number(coordinates)
@@ -61,14 +60,112 @@ function generate_random_point(v, n)
   
      ! c(1:4) are the barycentric coordinates of the point.
   
-     generate_random_point(1:3,j) = matmul( v(1:3,1:4), dble(c(1:4)) )
+     generate_random_points_tet(1:3,j) = matmul( dble(v(1:3,1:4)), dble(c(1:4)) )
 
   end do
 
-  return
-
-end function
+end function generate_random_points_tet
 !-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function generate_random_points_poly( nv, v, n ) result(x)
+!! UNIFORM_IN_POLYGON_MAP maps uniform points into a polygon.
+!
+!  Discussion:
+!
+!    If the polygon is regular, or convex, or at least star-shaped,
+!    this routine will work.
+!
+!    This routine assumes that all points between the centroid and
+!    any point on the boundary lie within the polygon.
+!
+!    This routine is valid for spatial dimension DIM_NUM = 2.
+!
+  implicit none
+
+  integer, parameter           :: dim_num = 2
+  integer, intent(in)          :: n
+  integer, intent(in)          :: nv
+  real(kind=dp), intent(in)    :: v(dim_num, nv)
+  real(kind=dp)                :: x(dim_num, n)
+
+  real(kind=dp)                :: area(nv)
+  real(kind=dp)                :: area_percent
+  real(kind=dp)                :: centroid(dim_num)
+  integer                      :: i, ip1, j, k
+  real(kind=dp)                :: r(2)
+  real(kind=dp)                :: t(dim_num,3)
+!
+!  Find the centroid.
+!
+  call polygon_centroid_2d ( nv, dble(v), centroid )
+!
+!  Determine the areas of each triangle.
+!
+  do i = 1, nv
+
+    if ( i < nv ) then
+      ip1 = i + 1
+    else
+      ip1 = 1
+    end if
+
+    t(1:2,1) = v(1:2,i)
+    t(1:2,2) = v(1:2,ip1)
+    t(1:2,3) = centroid(1:2)
+
+    call triangle_area_2d ( t, area(i) )
+
+  end do
+!
+!  Normalize the areas.
+!
+  area(1:nv) = area(1:nv) / sum ( area(1:nv) )
+!
+!  Replace each area by the sum of itself and all previous ones.
+!
+  do i = 2, nv
+    area(i) = area(i) + area(i-1)
+  end do
+
+  do j = 1, n
+!
+!  Choose a triangle at random, based on areas.
+!
+    !area_percent = r8_uniform_01 ( seed )
+    call random_number(area_percent) 
+
+    do k = 1, nv
+
+      if ( area_percent <= area(k) ) then
+        i = k
+        exit
+      end if
+
+    end do
+!
+!  Now choose a point at random in the triangle.
+!
+    if ( i < nv ) then
+      ip1 = i + 1
+    else
+      ip1 = 1
+    end if
+
+    !call r8vec_uniform_01 ( dim_num, seed, r )
+    call random_number(r)
+
+    if ( 1.0D+00 < sum (r(:)) ) then
+      r(:) = 1.0D+00 - r(:)
+    end if
+
+    x(:,j) = ( 1.0D+00 - r(1) - r(2) ) * dble(v(:,i)) &
+                       + r(1)          * dble(v(:,ip1)) &
+                              + r(2)   * centroid(:)
+
+  end do
+
+end
 
 !-----------------------------------------------------------------------------------------
 function rmat4_det ( a )
@@ -98,19 +195,189 @@ end function rmat4_det
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function tetra_volume_3d ( v )
+subroutine polygon_centroid_2d ( n, v, centroid )
+
+!*****************************************************************************80
+!
+!! POLYGON_CENTROID_2D computes the centroid of a polygon in 2D.
+!
+!  Formula:
+!
+!    Denoting the centroid coordinates by CENTROID, then
+!
+!      CENTROID(1) = Integral ( Polygon interior ) x dx dy / Area ( Polygon )
+!      CENTROID(2) = Integral ( Polygon interior ) y dx dy / Area ( Polygon ).
+!
+!    Green's theorem states that
+!
+!      Integral ( Polygon boundary ) ( M dx + N dy ) =
+!      Integral ( Polygon interior ) ( dN/dx - dM/dy ) dx dy.
+!
+!    Using M = 0 and N = x * x / 2, we get:
+!
+!      CENTROID(1) = 0.5 * Integral ( Polygon boundary ) x * x dy,
+!
+!    which becomes
+!
+!      CENTROID(1) = 1/6 Sum ( 1 <= I <= N )
+!        ( X(I+1) + X(I) ) * ( X(I) * Y(I+1) - X(I+1) * Y(I))
+!
+!    where, when I = N, the index "I+1" is replaced by 1.
+!
+!    A similar calculation gives us a formula for CENTROID(2).
+!
+!  Licensing:
+!
+!    This code is distributed under the GNU LGPL license.
+!
+!  Modified:
+!
+!    12 July 2003
+!
+!  Author:
+!
+!    John Burkardt
+!
+!  Reference:
+!
+!    Gerard Bashein, Paul Detmer,
+!    Centroid of a Polygon,
+!    Graphics Gems IV, edited by Paul Heckbert,
+!    AP Professional, 1994.
+!
+!  Parameters:
+!
+!    Input, integer ( kind = 4 ) N, the number of sides of the polygonal shape.
+!
+!    Input, real ( kind = 8 ) V(2,N), the coordinates of the vertices
+!    of the shape.
+!
+!    Output, real ( kind = 8 ) CENTROID(2), the coordinates of the
+!    centroid of the shape.
+!
+  implicit none
+
+  integer, intent(in)        :: n
+  real(kind=dp)              :: v(2,n)
+  real(kind=dp), intent(out) :: centroid(2)
+
+  real(kind=dp)              :: area
+  integer                    :: i
+  integer                    :: ip1
+  real(kind=dp)              :: temp
+
+  area = 0
+  centroid(:) = 0
+
+  do i = 1, n
+
+    if ( i < n ) then
+      ip1 = i + 1
+    else
+      ip1 = 1
+    end if
+
+    temp = ( v(1,i) * v(2,ip1) - v(1,ip1) * v(2,i) )
+
+    area = area + temp
+
+    centroid(:) = centroid(:) + ( v(:,ip1) + v(:,i) ) * temp
+
+  end do
+
+  area = area * 0.5D+00
+
+  centroid(:) = centroid(:) / ( 6.0D+00 * area )
+
+end subroutine polygon_centroid_2d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine triangle_area_2d ( t, area )
+! TRIANGLE_AREA_2D computes the area of a triangle in 2D.
+  implicit none
+
+  real(kind=dp), intent(in)  :: t(2,3) !< The triangle vertices
+  real(kind=dp), intent(out) :: area   !< area of the triangle
+
+  area = 0.5D+00 * abs ( &
+      t(1,1) * ( t(2,2) - t(2,3) ) &
+    + t(1,2) * ( t(2,3) - t(2,1) ) &
+    + t(1,3) * ( t(2,1) - t(2,2) ) )
+
+end subroutine triangle_area_2d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_volume_tet(v)
 ! TETRA_VOLUME_3D computes the volume of a tetrahedron in 3D.
-  real(kind=dp), intent(in)  ::  v(3,4)
+  real(kind=dp), intent(in)  ::  v(3,4) !< Vertices
   real(kind=dp)              ::  a(4,4)
-  real(kind=dp)              ::  tetra_volume_3d
+  real(kind=dp)              ::  get_volume_tet
 
   a(1:4,1:3) = transpose(v)
   a(1:4,4) = [1, 1, 1, 1]
 
-  tetra_volume_3d = abs ( rmat4_det ( a ) ) / 6.0d+00
+  get_volume_tet = abs ( rmat4_det ( a ) ) / 6.0d+00
 
-end function tetra_volume_3d
+end function get_volume_tet
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+function get_volume_poly(n, v) result(area)
+!! POLYGON_AREA_3D computes the area of a polygon in 3D.
+!
+!  Discussion:
+!
+!    The computation is not valid unless the vertices of the polygon
+!    lie in a plane, so that the polygon that is defined is "flat".
+!
+!    The polygon does not have to be "regular", that is, neither its
+!    sides nor its angles need to be equal.
+!
+!  Parameters:
+!
+!    Input, integer ( kind = 4 ) N, the number of vertices.
+!
+!    Input, real ( kind = 8 ) V(3,N), the coordinates of the vertices.
+!    The vertices should be listed in neighboring order.
+!
+!    Output, real ( kind = 8 ) AREA, the area of the polygon.
+!
+!    Output, real ( kind = 8 ) NORMAL(3), the unit normal vector to the polygon.
+!
+  implicit none
+
+  integer, parameter        :: dim_num = 3
+  integer, intent(in)       :: n
+  real(kind=dp), intent(in) :: v(dim_num,n)
+  
+  real(kind=dp)             :: area
+  real(kind=dp)             :: cross(dim_num)
+  integer                   :: i
+  integer                   :: ip1
+  real(kind=dp)             :: normal(dim_num)
+  
+  normal(:) = 0
+  
+  do i = 1, n
+     if ( i < n ) then
+        ip1 = i + 1
+     else
+        ip1 = 1
+     end if
+     !
+     !  Compute the cross product vector.
+     !
+     cross(1) = v(2,i) * v(3,ip1) - v(3,i) * v(2,ip1)
+     cross(2) = v(3,i) * v(1,ip1) - v(1,i) * v(3,ip1)
+     cross(3) = v(1,i) * v(2,ip1) - v(2,i) * v(1,ip1)
+     
+     normal(:) = normal(:) + cross(:)
+  end do
+  
+  area = 0.5D+00 * sqrt(sum(normal(:)**2))
+
+end function get_volume_poly
 end module
 !=========================================================================================

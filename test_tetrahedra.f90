@@ -19,7 +19,7 @@ subroutine test_generate_random_point
   vertices(:,3) = [0, 0, 1]
   vertices(:,4) = [0, 0, 0]
 
-  points = generate_random_point(vertices, 1000)
+  points = generate_random_points_tet(vertices, 1000)
 
   call assert_true(all(sum(points,1)<1), 'Random points are in tetrahedron')
 
@@ -54,7 +54,7 @@ subroutine test_tetra_volume_3d
   vertices(:,3) = [0, 0, 1]
   vertices(:,4) = [0, 0, 0]
 
-  call assert_comparable_real(real(tetra_volume_3d(vertices)), 1./6., 1e-8, &
+  call assert_comparable_real(real(get_volume_tet(vertices)), 1./6., 1e-8, &
                               ' Volume of tetrahedron 1')
 
 
@@ -63,7 +63,7 @@ subroutine test_tetra_volume_3d
   vertices(:,3) = [10, -20, 41]
   vertices(:,4) = [10, -20, 40]
 
-  call assert_comparable_real(real(tetra_volume_3d(vertices)), 1./6., 1e-8, &
+  call assert_comparable_real(real(get_volume_tet (vertices)), 1./6., 1e-8, &
                               ' Volume of tetrahedron 2')
 
 end subroutine
