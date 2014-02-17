@@ -175,6 +175,7 @@ subroutine read_receiver(this)
    close(lu_receiver)
 
    this%nkernel = lastkernel
+   print *, ' In total ', this%nkernel, ' Kernels to calculate'
 
 end subroutine read_receiver
 !------------------------------------------------------------------------------
@@ -189,7 +190,6 @@ subroutine read_kernel(this, sem_data, filter)
    integer, parameter             :: lu_kernel = 1001
    integer                        :: irec, nfilter
    integer                        :: ikernel, ifilter
-   integer                        :: firstkernel, lastkernel
    integer, parameter             :: lu_receiver = 1002
    real(kind=sp)                  :: timewindow(2), junk
    character(len=1)               :: component
@@ -204,8 +204,6 @@ subroutine read_kernel(this, sem_data, filter)
 
    allocate(this%kernel(this%nkernel))
 
-   firstkernel = 1
-   lastkernel  = 0
    nfilter     = size(filter)
 
    do irec = 1, this%nrec
@@ -241,7 +239,7 @@ subroutine read_kernel(this, sem_data, filter)
    end do
    close(lu_receiver)
 
-   this%nkernel = lastkernel
+   this%nkernel = this%receiver(this%nrec)%lastkernel
 
 end subroutine read_kernel
 !------------------------------------------------------------------------------
