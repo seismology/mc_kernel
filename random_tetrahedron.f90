@@ -7,7 +7,7 @@ module tetrahedra
 
   public :: generate_random_points_tet, generate_random_points_poly
   public :: get_volume_tet, get_volume_poly
-  public :: rmat4_det
+  public :: rmat4_det, point_in_triangle
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -84,8 +84,8 @@ function generate_random_points_poly( nv, v, n ) result(x)
   implicit none
 
   integer, parameter           :: dim_num = 2
-  integer, intent(in)          :: n
-  integer, intent(in)          :: nv
+  integer, intent(in)          :: n  ! Number of points
+  integer, intent(in)          :: nv ! Degree of polynomial
   real(kind=dp), intent(in)    :: v(dim_num, nv)
   real(kind=dp)                :: x(dim_num, n)
 
@@ -195,7 +195,7 @@ end function rmat4_det
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine polygon_centroid_2d ( n, v, centroid )
+pure subroutine polygon_centroid_2d ( n, v, centroid )
 
 !*****************************************************************************80
 !
@@ -258,7 +258,7 @@ subroutine polygon_centroid_2d ( n, v, centroid )
   implicit none
 
   integer, intent(in)        :: n
-  real(kind=dp)              :: v(2,n)
+  real(kind=dp), intent(in)  :: v(2,n)
   real(kind=dp), intent(out) :: centroid(2)
 
   real(kind=dp)              :: area
@@ -293,7 +293,7 @@ end subroutine polygon_centroid_2d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine triangle_area_2d ( t, area )
+pure subroutine triangle_area_2d ( t, area )
 ! TRIANGLE_AREA_2D computes the area of a triangle in 2D.
   implicit none
 
@@ -379,5 +379,34 @@ function get_volume_poly(n, v) result(area)
   area = 0.5D+00 * sqrt(sum(normal(:)**2))
 
 end function get_volume_poly
+
+function point_in_triangle(r, x)
+! Checks whether point x is in the triangle between r1, r2, r3
+   real(kind=dp), intent(in)  :: r(2,3)
+   real(kind=dp), intent(out) :: x(:,:)
+   real(kind=dp)              :: a, b, c, denominator
+   logical                    :: point_in_triangle(size(x,2))
+   integer                    :: ipoint, npoints
+
+   npoints = size(x,2)
+
+   do ipoint = 1, npoints
+      denominator = ((r(2,2) - r(2,3))*(r(1,1) -      r(1,3)) + (r(1,3) - r(1,2))*(r(2,1)      - r(2,3)))
+      a =       dble((r(2,2) - r(2,3))*(x(1,ipoint) - r(1,3)) + (r(1,3) - r(1,2))*(x(2,ipoint) - r(2,3))) / denominator
+      b =       dble((r(2,3) - r(2,1))*(x(1,ipoint) - r(1,3)) + (r(1,1) - r(1,3))*(x(2,ipoint) - r(2,3))) / denominator
+      c = 1 - a - b
+
+      point_in_triangle(ipoint) = ((0 <= a).and.(a <= 1).and.(0 <= b).and.(b <= 1).and.(0 <= c).and.(c <= 1))
+   end do
+
+!   function pointInTriangle(x1, y1, x2, y2, x3, y3, x, y:Number):Boolean
+!      {
+!        var a:Number = ((y2 - y3)*(x - x3) + (x3 - x2)*(y - y3)) / denominator;
+!         var b:Number = ((y3 - y1)*(x - x3) + (x1 - x3)*(y - y3)) / denominator;
+!          var c:Number = 1 - a - b;
+!           
+!           return 0 <= a && a <= 1 && 0 <= b && b <= 1 && 0 <= c && c <= 1;
+!
+end function point_in_triangle
 end module
 !=========================================================================================
