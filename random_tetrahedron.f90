@@ -165,7 +165,7 @@ function generate_random_points_poly( nv, v, n ) result(x)
 
   end do
 
-end
+end function
 
 !-----------------------------------------------------------------------------------------
 function rmat4_det ( a )
@@ -383,7 +383,7 @@ end function get_volume_poly
 function point_in_triangle(r, x)
 ! Checks whether point x is in the triangle between r1, r2, r3
    real(kind=dp), intent(in)  :: r(2,3)
-   real(kind=dp), intent(out) :: x(:,:)
+   real(kind=dp), intent(in)  :: x(:,:)
    real(kind=dp)              :: a, b, c, denominator
    logical                    :: point_in_triangle(size(x,2))
    integer                    :: ipoint, npoints
