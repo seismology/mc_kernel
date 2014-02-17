@@ -75,17 +75,26 @@ contains
 subroutine set_params(this, fwd_dir, bwd_dir)
     class(semdata_type)            :: this
     character(len=512), intent(in) :: fwd_dir, bwd_dir
+    character(len=512)             :: dirnam
     integer                        :: isim
-    logical                        :: moment, force
+    logical                        :: moment=.false., force=.false.
 
-    inquire( file = trim(fwd_dir)//'/MZZ', exist = moment)
-    inquire( file = trim(fwd_dir)//'/PZ',  exist = force)
+    dirnam = trim(fwd_dir)//'/MZZ/simulation.info'
+    print *, 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = moment)
+
+    dirnam = trim(fwd_dir)//'/PZ/simulation.info'
+    print *, 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = force)
     if (moment) then
        this%nsim_fwd = 4
+       print *, 'Forward simulation was ''moment'' source'
     elseif (force) then
        this%nsim_fwd = 2
+       print *, 'Forward simulation was ''forces'' source'
     else 
        this%nsim_fwd = 1
+       print *, 'Forward simulation was ''single'' source'
     end if
 
     !this%nsim_fwd = parameters%nsim_fwd
@@ -137,11 +146,11 @@ subroutine open_files(this)
 
     do isim = 1, this%nsim_fwd
         ! Forward wavefield
-        filename=trim(this%fwd(isim)%meshdir)//'ordered_output.nc4'
+        filename=trim(this%fwd(isim)%meshdir)//'/ordered_output.nc4'
         
         inquire(file=filename, exist=this%fwd(isim)%ordered_output)
         if (.not.this%fwd(isim)%ordered_output) then
-            filename = trim(this%fwd(isim)%meshdir)//'Data/axisem_output.nc4'
+            filename = trim(this%fwd(isim)%meshdir)//'/Data/axisem_output.nc4'
         end if
         
         if (verbose>0) write(6,format20) trim(filename), mynum
@@ -159,7 +168,7 @@ subroutine open_files(this)
         if (verbose>0) write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
         
         if (this%fwd(isim)%ordered_output) then
-            filename = trim(this%fwd(isim)%meshdir)//'Data/axisem_output.nc4'
+            filename = trim(this%fwd(isim)%meshdir)//'/Data/axisem_output.nc4'
        
             if (verbose>0) write(6,format20) trim(filename), mynum
             call nc_open_for_read(filename = filename,              &
@@ -225,11 +234,11 @@ subroutine open_files(this)
 
     do isim = 1, this%nsim_bwd
         ! Backward wavefield
-        filename=trim(this%bwd(isim)%meshdir)//'ordered_output.nc4'
+        filename=trim(this%bwd(isim)%meshdir)//'/ordered_output.nc4'
         
         inquire(file=filename, exist=this%bwd(isim)%ordered_output)
         if (.not.this%bwd(isim)%ordered_output) then
-            filename = trim(this%bwd(isim)%meshdir)//'Data/axisem_output.nc4'
+            filename = trim(this%bwd(isim)%meshdir)//'/Data/axisem_output.nc4'
         end if
 
         if (verbose>0) write(6,format20) trim(filename), mynum
@@ -246,7 +255,7 @@ subroutine open_files(this)
         if (verbose>0) write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
         
         if (this%bwd(isim)%ordered_output) then
-            filename = trim(this%bwd(isim)%meshdir)//'Data/axisem_output.nc4'
+            filename = trim(this%bwd(isim)%meshdir)//'/Data/axisem_output.nc4'
        
             if (verbose>0) write(6,format20) trim(filename), mynum
             call nc_open_for_read(filename = filename,              &
@@ -309,7 +318,7 @@ subroutine close_files(this)
     do isim = 1, this%nsim_fwd
        status = nf90_close(this%fwd(isim)%ncid)
        if (verbose>0) then
-          write(*,'(A,I1,A,F9.7)') ' Buffer efficiency fwd(', isim, '): ',  &
+          write(*,'(A,I1,A,F9.6)') ' Buffer efficiency fwd(', isim, '): ',  &
                                    this%fwd(isim)%buffer%efficiency()
        end if
        status = this%fwd(isim)%buffer%freeme()
@@ -318,7 +327,7 @@ subroutine close_files(this)
     do isim = 1, this%nsim_bwd
        status = nf90_close(this%bwd(isim)%ncid)
        if (verbose>0) then
-       write(*,'(A,F9.7)') ' Buffer efficiency bwd   : ', & 
+       write(*,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
                            this%bwd(1)%buffer%efficiency()
        end if
        status = this%bwd(isim)%buffer%freeme()
