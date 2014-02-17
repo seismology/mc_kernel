@@ -77,7 +77,8 @@ program kerner
     write(*,*) '***************************************************************'
     write(*,*) ' Read inversion mesh'
     write(*,*) '***************************************************************'
-    call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+    !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+    call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
 
     nvertices = inv_mesh%get_nvertices()
     nelems    = inv_mesh%get_nelements()
@@ -117,16 +118,16 @@ program kerner
        write(*,*) '***************************************************************'
        write(*,*) 'Initialize output file'
        write(*,*) '***************************************************************'
-       call inv_mesh%init_data(nkernel)
+       call inv_mesh%init_data(parameters%nkernel)
        
        write(*,*) '***************************************************************'
        write (*,*) 'Initialize Kernel variables'
        write(*,*) '***************************************************************'
-       allocate(niterations(nkernel, nelems))
+       allocate(niterations(parameters%nkernel, nelems))
        niterations = 0
        open(unit=lu_iterations, file='niterations.txt', action='write')
-       allocate(K_x(nvertices, nkernel))
-       allocate(kernelvalue(nptperstep, nkernel))
+       allocate(K_x(nvertices, parameters%nkernel))
+       allocate(kernelvalue(nptperstep, parameters%nkernel))
        allocate(connectivity(4, nelems))
        
        allocate(fw_field(ndumps, nptperstep))
@@ -154,14 +155,18 @@ program kerner
           volume = inv_mesh%get_volume(ielement)
 
           ! Omit elements in the core
-          if (all( sum(co_element**2, 1).lt.2890.0**2 )) then
-             print '(I6,E11.3,A)', ielement, volume, ' in core, skipping'
-             print '(4(" ", F6.1))', sqrt(sum(co_element**2, 1))
-             cycle
-          end if
+          !if (all( sum(co_element**2, 1).lt.2890.0**2 )) then
+          !   print '(A,I6,A,ES11.3,A)', 'Element ', ielement, ' (vol:', volume, ') in core, skipping'
+          !   print '(4(" ", F12.1))', sqrt(sum(co_element**2, 1))
+          !   print '(4(" ", F12.1))', co_element(:,1)
+          !   print '(4(" ", F12.1))', co_element(:,2)
+          !   print '(4(" ", F12.1))', co_element(:,3)
+          !   print *, '*******************************************************'
+          !   cycle
+          !end if
           
           ! Initialize Monte Carlo integral for this element
-          call int_kernel%initialize_montecarlo(nkernel, volume, parameters%allowed_error) 
+          call int_kernel%initialize_montecarlo(parameters%nkernel, volume, parameters%allowed_error) 
          
           do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
              !random_points = generate_random_point( dble(co_element), nptperstep )
@@ -208,7 +213,10 @@ program kerner
              call int_kernel%check_montecarlo_integral(kernelvalue)
              
              ! Print convergence info
-             fmtstring = '(I6, E10.3, A, L1, 8(E11.3), A, 8(E10.3))'
+             write(fmtstring,"('(I6, ES10.3, A, L1, ', I2, '(ES11.3), A, ', I2, '(ES10.3))')") &
+                             parameters%nkernel, parameters%nkernel 
+             !print *, fmtstring
+             !fmtstring = '(I6, ES10.3, A, L1, 8(ES11.3), A, 8(ES10.3))'
              print fmtstring, ielement, volume, ' Converged? ', int_kernel%areallconverged(), &
                               int_kernel%getintegral(), ' +- ', sqrt(int_kernel%getvariance())
 
@@ -224,7 +232,7 @@ program kerner
           ! Save big kernel variable to disk
           if (mod(ielement, 100)==0) then
              write(*,*) 'Write Kernel to disk'
-             do ikernel = 1, nkernel
+             do ikernel = 1, parameters%nkernel
                 call inv_mesh%set_data_snap(K_x(:,ikernel), ikernel, parameters%kernel(ikernel)%name )
              end do
 
@@ -305,7 +313,7 @@ program kerner
     write(*,*) '***************************************************************'
     write(*,*) ' Free memory of Kernelspecs'
     write(*,*) '***************************************************************'
-    do ikernel = 1, nkernel
+    do ikernel = 1, parameters%nkernel
        call parameters%kernel(ikernel)%freeme() 
     end do
 
