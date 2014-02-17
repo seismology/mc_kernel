@@ -39,13 +39,40 @@ subroutine test_mesh_dump
   call assert_file_exists('unit_tests/testmesh_grid.dat', 'test xdmf dump')
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testmesh.xdmf', iostat=ierr)
+  !open(newunit=myunit, file='unit_tests/testmesh.xdmf', iostat=ierr)
+  !if (ierr == 0) close(myunit, status='delete')
+
+  !open(newunit=myunit, file='unit_tests/testmesh_points.dat', iostat=ierr)
+  !if (ierr == 0) close(myunit, status='delete')
+
+  !open(newunit=myunit, file='unit_tests/testmesh_grid.dat', iostat=ierr)
+  !if (ierr == 0) close(myunit, status='delete')
+  
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_mesh_dump2
+  type(inversion_mesh_type)    :: inv_mesh
+  integer                      :: myunit, ierr
+
+  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
+
+  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh_abaqus')
+
+  call assert_file_exists('unit_tests/testmesh_abaqus.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests/testmesh_abaqus_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests/testmesh_abaqus_grid.dat', 'test xdmf dump')
+
+  ! tidy up
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%freeme()
@@ -210,6 +237,47 @@ subroutine test_mesh_data_dump4
   if (ierr == 0) close(myunit, status='delete')
   
   open(newunit=myunit, file='unit_tests/testsphere_data.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_mesh_data_dump5
+  type(inversion_mesh_data_type)    :: inv_mesh
+  real(kind=sp), allocatable        :: datat(:,:)
+  integer                           :: npoints, myunit, ierr
+
+  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
+  call inv_mesh%init_data(3)
+
+  npoints = inv_mesh%get_nvertices()
+  allocate(datat(3,npoints))
+
+  datat(:,:) = inv_mesh%get_vertices()
+  call inv_mesh%set_data_snap(datat(1,:), 1, 'x')
+  call inv_mesh%set_data_snap(datat(2,:), 2, 'x')
+  call inv_mesh%set_data_snap(datat(3,:), 3, 'x')
+
+  call inv_mesh%dump_mesh_data_xdmf('unit_tests/testtetrahedrons')
+
+  call assert_file_exists('unit_tests/testtetrahedrons.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests/testtetrahedrons_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests/testtetrahedrons_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests/testtetrahedrons_data.dat', 'test xdmf data dump')
+
+  ! tidy up
+  open(newunit=myunit, file='unit_tests/testtetrahedrons.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testtetrahedrons_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testtetrahedrons_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  open(newunit=myunit, file='unit_tests/testtetrahedrons_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%freeme()

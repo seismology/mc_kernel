@@ -61,6 +61,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST INVERSION MESH MODULE'
   call test(test_mesh_read, 'reading tetrahedral mesh')
   call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
+  call test(test_mesh_dump2, 'reading/dumping tetrahedral mesh from abaqus')
   call test(test_mesh_data_dump, 'reading/dumping tetrahedral mesh with data')
   call test(test_mesh_data_dump2, &
             'reading/dumping triangular mesh from abaqus file with data')
@@ -68,6 +69,8 @@ subroutine test_all
             'reading/dumping quadrilateral mesh from abaqus file with data')
   call test(test_mesh_data_dump4, &
             'reading/dumping hexahedral mesh from abaqus file with data')
+  call test(test_mesh_data_dump5, &
+            'reading/dumping tetrahedral mesh from abaqus file with data')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
 

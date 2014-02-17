@@ -308,7 +308,7 @@ subroutine read_abaqus_mesh(this, filename)
   case('C3D8R')
      this%nvertices_per_elem = 8
      this%element_type = 'hex'
-  case('XXX')
+  case('C3D4')
      this%nvertices_per_elem = 4
      this%element_type = 'tet'
   case default
@@ -466,7 +466,7 @@ subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
      p_2d(2,i) = dot_product ( p_3d(:,i) - p_ref(:,2), vec(:,2) )
   end do
   
-end
+end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
