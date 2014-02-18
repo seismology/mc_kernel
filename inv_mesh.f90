@@ -476,9 +476,13 @@ subroutine dump_mesh_xdmf(this, filename)
   integer                           :: iinput_xdmf, iinput_heavy_data
   integer                           :: i
   character(len=16)                 :: xdmf_elem_type
+  character(len=512)                :: filename_np
 
   if (.not. this%initialized) &
      stop 'ERROR: trying to dump a non initialized mesh'
+
+  ! relative filename for xdmf content
+  filename_np = trim(filename(index(filename, '/', back=.true.)+1:))
 
   select case(this%element_type)
   case('tri')
@@ -499,8 +503,8 @@ subroutine dump_mesh_xdmf(this, filename)
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
   write(iinput_xdmf, 732) trim(xdmf_elem_type), this%nelements, this%nelements, &
                       this%nvertices_per_elem, 'binary', &
-                      trim(filename)//'_grid.dat', this%nvertices, 'binary', &
-                      trim(filename)//'_points.dat'
+                      trim(filename_np)//'_grid.dat', this%nvertices, 'binary', &
+                      trim(filename_np)//'_points.dat'
   close(iinput_xdmf)
 
 732 format(&    
@@ -526,7 +530,7 @@ subroutine dump_mesh_xdmf(this, filename)
   ! VERTEX data
   open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%vertices
+  write(iinput_heavy_data) real(this%vertices, kind=sp)
   close(iinput_heavy_data)
 
   ! CONNECTIVITY data
@@ -621,12 +625,16 @@ subroutine dump_mesh_data_xdmf(this, filename)
   integer                           :: iinput_xdmf, iinput_heavy_data
   integer                           :: i, igroup, itime, isnap, n
   character(len=16)                 :: xdmf_elem_type
+  character(len=512)                :: filename_np
 
   if (.not. this%initialized) &
      stop 'ERROR: trying to dump a non initialized mesh'
   
   if (.not. allocated(this%datat)) &
      stop 'ERROR: no data to dump available'
+
+  ! relative filename for xdmf content
+  filename_np = trim(filename(index(filename, '/', back=.true.)+1:))
 
   select case(this%element_type)
   case('tri')
@@ -647,8 +655,8 @@ subroutine dump_mesh_data_xdmf(this, filename)
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
   ! start xdmf file, write header
   write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'binary', &
-                          trim(filename)//'_grid.dat', &
-                          this%nvertices, 'binary', trim(filename)//'_points.dat'
+                          trim(filename_np)//'_grid.dat', &
+                          this%nvertices, 'binary', trim(filename_np)//'_points.dat'
 
   i = 1
   itime = 1
@@ -673,7 +681,7 @@ subroutine dump_mesh_data_xdmf(this, filename)
            ! write attribute
            write(iinput_xdmf, 7342) this%data_group_names(igroup), &
                                     this%nvertices, isnap-1, this%nvertices, this%ntimes, &
-                                    this%nvertices, trim(filename)//'_data.dat'
+                                    this%nvertices, trim(filename_np)//'_data.dat'
            i = i + 1
         endif
         igroup = igroup + 1
@@ -736,7 +744,7 @@ subroutine dump_mesh_data_xdmf(this, filename)
   ! VERTEX data
   open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%vertices
+  write(iinput_heavy_data) real(this%vertices, kind=sp)
   close(iinput_heavy_data)
 
   ! CONNECTIVITY data
@@ -749,7 +757,7 @@ subroutine dump_mesh_data_xdmf(this, filename)
   open(newunit=iinput_heavy_data, file=trim(filename)//'_data.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
   do i=1, this%ntimes
-     write(iinput_heavy_data) this%datat(:,i)
+     write(iinput_heavy_data) real(this%datat(:,i), kind=sp)
   enddo
   close(iinput_heavy_data)
 
