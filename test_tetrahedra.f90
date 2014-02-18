@@ -131,7 +131,7 @@ subroutine test_generate_random_point_triangle_space
                       npoints = nvec,         &
                       p_3d    = p_ref(:,2:3), &
                       p_2d    = p_2d(:,2:3),    &
-                      vec     = v_2d(:,:)    )
+                      vec     = v_2d(:,1:2)    )
 
   points_2d = generate_random_points_poly(3, p_2d, npoints)
    
@@ -155,9 +155,9 @@ subroutine test_generate_random_point_triangle_space
   ! y<0.5 and x>0.5, ratio should be 0.5
   ratio_region(3) = real(count(points(2,:)<0.5.and.points(1,:)>0.5)) / real(npoints)
 
-  call assert_comparable_real(ratio_region(1), 0.25, 1e-2, 'Correct density in Region 1')
-  call assert_comparable_real(ratio_region(2), 0.25, 1e-2, 'Correct density in Region 2')
-  call assert_comparable_real(ratio_region(3), 0.5,  1e-2, 'Correct density in Region 3')
+  call assert_comparable_real(ratio_region(1), 0.25, 5e-2, 'Correct density in Region 1')
+  call assert_comparable_real(ratio_region(2), 0.25, 5e-2, 'Correct density in Region 2')
+  call assert_comparable_real(ratio_region(3), 0.5,  5e-2, 'Correct density in Region 3')
 
 end subroutine test_generate_random_point_triangle_space
 !-----------------------------------------------------------------------------------------
