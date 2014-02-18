@@ -118,11 +118,16 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                        this%time_window,       &
                        t_cut )
 
-   this%normalization = sum(this%veloseis**2)
+   if (abs(sum(this%veloseis**2)).lt.1.e-20) then
+       this%normalization = 0
+   else
+       this%normalization = sum(this%veloseis**2)
+   end if
+   
    if (verbose>0) then
-      print *, 'Normalization coefficient: ', this%normalization
-      print *, 'Length of seismogram: ', size(this%veloseis,1), ' samples'
-      print *, '---------------------------------------------------------'
+      print *, '  Normalization coefficient: ', this%normalization
+      print *, '  Length of seismogram: ', size(this%veloseis,1), ' samples'
+      print *, '  ---------------------------------------------------------'
       print *, ''
    end if
 
@@ -182,7 +187,7 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
          
-         calc_misfit_kernel(itrace) = sum(  cut_timeseries * this%veloseis, 1  ) &
+         calc_misfit_kernel(itrace) = sum( cut_timeseries * this%veloseis, 1 ) &
                                       * this%dt / this%normalization
       end do
    end select
