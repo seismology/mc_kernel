@@ -162,7 +162,7 @@ subroutine open_files(this)
                                   grp_ncid = this%fwd(isim)%snap))
 
         
-        call getvarid            (ncid     = this%fwd(isim)%snap,   &
+        call getvarid(            ncid     = this%fwd(isim)%snap,   &
                                   name     = "straintrace",         &
                                   varid    = this%fwd(isim)%straintrace) 
         if (verbose>0) write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
@@ -181,13 +181,13 @@ subroutine open_files(this)
                                  grp_ncid  = this%fwd(isim)%surf))
 
 
-        call getvarid(ncid     = this%fwd(isim)%surf,   &
-                      name     = "displacement",         &
-                      varid    = this%fwd(isim)%seis_disp) 
+        call getvarid(           ncid      = this%fwd(isim)%surf,   &
+                                 name      = "displacement",         &
+                                 varid     = this%fwd(isim)%seis_disp) 
         
-        call getvarid(ncid     = this%fwd(isim)%surf,   &
-                                 name     = "velocity",            &
-                                 varid    = this%fwd(isim)%seis_velo) 
+        call getvarid(           ncid      = this%fwd(isim)%surf,   &
+                                 name      = "velocity",            &
+                                 varid     = this%fwd(isim)%seis_velo) 
 
 
         call check(nf90_inq_ncid(ncid      = this%fwd(isim)%ncid,   &
@@ -201,7 +201,8 @@ subroutine open_files(this)
         call nc_read_att_dble(   this%fwd(isim)%dt,               &
                                  'strain dump sampling rate in sec', &
                                  this%fwd(isim))
-        this%fwd(isim)%dt = 1.7064171433448792
+        ! Was a hack because dt was written out wrong in earlier AxiSEM versions
+        !this%fwd(isim)%dt = 1.7064171433448792
 
         call nc_read_att_int(    this%fwd(isim)%nseis,             &
                                  'length of seismogram  in time samples', &
@@ -284,7 +285,7 @@ subroutine open_files(this)
         call nc_read_att_dble(    this%bwd(isim)%dt,                &
                                   'strain dump sampling rate in sec', &
                                   this%bwd(isim))
-        this%bwd(isim)%dt = 1.7064171433448792
+        !this%bwd(isim)%dt = 1.7064171433448792
 
         call nc_read_att_real(   this%bwd(isim)%source_shift_t, &
                                  'source shift factor in sec',     &
@@ -293,6 +294,11 @@ subroutine open_files(this)
         call nc_read_att_int(    this%bwd(isim)%source_shift_samples,    &
                                  'source shift factor for deltat_coarse',     &
                                  this%bwd(isim))
+        
+        call nc_read_att_real(   this%bwd(isim)%amplitude,      &
+                                 'scalar source magnitude',     &
+                                 this%bwd(isim))
+        
     end do
 
 
@@ -522,7 +528,7 @@ function load_fw_points(this, coordinates, source_params)
             !print *, 'isim', isim, '; azim. factor:', azim_factor(rotmesh_phi(ipoint),&
             !                                                      source_params%mij, isim)
         end do !isim
-        
+        !read(*,*)
     end do !ipoint
 
 end function load_fw_points
@@ -548,17 +554,18 @@ subroutine load_seismogram(this, receivers, src)
    allocate(this%veloseis(this%ndumps, nrec))
    
    Mij_scale = src%mij / this%fwd(1)%amplitude
+   print '(A, ES11.3)', '  Forward simulation amplitude: ', this%fwd(1)%amplitude
  
    do irec = 1, nrec
-      print '(A,F8.4,A,F8.4)', '  Receiver theta:', receivers(irec)%theta/deg2rad, &
+      print '(A,F8.4,A,F8.4)', '  Receiver theta: ', receivers(irec)%theta/deg2rad, &
                                ', phi: ', receivers(irec)%phi/deg2rad
-      print '(A)',             '                  Mij    Mij_scaled'
-      print '(A,2(E11.3))',    '  Mrr:       ', src%mij(1), mij_scale(1) 
-      print '(A,2(E11.3))',    '  Mtt:       ', src%mij(2), mij_scale(2)
-      print '(A,2(E11.3))',    '  Mpp:       ', src%mij(3), mij_scale(3)
-      print '(A,2(E11.3))',    '  Mrt:       ', src%mij(4), mij_scale(4)
-      print '(A,2(E11.3))',    '  Mrp:       ', src%mij(5), mij_scale(5)
-      print '(A,2(E11.3))',    '  Mtp:       ', src%mij(6), mij_scale(6)
+      print '(A)',             '                  Mij     Mij_scaled'
+      print '(A,2(ES11.3))',   '  Mrr:       ', src%mij(1), mij_scale(1) 
+      print '(A,2(ES11.3))',   '  Mtt:       ', src%mij(2), mij_scale(2)
+      print '(A,2(ES11.3))',   '  Mpp:       ', src%mij(3), mij_scale(3)
+      print '(A,2(ES11.3))',   '  Mrt:       ', src%mij(4), mij_scale(4)
+      print '(A,2(ES11.3))',   '  Mrp:       ', src%mij(5), mij_scale(5)
+      print '(A,2(ES11.3))',   '  Mtp:       ', src%mij(6), mij_scale(6)
 
 
       !print '(A,6(F8.5,/))',     'Mij_scale: ', Mij_scale
@@ -569,7 +576,7 @@ subroutine load_seismogram(this, receivers, src)
          mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
                           + Mij_scale(5) * sin(receivers(irec)%phi)
          mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
-                          + 2. * Mij_scale(6)            * sin(2. * receivers(irec)%phi) 
+                          +           2. * Mij_scale(6) * sin(2. * receivers(irec)%phi) 
          reccomp = 1
       case('T')
          mij_prefact(1) = 0.0
@@ -577,7 +584,7 @@ subroutine load_seismogram(this, receivers, src)
          mij_prefact(3) = - Mij_scale(4) * sin(receivers(irec)%phi) &
                           + Mij_scale(5) * cos(receivers(irec)%phi)
          mij_prefact(4) =  (Mij_scale(3) - Mij_scale(2)) * sin(2. * receivers(irec)%phi) &
-                          + 2. * Mij_scale(6)            * cos(2. * receivers(irec)%phi)
+                          +           2. * Mij_scale(6)  * cos(2. * receivers(irec)%phi)
          reccomp = 2
       case('R')
          mij_prefact(1) = Mij_scale(1)
@@ -585,7 +592,7 @@ subroutine load_seismogram(this, receivers, src)
          mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
                           + Mij_scale(5) * sin(receivers(irec)%phi)
          mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
-                          + 2. * Mij_scale(6)            * sin(2. * receivers(irec)%phi) 
+                          +           2. * Mij_scale(6)  * sin(2. * receivers(irec)%phi) 
          reccomp = 3
       case default
          print *, 'ERROR: Unknown receiver component: ', receivers(irec)%component
@@ -691,12 +698,14 @@ function load_bw_points(this, coordinates, receiver)
 
         select case(receiver%component)
         case('Z')
-            load_bw_points(:,(ipoint)) =                      utemp
+            load_bw_points(:,(ipoint)) =                      utemp / this%bwd(1)%amplitude
         case('R')
-            load_bw_points(:,(ipoint)) =   cos(rotmesh_phi) * utemp
+            load_bw_points(:,(ipoint)) =   cos(rotmesh_phi) * utemp / this%bwd(1)%amplitude
         case('T')
-            load_bw_points(:,(ipoint)) = - sin(rotmesh_phi) * utemp 
+            load_bw_points(:,(ipoint)) = - sin(rotmesh_phi) * utemp / this%bwd(1)%amplitude 
         end select
+
+        
 
     end do !ipoint
 
@@ -845,9 +854,6 @@ subroutine read_meshes(this)
                              varid  = ncvarid_theta,       &
                              values = this%fwdmesh%theta) )
 
-   !do  ielem = 1, this%fwdmesh%nsurfelem
-   !   print *, ielem, this%fwdmesh%theta(ielem)
-   !end do
    
    ! Backward mesh
    call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
@@ -1032,10 +1038,6 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
 
     srd = dsqrt(xp*xp + yp*yp)
     zrd = zp
-    !do ipt = 1, npts
-    !   phi_cp = datan2(yp(ipt), xp(ipt))
-    !   if (phi_cp<0.d0) then
-    !      phird(ipt) = 2.d0 * pi + phi_cp
     do ipt = 1, npts
        phi_cp = datan2(yp(ipt), xp(ipt))
        if (phi_cp<0.d0) then
@@ -1043,7 +1045,6 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
        else
           phird(ipt) = phi_cp
        endif
-       !if (phigr==0.0 .and. rgd(2,ipt)==0.0)  phird(ipt)=0.
     enddo
 end subroutine rotate_frame_rd
 !-------------------------------------------------------------------------------
