@@ -2,7 +2,7 @@
 module inversion_mesh
 
   use global_parameters, only: sp, dp
-  use type_parameter
+  !use type_parameter
   use tetrahedra,        only: get_volume_tet, get_volume_poly, &
                                generate_random_points_tet, generate_random_points_poly
   implicit none
