@@ -119,7 +119,7 @@ subroutine read_source(this)
    read(lu_source,*) junk, Mij_dyncm(6) !Mtp
    close(lu_source)
 
-   call this%source%init(lat = latd, lon = lond, mij = Mij_dyncm/1.E-7)
+   call this%source%init(lat = latd, lon = lond, mij = Mij_dyncm*1.E-7)
 
 end subroutine read_source
 !------------------------------------------------------------------------------
