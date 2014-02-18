@@ -118,7 +118,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                        this%time_window,       &
                        t_cut )
 
-   if (abs(sum(this%veloseis**2)).lt.1.e-20) then
+   if (abs(sum(this%veloseis**2)).lt.1.e-30) then
        this%normalization = 0
    else
        this%normalization = sum(this%veloseis**2)
