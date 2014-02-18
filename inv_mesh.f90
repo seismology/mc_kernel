@@ -2,13 +2,13 @@
 module inversion_mesh
 
   use global_parameters, only: sp, dp
-  !use type_parameter
   use tetrahedra,        only: get_volume_tet, get_volume_poly, &
                                generate_random_points_tet, generate_random_points_poly
   implicit none
   private
   public :: inversion_mesh_type
   public :: inversion_mesh_data_type
+  public :: plane_exp_pro2
 
   type :: inversion_mesh_type
      private
@@ -387,10 +387,10 @@ subroutine make_2d_vectors(this)
 
   do ielem = 1, this%nelements
      this%v_2d(:,0,ielem) = this%vertices(:, this%connectivity(1,ielem)+1)
-     call plane_exp_pro2(p_ref   = this%vertices(:, this%connectivity(1:3, ielem)),      &
-                         npoints = nvec,                                                 &
-                         p_3d    = this%vertices(:, this%connectivity(2:nvec+1, ielem)), &
-                         p_2d    = this%p_2d(:,:,ielem),                                 &
+     call plane_exp_pro2(p_ref   = this%vertices(:, this%connectivity(1:3, ielem)+1),      &
+                         npoints = nvec,                                                   &
+                         p_3d    = this%vertices(:, this%connectivity(2:nvec+1, ielem)+1), &
+                         p_2d    = this%p_2d(:,:,ielem),                                   &
                          vec     = this%v_2d(:,1:2,ielem))
    end do
 end subroutine make_2d_vectors
