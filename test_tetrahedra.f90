@@ -3,6 +3,7 @@ module test_tetrahedra
 
   use global_parameters
   use tetrahedra
+  use inversion_mesh, only: plane_exp_pro2
   use ftnunit
   implicit none
   public
@@ -107,6 +108,58 @@ subroutine test_generate_random_point_tet
   call assert_true(all(sum(points,1)<1), 'Random points are in tetrahedron')
 
 end subroutine test_generate_random_point_tet
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_generate_random_point_triangle_space
+
+  integer, parameter                  :: npoints = 100000
+  logical                             :: isintriangle(npoints)
+  real(kind=dp), dimension(3,npoints) :: points
+  real(kind=dp), dimension(2,npoints) :: points_2d
+  real(kind=dp), dimension(2,3)       :: vertices, new_vertices
+  real(kind=dp)                       :: p_2d(2,3), v_2d(3,0:2), p_ref(3,3)
+  integer                             :: nvec, ipoint
+  real(kind=sp)                       :: ratio_region(3)
+
+  isintriangle = .false.
+  nvec = 2
+  p_ref(:,1) = [0, 0, 0]
+  p_ref(:,2) = [1, 0, 1]
+  p_ref(:,3) = [1, 1, 1]
+  call plane_exp_pro2(p_ref   = p_ref,        &
+                      npoints = nvec,         &
+                      p_3d    = p_ref(:,2:3), &
+                      p_2d    = p_2d(:,2:3),    &
+                      vec     = v_2d(:,:)    )
+
+  points_2d = generate_random_points_poly(3, p_2d, npoints)
+   
+  v_2d(:,0) = p_ref(:,1)
+  do ipoint = 1, npoints
+      points(:,ipoint) =   v_2d(:,0)                          &
+                         + v_2d(:,1) * points_2d(1,ipoint)    &
+                         + v_2d(:,2) * points_2d(2,ipoint)
+  end do
+
+  isintriangle = (points(1,:).eq.points(3,:) .and. &
+                  points(3,:).le.1           .and. &
+                  points(3,:).ge.points(2,:)      )
+
+  call assert_true(isintriangle, 'Points are in triangle')
+
+  ! x==z<0.5, ratio should be 0.25
+  ratio_region(1) = real(count(points(1,:)<0.5)) / real(npoints)
+  ! y>0.5, ratio should be 0.25
+  ratio_region(2) = real(count(points(2,:)>0.5)) / real(npoints)
+  ! y<0.5 and x>0.5, ratio should be 0.5
+  ratio_region(3) = real(count(points(2,:)<0.5.and.points(1,:)>0.5)) / real(npoints)
+
+  call assert_comparable_real(ratio_region(1), 0.25, 1e-2, 'Correct density in Region 1')
+  call assert_comparable_real(ratio_region(2), 0.25, 1e-2, 'Correct density in Region 2')
+  call assert_comparable_real(ratio_region(3), 0.5,  1e-2, 'Correct density in Region 3')
+
+end subroutine test_generate_random_point_triangle_space
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

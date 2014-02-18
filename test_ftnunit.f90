@@ -52,6 +52,7 @@ subroutine test_all
   call test(test_generate_random_point_poly_3, 'Random points in Triangle')
   call test(test_generate_random_point_poly_4, 'Random points in Quadrilateral')
   call test(test_generate_random_point_tet, 'Random points in Tetrahedra')
+  call test(test_generate_random_point_triangle_space, 'Random points in Triangle in Space')
   call test(test_rmat4_det, 'Matrix determinant')
   call test(test_tetra_volume_3d, 'Tetrahedron volume')
   call test(test_get_volume_poly_3, 'Triangle area')
