@@ -90,80 +90,112 @@ function generate_random_points_poly( nv, v, n ) result(x)
   real(kind=dp)                :: x(dim_num, n)
 
   real(kind=dp)                :: area(nv)
+  real(kind=dp)                :: area_norm(nv)
+  real(kind=dp)                :: area_int(nv)
   real(kind=dp)                :: area_percent
   real(kind=dp)                :: centroid(dim_num)
   integer                      :: i, ip1, j, k
   real(kind=dp)                :: r(2)
   real(kind=dp)                :: t(dim_num,3)
-!
-!  Find the centroid.
-!
-  call polygon_centroid_2d ( nv, dble(v), centroid )
-!
-!  Determine the areas of each triangle.
-!
-  do i = 1, nv
 
-    if ( i < nv ) then
-      ip1 = i + 1
-    else
-      ip1 = 1
-    end if
 
-    t(1:2,1) = v(1:2,i)
-    t(1:2,2) = v(1:2,ip1)
-    t(1:2,3) = centroid(1:2)
+  if (nv == 3) then
+    do j = 1, n
+      call random_number(r)
 
-    call triangle_area_2d ( t, area(i) )
-
-  end do
-!
-!  Normalize the areas.
-!
-  area(1:nv) = area(1:nv) / sum ( area(1:nv) )
-!
-!  Replace each area by the sum of itself and all previous ones.
-!
-  do i = 2, nv
-    area(i) = area(i) + area(i-1)
-  end do
-
-  do j = 1, n
-!
-!  Choose a triangle at random, based on areas.
-!
-    !area_percent = r8_uniform_01 ( seed )
-    call random_number(area_percent) 
-
-    do k = 1, nv
-
-      if ( area_percent <= area(k) ) then
-        i = k
-        exit
+      if ( 1.0D+00 < sum (r(:)) ) then
+        r(:) = 1.0D+00 - r(:)
       end if
 
+      x(:,j) = ( 1.0D+00 - r(1) - r(2) ) * v(:,1) &
+                         + r(1)          * v(:,2) &
+                                + r(2)   * v(:,3) 
     end do
-!
-!  Now choose a point at random in the triangle.
-!
-    if ( i < nv ) then
-      ip1 = i + 1
-    else
-      ip1 = 1
-    end if
 
-    !call r8vec_uniform_01 ( dim_num, seed, r )
-    call random_number(r)
+  else
+    !
+    !  Find the centroid.
+    !
+      call polygon_centroid_2d ( nv, dble(v), centroid )
+    !
+    !  Determine the areas of each triangle.
+    !
+      do i = 1, nv
 
-    if ( 1.0D+00 < sum (r(:)) ) then
-      r(:) = 1.0D+00 - r(:)
-    end if
+        if ( i < nv ) then
+          ip1 = i + 1
+        else
+          ip1 = 1
+        end if
 
-    x(:,j) = ( 1.0D+00 - r(1) - r(2) ) * dble(v(:,i)) &
-                       + r(1)          * dble(v(:,ip1)) &
-                              + r(2)   * centroid(:)
+        t(1:2,1) = v(1:2,i)
+        t(1:2,2) = v(1:2,ip1)
+        t(1:2,3) = centroid(1:2)
 
-  end do
+        call triangle_area_2d ( t, area(i) )
+
+      end do
+    !
+    !  Normalize the areas.
+    !
+      area_norm(1:nv) = area(1:nv) / sum ( area(1:nv) )
+    !
+    !  Replace each area by the sum of itself and all previous ones.
+    !
+      area_int(1) = area_norm(1)
+      do i = 2, nv
+        area_int(i) = area_norm(i) + area_int(i-1)
+      end do
+
+      do j = 1, n
+    !
+    !  Choose a triangle at random, based on areas.
+    !
+        !area_percent = r8_uniform_01 ( seed )
+        call random_number(area_percent) 
+
+        do k = 1, nv
+
+          if ( area_percent <= area_int(k) ) then
+            i = k
+            exit
+          end if
+
+        end do
+    !
+    !  Now choose a point at random in the triangle.
+    !
+        if ( i < nv ) then
+          ip1 = i + 1
+        else
+          ip1 = 1
+        end if
+
+        !call r8vec_uniform_01 ( dim_num, seed, r )
+        call random_number(r)
+
+        if ( 1.0D+00 < sum (r(:)) ) then
+          r(:) = 1.0D+00 - r(:)
+        end if
+
+        if ((ip1.gt.nv).or.(i.gt.nv)) then
+            print *, i, ip1
+            print *, area
+            print *, area_norm
+            print *, area_int
+            print *, area_percent
+            print *, v(:,1)
+            print *, v(:,2)
+            print *, v(:,3)
+            print *, centroid
+        end if
+        x(:,j) = ( 1.0D+00 - r(1) - r(2) ) * dble(v(:,i)) &
+                           + r(1)          * dble(v(:,ip1)) &
+                                  + r(2)   * centroid(:)
+
+      end do
+
+  end if ! nv==3
 
 end function
 

@@ -78,7 +78,8 @@ program kerner
     write(*,*) ' Read inversion mesh'
     write(*,*) '***************************************************************'
     !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
-    call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
+    !call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
+    call inv_mesh%read_abaqus_mesh('unit_tests/flat_triangles.inp')
 
     nvertices = inv_mesh%get_nvertices()
     nelems    = inv_mesh%get_nelements()
@@ -149,6 +150,7 @@ program kerner
        write(*,*) ' Start loop over elements'
        write(*,*) '***************************************************************'
 
+       allocate(random_points(3, nptperstep))
        do ielement = 1, nelems
 
           co_element = inv_mesh%get_element(ielement)
@@ -169,8 +171,8 @@ program kerner
           call int_kernel%initialize_montecarlo(parameters%nkernel, volume, parameters%allowed_error) 
          
           do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
-             !random_points = generate_random_point( dble(co_element), nptperstep )
              random_points = inv_mesh%generate_random_points( ielement, nptperstep )
+             if (any(niterations(:, ielement)>100)) exit 
              
              ! Load, FT and timeshift forward field
              fw_field = sem_data%load_fw_points( random_points, parameters%source )
@@ -195,7 +197,8 @@ program kerner
                 do ikernel = parameters%receiver(irec)%firstkernel, &
                              parameters%receiver(irec)%lastkernel !, nkernel
                    if (int_kernel%isconverged(ikernel)) cycle
-                   !niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                   niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                   if (niterations(ikernel, ielement)>100) cycle
 
                    ! Apply Filter 
                    conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
@@ -215,22 +218,21 @@ program kerner
              ! Print convergence info
              write(fmtstring,"('(I6, ES10.3, A, L1, ', I2, '(ES11.3), A, ', I2, '(ES10.3))')") &
                              parameters%nkernel, parameters%nkernel 
-             !print *, fmtstring
-             !fmtstring = '(I6, ES10.3, A, L1, 8(ES11.3), A, 8(ES10.3))'
              print fmtstring, ielement, volume, ' Converged? ', int_kernel%areallconverged(), &
                               int_kernel%getintegral(), ' +- ', sqrt(int_kernel%getvariance())
 
           end do ! Kernel coverged
          
           ! Save integral values to the big kernel variable
-          do ivertex = 1, 4
-             K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) + int_kernel%getintegral() / volume
+          do ivertex = 1, inv_mesh%nvertices_per_elem
+             K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) &
+                                                      + int_kernel%getintegral() / volume
           end do
 
           call int_kernel%freeme()
 
           ! Save big kernel variable to disk
-          if (mod(ielement, 100)==0) then
+          if ((mod(ielement, 100)==0).or.(ielement==nelems)) then
              write(*,*) 'Write Kernel to disk'
              do ikernel = 1, parameters%nkernel
                 call inv_mesh%set_data_snap(K_x(:,ikernel), ikernel, parameters%kernel(ikernel)%name )
