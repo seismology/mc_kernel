@@ -176,7 +176,7 @@ subroutine rfft(this, datat, dataf)
 
   if (any(shape(dataf) /= (/this%nomega, this%ntraces/))) then
      write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat), '; should be: (', this%ntimes, ', ', this%ntraces, ')'
+     write(*,*) 'is: ', shape(datat), '; should be: (', this%nomega, ', ', this%ntraces, ')'
      stop
   end if
 
