@@ -176,7 +176,7 @@ subroutine rfft(this, datat, dataf)
 
   if (any(shape(dataf) /= (/this%nomega, this%ntraces/))) then
      write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat), '; should be: (', this%nomega, ', ', this%ntraces, ')'
+     write(*,*) 'is: ', shape(dataf), '; should be: (', this%nomega, ', ', this%ntraces, ')'
      stop
   end if
 
@@ -196,11 +196,17 @@ subroutine irfft(this, dataf, datat)
      stop 'ERROR: trying inverse fft on a plan that was not initialized'
   endif
 
-  if (any(shape(dataf) /= (/this%nomega, this%ntraces/))) &
-     stop 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
+  if (any(shape(dataf) /= (/this%nomega, this%ntraces/))) then
+     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf), '; should be: (', this%nomega, ', ', this%ntraces, ')'
+     stop 
+  end if
 
-  if (any(shape(datat) /= (/this%ntimes, this%ntraces/))) &
-     stop 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
+  if (any(shape(datat) /= (/this%ntimes, this%ntraces/))) then
+     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat), '; should be: (', this%ntimes, ', ', this%ntraces, ')'
+     stop 
+  end if
 
   ! use specific interfaces including the buffer arrays to make sure the
   ! compiler does not change the order of execution (stupid, but known issue)
