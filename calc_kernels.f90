@@ -38,7 +38,7 @@ program kerner
     real(kind=sp)                       :: co_element(3,4)
     real(kind=dp)                       :: volume
     real(kind=dp)                       :: df
-    character(len=32)                   :: filtername, whattodo
+    character(len=32)                   :: filtername
     character(len=64)                   :: fmtstring
 
     integer, parameter                  :: nptperstep = 25, lu_iterations = 400
@@ -79,43 +79,46 @@ program kerner
     write(*,*) '***************************************************************'
     !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
     !call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
-    call inv_mesh%read_abaqus_mesh('unit_tests/flat_triangles.inp')
+    !call inv_mesh%read_abaqus_mesh('unit_tests/flat_triangles.inp')
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
 
     nvertices = inv_mesh%get_nvertices()
     nelems    = inv_mesh%get_nelements()
     fmtstring = '(A, I8, A, I8)'
     print fmtstring, '  nvertices: ',  nvertices, ', nelems: ', nelems
 
-    write(*,*) '***************************************************************'
-    write(*,*) ' Initialize FFT'
-    write(*,*) '***************************************************************'
-    call fft_data%init(ndumps, nptperstep, sem_data%dt)
-    ntimes = fft_data%get_ntimes()
-    nomega = fft_data%get_nomega()
-    df     = fft_data%get_df()
-    fmtstring = '(A, I8, A, I8)'
-    print fmtstring, '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
-    fmtstring = '(A, F8.3, A, F8.3, A)'
-    print fmtstring, '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
+    print *, 'What to do: ', trim(parameters%whattodo)
 
-    write(*,*) '***************************************************************'
-    write(*,*) ' Define filters'
-    write(*,*) '***************************************************************'
-    
-    call parameters%read_filter(nomega, df)
-
-
-    write(*,*) '***************************************************************'
-    write(*,*) ' Define kernels'
-    write(*,*) '***************************************************************'
-
-    call parameters%read_kernel(sem_data, parameters%filter)
-
-    whattodo = 'integratekernel'
-
-    select case(trim(whattodo))
+    select case(trim(parameters%whattodo))
     case('integratekernel')
+       write(*,*) '***************************************************************'
+       write(*,*) ' Initialize FFT'
+       write(*,*) '***************************************************************'
+       call fft_data%init(ndumps, nptperstep, sem_data%dt)
+       ntimes = fft_data%get_ntimes()
+       nomega = fft_data%get_nomega()
+       df     = fft_data%get_df()
+       fmtstring = '(A, I8, A, I8)'
+       print fmtstring, '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
+       fmtstring = '(A, F8.3, A, F8.3, A)'
+       print fmtstring, '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
+
+
+       write(*,*) '***************************************************************'
+       write(*,*) ' Define filters'
+       write(*,*) '***************************************************************'
+       
+       call parameters%read_filter(nomega, df)
+
+
+       write(*,*) '***************************************************************'
+       write(*,*) ' Define kernels'
+       write(*,*) '***************************************************************'
+
+       call parameters%read_kernel(sem_data, parameters%filter)
+
+
        write(*,*) '***************************************************************'
        write(*,*) 'Initialize output file'
        write(*,*) '***************************************************************'
@@ -172,7 +175,9 @@ program kerner
          
           do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
              random_points = inv_mesh%generate_random_points( ielement, nptperstep )
-             if (any(niterations(:, ielement)>100)) exit 
+             
+             ! Stop MC integration in this element after max_iter iterations
+             if (any(niterations(:, ielement)>parameters%max_iter)) exit 
              
              ! Load, FT and timeshift forward field
              fw_field = sem_data%load_fw_points( random_points, parameters%source )
@@ -195,10 +200,11 @@ program kerner
                 conv_field_fd = fw_field_fd * bw_field_fd
 
                 do ikernel = parameters%receiver(irec)%firstkernel, &
-                             parameters%receiver(irec)%lastkernel !, nkernel
+                             parameters%receiver(irec)%lastkernel 
+
+                   ! If this kernel is already converged, go to the next one
                    if (int_kernel%isconverged(ikernel)) cycle
                    niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
-                   if (niterations(ikernel, ielement)>100) cycle
 
                    ! Apply Filter 
                    conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
@@ -226,7 +232,7 @@ program kerner
           ! Save integral values to the big kernel variable
           do ivertex = 1, inv_mesh%nvertices_per_elem
              K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) &
-                                                      + int_kernel%getintegral() / volume
+                                                      + int_kernel%getintegral() !/ volume
           end do
 
           call int_kernel%freeme()
@@ -244,47 +250,77 @@ program kerner
           write(lu_iterations,*) ielement, niterations(:, ielement)
        end do ! ielement
        close(lu_iterations)
+
+       write(*,*)
+       write(*,*) '***************************************************************'
+       write(*,*) ' Free memory of Kernelspecs'
+       write(*,*) '***************************************************************'
+       do ikernel = 1, parameters%nkernel
+          call parameters%kernel(ikernel)%freeme() 
+       end do
    
-    !case('plot_wavefield')
+    case('plot_wavefield')
 
-    !   print *, 'Initialize XDMF file'
-    !   allocate(co_points(3, nvertices))
-    !   co_points = inversion_mesh%get_vertices()
-    !   call inversion_mesh%init_data(ndumps*2 + ntimes)
+       write(*,*) '***************************************************************'
+       write(*,*) ' Initialize FFT'
+       write(*,*) '***************************************************************'
+       call fft_data%init(ndumps, nvertices, sem_data%dt)
+       ntimes = fft_data%get_ntimes()
+       nomega = fft_data%get_nomega()
+       df     = fft_data%get_df()
+       fmtstring = '(A, I8, A, I8)'
+       print fmtstring, '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
+       fmtstring = '(A, F8.3, A, F8.3, A)'
+       print fmtstring, '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
-    !   write(*,*) ' Read in forward field'
-    !   allocate(fw_field(ndumps, nvertices))
-    !   fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
-    !   
-    !   ! Dump forward field to XDMF file
-    !   do idump = 1, ndumps
-    !       write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
-    !       !Test of planar wave , works
-    !       !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
-    !       !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-    !       call inversion_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
-    !   end do
-    !   write(*,*) ' FFT forward field'
-    !   allocate(fw_field_fd  (nomega, nptperstep))
-    !   call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
-    !   deallocate(fw_field)
+       print *, 'Initialize XDMF file'
+       allocate(co_points(3, nvertices))
+       co_points = inv_mesh%get_vertices()
+       call inv_mesh%init_data(ndumps*2 + ntimes)
 
-    !   write(*,*) ' Read in backward field'
-    !   allocate(bw_field(ndumps, nvertices))
-    !   bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
-    !   ! Dump backward field to XDMF file
-    !   do idump = 1, ndumps
-    !       write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
-    !       !Test of planar wave , works
-    !       !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
-    !       !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-    !       call inversion_mesh%set_data_snap(bw_field(idump,:), idump+ndumps, 'bwd_wavefield')
-    !   end do
-    !   write(*,*) ' FFT backward field'
-    !   allocate(bw_field_fd  (nomega, nptperstep))
-    !   call fft_data%rfft(taperandzeropad(bw_field, ntimes), bw_field_fd)
-    !   deallocate(bw_field)
+       write(*,*) ' Read in forward field'
+       allocate(fw_field(ndumps, nvertices))
+       fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
 
+
+       
+       ! Dump forward field to XDMF file
+       do idump = 1, ndumps
+           if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
+           !Test of planar wave , works
+           !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
+           !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
+           call inv_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
+       end do
+       write(*,*) ' FFT forward field'
+       allocate(fw_field_fd(nomega, nvertices))
+       call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
+       deallocate(fw_field)
+       call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
+
+       write(*,*) ' Read in backward field'
+       allocate(bw_field(ndumps, nvertices))
+       bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(1))
+       ! Dump backward field to XDMF file
+       do idump = 1, ndumps
+           if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
+           !Test of planar wave , works
+           !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
+           !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
+           call inv_mesh%set_data_snap(bw_field(idump,:), idump+ndumps, 'bwd_wavefield')
+       end do
+       write(*,*) ' FFT backward field'
+       allocate(bw_field_fd  (nomega, nvertices))
+       call fft_data%rfft(taperandzeropad(bw_field, ntimes), bw_field_fd)
+       deallocate(bw_field)
+       call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
+
+       write(*,*) ' Convolve wavefields'
+       allocate(conv_field(ntimes, nvertices))
+       allocate(conv_field_fd(nomega, nvertices))
+       conv_field_fd = fw_field_fd * bw_field_fd
+       call fft_data%irfft(conv_field_fd, conv_field)
+       deallocate(conv_field_fd)
     !   write(*,*) ' Apply filter'
     !   fw_field_fd = gabor20%apply_2d(fw_field_fd)
 
@@ -299,25 +335,17 @@ program kerner
     !   !read(*,*)
 
 
-    !   do idump = 1, ntimes
-    !      write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
-    !      call inversion_mesh%set_data_snap(real(conv_field(idump,:)), idump+ndumps*2, 'field_convolved')
-    !   end do 
+       do idump = 1, ntimes
+          if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
+          call inv_mesh%set_data_snap(real(conv_field(idump,:)), idump+ndumps*2, 'field_convolved')
+       end do 
 
     !   write(*,*)
     !   write(*,*) ' Writing data to disk'
-    !   call inversion_mesh%dump_mesh_data_xdmf('wavefield')
-    !   call inversion_mesh%freeme()
+       call inv_mesh%dump_mesh_data_xdmf('wavefield')
+       call inv_mesh%freeme()
 
     end select
-
-    write(*,*)
-    write(*,*) '***************************************************************'
-    write(*,*) ' Free memory of Kernelspecs'
-    write(*,*) '***************************************************************'
-    do ikernel = 1, parameters%nkernel
-       call parameters%kernel(ikernel)%freeme() 
-    end do
 
     write(*,*)
     write(*,*) '***************************************************************'
