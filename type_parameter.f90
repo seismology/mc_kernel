@@ -19,10 +19,13 @@ module type_parameter
         character(len=512)                   :: source_file
         character(len=512)                   :: receiver_file
         character(len=512)                   :: filter_file
+        character(len=512)                   :: mesh_file
         character(len=1)                     :: component
         character(len=4)                     :: model_parameter
+        character(len=32)                    :: whattodo
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
+        integer                              :: max_iter
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -85,6 +88,15 @@ subroutine read_parameters(this, input_file)
 
       case('FILTER_FILE')
          this%filter_file = keyvalue
+
+      case('MESH_FILE')
+         this%mesh_file = keyvalue
+
+      case('MAXIMUM_ITERATIONS')
+         read(keyvalue, *) this%max_iter
+
+      case('WHAT_TO_DO')
+         this%whattodo = keyvalue
 
       end select parameter_to_read
 
@@ -194,7 +206,7 @@ subroutine read_kernel(this, sem_data, filter)
    real(kind=sp)                  :: timewindow(2), junk
    character(len=1)               :: component
    character(len=4)               :: misfit_type
-   character(len=16)              :: recname, kernelname, filtername
+   character(len=32)              :: recname, kernelname, filtername, kernel_shortname
    character(len=80)              :: fmtstring
 
    write(6,*)'  reading kernels from file ', trim(this%receiver_file)
@@ -213,8 +225,9 @@ subroutine read_kernel(this, sem_data, filter)
       print fmtstring, trim(this%receiver(irec)%name),  this%receiver(irec)%nkernel,&
                        this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
       do ikernel = this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
-         read(lu_receiver, *) kernelname, filtername, misfit_type, timewindow
+         read(lu_receiver, *) kernel_shortname, filtername, misfit_type, timewindow
 
+         kernelname = trim(this%receiver(irec)%name)//'_'//trim(kernel_shortname)
          do ifilter = 1, nfilter
             if (trim(filtername).eq.trim(filter(ifilter)%name)) exit
          end do
