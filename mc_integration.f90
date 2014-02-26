@@ -72,7 +72,7 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error)
     class(integrated_type), intent(inout) :: this 
     integer, intent(in)                   :: nfuncs
     real(kind=dp), intent(in)             :: volume
-    real(kind=sp), intent(in)             :: allowed_error
+    real(kind=dp), intent(in)             :: allowed_error
 
     if(allocated(this%fsum)) deallocate(this%fsum)
     if(allocated(this%f2sum)) deallocate(this%f2sum)

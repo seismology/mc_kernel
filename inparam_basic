@@ -4,7 +4,7 @@ ALLOWED_ERROR        1e-6
 SOURCE_FILE          'CMTSOLUTION'
 RECEIVER_FILE        'receiver.dat'
 FILTER_FILE          'filters.dat'
-MESH_FILE            'unit_tests/flat_triangles_dense.inp'
+MESH_FILE            'unit_tests/flat_triangles.inp'
 MAXIMUM_ITERATIONS   100
 #WHAT_TO_DO           'integratekernel'
 WHAT_TO_DO           'plot_wavefield'

@@ -11,8 +11,8 @@ module inversion_mesh
   public :: plane_exp_pro2
 
   type :: inversion_mesh_type
-     integer, public                    :: nvertices_per_elem
      private
+     integer, public                    :: nvertices_per_elem
      integer                            :: nelements, nvertices
      integer, allocatable               :: connectivity(:,:)
      real(kind=dp), allocatable         :: vertices(:,:)

@@ -69,7 +69,7 @@ subroutine test_fft_sine
 
     type(rfft_type) :: fftt
 
-    real(kind=sp), dimension(:,:), allocatable       :: datat
+    real(kind=dp), dimension(:,:), allocatable       :: datat
     complex(kind=dp), dimension(:,:), allocatable    :: dataf, dataf_ref
     real(kind=dp), dimension(:,:), allocatable       :: T
     real(kind=dp), dimension(:), allocatable         :: F
@@ -202,7 +202,7 @@ subroutine test_fft_convolve
 
     type(rfft_type) :: fftt
 
-    real(kind=sp), dimension(:,:), allocatable       :: datat1, datat2
+    real(kind=dp), dimension(:,:), allocatable       :: datat1, datat2
     real(kind=dp), dimension(:,:), allocatable       :: dataconv, dataconv_ref
     complex(kind=dp), dimension(:,:), allocatable    :: dataf1, dataf2
 
@@ -249,7 +249,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_fft_taperandzeropad
     integer, parameter :: len_orig = 32, len_padded = 64
-    real(kind=sp) :: data_orig(len_orig,1), data_padded(len_padded,1)
+    real(kind=dp) :: data_orig(len_orig,1), data_padded(len_padded,1)
     integer       :: i
 
     data_orig = 1

@@ -25,10 +25,10 @@ program kerner
     integer                             :: npoints, nelems, ntimes, nomega
     integer                             :: idump, ipoint, ielement, ndumps, irec
     integer                             :: nkernel, ikernel, ivertex, nvertices
-    real(kind=sp),    allocatable       :: element_points(:,:,:)
-    real(kind=sp),    allocatable       :: co_points(:,:), K_x(:,:), veloseis(:)
-    real(kind=sp),    allocatable       :: fw_field(:,:)
-    real(kind=sp),    allocatable       :: bw_field(:,:)
+    real(kind=dp),    allocatable       :: element_points(:,:,:)
+    real(kind=dp),    allocatable       :: co_points(:,:), K_x(:,:), veloseis(:)
+    real(kind=dp),    allocatable       :: fw_field(:,:)
+    real(kind=dp),    allocatable       :: bw_field(:,:)
     complex(kind=dp), allocatable       :: fw_field_fd(:,:)
     complex(kind=dp), allocatable       :: bw_field_fd(:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
@@ -241,7 +241,8 @@ program kerner
           if ((mod(ielement, 100)==0).or.(ielement==nelems)) then
              write(*,*) 'Write Kernel to disk'
              do ikernel = 1, parameters%nkernel
-                call inv_mesh%set_data_snap(K_x(:,ikernel), ikernel, parameters%kernel(ikernel)%name )
+                call inv_mesh%set_data_snap(real(K_x(:,ikernel), kind=sp), &
+                                            ikernel, parameters%kernel(ikernel)%name )
              end do
 
              call inv_mesh%dump_mesh_data_xdmf('gaborkernel')
@@ -276,7 +277,7 @@ program kerner
        print *, 'Initialize XDMF file'
        allocate(co_points(3, nvertices))
        co_points = inv_mesh%get_vertices()
-       call inv_mesh%init_data(ndumps*2 + ntimes)
+       call inv_mesh%init_data(ndumps*3)
 
        write(*,*) ' Read in forward field'
        allocate(fw_field(ndumps, nvertices))
@@ -290,7 +291,7 @@ program kerner
            !Test of planar wave , works
            !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
            !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-           call inv_mesh%set_data_snap(fw_field(idump,:), idump, 'fwd_wavefield')
+           call inv_mesh%set_data_snap(real(fw_field(idump,:), kind=sp), idump, 'fwd_wavefield')
        end do
        write(*,*) ' FFT forward field'
        allocate(fw_field_fd(nomega, nvertices))
@@ -307,7 +308,7 @@ program kerner
            !Test of planar wave , works
            !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
            !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-           call inv_mesh%set_data_snap(bw_field(idump,:), idump+ndumps, 'bwd_wavefield')
+           call inv_mesh%set_data_snap(real(bw_field(idump,:), kind=sp), idump+ndumps, 'bwd_wavefield')
        end do
        write(*,*) ' FFT backward field'
        allocate(bw_field_fd  (nomega, nvertices))
@@ -335,7 +336,7 @@ program kerner
     !   !read(*,*)
 
 
-       do idump = 1, ntimes
+       do idump = 1, ndumps
           if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
           call inv_mesh%set_data_snap(real(conv_field(idump,:)), idump+ndumps*2, 'field_convolved')
        end do 

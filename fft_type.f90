@@ -241,7 +241,7 @@ end function
 
 !-----------------------------------------------------------------------------------------
 function taperandzeropad(array, ntimes)
-  real(kind=sp), intent(in)     :: array(:,:)
+  real(kind=dp), intent(in)     :: array(:,:)
   integer,       intent(in)     :: ntimes
   real(kind=dp)                 :: taperandzeropad(ntimes, size(array,2))
   real(kind=dp), allocatable    :: win(:,:)

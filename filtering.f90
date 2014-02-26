@@ -9,7 +9,7 @@ module filtering
        real(kind=dp), allocatable      :: f(:)
        logical                         :: initialized = .false.
        character(len=32)               :: filterclass
-       real(kind=sp)                   :: frequencies(4)
+       real(kind=dp)                   :: frequencies(4)
 
 
    contains
@@ -131,7 +131,7 @@ end function apply_2d
 !> Returns the transfer function of this filter
 function get_transferfunction(this)
     class(filter_type)           :: this
-    real(kind=sp)                :: get_transferfunction(this%nfreq, 3)
+    real(kind=dp)                :: get_transferfunction(this%nfreq, 3)
 
     if (.not.this%initialized) then
        write(*,*) 'ERROR: Filter is not initialized yet'
@@ -161,7 +161,7 @@ subroutine timeshift(field, freq, dtshift)
    real(kind=dp),    intent(in)     :: freq(:)    !< 1D array with the frequencies of 
                                                   !! the entries in field
                                                   !! Dimension: nfreq
-   real(kind=sp),    intent(in)     :: dtshift    !< Time shift to apply (in seconds)
+   real(kind=dp),    intent(in)     :: dtshift    !< Time shift to apply (in seconds)
    
    integer                          :: ipoint
    complex(kind=dp), allocatable    :: shift_fd(:)
@@ -190,8 +190,8 @@ function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by 
                                              !! sigmaIfc = .5 means the one-sigma interval i
                                              !! equals one octave
 
-    real(kind=sp)                   :: loggabor(size(f))
-    real(kind=sp)                   :: f_c
+    real(kind=dp)                   :: loggabor(size(f))
+    real(kind=dp)                   :: f_c
 
     f_c = 1 / p_c
     loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )

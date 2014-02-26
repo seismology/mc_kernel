@@ -23,7 +23,7 @@ subroutine test_mc_meanandvariance
     
     values(:,1) = 5.0
 
-    call mc_integral%initialize_montecarlo(1, volume, 1e-3)
+    call mc_integral%initialize_montecarlo(1, volume, 1d-3)
     call mc_integral%check_montecarlo_integral(values)
 
     integral = mc_integral%getintegral()
@@ -42,7 +42,7 @@ subroutine test_mc_meanandvariance
     ! Produces normal distributed values with mean 1 and std 2
     values(:,1) = sqrt(-2*log(randa)) * cos(2*pi*randb) * 2.0 + 1.0
     
-    call mc_integral%initialize_montecarlo(1, volume, 1e-3)
+    call mc_integral%initialize_montecarlo(1, volume, 1d-3)
     call mc_integral%check_montecarlo_integral(values)
 
     mean_an = sum(values) / N
@@ -74,7 +74,7 @@ subroutine test_mc_unit_hexagon
 
     volume = (bounds(2) - bounds(1))**3
 
-    call mc_integral%initialize_montecarlo(1, volume, 5e-4)
+    call mc_integral%initialize_montecarlo(1, volume, 5d-4)
 
     iiter = 0
 
@@ -113,7 +113,7 @@ subroutine test_mc_sphere_in_tetrahedron
     vertices(:,4) = [0, 0, 0]
     volume = 1./6.
 
-    call mc_integral%initialize_montecarlo(1, volume, 2e-4)
+    call mc_integral%initialize_montecarlo(1, volume, 2d-4)
 
     iiter = 0
 

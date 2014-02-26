@@ -13,8 +13,8 @@ contains
 subroutine test_kernel_cut_timewindow
    integer, parameter         :: ntimes = 100
    real(kind=dp)              :: timeseries(ntimes), dataseries(ntimes)
-   real(kind=sp)              :: dt = 0.1
-   real(kind=sp), allocatable :: cut_dataseries(:), cut_dataseries_ref(:)
+   real(kind=dp)              :: dt = 0.1
+   real(kind=dp), allocatable :: cut_dataseries(:), cut_dataseries_ref(:)
    integer                    :: i
 
    ! Time window with normal length
@@ -27,30 +27,32 @@ subroutine test_kernel_cut_timewindow
    allocate(cut_dataseries_ref(6))
    cut_dataseries_ref = [15, 16, 17, 18, 19, 20]
 
-   call cut_timewindow(timeseries, dataseries, [1.45, 2.01], cut_dataseries)
+   call cut_timewindow(timeseries, dataseries, [1.45d0, 2.01d0], cut_dataseries)
 
-   call assert_comparable_real1d(cut_dataseries, cut_dataseries_ref, 1e-9, &
-                                 'cut_dataseries == cut_dataseries_ref')
+   call assert_comparable_real1d(real(cut_dataseries, kind=sp), real(cut_dataseries_ref, kind=sp), &
+                                 1e-9, 'cut_dataseries == cut_dataseries_ref')
 
    deallocate(cut_dataseries_ref)
   
    allocate(cut_dataseries_ref(6))
    cut_dataseries_ref = [15, 16, 17, 18, 19, 20]
 
-   call cut_timewindow(timeseries, dataseries, [1.45, 2.00], cut_dataseries)
+   call cut_timewindow(timeseries, dataseries, [1.45d0, 2.0d0], cut_dataseries)
 
-   call assert_comparable_real1d(cut_dataseries, cut_dataseries_ref, 1e-9, &
-                                 'cut_dataseries == cut_dataseries_ref')
+   call assert_comparable_real1d(real(cut_dataseries, kind=sp), real(cut_dataseries_ref, kind=sp), &
+                                 1e-9, 'cut_dataseries == cut_dataseries_ref')
+
 
    deallocate(cut_dataseries_ref)
 
    allocate(cut_dataseries_ref(6))
    cut_dataseries_ref = [15, 16, 17, 18, 19]
 
-   call cut_timewindow(timeseries, dataseries, [1.45, 1.99], cut_dataseries)
+   call cut_timewindow(timeseries, dataseries, [1.45d0, 1.99d0], cut_dataseries)
 
-   call assert_comparable_real1d(cut_dataseries, cut_dataseries_ref, 1e-9, &
-                                 'cut_dataseries == cut_dataseries_ref')
+   call assert_comparable_real1d(real(cut_dataseries, kind=sp), real(cut_dataseries_ref, kind=sp), &
+                                 1e-9, 'cut_dataseries == cut_dataseries_ref')
+
 
    deallocate(cut_dataseries_ref)
 
@@ -58,10 +60,11 @@ subroutine test_kernel_cut_timewindow
    allocate(cut_dataseries_ref(1))
    cut_dataseries_ref = [80]
 
-   call cut_timewindow(timeseries, dataseries, [7.95, 8.05], cut_dataseries)
+   call cut_timewindow(timeseries, dataseries, [7.95d0, 8.05d0], cut_dataseries)
 
-   call assert_comparable_real1d(cut_dataseries, cut_dataseries_ref, 1e-9, &
-                                 'cut_dataseries == cut_dataseries_ref')
+   call assert_comparable_real1d(real(cut_dataseries, kind=sp), real(cut_dataseries_ref, kind=sp), &
+                                 1e-9, 'cut_dataseries == cut_dataseries_ref')
+
 
 
    ! Time window with negative starting time
@@ -76,10 +79,11 @@ subroutine test_kernel_cut_timewindow
    
    cut_dataseries_ref = [-3, -2, -1, 0, 1, 2]
 
-   call cut_timewindow(timeseries, dataseries, [-0.39, 0.29], cut_dataseries)
+   call cut_timewindow(timeseries, dataseries, [-0.39d0, 0.29d0], cut_dataseries)
 
-   call assert_comparable_real1d(cut_dataseries, cut_dataseries_ref, 1e-9, &
-                                 'cut_dataseries == cut_dataseries_ref')
+   call assert_comparable_real1d(real(cut_dataseries, kind=sp), real(cut_dataseries_ref, kind=sp), &
+                                 1e-9, 'cut_dataseries == cut_dataseries_ref')
+
 
 end subroutine test_kernel_cut_timewindow
 
@@ -90,7 +94,7 @@ subroutine test_kernel_init
    type(filter_type), target   :: gabor
 
    character(len=32)           :: filtername, filterclass
-   real(kind=sp)               :: veloseis(256)
+   real(kind=dp)               :: veloseis(256)
 
    call assert_false(kernel%isinitialized(), 'Kernel not initialized')
    ! Just some arbitrary filter to create
@@ -101,13 +105,13 @@ subroutine test_kernel_init
    veloseis = 0.0
 
    call kernel%init(name            = 'Testkernel      ',&
-                    time_window     = [1.0, 2.0],        &
+                    time_window     = [1.0d0, 2.0d0],    &
                     filter          = gabor,             &
                     misfit_type     = 'CC  ',            &  
                     model_parameter = 'vp  ',            &
                     veloseis        = veloseis,          &
                     dt              = 0.1d0,             &
-                    timeshift_fwd   = 1.0   )
+                    timeshift_fwd   = 1.0d0   )
 
    call assert_true(kernel%isinitialized(), 'Kernel initialized')
    call kernel%freeme()

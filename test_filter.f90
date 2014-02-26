@@ -19,10 +19,10 @@ subroutine test_filter_gabor_response
    type(rfft_type)               :: fft_data
    integer, parameter            :: ntimes = 1000, npoints = 1
    integer                       :: ntimes_ft, nomega, i 
-   real(kind=sp)                 :: data_in(ntimes,1)
+   real(kind=dp)                 :: data_in(ntimes,1)
    real(kind=dp), allocatable    :: data_filtered_ref(:,:), data_filtered(:,:), tf(:,:), tf_ref(:,:)
    complex(kind=dp), allocatable :: data_fd(:,:)
-   real(kind=sp)                 :: windowlength
+   real(kind=dp)                 :: windowlength
    real(kind=dp)                 :: df
    real(kind=dp), parameter      :: dt = 0.1d0
    character(len=32)             :: filtername, filterclass
@@ -119,7 +119,7 @@ subroutine test_filter_timeshift()
    integer, parameter               :: ntimes=32, npoints=1
    integer                          :: ntimes_ft, nomega, i
    real(kind=dp)                    :: dt
-   real(kind=sp)                    :: data_in(ntimes, npoints)
+   real(kind=dp)                    :: data_in(ntimes, npoints)
    real(kind=dp)                    :: data_out(ntimes*2, npoints), data_ref(ntimes*2)
    complex(kind=dp), allocatable    :: data_fd(:,:)
 
@@ -140,7 +140,7 @@ subroutine test_filter_timeshift()
    data_ref(5)  = 1.0
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   call timeshift(data_fd, fft_data%get_f(), 1.0)
+   call timeshift(data_fd, fft_data%get_f(), 1.0d0)
    call fft_data%irfft(data_fd, data_out)
 
    call assert_comparable_real1d(1+real(data_out(:,1), kind=sp), &
@@ -158,7 +158,7 @@ subroutine test_filter_timeshift()
    data_ref(25)  = 1.0
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   call timeshift(data_fd, fft_data%get_f(), -1.0)
+   call timeshift(data_fd, fft_data%get_f(), -1.0d0)
    call fft_data%irfft(data_fd, data_out)
 
    call assert_comparable_real1d(1+real(data_out(:,1), kind=sp), &
@@ -176,7 +176,7 @@ subroutine test_filter_timeshift()
    data_ref(15)  = 1.0
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   call timeshift(data_fd, fft_data%get_f(), 6.4)
+   call timeshift(data_fd, fft_data%get_f(), 6.4d0)
    call fft_data%irfft(data_fd, data_out)
 
    call assert_comparable_real1d(1+real(data_out(:,1), kind=sp), &

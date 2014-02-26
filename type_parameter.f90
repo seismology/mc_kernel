@@ -13,7 +13,7 @@ module type_parameter
         type(filter_type),      allocatable  :: filter(:)
         integer                              :: nrec
 
-        real(kind=sp)                        :: allowed_error
+        real(kind=dp)                        :: allowed_error
         character(len=512)                   :: fwd_dir
         character(len=512)                   :: bwd_dir
         character(len=512)                   :: source_file
@@ -109,7 +109,7 @@ end subroutine read_parameters
 !------------------------------------------------------------------------------
 subroutine read_source(this)
    class(parameter_type)          :: this
-   real(kind=sp)                  :: Mij_dyncm(6), latd, lond, depth
+   real(kind=dp)                  :: Mij_dyncm(6), latd, lond, depth
    character(len=16)              :: junk
    character(len=16)              :: event_name
    integer, parameter             :: lu_source=1000
@@ -142,7 +142,7 @@ subroutine read_receiver(this)
    integer, parameter            :: lu_receiver = 1001
    integer                       :: irec, firstkernel, lastkernel
    integer                       :: ikernel, recnkernel
-   real(kind=sp)                 :: timewindow(2), reclatd, reclond
+   real(kind=dp)                 :: timewindow(2), reclatd, reclond
    character(len=16)             :: recname, kernelname, filtername
    character(len=80)             :: fmtstring
 
@@ -203,7 +203,7 @@ subroutine read_kernel(this, sem_data, filter)
    integer                        :: irec, nfilter
    integer                        :: ikernel, ifilter
    integer, parameter             :: lu_receiver = 1002
-   real(kind=sp)                  :: timewindow(2), junk
+   real(kind=dp)                  :: timewindow(2), junk
    character(len=1)               :: component
    character(len=4)               :: misfit_type
    character(len=32)              :: recname, kernelname, filtername, kernel_shortname

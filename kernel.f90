@@ -4,13 +4,13 @@ use filtering,                            only: filter_type
 implicit none
     type kernelspec_type
         character(len=16)                    :: name
-        real(kind=sp), dimension(2)          :: time_window
-        real(kind=sp), allocatable           :: veloseis(:)       ! Velocity seismogram 
+        real(kind=dp), dimension(2)          :: time_window
+        real(kind=dp), allocatable           :: veloseis(:)       ! Velocity seismogram 
                                                                   ! in the time window of 
                                                                   ! this kernel
         real(kind=dp), allocatable           :: t(:)
         real(kind=dp)                        :: dt
-        real(kind=sp)                        :: normalization
+        real(kind=dp)                        :: normalization
         integer                              :: filter_type
         character(len=4)                     :: misfit_type
         character(len=4)                     :: model_parameter
@@ -38,17 +38,17 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    use filtering, only                      : timeshift
    class(kernelspec_type)                  :: this
    character(len=16), intent(in)           :: name
-   real(kind=sp), intent(in)               :: time_window(2)
+   real(kind=dp), intent(in)               :: time_window(2)
    type(filter_type), target, intent(in)   :: filter
    character(len=4), intent(in)            :: misfit_type
    character(len=4), intent(in)            :: model_parameter
-   real(kind=sp), intent(in)               :: veloseis(:)
+   real(kind=dp), intent(in)               :: veloseis(:)
    real(kind=dp), intent(in)               :: dt
-   real(kind=sp), intent(in)               :: timeshift_fwd
+   real(kind=dp), intent(in)               :: timeshift_fwd
    
    type(rfft_type)                         :: fft_data
    complex(kind=dp), allocatable           :: veloseis_fd(:,:)
-   real(kind=sp),    allocatable           :: veloseis_td(:,:), t_cut(:)
+   real(kind=dp),    allocatable           :: veloseis_td(:,:), t_cut(:)
    real(kind=dp),    allocatable           :: veloseis_filtered(:,:)
    character(len=32)                       :: fmtstring
 
@@ -172,12 +172,12 @@ function calc_misfit_kernel(this, timeseries)
    !< This routine can take multiple time series and calculate the kernel at each
    class(kernelspec_type)                  :: this
    real(kind=dp), intent(in)               :: timeseries(:,:)
-   real(kind=sp)                           :: calc_misfit_kernel(size(timeseries,2))
-   real(kind=sp), allocatable              :: cut_timeseries(:)
-   real(kind=sp)                           :: dt
+   real(kind=dp)                           :: calc_misfit_kernel(size(timeseries,2))
+   real(kind=dp), allocatable              :: cut_timeseries(:)
+   real(kind=dp)                           :: dt
    integer                                 :: lenseis, itrace, ntrace
 
-   ntrace  = size(timeseries,2)
+   ntrace = size(timeseries,2)
 
    select case(trim(this%misfit_type))
    case('CC')
@@ -188,7 +188,7 @@ function calc_misfit_kernel(this, timeseries)
                              cut_timeseries)
          
          calc_misfit_kernel(itrace) = sum( cut_timeseries * this%veloseis, 1 ) &
-                                      * this%dt / this%normalization
+                                      * this%dt * this%normalization
       end do
    end select
 
@@ -198,12 +198,12 @@ end function
 !-------------------------------------------------------------------------------
 subroutine cut_timewindow(t, x, timewindow, cut_tw)
    real(kind=dp), intent(in)  :: t(:), x(:)
-   real(kind=sp), intent(in)  :: timewindow(2)
-   real(kind=sp), allocatable :: cut_tw(:)
-   real(kind=sp), allocatable :: cut_timewindow_temp(:)
+   real(kind=dp), intent(in)  :: timewindow(2)
+   real(kind=dp), allocatable :: cut_tw(:)
+   real(kind=dp), allocatable :: cut_timewindow_temp(:)
    integer                    :: ntimes, i, iintimewindow
    integer                    :: ntraces
-   real(kind=sp)              :: dt
+   real(kind=dp)              :: dt
    
    ntimes = size(t)
    dt = t(2) - t(1)

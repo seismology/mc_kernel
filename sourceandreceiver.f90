@@ -5,7 +5,7 @@ module source_class
     implicit none
 
     type src_param_type
-        real(kind=sp)                        :: mij(6)
+        real(kind=dp)                        :: mij(6)
         real(kind=dp)                        :: colat, lat, lon
         real(kind=dp)                        :: colatd, latd, lond
         real(kind=dp)                        :: depth
@@ -23,7 +23,7 @@ contains
 subroutine init(this, lat, lon, mij)
    class(src_param_type)      :: this
 
-   real(kind=sp), intent(in)  :: lat, lon, mij(6)
+   real(kind=dp), intent(in)  :: lat, lon, mij(6)
 
    this%latd   = lat
    this%lond   = lon
@@ -110,7 +110,7 @@ contains
 subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkernel)
    class(rec_param_type)         :: this
    character(len=16), intent(in) :: name
-   real(kind=sp), intent(in)     :: lat, lon
+   real(kind=dp), intent(in)     :: lat, lon
    character(len=1), intent(in)  :: component
    integer, intent(in)           :: nkernel, firstkernel, lastkernel
 

@@ -24,11 +24,11 @@ module readfields
         character(len=200)                :: meshdir
         integer                           :: ndumps, nseis
         integer                           :: source_shift_samples    
-        real(kind=sp)                     :: source_shift_t
+        real(kind=dp)                     :: source_shift_t
         logical                           :: ordered_output
         type(buffer_type)                 :: buffer
         real(kind=dp)                     :: dt
-        real(kind=sp)                     :: amplitude
+        real(kind=dp)                     :: amplitude
     end type
 
     type semdata_type
@@ -49,8 +49,8 @@ module readfields
         integer,       public              :: ndumps, decimate_factor
         integer,       public              :: nseis ! ndumps * decimate_factor
         real(kind=dp), public              :: windowlength
-        real(kind=sp), public              :: timeshift_fwd, timeshift_bwd
-        real(kind=sp), public, allocatable :: veloseis(:,:)
+        real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
+        real(kind=dp), public, allocatable :: veloseis(:,:)
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
 
@@ -134,6 +134,7 @@ subroutine open_files(this)
     class(semdata_type)              :: this
     integer                          :: status, isim
     character(len=200)               :: format20, format21, filename
+    real(kind=sp)                    :: temp
 
     if (.not.this%params_set) then
         print *, 'ERROR in open_files(): Parameters have to be set first'
@@ -208,18 +209,20 @@ subroutine open_files(this)
                                  'length of seismogram  in time samples', &
                                  this%fwd(isim))
 
-        call nc_read_att_real(   this%fwd(isim)%source_shift_t, &
+        call nc_read_att_real(   temp, &
                                  'source shift factor in sec',     &
                                  this%fwd(isim))
+        this%fwd(isim)%source_shift_t = real(temp, kind=dp)
         
         call nc_read_att_int(    this%fwd(isim)%source_shift_samples,    &
                                  'source shift factor for deltat_coarse',     &
                                  this%fwd(isim))
         
-        call nc_read_att_real(   this%fwd(isim)%amplitude,      &
+        call nc_read_att_real(   temp,      &
                                  'scalar source magnitude',     &
                                  this%fwd(isim))
-        
+        this%fwd(isim)%amplitude = real(temp, kind=dp)
+
         !call check(nf90_inq_ncid( ncid     = this%fwd(isim)%ncid,   &
         !                          name     = "Seismograms",         &
         !                          grp_ncid = this%fwd(isim)%seis))
@@ -287,17 +290,19 @@ subroutine open_files(this)
                                   this%bwd(isim))
         !this%bwd(isim)%dt = 1.7064171433448792
 
-        call nc_read_att_real(   this%bwd(isim)%source_shift_t, &
+        call nc_read_att_real(   temp, &
                                  'source shift factor in sec',     &
                                  this%bwd(isim))
-        
+        this%bwd(isim)%source_shift_t = real(temp, kind=dp)
+
         call nc_read_att_int(    this%bwd(isim)%source_shift_samples,    &
                                  'source shift factor for deltat_coarse',     &
                                  this%bwd(isim))
         
-        call nc_read_att_real(   this%bwd(isim)%amplitude,      &
+        call nc_read_att_real(   temp,      &
                                  'scalar source magnitude',     &
                                  this%bwd(isim))
+        this%bwd(isim)%amplitude = real(temp, kind=dp)
         
     end do
 
@@ -350,7 +355,7 @@ subroutine check_consistency(this)
     real(kind=dp)          :: dt_agreed
     character(len=512)     :: fmtstring
     integer                :: ndumps_agreed, nseis_agreed
-    real(kind=sp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
+    real(kind=dp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
 
     ! Check whether the sampling period is the same in all files
     dt_agreed = this%fwd(1)%dt
@@ -435,8 +440,8 @@ subroutine check_consistency(this)
        end if
     end do
 
-    this%timeshift_fwd = source_shift_agreed_fwd
-    this%timeshift_bwd = source_shift_agreed_bwd
+    this%timeshift_fwd = real(source_shift_agreed_fwd, kind=dp)
+    this%timeshift_bwd = real(source_shift_agreed_bwd, kind=dp)
 
     this%dt = dt_agreed
     this%decimate_factor = nseis_agreed / ndumps_agreed
@@ -450,7 +455,7 @@ function load_fw_points(this, coordinates, source_params)
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type), intent(in)  :: source_params
-    real(kind=sp)                     :: load_fw_points(this%fwd(1)%ndumps, &
+    real(kind=dp)                     :: load_fw_points(this%fwd(1)%ndumps, &
                                                         size(coordinates,2))
     real(kind=sp)                     :: utemp(this%fwd(1)%ndumps)
     type(kdtree2_result), allocatable :: nextpoint(:)
@@ -489,6 +494,9 @@ function load_fw_points(this, coordinates, source_params)
         !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
         !print *, 'CO of SEM point:', this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint))
 
+        write(1000, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
+                                       this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint)), pointid(ipoint)
+
         idx(ipoint) = ipoint
 
     end do
@@ -520,10 +528,10 @@ function load_fw_points(this, coordinates, source_params)
             !else
             !   write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
             end if
-            load_fw_points(:, (ipoint)) = load_fw_points(:,ipoint) &
-                                        + azim_factor(rotmesh_phi(ipoint), &
-                                                      source_params%mij, isim) &
-                                        * utemp
+            load_fw_points(:, ipoint) = load_fw_points(:,ipoint) &
+                                      + azim_factor(rotmesh_phi(ipoint), &
+                                                    source_params%mij, isim) &
+                                      * real(utemp, kind=dp)
             !load_fw_points(:, ipoint) = utemp
             !print *, 'isim', isim, '; azim. factor:', azim_factor(rotmesh_phi(ipoint),&
             !                                                      source_params%mij, isim)
@@ -539,9 +547,9 @@ subroutine load_seismogram(this, receivers, src)
    class(semdata_type)      :: this
    type(rec_param_type)     :: receivers(:)
    type(src_param_type)     :: src
-   real(kind=sp)            :: seismogram_hr(this%ndumps)
+   real(kind=dp)            :: seismogram_hr(this%ndumps)
    real(kind=sp)            :: utemp(this%ndumps)
-   real(kind=sp)            :: Mij_scale(6), mij_prefact(4)
+   real(kind=dp)            :: Mij_scale(6), mij_prefact(4)
    integer                  :: reccomp, isurfelem, irec, isim, nrec
 
    if (.not.this%meshes_read) then
@@ -617,7 +625,7 @@ subroutine load_seismogram(this, receivers, src)
                                    count  = [this%ndumps, 1, 1],        &
                                    values = utemp) )
       
-         seismogram_hr = utemp * mij_prefact(isim) + seismogram_hr
+         seismogram_hr = real(utemp, kind=dp) * mij_prefact(isim) + seismogram_hr
       end do
 
       this%veloseis(:, irec) = seismogram_hr(1:this%ndumps)
@@ -631,7 +639,7 @@ function load_bw_points(this, coordinates, receiver)
     class(semdata_type)                            :: this
     real(kind=dp), intent(in)                      :: coordinates(:,:)
     type(rec_param_type)                           :: receiver
-    real(kind=sp)                                  :: load_bw_points(this%ndumps, size(coordinates,2))
+    real(kind=dp)                                  :: load_bw_points(this%ndumps, size(coordinates,2))
     real(kind=sp)                                  :: utemp(this%ndumps)
     type(kdtree2_result), allocatable              :: nextpoint(:)
 
@@ -698,11 +706,11 @@ function load_bw_points(this, coordinates, receiver)
 
         select case(receiver%component)
         case('Z')
-            load_bw_points(:,(ipoint)) =                      utemp / this%bwd(1)%amplitude
+            load_bw_points(:,(ipoint)) =                       real(utemp, kind=dp) / this%bwd(1)%amplitude
         case('R')
-            load_bw_points(:,(ipoint)) =   cos(rotmesh_phi) * utemp / this%bwd(1)%amplitude
+            load_bw_points(:,(ipoint)) =   dcos(rotmesh_phi) * real(utemp, kind=dp) / this%bwd(1)%amplitude
         case('T')
-            load_bw_points(:,(ipoint)) = - sin(rotmesh_phi) * utemp / this%bwd(1)%amplitude 
+            load_bw_points(:,(ipoint)) = - dsin(rotmesh_phi) * real(utemp, kind=dp) / this%bwd(1)%amplitude 
         end select
 
         
@@ -714,9 +722,9 @@ end function load_bw_points
 !-------------------------------------------------------------------------------
 function azim_factor(phi, mij, isim)
     real(kind=dp), intent(in)    :: phi
-    real(kind=sp), intent(in)    :: mij(6)
+    real(kind=dp), intent(in)    :: mij(6)
     integer, intent(in)          :: isim
-    real(kind=sp)                :: azim_factor
+    real(kind=dp)                :: azim_factor
 
 
     select case(isim)
@@ -727,10 +735,10 @@ function azim_factor(phi, mij, isim)
        azim_factor = 0.5*(Mij(2)+Mij(3))
        
     case(3) ! dipole
-       azim_factor = Mij(4)*cos(phi) + Mij(5)*sin(phi)
+       azim_factor = Mij(4)*dcos(phi) + Mij(5)*dsin(phi)
        
     case(4) ! quadrupole
-       azim_factor = 0.5*(Mij(2)-Mij(3))*cos(2.d0*phi) + Mij(6)*sin(2.d0*phi)
+       azim_factor = 0.5*(Mij(2)-Mij(3))*dcos(2.d0*phi) + Mij(6)*dsin(2.d0*phi)
 
     case default
        write(6,*)mynum,'unknown number of simulations',isim
@@ -740,7 +748,7 @@ end function
 
 !-------------------------------------------------------------------------------
 subroutine build_kdtree(this)
-    class(semdata_type)         :: this
+    class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
     integer                    :: ipoint
 
