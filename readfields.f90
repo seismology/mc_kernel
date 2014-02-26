@@ -761,21 +761,24 @@ subroutine build_kdtree(this)
     allocate(mesh(2, this%fwdmesh%npoints))
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
 
-    !end do
     write(*,*) ' Building forward KD-Tree'
     ! KDtree in forward field
     this%fwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
                                    sort = .true.,     &
                                    rearrange = .true.)
+    
+    deallocate(mesh)                           
 
     ! KDtree in backward field
     write(*,*) ' Building backward KD-Tree'
+    allocate(mesh(2, this%bwdmesh%npoints))
     mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
     this%bwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
                                    sort = .true.,     &
                                    rearrange = .true.)
+    deallocate(mesh)                           
 
 end subroutine build_kdtree
 
