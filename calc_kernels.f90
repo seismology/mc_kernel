@@ -7,8 +7,7 @@ program kerner
     !use tetrahedra,                  only: tetra_volume_3d, generate_random_point
     use fft,                         only: rfft_type, taperandzeropad
     use filtering,                   only: timeshift
-    use montecarlo,                  only: integrated_type
-    !use kernel,                      only: kernelspec_type
+    use montecarlo,                  only: integrated_type, allallconverged, allisconverged
 
     use ftnunit,                     only: runtests_init, runtests, runtests_final
     use unit_tests,                  only: test_all
@@ -18,13 +17,11 @@ program kerner
     type(parameter_type)                :: parameters
     type(semdata_type)                  :: sem_data
     type(rfft_type)                     :: fft_data
-    !type(filter_type)                   :: gabor40, gabor20, gabor10
-    type(integrated_type)               :: int_kernel
-    !type(kernelspec_type), allocatable  :: kernelspec(:)
+    type(integrated_type), allocatable  :: int_kernel(:)
 
     integer                             :: npoints, nelems, ntimes, nomega
     integer                             :: idump, ipoint, ielement, ndumps, irec
-    integer                             :: nkernel, ikernel, ivertex, nvertices
+    integer                             :: ikernel, ivertex, nvertices
     real(kind=dp),    allocatable       :: element_points(:,:,:)
     real(kind=dp),    allocatable       :: co_points(:,:), K_x(:,:), veloseis(:)
     real(kind=dp),    allocatable       :: fw_field(:,:)
@@ -33,7 +30,7 @@ program kerner
     complex(kind=dp), allocatable       :: bw_field_fd(:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:)
-    real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:)
+    real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:), kernelvalue_vertex(:,:)
     integer,          allocatable       :: connectivity(:,:), niterations(:,:)
     real(kind=sp)                       :: co_element(3,4)
     real(kind=dp),    allocatable       :: volume(:)
@@ -77,10 +74,10 @@ program kerner
     write(*,*) '***************************************************************'
     write(*,*) ' Read inversion mesh'
     write(*,*) '***************************************************************'
-    call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+    !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
     !call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
     !call inv_mesh%read_abaqus_mesh('unit_tests/flat_triangles.inp')
-    !call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
 
     nvertices = inv_mesh%get_nvertices()
     nelems    = inv_mesh%get_nelements()
@@ -120,7 +117,7 @@ program kerner
        write(*,*) '***************************************************************'
        write(*,*) 'Initialize output file'
        write(*,*) '***************************************************************'
-       call inv_mesh%init_data(parameters%nkernel + 1)
+       call inv_mesh%init_data(parameters%nkernel)
        
        write(*,*) '***************************************************************'
        write (*,*) 'Initialize Kernel variables'
@@ -130,6 +127,7 @@ program kerner
        open(unit=lu_iterations, file='niterations.txt', action='write')
        allocate(K_x(nvertices, parameters%nkernel))
        allocate(kernelvalue(nptperstep, parameters%nkernel))
+       allocate(kernelvalue_vertex(nptperstep, parameters%nkernel))
        allocate(connectivity(4, nelems))
        
        allocate(fw_field(ndumps, nptperstep))
@@ -155,6 +153,7 @@ program kerner
        write(*,*) '***************************************************************'
 
        allocate(random_points(3, nptperstep))
+       allocate(int_kernel(inv_mesh%nvertices_per_elem))
        do ielement = 1, nelems
 
           co_element = inv_mesh%get_element(ielement)
@@ -172,9 +171,13 @@ program kerner
           !end if
           
           ! Initialize Monte Carlo integral for this element
-          call int_kernel%initialize_montecarlo(parameters%nkernel, volume(ielement), parameters%allowed_error) 
+          do ivertex = 1, inv_mesh%nvertices_per_elem
+              call int_kernel(ivertex)%initialize_montecarlo(parameters%nkernel, &
+                                                             volume(ielement),   &
+                                                             parameters%allowed_error) 
+          end do
          
-          do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
+          do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
              random_points = inv_mesh%generate_random_points( ielement, nptperstep )
              
              ! Stop MC integration in this element after max_iter iterations
@@ -186,11 +189,11 @@ program kerner
              call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
            
              do irec = 1, parameters%nrec
-
-                if (int_kernel%areallconverged([ (ikernel, ikernel =                        &
-                                                  parameters%receiver(irec)%firstkernel,    &
-                                                  parameters%receiver(irec)%lastkernel) ])) &
-                                               cycle
+                  
+                if (allallconverged(int_kernel,[(ikernel, ikernel =                                 & 
+                                                          parameters%receiver(irec)%firstkernel,    &
+                                                          parameters%receiver(irec)%lastkernel) ])) &
+                                                cycle
             
                 ! Load, FT and timeshift backward field
                 bw_field = sem_data%load_bw_points( random_points, parameters%receiver(irec) )
@@ -204,7 +207,7 @@ program kerner
                              parameters%receiver(irec)%lastkernel 
 
                    ! If this kernel is already converged, go to the next one
-                   if (int_kernel%isconverged(ikernel)) cycle
+                   if (allisconverged(int_kernel,ikernel)) cycle
                    niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
 
                    ! Apply Filter 
@@ -220,23 +223,30 @@ program kerner
 
              end do ! irec
              ! Check for convergence
-             call int_kernel%check_montecarlo_integral(kernelvalue)
              
+             do ivertex = 1, inv_mesh%nvertices_per_elem
+                 do ikernel = 1, parameters%nkernel
+                     kernelvalue_vertex(:, ikernel) = kernelvalue(:, ikernel) &
+                                                    * inv_mesh%weights(ielement, ivertex, random_points)
+                 end do
+                 call int_kernel(ivertex)%check_montecarlo_integral(kernelvalue_vertex)
+             end do
+
              ! Print convergence info
              write(fmtstring,"('(I6, ES10.3, A, L1, ', I2, '(ES11.3), A, ', I2, '(ES10.3))')") &
                              parameters%nkernel, parameters%nkernel 
-             print fmtstring, ielement, volume(ielement), ' Converged? ', int_kernel%areallconverged(), &
-                              int_kernel%getintegral(), ' +- ', sqrt(int_kernel%getvariance())
+             print fmtstring, ielement, volume(ielement), ' Converged? ', int_kernel(1)%areallconverged(), &
+                              int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
 
           end do ! Kernel coverged
          
           ! Save integral values to the big kernel variable
           do ivertex = 1, inv_mesh%nvertices_per_elem
              K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) &
-                                                      + int_kernel%getintegral() !/ volume
+                                                      + int_kernel(ivertex)%getintegral() !/ volume
+             call int_kernel(ivertex)%freeme()
           end do
 
-          call int_kernel%freeme()
 
           ! Save big kernel variable to disk
           if ((mod(ielement, 1000)==0).or.(ielement==nelems)) then
@@ -245,8 +255,8 @@ program kerner
                 call inv_mesh%set_data_snap(real(K_x(:,ikernel), kind=sp), &
                                             ikernel, parameters%kernel(ikernel)%name )
              end do
-             call inv_mesh%set_data_snap(real(volume(:), kind=sp), &
-                                            parameters%nkernel + 1, 'volume' )
+             !call inv_mesh%set_data_snap(real(volume(:), kind=sp), &
+             !                               parameters%nkernel + 1, 'volume' )
 
              call inv_mesh%dump_mesh_data_xdmf('gaborkernel')
           end if

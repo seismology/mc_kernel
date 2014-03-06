@@ -26,6 +26,8 @@ module montecarlo
 
     end type
 
+    public                                       :: allallconverged
+    public                                       :: allisconverged
 contains
 
 !-------------------------------------------------------------------------------
@@ -174,4 +176,44 @@ function getvariance(this)
 end function
 !-------------------------------------------------------------------------------
 
+!-------------------------------------------------------------------------------
+function allallconverged(int_object, ikernels)
+    class(integrated_type), intent(in)   :: int_object(:)
+    logical                              :: allallconverged
+    logical                              :: anynotconverged
+    integer, optional, intent(in)        :: ikernels(:)
+    integer                              :: ivertex, nvertices
+
+    nvertices = size(int_object,1)
+    anynotconverged = .false.
+
+    do ivertex = 1, nvertices
+        if (present(ikernels)) then
+           anynotconverged = .not.(all(int_object(ivertex)%converged(ikernels))).or.anynotconverged
+        else 
+           anynotconverged = .not.(all(int_object(ivertex)%converged(:))).or.anynotconverged
+        end if
+    end do
+    allallconverged = .not.anynotconverged
+
+end function
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+function allisconverged(int_object, ikernel)
+    class(integrated_type), intent(in)   :: int_object(:)
+    logical                              :: allisconverged
+    logical                              :: anynotconverged
+    integer, optional, intent(in)        :: ikernel
+    integer                              :: ivertex, nvertices
+
+    nvertices = size(int_object)
+    anynotconverged = .false.
+    do ivertex = 1, nvertices
+        anynotconverged = .not.(int_object(ivertex)%converged(ikernel)).or.anynotconverged
+    end do
+    allisconverged = .not.anynotconverged
+
+end function
+!-------------------------------------------------------------------------------
 end module

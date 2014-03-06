@@ -33,6 +33,7 @@ module inversion_mesh
      procedure, pass :: get_volume
      procedure, pass :: generate_random_points
      procedure, pass :: make_2d_vectors
+     procedure, pass :: weights
      procedure, pass :: freeme
   end type
 
@@ -173,6 +174,21 @@ function get_volume(this, ielement)
   end select
 
 end function get_volume
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function weights(this, ielement, ivertex, points)
+!< Calculates the weight that a value at location "points" has on a kernel on vertex 
+!! "ivertex" of element "ielement". Quadrature rules come in here   
+  class(inversion_mesh_type)     :: this
+  integer, intent(in)            :: ielement, ivertex
+  real(kind=dp), intent(in)      :: points(:,:)
+  real(kind=dp)                  :: weights(size(points,2))
+
+  ! Least sophisticated version possible
+  weights = 1
+
+end function weights
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -594,6 +610,7 @@ subroutine set_data_snap(this, data_snap, isnap, data_name)
 
   if (size(data_snap) /= this%nvertices) then
      write(*,*) 'size(data_snap):', size(data_snap), '; this%nvertices', this%nvertices
+     write(*,*) 'data_name:', trim(data_name), '; isnap:', isnap
      stop 'ERROR: wrong dimensions of input data_snap for writing vertex data'
   end if
 
