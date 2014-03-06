@@ -243,7 +243,7 @@ subroutine read_kernel(this, sem_data, filter)
                                         filter          = filter(ifilter)           , &
                                         misfit_type     = misfit_type               , &  
                                         model_parameter = this%model_parameter      , &
-                                        veloseis        = sem_data%veloseis(:,irec) , &
+                                        seis            = sem_data%veloseis(:,irec) , &
                                         dt              = sem_data%dt               , &
                                         timeshift_fwd   = sem_data%timeshift_fwd    )
 

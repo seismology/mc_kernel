@@ -109,7 +109,7 @@ subroutine test_kernel_init
                     filter          = gabor,             &
                     misfit_type     = 'CC  ',            &  
                     model_parameter = 'vp  ',            &
-                    veloseis        = veloseis,          &
+                    seis            = veloseis,          &
                     dt              = 0.1d0,             &
                     timeshift_fwd   = 1.0d0   )
 

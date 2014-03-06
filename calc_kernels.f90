@@ -36,7 +36,7 @@ program kerner
     real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:)
     integer,          allocatable       :: connectivity(:,:), niterations(:,:)
     real(kind=sp)                       :: co_element(3,4)
-    real(kind=dp)                       :: volume
+    real(kind=dp),    allocatable       :: volume(:)
     real(kind=dp)                       :: df
     character(len=32)                   :: filtername
     character(len=64)                   :: fmtstring
@@ -77,10 +77,10 @@ program kerner
     write(*,*) '***************************************************************'
     write(*,*) ' Read inversion mesh'
     write(*,*) '***************************************************************'
-    !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+    call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
     !call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
     !call inv_mesh%read_abaqus_mesh('unit_tests/flat_triangles.inp')
-    call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
+    !call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
 
     nvertices = inv_mesh%get_nvertices()
     nelems    = inv_mesh%get_nelements()
@@ -108,21 +108,19 @@ program kerner
        write(*,*) '***************************************************************'
        write(*,*) ' Define filters'
        write(*,*) '***************************************************************'
-       
        call parameters%read_filter(nomega, df)
 
 
        write(*,*) '***************************************************************'
        write(*,*) ' Define kernels'
        write(*,*) '***************************************************************'
-
        call parameters%read_kernel(sem_data, parameters%filter)
 
 
        write(*,*) '***************************************************************'
        write(*,*) 'Initialize output file'
        write(*,*) '***************************************************************'
-       call inv_mesh%init_data(parameters%nkernel)
+       call inv_mesh%init_data(parameters%nkernel + 1)
        
        write(*,*) '***************************************************************'
        write (*,*) 'Initialize Kernel variables'
@@ -143,6 +141,9 @@ program kerner
        allocate(conv_field_fd(nomega, nptperstep))
        allocate(conv_field_fd_filt(nomega, nptperstep))
 
+       allocate(volume(nelems))
+       volume = 0.0
+
        write(*,*) '***************************************************************'
        write(*,*) ' Loading Connectivity'
        write(*,*) '***************************************************************'
@@ -157,7 +158,7 @@ program kerner
        do ielement = 1, nelems
 
           co_element = inv_mesh%get_element(ielement)
-          volume = inv_mesh%get_volume(ielement)
+          volume(ielement) = inv_mesh%get_volume(ielement)
 
           ! Omit elements in the core
           !if (all( sum(co_element**2, 1).lt.2890.0**2 )) then
@@ -171,7 +172,7 @@ program kerner
           !end if
           
           ! Initialize Monte Carlo integral for this element
-          call int_kernel%initialize_montecarlo(parameters%nkernel, volume, parameters%allowed_error) 
+          call int_kernel%initialize_montecarlo(parameters%nkernel, volume(ielement), parameters%allowed_error) 
          
           do while (.not.int_kernel%areallconverged()) ! Beginning of Monte Carlo loop
              random_points = inv_mesh%generate_random_points( ielement, nptperstep )
@@ -224,7 +225,7 @@ program kerner
              ! Print convergence info
              write(fmtstring,"('(I6, ES10.3, A, L1, ', I2, '(ES11.3), A, ', I2, '(ES10.3))')") &
                              parameters%nkernel, parameters%nkernel 
-             print fmtstring, ielement, volume, ' Converged? ', int_kernel%areallconverged(), &
+             print fmtstring, ielement, volume(ielement), ' Converged? ', int_kernel%areallconverged(), &
                               int_kernel%getintegral(), ' +- ', sqrt(int_kernel%getvariance())
 
           end do ! Kernel coverged
@@ -238,12 +239,14 @@ program kerner
           call int_kernel%freeme()
 
           ! Save big kernel variable to disk
-          if ((mod(ielement, 100)==0).or.(ielement==nelems)) then
+          if ((mod(ielement, 1000)==0).or.(ielement==nelems)) then
              write(*,*) 'Write Kernel to disk'
              do ikernel = 1, parameters%nkernel
                 call inv_mesh%set_data_snap(real(K_x(:,ikernel), kind=sp), &
                                             ikernel, parameters%kernel(ikernel)%name )
              end do
+             call inv_mesh%set_data_snap(real(volume(:), kind=sp), &
+                                            parameters%nkernel + 1, 'volume' )
 
              call inv_mesh%dump_mesh_data_xdmf('gaborkernel')
           end if
@@ -282,7 +285,6 @@ program kerner
        write(*,*) ' Read in forward field'
        allocate(fw_field(ndumps, nvertices))
        fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
-
 
        
        ! Dump forward field to XDMF file

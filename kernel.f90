@@ -3,9 +3,9 @@ use global_parameters,                    only: sp, dp, verbose
 use filtering,                            only: filter_type
 implicit none
     type kernelspec_type
-        character(len=16)                    :: name
+        character(len=32)                    :: name
         real(kind=dp), dimension(2)          :: time_window
-        real(kind=dp), allocatable           :: veloseis(:)       ! Velocity seismogram 
+        real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
                                                                   ! in the time window of 
                                                                   ! this kernel
         real(kind=dp), allocatable           :: t(:)
@@ -33,7 +33,7 @@ contains
 
 !-------------------------------------------------------------------------------
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
-                veloseis, dt, timeshift_fwd)
+                seis, dt, timeshift_fwd)
    use fft,       only                      : rfft_type, taperandzeropad
    use filtering, only                      : timeshift
    class(kernelspec_type)                  :: this
@@ -42,14 +42,14 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    type(filter_type), target, intent(in)   :: filter
    character(len=4), intent(in)            :: misfit_type
    character(len=4), intent(in)            :: model_parameter
-   real(kind=dp), intent(in)               :: veloseis(:)
+   real(kind=dp), intent(in)               :: seis(:)
    real(kind=dp), intent(in)               :: dt
    real(kind=dp), intent(in)               :: timeshift_fwd
    
    type(rfft_type)                         :: fft_data
-   complex(kind=dp), allocatable           :: veloseis_fd(:,:)
-   real(kind=dp),    allocatable           :: veloseis_td(:,:), t_cut(:)
-   real(kind=dp),    allocatable           :: veloseis_filtered(:,:)
+   complex(kind=dp), allocatable           :: seis_fd(:,:)
+   real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
+   real(kind=dp),    allocatable           :: seis_filtered(:,:)
    character(len=32)                       :: fmtstring
 
    integer                                 :: ntimes, ntimes_ft, nomega, isample
@@ -77,17 +77,16 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       print '(A,4(F8.3))',    '   Filter freq:  ', this%filter%frequencies
       print '(A,F8.3)',       '   Time shift :  ', timeshift_fwd
    end if
-   !print '(A,I6)',         'len(Veloseis):', size(veloseis,1) 
 
 
-   ! Save velocity seismogram in the timewindow of this kernel
+   ! Save seismogram in the timewindow of this kernel
 
    ! Allocate temporary variable
-   ntimes = size(veloseis,1)
-   allocate(veloseis_td(ntimes, 1))
-   veloseis_td(:,1) = veloseis
+   ntimes = size(seis,1)
+   allocate(seis_td(ntimes, 1))
+   seis_td(:,1) = seis
 
-   ! Initialize FFT for the velocity seismogram
+   ! Initialize FFT for the seismogram
    call fft_data%init(ntimes, 1, dt)
    ntimes_ft = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
@@ -95,57 +94,57 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    fmtstring = '(A, I8, A, I8)'
    print fmtstring, '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
 
-   allocate(veloseis_fd(nomega,1))
-   allocate(veloseis_filtered(ntimes_ft,1))
+   allocate(seis_fd(nomega,1))
+   allocate(seis_filtered(ntimes_ft,1))
    allocate(this%t(ntimes_ft))
    this%t = fft_data%get_t()
 
 
-   ! FFT, timeshift and filter the velocity seismogram
-   call fft_data%rfft(taperandzeropad(veloseis_td, ntimes_ft), veloseis_fd)
-   call timeshift(veloseis_fd, fft_data%get_f(), timeshift_fwd)
-   veloseis_fd = this%filter%apply_2d(veloseis_fd)
-   call fft_data%irfft(veloseis_fd, veloseis_filtered)
+   ! FFT, timeshift and filter the seismogram
+   call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft), seis_fd)
+   call timeshift(seis_fd, fft_data%get_f(), timeshift_fwd)
+   seis_fd = this%filter%apply_2d(seis_fd)
+   call fft_data%irfft(seis_fd, seis_filtered)
    call fft_data%freeme()
 
-   ! Cut timewindow of the kernel from the velocity seismogram
+   ! Cut timewindow of the kernel from the seismogram
    call cut_timewindow(this%t,                 &
-                       veloseis_filtered(:,1), &
+                       seis_filtered(:,1), &
                        this%time_window,       &
-                       this%veloseis )
+                       this%seis )
    call cut_timewindow(this%t,                 &
                        this%t,                 &
                        this%time_window,       &
                        t_cut )
 
-   if (abs(sum(this%veloseis**2)).lt.1.e-30) then
+   if (abs(sum(this%seis**2)).lt.1.e-30) then
        this%normalization = 0
    else
-       this%normalization = sum(this%veloseis**2)
+       this%normalization = 1./sum(this%seis**2)
    end if
    
    if (verbose>0) then
       print *, '  Normalization coefficient: ', this%normalization
-      print *, '  Length of seismogram: ', size(this%veloseis,1), ' samples'
+      print *, '  Length of seismogram: ', size(this%seis,1), ' samples'
       print *, '  ---------------------------------------------------------'
       print *, ''
    end if
 
    open(unit=100,file='seismogram_raw_'//trim(this%name), action='write')
-   do isample = 1, size(veloseis,1)
-      write(100,*) this%t(isample), veloseis(isample)
+   do isample = 1, size(seis,1)
+      write(100,*) this%t(isample), seis(isample)
    end do
    close(100)
 
    open(unit=100,file='seismogram_'//trim(this%name), action='write')
-   do isample = 1, size(veloseis_filtered,1)
-      write(100,*) this%t(isample), veloseis_filtered(isample,1)
+   do isample = 1, size(seis_filtered,1)
+      write(100,*) this%t(isample), seis_filtered(isample,1)
    end do
    close(100)
 
    open(unit=100,file='seismogram_cut_'//trim(this%name), action='write')
-   do isample = 1, size(this%veloseis,1)
-      write(100,*) t_cut(isample), this%veloseis(isample)
+   do isample = 1, size(this%seis,1)
+      write(100,*) t_cut(isample), this%seis(isample)
    end do
    close(100)
 
@@ -187,7 +186,18 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
          
-         calc_misfit_kernel(itrace) = sum( cut_timeseries * this%veloseis, 1 ) &
+         calc_misfit_kernel(itrace) = sum( cut_timeseries * this%seis, 1 ) &
+                                      * this%dt * this%normalization
+      end do
+
+   case('AM')
+      do itrace = 1, ntrace
+         call cut_timewindow(this%t,                 &
+                             timeseries(:, itrace),  &
+                             this%time_window,       &
+                             cut_timeseries)
+         
+         calc_misfit_kernel(itrace) = sum( cut_timeseries * this%seis, 1 ) &
                                       * this%dt * this%normalization
       end do
    end select
