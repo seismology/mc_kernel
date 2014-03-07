@@ -323,6 +323,31 @@ subroutine test_get_connected_elements
 end subroutine
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_initialize_mesh
+  type(inversion_mesh_type)  :: inv_mesh
+  real(kind=dp)              :: vertices(3,3)
+  integer                    :: connectivity(1,3)
+
+  vertices(:,1) = [0, 0, 0]
+  vertices(:,2) = [1, 0, 0]
+  vertices(:,3) = [0, 0, 1]
+
+  connectivity(1,:) = [1, 2, 3]
+
+  call inv_mesh%initialize_mesh('tri', vertices, connectivity)
+
+  !call assert_equal(inv_mesh%get_nelements,             [1],       'get nelements')
+  !call assert_equal(inv_mesh%get_connectivity(1),       [1, 2, 3], 'get connectivity')
+  !call assert_equal(inv_mesh%get_vertices(2),           [1, 0, 0], 'get vertex 2')
+  !call assert_equal(inv_mesh%get_valence(1),            [1],       'get valence')
+  !call assert_comparable_real1d(inv_mesh%get_volume(1), [0.5],1e-8,'get volume')
+
+  call inv_mesh%freeme()
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
 
 end module
 !=========================================================================================

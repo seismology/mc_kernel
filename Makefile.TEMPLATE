@@ -1,32 +1,33 @@
 PROG = kerner
 
-SRCS =	buffer.f90 calc_kernels.f90 fft_type.f90 filtering.f90 ftnunit.f90 \
-	global_parameters.f90 inv_mesh.f90 kdtree2.f90 kernel.f90 \
+SRCS =	commpi.F90 buffer.f90 calc_kernels.f90 fft_type.f90 filtering.f90 \
+	ftnunit.f90 global_parameters.f90 inv_mesh.f90 kdtree2.f90 kernel.f90 \
 	master_slave.f90 mc_integration.f90 random_tetrahedron.f90 \
-	readfields.f90 sorting.f90 sourceandreceiver.f90 struct_allo.f90 \
-	test_buffer.f90 test_fft_type.f90 test_filter.f90 test_ftnunit.f90 \
-	test_inv_mesh.f90 test_kernel.f90 test_mc.f90 test_readfields.f90 \
-	test_tetrahedra.f90 type_parameter.f90
+	readfields.f90 sorting.f90 sourceandreceiver.f90 test_buffer.f90 \
+	test_fft_type.f90 test_filter.f90 test_ftnunit.f90 test_inv_mesh.f90 \
+	test_kernel.f90 test_mc.f90 test_readfields.f90 test_tetrahedra.f90 \
+	type_parameter.f90
 
-OBJS =	buffer.o calc_kernels.o fft_type.o filtering.o ftnunit.o \
+OBJS =	commpi.o buffer.o calc_kernels.o fft_type.o filtering.o ftnunit.o \
 	global_parameters.o inv_mesh.o kdtree2.o kernel.o master_slave.o \
 	mc_integration.o random_tetrahedron.o readfields.o sorting.o \
-	sourceandreceiver.o struct_allo.o test_buffer.o test_fft_type.o \
-	test_filter.o test_ftnunit.o test_inv_mesh.o test_kernel.o test_mc.o \
+	sourceandreceiver.o test_buffer.o test_fft_type.o test_filter.o \
+	test_ftnunit.o test_inv_mesh.o test_kernel.o test_mc.o \
 	test_readfields.o test_tetrahedra.o type_parameter.o
 
 #Example to include specific netcdf libraries: 
-LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib 
+LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local_ifort/lib -lnetcdff -Wl,-rpath,$(HOME)/local_ifort/lib 
 
 # set unc to compile with netcdf: 
 #F90FLAGS = -Dunc 
 CC = gcc
 CFLAGS = -O3 -DF_UNDERSCORE
-F90 = mpif90 -O3  -fbacktrace -g 
-FC = gfortran -O3 -fbacktrace -g 
+#F90 = mpiifort -traceback -g -heap-arrays 10 -g -check all -check noarg_temp_created 
+F90 = mpiifort -traceback -g -heap-arrays 10 -O3
+FC = ifort -O3 -traceback -g 
  
 # to include local built of netcdf you might want to use sth like this: 
-INCLUDE = -I $(HOME)/local/include -I /usr/include 
+INCLUDE = -I $(HOME)/local_ifort/include -I /usr/include 
 
 
 # cancel m2c implicit rule 
@@ -51,13 +52,13 @@ clean:
 
 buffer.o: global_parameters.o Makefile 
 calc_kernels.o: fft_type.o filtering.o ftnunit.o global_parameters.o \
-	inv_mesh.o mc_integration.o random_tetrahedron.o readfields.o \
+	inv_mesh.o master_slave.o mc_integration.o readfields.o \
 	test_ftnunit.o type_parameter.o Makefile 
 fft_type.o: global_parameters.o  Makefile 
 filtering.o: global_parameters.o Makefile 
 ftnunit.o:  Makefile 
 global_parameters.o:  Makefile 
-inv_mesh.o: global_parameters.o random_tetrahedron.o type_parameter.o Makefile 
+inv_mesh.o: global_parameters.o random_tetrahedron.o Makefile 
 kdtree2.o: kdtree2.o Makefile 
 kernel.o: fft_type.o filtering.o global_parameters.o Makefile 
 master_slave.o: global_parameters.o master_slave.o Makefile 
@@ -66,7 +67,6 @@ random_tetrahedron.o: global_parameters.o Makefile
 readfields.o: buffer.o global_parameters.o kdtree2.o sourceandreceiver.o Makefile 
 sorting.o: global_parameters.o Makefile 
 sourceandreceiver.o: global_parameters.o kernel.o Makefile 
-struct_allo.o:  Makefile 
 test_buffer.o: buffer.o ftnunit.o global_parameters.o Makefile 
 test_fft_type.o: fft_type.o ftnunit.o global_parameters.o Makefile 
 test_filter.o: fft_type.o filtering.o ftnunit.o global_parameters.o Makefile 
@@ -79,6 +79,8 @@ test_mc.o: ftnunit.o global_parameters.o mc_integration.o \
 	random_tetrahedron.o Makefile 
 test_readfields.o: ftnunit.o global_parameters.o readfields.o \
 	type_parameter.o Makefile 
-test_tetrahedra.o: ftnunit.o global_parameters.o random_tetrahedron.o Makefile 
-type_parameter.o: filtering.o global_parameters.o kernel.o readfields.o \
-	sourceandreceiver.o Makefile 
+test_tetrahedra.o: ftnunit.o global_parameters.o inv_mesh.o \
+	random_tetrahedron.o Makefile 
+type_parameter.o: commpi.o filtering.o global_parameters.o kernel.o \
+	readfields.o sourceandreceiver.o Makefile 
+commpi.F90:  Makefile 

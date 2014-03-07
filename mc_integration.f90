@@ -118,6 +118,32 @@ end subroutine
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
+function getintegral(this)
+    class(integrated_type)                :: this
+    real(kind=dp), dimension(this%nfuncs) :: getintegral
+
+    if (.not.this%isinitialized) then
+       stop 'Initialize this MC type first'
+    end if
+    getintegral = this%integral
+
+end function
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+function getvariance(this)
+    class(integrated_type)                :: this
+    real(kind=dp), dimension(this%nfuncs) :: getvariance
+
+    if (.not.this%isinitialized) then
+       stop 'Initialize this MC type first'
+    end if
+    getvariance = this%variance
+
+end function
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 function areallconverged(this, ikernels)
     class(integrated_type)        :: this
     logical                       :: areallconverged
@@ -137,19 +163,6 @@ end function
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function getintegral(this)
-    class(integrated_type)                :: this
-    real(kind=dp), dimension(this%nfuncs) :: getintegral
-
-    if (.not.this%isinitialized) then
-       stop 'Initialize this MC type first'
-    end if
-    getintegral = this%integral
-
-end function
-!-------------------------------------------------------------------------------
-
-!-------------------------------------------------------------------------------
 function isconverged(this, ifunc)
     class(integrated_type)                :: this
     integer                               :: ifunc
@@ -159,19 +172,6 @@ function isconverged(this, ifunc)
        stop 'Initialize this MC type first'
     end if
     isconverged = this%converged(ifunc)
-
-end function
-!-------------------------------------------------------------------------------
-
-!-------------------------------------------------------------------------------
-function getvariance(this)
-    class(integrated_type)                :: this
-    real(kind=dp), dimension(this%nfuncs) :: getvariance
-
-    if (.not.this%isinitialized) then
-       stop 'Initialize this MC type first'
-    end if
-    getvariance = this%variance
 
 end function
 !-------------------------------------------------------------------------------

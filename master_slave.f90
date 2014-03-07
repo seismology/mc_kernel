@@ -23,12 +23,13 @@ module work_type_mod
      ! impossible to use the seqeuence keyword
      ! maybe can get around this by defining one block for each variable in the
      ! derived type and dropping the sequence statement
-     integer :: ntotal_kernel
-     integer :: ndimensions
-     integer :: nvertices
-     integer :: mpitype
-     real(kind=dp), allocatable :: vertices(:,:)
-     real(kind=dp), allocatable :: kernel_values(:,:)
+     integer                    :: ntotal_kernel
+     integer                    :: nelems_per_task
+     integer                    :: nvertices
+     integer                    :: mpitype
+     integer, allocatable       :: ielements(:)
+     !real(kind=dp), allocatable :: vertices(:,:)
+     real(kind=dp), allocatable :: kernel_values(:,:,:)
   end type
 
   type(work_type) :: wt
@@ -36,22 +37,22 @@ module work_type_mod
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine init_work_type(nkern, ndim, nverts)
+subroutine init_work_type(nkern, nelems_per_task, nvertices_per_elem)
   use mpi
   
-  integer, intent(in)   :: ndim, nverts, nkern
+  integer, intent(in)   :: nelems_per_task, nkern, nvertices_per_elem
   integer               :: ierr, i
   integer, allocatable  :: oldtypes(:), blocklengths(:)
   integer(kind=MPI_ADDRESS_KIND), allocatable  :: offsets(:)
   integer, parameter    :: nblocks = 3
 
   wt%ntotal_kernel = nkern
-  wt%nvertices = nverts
-  wt%ndimensions = ndim
+  wt%nelems_per_task  = nelems_per_task
+  wt%nvertices     = nvertices_per_elem
 
-  allocate(wt%vertices(1:wt%ndimensions, 1:wt%nvertices))
-  allocate(wt%kernel_values(wt%ntotal_kernel, wt%nvertices))
-  wt%vertices = 0
+  allocate(wt%ielements(wt%nelems_per_task))
+  allocate(wt%kernel_values(wt%ntotal_kernel, wt%nvertices, wt%nelems_per_task))
+  !wt%vertices = 0
   wt%kernel_values = 0
 
   ! define blocks for the mpi type. NB: it seems to be necessary to define one
@@ -61,16 +62,17 @@ subroutine init_work_type(nkern, ndim, nverts)
   allocate(offsets(nblocks))
 
   blocklengths(1) = 4
-  blocklengths(2) = wt%ndimensions * wt%nvertices
-  blocklengths(3) = wt%ntotal_kernel * wt%nvertices
+  blocklengths(2) = wt%nelems_per_task
+  blocklengths(3) = wt%ntotal_kernel * wt%nvertices * wt%nelems_per_task
 
   oldtypes(1) = MPI_INTEGER
-  oldtypes(2) = MPI_DOUBLE_PRECISION
+  !oldtypes(2) = MPI_DOUBLE_PRECISION
+  oldtypes(2) = MPI_INTEGER
   oldtypes(3) = MPI_DOUBLE_PRECISION
 
   ! find memory offsets, more stable then computing with MPI_TYPE_EXTEND
   call MPI_GET_ADDRESS(wt%ntotal_kernel, offsets(1), ierr)
-  call MPI_GET_ADDRESS(wt%vertices,      offsets(2), ierr)
+  call MPI_GET_ADDRESS(wt%ielements,     offsets(2), ierr)
   call MPI_GET_ADDRESS(wt%kernel_values, offsets(3), ierr)
 
   ! make offsets relative
@@ -90,6 +92,7 @@ end module
 
 !=========================================================================================
 module master_module
+  use parameters
   implicit none
   private
   public :: master
@@ -98,7 +101,6 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine master()
   use mpi
-  use parameters
   use work_type_mod
 
   integer               :: nslaves, rank, ierror
@@ -138,7 +140,6 @@ subroutine master()
 
      ! fill sendbuffer
      wt%ntotal_kernel = tasks(itask)
-     wt%ndimensions = 10
 
      ! Send it to each rank (blocking)
      call MPI_Send(wt,                & ! message buffer
@@ -168,12 +169,10 @@ subroutine master()
 
      ! extract from receive buffer
      output(ioutput,1) = wt%ntotal_kernel
-     output(ioutput,2) = wt%ndimensions
 
      
      ! fill sendbuffer
      wt%ntotal_kernel = tasks(itask)
-     wt%ndimensions = 10
 
      ! Send the same slave some more work to do (blocking)
      call MPI_Send(wt,               & ! message buffer
@@ -202,7 +201,6 @@ subroutine master()
      
      ! extract from receive buffer
      output(ioutput,1) = wt%ntotal_kernel
-     output(ioutput,2) = wt%ndimensions
   enddo
 
   do itask=1, ntasks
@@ -229,6 +227,7 @@ end module
 
 !=========================================================================================
 module slave_module
+  use parameters
   implicit none
   private
   public :: slave
@@ -237,7 +236,6 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine slave()
   use mpi
-  use parameters
   use work_type_mod
   
   integer   :: task
@@ -258,8 +256,7 @@ subroutine slave()
     output = work(task)
     
     wt%ntotal_kernel = output
-    wt%ndimensions = task
-    wt%vertices = task
+    wt%ielements     = task
 
     ! Send the result back
     call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
@@ -273,6 +270,12 @@ integer function work(task)
   
   work = task ** 2
 end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!subroutine print_times(iproc)
+!
+!end subroutine print_times
 !-----------------------------------------------------------------------------------------
 
 end module

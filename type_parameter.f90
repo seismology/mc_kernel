@@ -4,6 +4,8 @@ module type_parameter
     use kernel,                          only : kernelspec_type
     use receiver_class,                  only : rec_param_type
     use filtering,                       only : filter_type
+    use commpi,                          only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
+                                                pbroadcast_dble_arr, master
     implicit none    
 
     type parameter_type
@@ -25,6 +27,8 @@ module type_parameter
         character(len=32)                    :: whattodo
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
+        integer                              :: nelems_per_task
+        integer                              :: npoints_per_step
         integer                              :: max_iter
         contains
            procedure, pass                   :: read_parameters
@@ -56,51 +60,76 @@ subroutine read_parameters(this, input_file)
    character(len=256)              :: line
    character(len=256)              :: keyword, keyvalue
 
-   if (verbose > 0) write(6,'(A)', advance='no') '    Reading inparam_basic...'
-   open(unit=iinparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
-   if (ioerr /= 0) then
-      print *, 'ERROR: Check input file ''', trim(input_file), '''! Is it still there?' 
-      stop
-   end if
- 
-   do
-      read(iinparam_basic, fmt='(a256)', iostat=ioerr) line
-      if (ioerr < 0) exit
-      if (len(trim(line)) < 1 .or. line(1:1) == '#') cycle
- 
-      read(line,*) keyword, keyvalue 
-    
-      parameter_to_read : select case(trim(keyword))
-      case('ALLOWED_ERROR')
-         read(keyvalue, *) this%allowed_error
 
-      case('FWD_DIR')
-         this%fwd_dir = keyvalue
+   if (master) then
+     if (verbose > 0) write(6,'(A)', advance='no') '    Reading inparam_basic...'
+     open(unit=iinparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
+     if (ioerr /= 0) then
+        print *, 'ERROR: Check input file ''', trim(input_file), '''! Is it still there?' 
+        stop
+     end if
 
-      case('BWD_DIR')
-         this%bwd_dir = keyvalue
+     do
+        read(iinparam_basic, fmt='(a256)', iostat=ioerr) line
+        if (ioerr < 0) exit
+        if (len(trim(line)) < 1 .or. line(1:1) == '#') cycle
+     
+        read(line,*) keyword, keyvalue 
+      
+        parameter_to_read : select case(trim(keyword))
+        case('ALLOWED_ERROR')
+           read(keyvalue, *) this%allowed_error
 
-      case('SOURCE_FILE')
-         this%source_file = keyvalue
+        case('FWD_DIR')
+           this%fwd_dir = keyvalue
 
-      case('RECEIVER_FILE')
-         this%receiver_file = keyvalue
+        case('BWD_DIR')
+           this%bwd_dir = keyvalue
 
-      case('FILTER_FILE')
-         this%filter_file = keyvalue
+        case('SOURCE_FILE')
+           this%source_file = keyvalue
 
-      case('MESH_FILE')
-         this%mesh_file = keyvalue
+        case('RECEIVER_FILE')
+           this%receiver_file = keyvalue
 
-      case('MAXIMUM_ITERATIONS')
-         read(keyvalue, *) this%max_iter
+        case('FILTER_FILE')
+           this%filter_file = keyvalue
 
-      case('WHAT_TO_DO')
-         this%whattodo = keyvalue
+        case('MESH_FILE')
+           this%mesh_file = keyvalue
 
-      end select parameter_to_read
+        case('MAXIMUM_ITERATIONS')
+           read(keyvalue, *) this%max_iter
 
-   end do
+        case('ELEMENTS_PER_TASK')
+           read(keyvalue, *) this%nelems_per_task
+
+        case('POINTS_PER_MC_STEP')
+           read(keyvalue, *) this%npoints_per_step
+
+        case('WHAT_TO_DO')
+           this%whattodo = keyvalue
+
+        end select parameter_to_read
+
+     end do
+  end if
+
+  
+  ! broadcast values to other processors
+  call pbroadcast_char(this%fwd_dir, 0) 
+  call pbroadcast_char(this%bwd_dir, 0) 
+  call pbroadcast_dble(this%allowed_error, 0)
+  call pbroadcast_char(this%source_file, 0) 
+  call pbroadcast_char(this%receiver_file, 0)
+  call pbroadcast_char(this%filter_file, 0)
+  call pbroadcast_char(this%mesh_file, 0)
+  call pbroadcast_int(this%max_iter, 0)
+  call pbroadcast_int(this%nelems_per_task, 0)
+  call pbroadcast_int(this%npoints_per_step, 0)
+  call pbroadcast_char(this%whattodo, 0)
+
+  call flush(6)
 
 end subroutine read_parameters
 !------------------------------------------------------------------------------
@@ -114,24 +143,33 @@ subroutine read_source(this)
    character(len=16)              :: event_name
    integer, parameter             :: lu_source=1000
 
-   write(6,*)'  reading source from file ', trim(this%source_file)
-   open(unit=lu_source, file=trim(this%source_file), status='old')
-   read(lu_source,*) junk
-   read(lu_source,*) junk, event_name
-   read(lu_source,*) junk
-   read(lu_source,*) junk
-   read(lu_source,*) junk, latd
-   read(lu_source,*) junk, lond  
-   read(lu_source,*) junk, depth
-   read(lu_source,*) junk, Mij_dyncm(1) !Mrr
-   read(lu_source,*) junk, Mij_dyncm(2) !Mtt
-   read(lu_source,*) junk, Mij_dyncm(3) !Mpp
-   read(lu_source,*) junk, Mij_dyncm(4) !Mrt
-   read(lu_source,*) junk, Mij_dyncm(5) !Mrp
-   read(lu_source,*) junk, Mij_dyncm(6) !Mtp
-   close(lu_source)
+   if (master) then
+       write(6,*)'  reading source from file ', trim(this%source_file)
+       open(unit=lu_source, file=trim(this%source_file), status='old')
+       read(lu_source,*) junk
+       read(lu_source,*) junk, event_name
+       read(lu_source,*) junk
+       read(lu_source,*) junk
+       read(lu_source,*) junk, latd
+       read(lu_source,*) junk, lond  
+       read(lu_source,*) junk, depth
+       read(lu_source,*) junk, Mij_dyncm(1) !Mrr
+       read(lu_source,*) junk, Mij_dyncm(2) !Mtt
+       read(lu_source,*) junk, Mij_dyncm(3) !Mpp
+       read(lu_source,*) junk, Mij_dyncm(4) !Mrt
+       read(lu_source,*) junk, Mij_dyncm(5) !Mrp
+       read(lu_source,*) junk, Mij_dyncm(6) !Mtp
+       close(lu_source)
+   end if
+
+   call pbroadcast_dble(latd, 0)
+   call pbroadcast_dble(lond, 0)
+   call pbroadcast_dble(depth, 0)
+   call pbroadcast_dble_arr(Mij_dyncm, 0)
+   
 
    call this%source%init(lat = latd, lon = lond, mij = Mij_dyncm*1.E-7)
+   call flush(6)
 
 end subroutine read_source
 !------------------------------------------------------------------------------
@@ -147,13 +185,19 @@ subroutine read_receiver(this)
    character(len=80)             :: fmtstring
 
    write(6,*)'  reading receivers from file ', trim(this%receiver_file)
-   open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
-   read(lu_receiver,*) this%nrec
+   if (master) then
+       open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
+       read(lu_receiver,*) this%nrec
+       read(lu_receiver,*) this%model_parameter, this%component
+   end if
+
+   call pbroadcast_int(this%nrec, 0)
+   call pbroadcast_char(this%model_parameter, 0)
+   call pbroadcast_char(this%component, 0)
 
    fmtstring = '("  Using ", I5, " receivers")'
    print fmtstring, this%nrec
 
-   read(lu_receiver,*) this%model_parameter, this%component
    
    fmtstring = '("  Kernel for parameter ", A, " on component ", A)'
    print fmtstring, this%model_parameter, this%component
@@ -163,7 +207,14 @@ subroutine read_receiver(this)
    firstkernel = 1
    lastkernel  = 0
    do irec = 1, this%nrec
-      read(lu_receiver, *) recname, reclatd, reclond, recnkernel
+      if (master) then
+          read(lu_receiver, *) recname, reclatd, reclond, recnkernel
+      end if
+      call pbroadcast_char(recname, 0)
+      call pbroadcast_dble(reclatd, 0)
+      call pbroadcast_dble(reclond, 0)
+      call pbroadcast_int(recnkernel, 0)
+
       lastkernel = lastkernel + recnkernel
 
       fmtstring = '("  Receiver ", A, ", lat: ", F8.3, ", lon: ", F8.3)'
@@ -178,16 +229,19 @@ subroutine read_receiver(this)
                                     lastkernel  = lastkernel       )
       firstkernel = firstkernel + recnkernel
 
-      do ikernel = 1, recnkernel
-         read(lu_receiver, *) !kernelname, filtername, timewindow
-      end do
+      if (master) then
+          do ikernel = 1, recnkernel
+             read(lu_receiver, *) !kernelname, filtername, timewindow
+          end do
+      end if
 
       call this%receiver(irec)%rotate_receiver( this%source%trans_rot_mat )
    end do
-   close(lu_receiver)
+   if (master) close(lu_receiver)
 
    this%nkernel = lastkernel
    print *, ' In total ', this%nkernel, ' Kernels to calculate'
+   call flush(6)
 
 end subroutine read_receiver
 !------------------------------------------------------------------------------
@@ -197,8 +251,8 @@ subroutine read_kernel(this, sem_data, filter)
    use readfields, only            : semdata_type
    use filtering,  only            : filter_type
    class(parameter_type)          :: this
-   type(semdata_type), intent(in) :: sem_data
-   type(filter_type), target, intent(in)  :: filter(:)
+   type(semdata_type), intent(in), optional :: sem_data
+   type(filter_type), target, intent(in), optional  :: filter(:)
    integer, parameter             :: lu_kernel = 1001
    integer                        :: irec, nfilter
    integer                        :: ikernel, ifilter
@@ -210,50 +264,62 @@ subroutine read_kernel(this, sem_data, filter)
    character(len=80)              :: fmtstring
 
    write(6,*)'  reading kernels from file ', trim(this%receiver_file)
-   open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
-   read(lu_receiver,*) 
-   read(lu_receiver,*)
+   if (master) then
+       open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
+       read(lu_receiver,*) 
+       read(lu_receiver,*)
+   end if
 
    allocate(this%kernel(this%nkernel))
 
-   nfilter     = size(filter)
+   if (.not. master) nfilter     = size(filter)
 
    do irec = 1, this%nrec
-      read(lu_receiver, *) ! recname, reclatd, reclond, recnkernel
+      if (master) read(lu_receiver, *) ! recname, reclatd, reclond, recnkernel
 
       fmtstring = '("  Receiver ", A, ", has ", I3, " kernel, first and last:", 2(I5))'
       print fmtstring, trim(this%receiver(irec)%name),  this%receiver(irec)%nkernel,&
                        this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
+
       do ikernel = this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
-         read(lu_receiver, *) kernel_shortname, filtername, misfit_type, timewindow
+
+         if (master) read(lu_receiver, *) kernel_shortname, filtername, misfit_type, timewindow
+         call pbroadcast_char(kernel_shortname, 0)
+         call pbroadcast_char(filtername, 0)
+         call pbroadcast_char(misfit_type, 0)
+         call pbroadcast_dble_arr(timewindow, 0)
 
          kernelname = trim(this%receiver(irec)%name)//'_'//trim(kernel_shortname)
-         do ifilter = 1, nfilter
-            if (trim(filtername).eq.trim(filter(ifilter)%name)) exit
-         end do
-         if (ifilter == nfilter + 1) then
-            print *, 'Could not find filter ', trim(filtername), ', which was requested'
-            print *, 'by kernel ', trim(kernelname)
-            print *, 'Available filters: ', [(filter(ifilter)%name, ifilter = 1, nfilter)]
-            stop
-         end if
 
-         call this%kernel(ikernel)%init(name            = kernelname                , &
-                                        time_window     = timewindow                , &
-                                        filter          = filter(ifilter)           , &
-                                        misfit_type     = misfit_type               , &  
-                                        model_parameter = this%model_parameter      , &
-                                        seis            = sem_data%veloseis(:,irec) , &
-                                        dt              = sem_data%dt               , &
-                                        timeshift_fwd   = sem_data%timeshift_fwd    )
+         if (.not.master) then
+             do ifilter = 1, nfilter
+                if (trim(filtername).eq.trim(filter(ifilter)%name)) exit
+             end do
+             if (ifilter == nfilter + 1) then
+                print *, 'Could not find filter ', trim(filtername), ', which was requested'
+                print *, 'by kernel ', trim(kernelname)
+                print *, 'Available filters: ', [(filter(ifilter)%name, ifilter = 1, nfilter)]
+                stop
+             end if
+
+             call this%kernel(ikernel)%init(name            = kernelname                , &
+                                            time_window     = timewindow                , &
+                                            filter          = filter(ifilter)           , &
+                                            misfit_type     = misfit_type               , &  
+                                            model_parameter = this%model_parameter      , &
+                                            seis            = sem_data%veloseis(:,irec) , &
+                                            dt              = sem_data%dt               , &
+                                            timeshift_fwd   = sem_data%timeshift_fwd    )
+         end if
 
 
       end do
    end do
-   close(lu_receiver)
+   if (master) close(lu_receiver)
 
    this%nkernel = this%receiver(this%nrec)%lastkernel
 
+   call flush(6)
 end subroutine read_kernel
 !------------------------------------------------------------------------------
 
@@ -261,17 +327,21 @@ end subroutine read_kernel
 subroutine read_filter(this, nomega, df)
    use filtering, only        : filter_type
    class(parameter_type)     :: this
-   integer, intent(in)       :: nomega
-   real(kind=dp), intent(in) :: df
-   integer, parameter        :: lu_filter = 1003
-   integer                   :: ifilter, nfilter
-   character(len=32)         :: filtername, filtertype
-   character(len=80)         :: fmtstring
-   real(kind=dp)             :: freqs(4)
+   integer, intent(in), optional        :: nomega
+   real(kind=dp), intent(in), optional  :: df
+   integer, parameter                   :: lu_filter = 1003
+   integer                              :: ifilter, nfilter
+   character(len=32)                    :: filtername, filtertype
+   character(len=80)                    :: fmtstring
+   real(kind=dp)                        :: freqs(4)
 
    write(6,*)'  reading filters from file ', trim(this%filter_file)
-   open(unit=lu_filter, file=trim(this%filter_file), status='old')
-   read(lu_filter, *) nfilter
+   if (master) then
+       open(unit=lu_filter, file=trim(this%filter_file), status='old')
+       read(lu_filter, *) nfilter
+   end if
+
+   call pbroadcast_int(nfilter, 0)
 
    allocate(this%filter(nfilter))
   
@@ -280,18 +350,21 @@ subroutine read_filter(this, nomega, df)
 
    fmtstring = '("  Creating filter ", A, " of type ", A/, "   freqs: ", 4(F8.3))'
    do ifilter = 1, nfilter
-      read(lu_filter, *) filtername, filtertype, freqs
+      if (master) read(lu_filter, *) filtername, filtertype, freqs
+      call pbroadcast_char(filtername, 0)
+      call pbroadcast_char(filtertype, 0)
+      call pbroadcast_dble_arr(freqs, 0)
+
       print fmtstring, trim(filtername), trim(filtertype), freqs
-      call this%filter(ifilter)%create(filtername, df, nomega, filtertype, freqs)
+      
+      if(.not.master) then
+          call this%filter(ifilter)%create(filtername, df, nomega, filtertype, freqs)
+      end if
+
    end do
-   close(lu_filter)
 
-
-   !call gabor40%create(df, nomega, filtername, [40.0, 0.5, 0., 0.])
-   !call gabor20%create(df, nomega, filtername, [20.0, 0.5, 0., 0.])
-   !call gabor10%create(df, nomega, filtername, [10.0, 0.5, 0., 0.])
-
-
+   if (master) close(lu_filter)
+   call flush(6)
 end subroutine
 !------------------------------------------------------------------------------
 

@@ -34,6 +34,7 @@ module inversion_mesh
      procedure, pass :: generate_random_points
      procedure, pass :: make_2d_vectors
      procedure, pass :: weights
+     procedure, pass :: initialize_mesh
      procedure, pass :: freeme
   end type
 
@@ -272,6 +273,58 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
 
   this%initialized = .true.
 end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine initialize_mesh(this, elem_type, vertices, connectivity) 
+  class(inversion_mesh_type)        :: this
+  character(len=*), intent(in)     :: elem_type
+  real(kind=dp),    intent(in)     :: vertices(:,:)
+  integer,          intent(in)     :: connectivity(:,:)
+
+  this%nvertices = size(vertices,2)
+  this%nelements = size(connectivity,2)
+
+  select case(trim(elem_type))
+  case('tri')
+     this%nvertices_per_elem = 3
+     this%element_type = 'tri'
+  case('quad')
+     this%nvertices_per_elem = 4
+     this%element_type = 'quad'
+  case('hex')
+     this%nvertices_per_elem = 8
+     this%element_type = 'hex'
+  case('tet')
+     this%nvertices_per_elem = 4
+     this%element_type = 'tet'
+  case default
+     write(6,*) 'ERROR: Initializing with elementtype ', trim(elem_type), &
+                'not yet implemented'
+     stop
+  end select
+
+  if (this%nvertices_per_elem.ne.size(connectivity,1)) then
+      write(*,*) 'ERROR at initialize_mesh:'
+      write(*,*) 'Wrong number of vertices per element for type ', trim(this%element_type)
+      write(*, '(A,I2,A,I2)') 'is: ', size(connectivity,1), ', should be: ', this%nvertices_per_elem
+      stop
+  end if
+
+  ! prepare arrays
+  allocate(this%vertices(3,this%nvertices))
+  allocate(this%connectivity(this%nvertices_per_elem,this%nelements))
+
+  this%vertices = vertices
+  this%connectivity = connectivity
+
+  if (this%element_type.eq.'tri'.or.this%element_type.eq.'quad') then
+     call this%make_2d_vectors
+  end if
+
+  this%initialized = .true.
+
+end subroutine initialize_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
