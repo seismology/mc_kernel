@@ -46,8 +46,8 @@ program kerner
     write(*,*) '***************************************************************'
     write(*,*) ' Read inversion mesh'
     write(*,*) '***************************************************************'
-    call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
-    !call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
+    !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
 
     nvertices = inv_mesh%get_nvertices()
     nvertices_per_elem = inv_mesh%nvertices_per_elem
@@ -121,9 +121,9 @@ subroutine do_slave(parameters, inv_mesh)
     nvertices = inv_mesh%nvertices_per_elem
     ! nelems    = inv_mesh%get_nelements()
 
-    write(*,*) '***************************************************************'
-    write(*,*) ' Initialize and open AxiSEM wavefield files'
-    write(*,*) '***************************************************************'
+    !write(*,*) '***************************************************************'
+    !write(*,*) ' Initialize and open AxiSEM wavefield files'
+    !write(*,*) '***************************************************************'
     call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir)
     call sem_data%open_files()
     call sem_data%read_meshes()
@@ -133,11 +133,11 @@ subroutine do_slave(parameters, inv_mesh)
 
     ndumps = sem_data%ndumps
 
-    print *, 'What to do: ', trim(parameters%whattodo)
+    !print *, 'What to do: ', trim(parameters%whattodo)
 
-    write(*,*) '***************************************************************'
-    write(*,*) ' Initialize FFT'
-    write(*,*) '***************************************************************'
+    !!write(*,*) '***************************************************************'
+    !write(*,*) ' Initialize FFT'
+    !write(*,*) '***************************************************************'
     call fft_data%init(ndumps, nptperstep, sem_data%dt)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
@@ -147,14 +147,14 @@ subroutine do_slave(parameters, inv_mesh)
     fmtstring = '(A, F8.3, A, F8.3, A)'
     print fmtstring, '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
-    write(*,*) '***************************************************************'
-    write(*,*) ' Define filters'
-    write(*,*) '***************************************************************'
+    !write(*,*) '***************************************************************'
+    !write(*,*) ' Define filters'
+    !write(*,*) '***************************************************************'
     call parameters%read_filter(nomega, df)
 
-    write(*,*) '***************************************************************'
-    write(*,*) ' Define kernels'
-    write(*,*) '***************************************************************'
+    !write(*,*) '***************************************************************'
+    !write(*,*) ' Define kernels'
+    !write(*,*) '***************************************************************'
     call parameters%read_kernel(sem_data, parameters%filter)
 
     do 
@@ -582,8 +582,9 @@ subroutine do_master(parameters, inv_mesh)
 
           ! extract from receive buffer
           do iel = 1, parameters%nelems_per_task
+              ielement = wt%ielements(iel)
+              if (ielement.eq.-1) cycle
               do ivertex = 1, inv_mesh%nvertices_per_elem
-                 ielement = wt%ielements(iel)
                  K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) &
                                                           + wt%kernel_values(:, ivertex, iel)
               end do
@@ -591,7 +592,6 @@ subroutine do_master(parameters, inv_mesh)
           
           ! fill sendbuffer
           wt%ielements     = elems_in_task(itask,:)
-          !wt%ntotal_kernel = tasks(itask)
 
           ! Send the same slave some more work to do (blocking)
           call MPI_Send(wt,               & ! message buffer
@@ -604,10 +604,13 @@ subroutine do_master(parameters, inv_mesh)
                         ierror)
 
           work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
-          write(fmtstring,"('(',I3,'(I5, '' ''))')") nslaves
-          print trim(fmtstring), work_done
+          write(fmtstring,"('(',I3,'(I5, '' ''), F8.3''%'')')") nslaves + 1
+          print trim(fmtstring), work_done, sum(work_done), real(sum(work_done)) / real(ntasks)
 
        enddo
+       write(*,*) '***************************************************************'
+       write(*,*) ' All work distributed'
+       write(*,*) '***************************************************************'
 
        ! There's no more work to be distributed, so receive all the outstanding results 
        ! from the slaves (blocking, so when this loop is finished, work is done and
@@ -625,22 +628,29 @@ subroutine do_master(parameters, inv_mesh)
           
           ! extract from receive buffer
           do iel = 1, parameters%nelems_per_task
+              ielement = wt%ielements(iel)
+              if (ielement.eq.-1) cycle
               do ivertex = 1, inv_mesh%nvertices_per_elem
-                 ielement = wt%ielements(iel)
                  K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) &
                                                           + wt%kernel_values(:, ivertex, iel)
               end do
           end do
 
           work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
-          write(fmtstring,"(I3,'(I5, '' '')')") nslaves
-          print fmtstring, work_done
+          write(fmtstring,"('(',I3,'(I5, '' ''), F8.3''%'')')") nslaves + 1
+          print trim(fmtstring), work_done, sum(work_done), real(sum(work_done)) / real(ntasks)
+          !write(fmtstring,"('(',I3,'(I5, '' ''))')") nslaves + 1
+          !print fmtstring, work_done, sum(work_done)
 
        enddo
 
-       do itask=1, ntasks
-          write(6,*) output(itask,2), output(itask,1)
-       enddo
+!       do itask=1, ntasks
+!          write(6,*) output(itask,2), output(itask,1)
+!       enddo
+!
+       write(*,*) '***************************************************************'
+       write(*,*) ' All work collected, shutting down the slaves'
+       write(*,*) '***************************************************************'
 
        ! Tell all the slaves to exit by sending an empty message with the DIETAG.
        do rank=1, nslaves
@@ -654,10 +664,6 @@ subroutine do_master(parameters, inv_mesh)
                         ierror)
        enddo
 
-
-
-
-
        write(*,*) '***************************************************************'
        write(*,*) 'Initialize output file'
        write(*,*) '***************************************************************'
@@ -666,17 +672,17 @@ subroutine do_master(parameters, inv_mesh)
 
 
        ! Save big kernel variable to disk
-       if ((mod(ielement, 1000)==0).or.(ielement==nelems)) then
-          write(*,*) 'Write Kernel to disk'
-          do ikernel = 1, parameters%nkernel
-             call inv_mesh%set_data_snap(real(K_x(:,ikernel), kind=sp), &
-                                         ikernel, parameters%kernel(ikernel)%name )
-          end do
-          !call inv_mesh%set_data_snap(real(volume(:), kind=sp), &
-          !                               parameters%nkernel + 1, 'volume' )
+       !if ((mod(ielement, 1000)==0).or.(ielement==nelems)) then
+       write(*,*) 'Write Kernel to disk'
+       do ikernel = 1, parameters%nkernel
+          call inv_mesh%set_data_snap(real(K_x(:,ikernel), kind=sp), &
+                                      ikernel, parameters%kernel(ikernel)%name )
+       end do
+       !call inv_mesh%set_data_snap(real(volume(:), kind=sp), &
+       !                               parameters%nkernel + 1, 'volume' )
 
-          call inv_mesh%dump_mesh_data_xdmf('gaborkernel')
-       end if
+       call inv_mesh%dump_mesh_data_xdmf('gaborkernel')
+       !end if
 
        !write(lu_iterations,*) ielement, niterations(:, ielement)
     end select
