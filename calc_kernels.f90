@@ -2,7 +2,8 @@ program kerner
 
     use mpi
     use commpi,                      only: ppinit, master
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, myrank
+    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
+                                           myrank, lu_out
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use work_type_mod
@@ -35,17 +36,18 @@ program kerner
     write(*,*) '***************************************************************'
     call ppinit
 
-    write(*,*) '***************************************************************'
-    write(*,*) ' Read input files for parameters, source and receivers'
-    write(*,*) '***************************************************************'
+    
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' Read input files for parameters, source and receivers'
+    write(lu_out,*) '***************************************************************'
     call parameters%read_parameters('inparam_basic')
     call parameters%read_source()
     call parameters%read_receiver()
     
 
-    write(*,*) '***************************************************************'
-    write(*,*) ' Read inversion mesh'
-    write(*,*) '***************************************************************'
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' Read inversion mesh'
+    write(lu_out,*) '***************************************************************'
     !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
     call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
 
@@ -53,24 +55,24 @@ program kerner
     nvertices_per_elem = inv_mesh%nvertices_per_elem
     nelems    = inv_mesh%get_nelements()
     fmtstring = '(A, I8, A, I8)'
-    print fmtstring, '  nvertices: ',  nvertices, ', nelems: ', nelems
+    write(lu_out,fmtstring) '  nvertices: ',  nvertices, ', nelems: ', nelems
     
 
     select case(trim(parameters%whattodo))
     case('integratekernel')
 
-        write(*,*) '***************************************************************'
-        write(*,*) ' Initialize MPI work type'
-        write(*,*) '***************************************************************'
+        write(lu_out,*) '***************************************************************'
+        write(lu_out,*) ' Initialize MPI work type'
+        write(lu_out,*) '***************************************************************'
         ntasks = parameters%nelems_per_task
         call init_work_type(nkern = parameters%nkernel, &
                             nelems_per_task = parameters%nelems_per_task, &
                             nvertices_per_elem = inv_mesh%nvertices_per_elem)
       
 
-        write(*,*) '***************************************************************'
-        write(*,*) ' Master and slave part ways'
-        write(*,*) '***************************************************************'
+        write(lu_out,*) '***************************************************************'
+        write(lu_out,*) ' Master and slave part ways'
+        write(lu_out,*) '***************************************************************'
         if (master) then
            print *, 'MASTER'
            call do_master(parameters, inv_mesh)
@@ -85,8 +87,8 @@ program kerner
         stop 'Closed due to roadworks'
     end select
 
-    write(*,*)
-    write(*,*) ' Finished!'
+    write(lu_out,*)
+    write(lu_out,*) ' Finished!'
 
     
 contains
@@ -143,9 +145,9 @@ subroutine do_slave(parameters, inv_mesh)
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()
     fmtstring = '(A, I8, A, I8)'
-    print fmtstring, '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
+    write(lu_out,fmtstring) '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
     fmtstring = '(A, F8.3, A, F8.3, A)'
-    print fmtstring, '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
+    write(lu_out,fmtstring) '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
     !write(*,*) '***************************************************************'
     !write(*,*) ' Define filters'
@@ -166,7 +168,7 @@ subroutine do_slave(parameters, inv_mesh)
        if (mpistatus(MPI_TAG) == DIETAG) exit
 
        !print *, wt%ielements
-       write(*,*) '***************************************************************'
+       write(lu_out,*) '***************************************************************'
 
        allocate(workresult(parameters%nkernel, nvertices, wt%nelems_per_task))
        workresult = slave_work(parameters, sem_data, inv_mesh, fft_data, wt%ielements)
@@ -178,10 +180,10 @@ subroutine do_slave(parameters, inv_mesh)
           
     end do
 
-    write(*,*)
-    write(*,*) '***************************************************************'
-    write(*,*) ' Free memory of Kernelspecs'
-    write(*,*) '***************************************************************'
+    write(lu_out,*)
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' Free memory of Kernelspecs'
+    write(lu_out,*) '***************************************************************'
     do ikernel = 1, parameters%nkernel
        call parameters%kernel(ikernel)%freeme() 
     end do
@@ -278,22 +280,22 @@ subroutine do_slave(parameters, inv_mesh)
 
     !end select
 
-    write(*,*)
-    write(*,*) '***************************************************************'
-    write(*,*) ' Free memory of inversion mesh datatype'
-    write(*,*) '***************************************************************'
+    write(lu_out,*)
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' Free memory of inversion mesh datatype'
+    write(lu_out,*) '***************************************************************'
     call inv_mesh%freeme
 
-    write(*,*)
-    write(*,*) '***************************************************************'
-    write(*,*) ' Close AxiSEM wavefield files'
-    write(*,*) '***************************************************************'
+    write(lu_out,*)
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' Close AxiSEM wavefield files'
+    write(lu_out,*) '***************************************************************'
     call sem_data%close_files()
 
-    write(*,*)
-    write(*,*) '***************************************************************'
-    write(*,*) ' Free memory of FFT datatype'
-    write(*,*) '***************************************************************'
+    write(lu_out,*)
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' Free memory of FFT datatype'
+    write(lu_out,*) '***************************************************************'
     call fft_data%freeme()
 
 end subroutine do_slave
@@ -455,10 +457,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, elementlist) resul
            end do
 
            ! Print convergence info
-           !write(fmtstring,"('(I6, I6, ES10.3, A, L1, ', I2, '(ES11.3), A, ', I2, '(ES10.3))')") &
-           !                parameters%nkernel, parameters%nkernel 
-           !print fmtstring, myrank, ielement, volume, ' Converged? ', int_kernel(1)%areallconverged(), &
-           !                 int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
+           write(fmtstring,"('(I6, I6, ES10.3, A, L1, ', I2, '(ES11.3), A, ', I2, '(ES10.3))')") &
+                           parameters%nkernel, parameters%nkernel 
+           write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                     &
+                                   int_kernel(1)%areallconverged(), int_kernel(1)%getintegral(), &
+                                   ' +- ', sqrt(int_kernel(1)%getvariance())
 
         end do ! Kernel coverged
 
@@ -474,23 +477,24 @@ end function slave_work
 
 !=========================================================================================
 subroutine do_master(parameters, inv_mesh)
-    use commpi, only                                 : nproc, master
+    use commpi, only                             : nproc, master
     use global_parameters 
-    type(inversion_mesh_data_type), intent(in)      :: inv_mesh
-    type(parameter_type), intent(in)                :: parameters
-    integer                                         :: ikernel, ielement, iel, ivertex
-    real(kind=dp),    allocatable                   :: K_x(:,:)
-    integer,          allocatable                   :: connectivity(:,:)
-    integer               :: nslaves, rank, ierror
-    integer, allocatable  :: tasks(:), output(:,:), sendrequest(:), work_done(:)
-    integer               :: mpistatus(MPI_STATUS_SIZE)
-    integer               :: itask, ntasks, ioutput
-    integer, allocatable        :: elems_in_task(:,:)
-    character(len=64)                   :: fmtstring
+    type(inversion_mesh_data_type), intent(in)  :: inv_mesh
+    type(parameter_type), intent(in)            :: parameters
+    integer                                     :: ikernel, ielement, iel, ivertex
+    real(kind=dp),    allocatable               :: K_x(:,:)
+    integer,          allocatable               :: connectivity(:,:)
+    integer                                     :: nslaves, rank, ierror
+    integer, allocatable                        :: tasks(:), output(:,:), sendrequest(:), work_done(:)
+    integer                                     :: mpistatus(MPI_STATUS_SIZE)
+    integer                                     :: itask, ntasks, ioutput
+    integer, allocatable                        :: elems_in_task(:,:)
+    character(len=64)                           :: fmtstring
 
     allocate(connectivity(inv_mesh%nvertices_per_elem, nelems))
     connectivity = inv_mesh%get_connectivity()
     allocate(K_x(nvertices, parameters%nkernel))
+    K_x = 0.0
 
 
     ! Parallelization is implemented only for kernel calculation, not for wavefield plotting
@@ -498,14 +502,14 @@ subroutine do_master(parameters, inv_mesh)
     case('integratekernel')
 
 
-       write(*,*) '***************************************************************'
-       write(*,*) ' Define filters'
-       write(*,*) '***************************************************************'
+       write(lu_out,*) '***************************************************************'
+       write(lu_out,*) ' Define filters'
+       write(lu_out,*) '***************************************************************'
        call parameters%read_filter()
 
-       write(*,*) '***************************************************************'
-       write(*,*) ' Define kernels'
-       write(*,*) '***************************************************************'
+       write(lu_out,*) '***************************************************************'
+       write(lu_out,*) ' Define kernels'
+       write(lu_out,*) '***************************************************************'
        call parameters%read_kernel()
 
 
@@ -605,12 +609,12 @@ subroutine do_master(parameters, inv_mesh)
 
           work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
           write(fmtstring,"('(',I3,'(I5, '' ''), F8.3''%'')')") nslaves + 1
-          print trim(fmtstring), work_done, sum(work_done), real(sum(work_done)) / real(ntasks)
+          write(lu_out,fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100.
 
        enddo
-       write(*,*) '***************************************************************'
-       write(*,*) ' All work distributed'
-       write(*,*) '***************************************************************'
+       write(lu_out,*) '***************************************************************'
+       write(lu_out,*) ' All work distributed'
+       write(lu_out,*) '***************************************************************'
 
        ! There's no more work to be distributed, so receive all the outstanding results 
        ! from the slaves (blocking, so when this loop is finished, work is done and
@@ -638,7 +642,7 @@ subroutine do_master(parameters, inv_mesh)
 
           work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
           write(fmtstring,"('(',I3,'(I5, '' ''), F8.3''%'')')") nslaves + 1
-          print trim(fmtstring), work_done, sum(work_done), real(sum(work_done)) / real(ntasks)
+          write(lu_out,fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100.
           !write(fmtstring,"('(',I3,'(I5, '' ''))')") nslaves + 1
           !print fmtstring, work_done, sum(work_done)
 
@@ -648,9 +652,9 @@ subroutine do_master(parameters, inv_mesh)
 !          write(6,*) output(itask,2), output(itask,1)
 !       enddo
 !
-       write(*,*) '***************************************************************'
-       write(*,*) ' All work collected, shutting down the slaves'
-       write(*,*) '***************************************************************'
+       write(lu_out,*) '***************************************************************'
+       write(lu_out,*) ' All work collected, shutting down the slaves'
+       write(lu_out,*) '***************************************************************'
 
        ! Tell all the slaves to exit by sending an empty message with the DIETAG.
        do rank=1, nslaves
@@ -664,16 +668,16 @@ subroutine do_master(parameters, inv_mesh)
                         ierror)
        enddo
 
-       write(*,*) '***************************************************************'
-       write(*,*) 'Initialize output file'
-       write(*,*) '***************************************************************'
+       write(lu_out,*) '***************************************************************'
+       write(lu_out,*) 'Initialize output file'
+       write(lu_out,*) '***************************************************************'
        call inv_mesh%init_data(parameters%nkernel)
 
 
 
        ! Save big kernel variable to disk
        !if ((mod(ielement, 1000)==0).or.(ielement==nelems)) then
-       write(*,*) 'Write Kernel to disk'
+       write(lu_out,*) 'Write Kernel to disk'
        do ikernel = 1, parameters%nkernel
           call inv_mesh%set_data_snap(real(K_x(:,ikernel), kind=sp), &
                                       ikernel, parameters%kernel(ikernel)%name )

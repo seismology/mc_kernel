@@ -67,7 +67,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        stop
     end select
 
-20  format('filterresponse_', A, '_', 2(F08.3))
+20  format('filterresponse_', A, 2('_', F0.6))
     write(fnam,20) trim(filterclass), frequencies(1:2)
     open(10, file=trim(fnam), action='write')
     do ifreq = 1, nfreq

@@ -1,5 +1,5 @@
 module readfields
-    use global_parameters, only            : sp, dp, pi, deg2rad, verbose
+    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank
     !use type_parameter, only               : src_param_type, rec_param_type, parameter_type
     use source_class,          only        : src_param_type
     use receiver_class,        only        : rec_param_type
@@ -66,9 +66,6 @@ module readfields
             procedure, pass                :: load_seismogram
 
     end type
-
-    integer, parameter                     :: mynum = 0
-
 contains
 
 !-------------------------------------------------------------------------------
@@ -80,21 +77,21 @@ subroutine set_params(this, fwd_dir, bwd_dir)
     logical                        :: moment=.false., force=.false.
 
     dirnam = trim(fwd_dir)//'/MZZ/simulation.info'
-    print *, 'Inquiring: ', trim(dirnam)
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = moment)
 
     dirnam = trim(fwd_dir)//'/PZ/simulation.info'
-    print *, 'Inquiring: ', trim(dirnam)
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = force)
     if (moment) then
        this%nsim_fwd = 4
-       print *, 'Forward simulation was ''moment'' source'
+       write(lu_out,*) 'Forward simulation was ''moment'' source'
     elseif (force) then
        this%nsim_fwd = 2
-       print *, 'Forward simulation was ''forces'' source'
+       write(lu_out,*) 'Forward simulation was ''forces'' source'
     else 
        this%nsim_fwd = 1
-       print *, 'Forward simulation was ''single'' source'
+       write(lu_out,*) 'Forward simulation was ''single'' source'
     end if
 
     !this%nsim_fwd = parameters%nsim_fwd
@@ -154,7 +151,7 @@ subroutine open_files(this)
         !    filename = trim(this%fwd(isim)%meshdir)//'/Data/axisem_output.nc4'
         !end if
         
-        if (verbose>0) write(6,format20) trim(filename), mynum
+        if (verbose>0) write(6,format20) trim(filename), myrank
         call nc_open_for_read(    filename = filename,              &
                                   ncid     = this%fwd(isim)%ncid) 
 
@@ -171,14 +168,14 @@ subroutine open_files(this)
                                          chunksizes = chunks, &
                                          deflate_level = deflev) )
 
-        print "('FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)", &
+        write(lu_out, "('FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
-        if (verbose>0) write(6,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
+        if (verbose>0) write(lu_out,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
         
         !if (this%fwd(isim)%ordered_output) then
         !    filename = trim(this%fwd(isim)%meshdir)//'/Data/axisem_output.nc4'
        
-        !    if (verbose>0) write(6,format20) trim(filename), mynum
+        !    if (verbose>0) write(6,format20) trim(filename), myrank
         !    call nc_open_for_read(filename = filename,              &
         !                          ncid     = this%fwd(isim)%ncid) 
 
@@ -251,7 +248,7 @@ subroutine open_files(this)
         !    filename = trim(this%bwd(isim)%meshdir)//'/Data/axisem_output.nc4'
         !end if
 
-        if (verbose>0) write(6,format20) trim(filename), mynum
+        if (verbose>0) write(6,format20) trim(filename), myrank
         call nc_open_for_read(filename = filename,              &
                               ncid     = this%bwd(isim)%ncid) 
 
@@ -267,7 +264,7 @@ subroutine open_files(this)
         !if (this%bwd(isim)%ordered_output) then
         !    filename = trim(this%bwd(isim)%meshdir)//'/Data/axisem_output.nc4'
        
-        !    if (verbose>0) write(6,format20) trim(filename), mynum
+        !    if (verbose>0) write(6,format20) trim(filename), myrank
         !    call nc_open_for_read(filename = filename,              &
         !                          ncid     = this%bwd(isim)%ncid) 
 
@@ -343,7 +340,7 @@ subroutine close_files(this)
     do isim = 1, this%nsim_fwd
        status = nf90_close(this%fwd(isim)%ncid)
        if (verbose>0) then
-          write(*,'(A,I1,A,F9.6)') ' Buffer efficiency fwd(', isim, '): ',  &
+          write(lu_out,'(A,I1,A,F9.6)') ' Buffer efficiency fwd(', isim, '): ',  &
                                    this%fwd(isim)%buffer%efficiency()
        end if
        status = this%fwd(isim)%buffer%freeme()
@@ -352,7 +349,7 @@ subroutine close_files(this)
     do isim = 1, this%nsim_bwd
        status = nf90_close(this%bwd(isim)%ncid)
        if (verbose>0) then
-       write(*,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
+       write(lu_out,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
                            this%bwd(1)%buffer%efficiency()
        end if
        status = this%bwd(isim)%buffer%freeme()
@@ -580,18 +577,18 @@ subroutine load_seismogram(this, receivers, src)
    allocate(this%dispseis(this%ndumps, nrec))
    
    Mij_scale = src%mij / this%fwd(1)%amplitude
-   print '(A, ES11.3)', '  Forward simulation amplitude: ', this%fwd(1)%amplitude
+   write(lu_out, '(A, ES11.3)') '  Forward simulation amplitude: ', this%fwd(1)%amplitude
  
    do irec = 1, nrec
-      print '(A,F8.4,A,F8.4)', '  Receiver theta: ', receivers(irec)%theta/deg2rad, &
-                               ', phi: ', receivers(irec)%phi/deg2rad
-      print '(A)',             '                  Mij     Mij_scaled'
-      print '(A,2(ES11.3))',   '  Mrr:       ', src%mij(1), mij_scale(1) 
-      print '(A,2(ES11.3))',   '  Mtt:       ', src%mij(2), mij_scale(2)
-      print '(A,2(ES11.3))',   '  Mpp:       ', src%mij(3), mij_scale(3)
-      print '(A,2(ES11.3))',   '  Mrt:       ', src%mij(4), mij_scale(4)
-      print '(A,2(ES11.3))',   '  Mrp:       ', src%mij(5), mij_scale(5)
-      print '(A,2(ES11.3))',   '  Mtp:       ', src%mij(6), mij_scale(6)
+      write(lu_out, '(A,F8.4,A,F8.4)') '  Receiver theta: ', receivers(irec)%theta/deg2rad, &
+                                       ', phi: ', receivers(irec)%phi/deg2rad
+      write(lu_out, '(A)')             '                  Mij     Mij_scaled'
+      write(lu_out, '(A,2(ES11.3))')   '  Mrr:       ', src%mij(1), mij_scale(1) 
+      write(lu_out, '(A,2(ES11.3))')   '  Mtt:       ', src%mij(2), mij_scale(2)
+      write(lu_out, '(A,2(ES11.3))')   '  Mpp:       ', src%mij(3), mij_scale(3)
+      write(lu_out, '(A,2(ES11.3))')   '  Mrt:       ', src%mij(4), mij_scale(4)
+      write(lu_out, '(A,2(ES11.3))')   '  Mrp:       ', src%mij(5), mij_scale(5)
+      write(lu_out, '(A,2(ES11.3))')   '  Mtp:       ', src%mij(6), mij_scale(6)
 
 
       !print '(A,6(F8.5,/))',     'Mij_scale: ', Mij_scale
@@ -626,18 +623,18 @@ subroutine load_seismogram(this, receivers, src)
       end select
       
       isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receivers(irec)%theta), 1 )
-      print '(A,F8.4,A,I5,A,F8.4)', 'Receiver with theta ', receivers(irec)%theta/deg2rad, &
+      write(lu_out,'(A,F8.4,A,I5,A,F8.4)') 'Receiver with theta ', receivers(irec)%theta/deg2rad, &
                                     ' has element ', isurfelem, &
                                     ' with theta: ', this%fwdmesh%theta(isurfelem)
       
       seismogram_disp = 0.0
       seismogram_velo = 0.0
 
-      print '(A,4(E12.4))', 'Mij prefactors: ', mij_prefact
+      write(lu_out,'(A,4(E12.4))') 'Mij prefactors: ', mij_prefact
       
       do isim = 1, this%nsim_fwd
-         print '(A,I1,A,I5,A,I2,A,I6)', 'Sim: ', isim, ' Read element', isurfelem, &
-                                        ', component: ', reccomp, ', no of samples:', this%ndumps
+         write(lu_out,'(A,I1,A,I5,A,I2,A,I6)') 'Sim: ', isim, ' Read element', isurfelem, &
+                                               ', component: ', reccomp, ', no of samples:', this%ndumps
          ! Displacement seismogram
          call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
                                    varid  = this%fwd(isim)%seis_disp,   &
@@ -774,7 +771,7 @@ function azim_factor(phi, mij, isim)
        azim_factor = 0.5*(Mij(2)-Mij(3))*dcos(2.d0*phi) + Mij(6)*dsin(2.d0*phi)
 
     case default
-       write(6,*)mynum,'unknown number of simulations',isim
+       write(6,*) myrank,': unknown number of simulations',isim
     end select
 
 end function
@@ -799,7 +796,7 @@ subroutine build_kdtree(this)
     !print *, 'Maximum z:', maxval(this%fwdmesh%z)
     !print *, 'Minimum z:', minval(this%fwdmesh%z)
 
-    write(*,*) ' Building forward KD-Tree'
+    write(lu_out,*) ' Building forward KD-Tree'
     ! KDtree in forward field
     this%fwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
@@ -809,7 +806,7 @@ subroutine build_kdtree(this)
     deallocate(mesh)                           
 
     ! KDtree in backward field
-    write(*,*) ' Building backward KD-Tree'
+    write(lu_out,*) ' Building backward KD-Tree'
     allocate(mesh(2, this%bwdmesh%npoints))
     mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
     this%bwdtree => kdtree2_create(mesh,              &
@@ -836,7 +833,7 @@ subroutine read_meshes(this)
     end if
 
     ! Forward SEM mesh
-    if (mynum.eq.0) write(6,*) '  Read SEM mesh from first forward simulation'
+    write(lu_out,*) '  Read SEM mesh from first forward simulation'
     
     call nc_read_att_int(this%fwdmesh%npoints, &
                          'npoints', &
@@ -864,7 +861,7 @@ subroutine read_meshes(this)
                              values = this%fwdmesh%z )) 
    
     ! Backward SEM mesh                     
-    if (mynum.eq.0) write(6,*) 'Read SEM mesh from first backward simulation'
+    write(lu_out,*) 'Read SEM mesh from first backward simulation'
     
     call nc_read_att_int(this%bwdmesh%npoints, &
                          'npoints', &
@@ -962,10 +959,10 @@ subroutine getvarid(ncid, name, varid)
                              name  = name, &
                              varid = varid )
     if (status.ne.NF90_NOERR) then
-        write(6,100) mynum, trim(name), ncid
+        write(6,100) myrank, trim(name), ncid
         stop
-    elseif (mynum.eq.0) then
-        if (verbose>0) write(6,101) trim(name), ncid, varid
+    elseif (myrank.eq.0) then
+        if (verbose>0) write(lu_out,101) trim(name), ncid, varid
     end if
 100 format('ERROR: CPU ', I4, ' could not find variable: ''', A, ''' in NCID', I7)
 101 format('  Variable ''', A, ''' found in NCID', I7, ', has ID:', I7)
@@ -985,7 +982,7 @@ subroutine nc_open_for_read(filename, ncid)
 
    if (status.ne.nf90_noerr) then
       fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', but could not find it')"
-      print fmtstring, mynum, trim(filename)
+      print fmtstring, myrank, trim(filename)
       stop
    end if
 
@@ -1003,11 +1000,11 @@ subroutine getgrpid(ncid, name, grp_ncid)
                             name     = name, &
                             grp_ncid = grp_ncid )
     if (status.ne.NF90_NOERR) then
-        write(6,100) mynum, trim(name), ncid
+        write(6,100) myrank, trim(name), ncid
         stop
     elseif (verbose>1) then
-        write(6,101) trim(name), ncid, grp_ncid
-        call flush(6)
+        write(lu_out,101) trim(name), ncid, grp_ncid
+        call flush(lu_out)
     end if
 100 format('ERROR: CPU ', I4, ' could not find group: ''', A, ''' in NCID', I7)
 101 format('    Group ''', A, ''' found in NCID', I7, ', has ID:', I7)

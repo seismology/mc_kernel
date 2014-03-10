@@ -1,5 +1,5 @@
 module type_parameter
-    use global_parameters,               only : sp, dp, pi, deg2rad, verbose
+    use global_parameters,               only : sp, dp, pi, deg2rad, verbose, lu_out
     use source_class,                    only : src_param_type
     use kernel,                          only : kernelspec_type
     use receiver_class,                  only : rec_param_type
@@ -62,7 +62,7 @@ subroutine read_parameters(this, input_file)
 
 
    if (master) then
-     if (verbose > 0) write(6,'(A)', advance='no') '    Reading inparam_basic...'
+     if (verbose > 0) write(lu_out,'(A)', advance='no') '    Reading inparam_basic...'
      open(unit=iinparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
      if (ioerr /= 0) then
         print *, 'ERROR: Check input file ''', trim(input_file), '''! Is it still there?' 
@@ -144,7 +144,7 @@ subroutine read_source(this)
    integer, parameter             :: lu_source=1000
 
    if (master) then
-       write(6,*)'  reading source from file ', trim(this%source_file)
+       write(lu_out,*)'  reading source from file ', trim(this%source_file)
        open(unit=lu_source, file=trim(this%source_file), status='old')
        read(lu_source,*) junk
        read(lu_source,*) junk, event_name
@@ -184,8 +184,8 @@ subroutine read_receiver(this)
    character(len=16)             :: recname, kernelname, filtername
    character(len=80)             :: fmtstring
 
-   write(6,*)'  reading receivers from file ', trim(this%receiver_file)
    if (master) then
+       write(lu_out,*)'  reading receivers from file ', trim(this%receiver_file)
        open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) this%nrec
        read(lu_receiver,*) this%model_parameter, this%component
@@ -195,12 +195,13 @@ subroutine read_receiver(this)
    call pbroadcast_char(this%model_parameter, 0)
    call pbroadcast_char(this%component, 0)
 
-   fmtstring = '("  Using ", I5, " receivers")'
-   print fmtstring, this%nrec
-
+   if (master) then
+       fmtstring = '("  Using ", I5, " receivers")'
+       write(lu_out, fmtstring) this%nrec
    
-   fmtstring = '("  Kernel for parameter ", A, " on component ", A)'
-   print fmtstring, this%model_parameter, this%component
+       fmtstring = '("  Kernel for parameter ", A, " on component ", A)'
+       write(lu_out, fmtstring) this%model_parameter, this%component
+   end if
 
    allocate(this%receiver(this%nrec))
 
@@ -217,9 +218,6 @@ subroutine read_receiver(this)
 
       lastkernel = lastkernel + recnkernel
 
-      fmtstring = '("  Receiver ", A, ", lat: ", F8.3, ", lon: ", F8.3)'
-      print fmtstring, trim(recname), reclatd, reclond
-
       call this%receiver(irec)%init(name        = recname        , &
                                     lat         = reclatd        , &
                                     lon         = reclond        , &
@@ -229,6 +227,8 @@ subroutine read_receiver(this)
                                     lastkernel  = lastkernel       )
       firstkernel = firstkernel + recnkernel
 
+      fmtstring = '("  Receiver ", A, ", lat: ", F8.3, ", lon: ", F8.3)'
+      write(lu_out, fmtstring) trim(recname), reclatd, reclond
       if (master) then
           do ikernel = 1, recnkernel
              read(lu_receiver, *) !kernelname, filtername, timewindow
@@ -237,11 +237,13 @@ subroutine read_receiver(this)
 
       call this%receiver(irec)%rotate_receiver( this%source%trans_rot_mat )
    end do
-   if (master) close(lu_receiver)
+   if (master) then 
+       close(lu_receiver)
+   end if
+   write(lu_out,*) ' In total ', this%nkernel, ' Kernels to calculate'
+   call flush(lu_out)
 
    this%nkernel = lastkernel
-   print *, ' In total ', this%nkernel, ' Kernels to calculate'
-   call flush(6)
 
 end subroutine read_receiver
 !------------------------------------------------------------------------------
@@ -253,19 +255,19 @@ subroutine read_kernel(this, sem_data, filter)
    class(parameter_type)          :: this
    type(semdata_type), intent(in), optional :: sem_data
    type(filter_type), target, intent(in), optional  :: filter(:)
-   integer, parameter             :: lu_kernel = 1001
+   integer                        :: lu_kernel
    integer                        :: irec, nfilter
    integer                        :: ikernel, ifilter
-   integer, parameter             :: lu_receiver = 1002
+   integer                        :: lu_receiver
    real(kind=dp)                  :: timewindow(2), junk
    character(len=1)               :: component
    character(len=4)               :: misfit_type
    character(len=32)              :: recname, kernelname, filtername, kernel_shortname
    character(len=80)              :: fmtstring
 
-   write(6,*)'  reading kernels from file ', trim(this%receiver_file)
    if (master) then
-       open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
+       write(6,*)'  reading kernels from file ', trim(this%receiver_file)
+       open(newunit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) 
        read(lu_receiver,*)
    end if
@@ -275,11 +277,13 @@ subroutine read_kernel(this, sem_data, filter)
    if (.not. master) nfilter     = size(filter)
 
    do irec = 1, this%nrec
-      if (master) read(lu_receiver, *) ! recname, reclatd, reclond, recnkernel
+      if (master) then
+          read(lu_receiver, *) ! recname, reclatd, reclond, recnkernel
 
-      fmtstring = '("  Receiver ", A, ", has ", I3, " kernel, first and last:", 2(I5))'
-      print fmtstring, trim(this%receiver(irec)%name),  this%receiver(irec)%nkernel,&
-                       this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
+          fmtstring = '("  Receiver ", A, ", has ", I3, " kernel, first and last:", 2(I5))'
+          write(lu_out,fmtstring) trim(this%receiver(irec)%name),  this%receiver(irec)%nkernel,&
+                           this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
+      end if
 
       do ikernel = this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
 
@@ -332,15 +336,15 @@ subroutine read_filter(this, nomega, df)
    class(parameter_type)     :: this
    integer, intent(in), optional        :: nomega
    real(kind=dp), intent(in), optional  :: df
-   integer, parameter                   :: lu_filter = 1003
+   integer                              :: lu_filter
    integer                              :: ifilter, nfilter
    character(len=32)                    :: filtername, filtertype
    character(len=80)                    :: fmtstring
    real(kind=dp)                        :: freqs(4)
 
-   write(6,*)'  reading filters from file ', trim(this%filter_file)
+   write(lu_out,*)'  reading filters from file ', trim(this%filter_file)
    if (master) then
-       open(unit=lu_filter, file=trim(this%filter_file), status='old')
+       open(newunit=lu_filter, file=trim(this%filter_file), status='old')
        read(lu_filter, *) nfilter
    end if
 
@@ -349,7 +353,7 @@ subroutine read_filter(this, nomega, df)
    allocate(this%filter(nfilter))
   
    fmtstring = '("  Creating ", I5, " filters")'
-   print fmtstring, nfilter
+   write(lu_out,fmtstring) nfilter
 
    fmtstring = '("  Creating filter ", A, " of type ", A/, "   freqs: ", 4(F8.3))'
    do ifilter = 1, nfilter
@@ -358,7 +362,7 @@ subroutine read_filter(this, nomega, df)
       call pbroadcast_char(filtertype, 0)
       call pbroadcast_dble_arr(freqs, 0)
 
-      print fmtstring, trim(filtername), trim(filtertype), freqs
+      write(lu_out,fmtstring) trim(filtername), trim(filtertype), freqs
       
       if(.not.master) then
           call this%filter(ifilter)%create(filtername, df, nomega, filtertype, freqs)
@@ -367,7 +371,7 @@ subroutine read_filter(this, nomega, df)
    end do
 
    if (master) close(lu_filter)
-   call flush(6)
+   call flush(lu_out)
 end subroutine
 !------------------------------------------------------------------------------
 

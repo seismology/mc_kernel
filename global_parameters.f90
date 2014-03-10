@@ -14,6 +14,10 @@ module global_parameters
 
   integer, parameter         :: WORKTAG = 1
   integer, parameter         :: DIETAG  = 2
+  
+  integer                    :: lu_out !< Logical unit for output. 
+                                       !! 6 (Screen) for master
+                                       !! file 'OUTPUT_#rank' for slaves
   contains
 
 

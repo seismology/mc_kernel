@@ -1,5 +1,5 @@
 module kernel
-use global_parameters,                    only: sp, dp, verbose
+use global_parameters,                    only: sp, dp, verbose, lu_out
 use filtering,                            only: filter_type
 implicit none
     type kernelspec_type
@@ -66,16 +66,16 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    this%dt                = dt
 
    if (verbose>0) then
-      print *, '  ---------------------------------------------------------'
-      print '(2(A))',         '   Initialize kernel ', this%name
-      print *, '  ---------------------------------------------------------'
-      print '(A,2(F8.1))',    '   Time window:  ', this%time_window
-      print '(2(A))',         '   Misfit type:  ', this%misfit_type
-      print '(2(A))',         '   Model param:  ', this%model_parameter
-      print '(A,L)',          '   Initialized:  ', this%initialized
-      print '(2(A))',         '   Filter type:  ', this%filter%filterclass
-      print '(A,4(F8.3))',    '   Filter freq:  ', this%filter%frequencies
-      print '(A,F8.3)',       '   Time shift :  ', timeshift_fwd
+      write(lu_out,*) '  ---------------------------------------------------------'
+      write(lu_out,'(2(A))')         '   Initialize kernel ', this%name
+      write(lu_out,*) '  ---------------------------------------------------------'
+      write(lu_out,'(A,2(F8.1))')    '   Time window:  ', this%time_window
+      write(lu_out,'(2(A))')         '   Misfit type:  ', this%misfit_type
+      write(lu_out,'(2(A))')         '   Model param:  ', this%model_parameter
+      write(lu_out,'(A,L)')          '   Initialized:  ', this%initialized
+      write(lu_out,'(2(A))')         '   Filter type:  ', this%filter%filterclass
+      write(lu_out,'(A,4(F8.3))')    '   Filter freq:  ', this%filter%frequencies
+      write(lu_out,'(A,F8.3)')       '   Time shift :  ', timeshift_fwd
    end if
 
 
@@ -92,7 +92,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    nomega = fft_data%get_nomega()
 
    fmtstring = '(A, I8, A, I8)'
-   print fmtstring, '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
+   write(lu_out,fmtstring) '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
 
    allocate(seis_fd(nomega,1))
    allocate(seis_filtered(ntimes_ft,1))
@@ -124,10 +124,10 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    end if
    
    if (verbose>0) then
-      print *, '  Normalization coefficient: ', this%normalization
-      print *, '  Length of seismogram: ', size(this%seis,1), ' samples'
-      print *, '  ---------------------------------------------------------'
-      print *, ''
+      write(lu_out,*) '  Normalization coefficient: ', this%normalization
+      write(lu_out,*) '  Length of seismogram: ', size(this%seis,1), ' samples'
+      write(lu_out,*) '  ---------------------------------------------------------'
+      write(lu_out,*) ''
    end if
 
    open(unit=100,file='seismogram_raw_'//trim(this%name), action='write')
