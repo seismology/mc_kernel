@@ -3,7 +3,7 @@ use global_parameters,                    only: sp, dp, verbose
 use filtering,                            only: filter_type
 implicit none
     type kernelspec_type
-        character(len=32)                    :: name
+        character(len=32), public            :: name
         real(kind=dp), dimension(2)          :: time_window
         real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
                                                                   ! in the time window of 

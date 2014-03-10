@@ -310,6 +310,9 @@ subroutine read_kernel(this, sem_data, filter)
                                             seis            = sem_data%veloseis(:,irec) , &
                                             dt              = sem_data%dt               , &
                                             timeshift_fwd   = sem_data%timeshift_fwd    )
+
+         else
+             this%kernel(ikernel)%name = kernelname
          end if
 
 
