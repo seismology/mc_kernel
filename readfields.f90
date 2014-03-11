@@ -943,8 +943,8 @@ subroutine check(status)
 
   if(status /= nf90_noerr) then 
      print *, trim(nf90_strerror(status))
-     !stop 2
-     call tracebackqq()
+     stop 2
+     !call tracebackqq()
   end if
 end subroutine check  
 !-------------------------------------------------------------------------------

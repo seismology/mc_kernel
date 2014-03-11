@@ -193,7 +193,7 @@ subroutine do_slave(parameters, inv_mesh)
     !   write(*,*) '***************************************************************'
     !   write(*,*) 'Initialize output file'
     !   write(*,*) '***************************************************************'
-    !   call inv_mesh%init_data(parameters%nkernel)
+    !   call inv_mesh%init_node_data(parameters%nkernel)
 
     !   write(*,*) '***************************************************************'
     !   write(*,*) ' Initialize FFT'
@@ -210,7 +210,7 @@ subroutine do_slave(parameters, inv_mesh)
     !   print *, 'Initialize XDMF file'
     !   allocate(co_points(3, nvertices))
     !   co_points = inv_mesh%get_vertices()
-    !   call inv_mesh%init_data(ndumps*3)
+    !   call inv_mesh%init_node_data(ndumps*3)
 
     !   write(*,*) ' Read in forward field'
     !   allocate(fw_field(ndumps, nvertices))
@@ -223,7 +223,7 @@ subroutine do_slave(parameters, inv_mesh)
     !       !Test of planar wave , works
     !       !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
     !       !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-    !       call inv_mesh%set_data_snap(real(fw_field(idump,:), kind=sp), idump, 'fwd_wavefield')
+    !       call inv_mesh%set_node_data_snap(real(fw_field(idump,:), kind=sp), idump, 'fwd_wavefield')
     !   end do
     !   write(*,*) ' FFT forward field'
     !   allocate(fw_field_fd(nomega, nvertices))
@@ -240,7 +240,7 @@ subroutine do_slave(parameters, inv_mesh)
     !       !Test of planar wave , works
     !       !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
     !       !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-    !       call inv_mesh%set_data_snap(real(bw_field(idump,:), kind=sp), idump+ndumps, 'bwd_wavefield')
+    !       call inv_mesh%set_node_data_snap(real(bw_field(idump,:), kind=sp), idump+ndumps, 'bwd_wavefield')
     !   end do
     !   write(*,*) ' FFT backward field'
     !   allocate(bw_field_fd  (nomega, nvertices))
@@ -270,12 +270,12 @@ subroutine do_slave(parameters, inv_mesh)
 
     !   do idump = 1, ndumps
     !      if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
-    !      call inv_mesh%set_data_snap(real(conv_field(idump,:)), idump+ndumps*2, 'field_convolved')
+    !      call inv_mesh%set_node_data_snap(real(conv_field(idump,:)), idump+ndumps*2, 'field_convolved')
     !   end do 
 
     !!   write(*,*)
     !!   write(*,*) ' Writing data to disk'
-    !   call inv_mesh%dump_mesh_data_xdmf('wavefield')
+    !   call inv_mesh%dump_node_data_xdmf('wavefield')
     !   call inv_mesh%freeme()
 
     !end select
@@ -671,7 +671,7 @@ subroutine do_master(parameters, inv_mesh)
        write(lu_out,*) '***************************************************************'
        write(lu_out,*) 'Initialize output file'
        write(lu_out,*) '***************************************************************'
-       call inv_mesh%init_data(parameters%nkernel)
+       call inv_mesh%init_node_data(parameters%nkernel)
 
 
 
@@ -679,13 +679,13 @@ subroutine do_master(parameters, inv_mesh)
        !if ((mod(ielement, 1000)==0).or.(ielement==nelems)) then
        write(lu_out,*) 'Write Kernel to disk'
        do ikernel = 1, parameters%nkernel
-          call inv_mesh%set_data_snap(real(K_x(:,ikernel), kind=sp), &
+          call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
                                       ikernel, parameters%kernel(ikernel)%name )
        end do
-       !call inv_mesh%set_data_snap(real(volume(:), kind=sp), &
+       !call inv_mesh%set_node_data_snap(real(volume(:), kind=sp), &
        !                               parameters%nkernel + 1, 'volume' )
 
-       call inv_mesh%dump_mesh_data_xdmf('gaborkernel')
+       call inv_mesh%dump_node_data_xdmf('gaborkernel')
        !end if
 
        !write(lu_iterations,*) ielement, niterations(:, ielement)
