@@ -824,9 +824,9 @@ subroutine dump_cell_data_xdmf(this, filename)
 
            ! write attribute
            write(iinput_xdmf, 7342) this%data_group_names_cell(igroup), &
-                                    this%nvertices, isnap-1, this%nvertices, &
+                                    this%nelements, isnap-1, this%nelements, &
                                     this%ntimes_cell, &
-                                    this%nvertices, trim(filename_np)//'_data.dat'
+                                    this%nelements, trim(filename_np)//'_data.dat'
            i = i + 1
         endif
         igroup = igroup + 1
@@ -847,7 +847,7 @@ subroutine dump_cell_data_xdmf(this, filename)
     '<Domain>',/,/&
     '<DataItem Name="grid" Dimensions="',i10, i3, '" NumberType="Int" Format="',A,'">',/&
     '  ', A,/&
-    '</DataItem>',/&
+    '</DataItem>',/,/&
     '<DataItem Name="points" Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
     '  ', A,/&
     '</DataItem>',/,/&
@@ -898,7 +898,7 @@ subroutine dump_cell_data_xdmf(this, filename)
   write(iinput_heavy_data) this%connectivity
   close(iinput_heavy_data)
 
-  ! VERTEX data
+  ! CELL data
   open(newunit=iinput_heavy_data, file=trim(filename)//'_data.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
   do i=1, this%ntimes_cell
@@ -994,7 +994,7 @@ subroutine dump_node_data_xdmf(this, filename)
     '<Domain>',/,/&
     '<DataItem Name="grid" Dimensions="',i10, i3, '" NumberType="Int" Format="',A,'">',/&
     '  ', A,/&
-    '</DataItem>',/&
+    '</DataItem>',/,/&
     '<DataItem Name="points" Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
     '  ', A,/&
     '</DataItem>',/,/&

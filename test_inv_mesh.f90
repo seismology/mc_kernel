@@ -113,8 +113,8 @@ subroutine test_mesh_data_dump
   do i=1, nelements
     datat_cell(:,i) = inv_mesh%get_volume(i)
   enddo
-  datat_cell(:,2) = datat_cell(:,2) + 1
-  datat_cell(:,3) = datat_cell(:,3) + 2
+  datat_cell(2,:) = datat_cell(2,:) + 1
+  datat_cell(3,:) = datat_cell(3,:) + 2
 
   call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
   call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
@@ -147,8 +147,8 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_mesh_data_dump2
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:)
-  integer                           :: npoints, myunit, ierr
+  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
+  integer                           :: npoints, nelements, myunit, ierr, i
 
   call inv_mesh%read_abaqus_mesh('unit_tests/circle.inp')
   call inv_mesh%init_node_data(3)
@@ -167,6 +167,29 @@ subroutine test_mesh_data_dump2
   call assert_file_exists('unit_tests/testcircle_points.dat', 'test xdmf data dump')
   call assert_file_exists('unit_tests/testcircle_grid.dat', 'test xdmf data dump')
   call assert_file_exists('unit_tests/testcircle_data.dat', 'test xdmf data dump')
+
+
+  call inv_mesh%init_cell_data(3)
+
+  nelements = inv_mesh%get_nelements()
+  allocate(datat_cell(3,nelements))
+
+  do i=1, nelements
+    datat_cell(:,i) = inv_mesh%get_volume(i)
+  enddo
+  datat_cell(2,:) = datat_cell(2,:) + 1
+  datat_cell(3,:) = datat_cell(3,:) + 2
+
+  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
+
+  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcellcircle')
+
+  call assert_file_exists('unit_tests/testcellcircle.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_points.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_grid.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_data.dat', 'test xdmf cell data dump')
 
   ! tidy up
   !open(newunit=myunit, file='unit_tests/testcircle.xdmf', iostat=ierr)
@@ -188,8 +211,8 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_mesh_data_dump3
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:)
-  integer                           :: npoints, myunit, ierr
+  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
+  integer                           :: npoints, nelements, myunit, ierr, i
 
   call inv_mesh%read_abaqus_mesh('unit_tests/circle_quad2.inp')
   call inv_mesh%init_node_data(3)
@@ -208,6 +231,29 @@ subroutine test_mesh_data_dump3
   call assert_file_exists('unit_tests/testcircle_quad_points.dat', 'test xdmf data dump')
   call assert_file_exists('unit_tests/testcircle_quad_grid.dat', 'test xdmf data dump')
   call assert_file_exists('unit_tests/testcircle_quad_data.dat', 'test xdmf data dump')
+
+
+  call inv_mesh%init_cell_data(3)
+
+  nelements = inv_mesh%get_nelements()
+  allocate(datat_cell(3,nelements))
+
+  do i=1, nelements
+    datat_cell(:,i) = inv_mesh%get_volume(i)
+  enddo
+  datat_cell(2,:) = datat_cell(2,:) + 1
+  datat_cell(3,:) = datat_cell(3,:) + 2
+
+  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
+
+  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcellcircle_quad')
+
+  call assert_file_exists('unit_tests/testcellcircle_quad.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_quad_points.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_quad_grid.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_quad_data.dat', 'test xdmf cell data dump')
 
   ! tidy up
   !open(newunit=myunit, file='unit_tests/testcircle_quad.xdmf', iostat=ierr)
@@ -229,8 +275,8 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_mesh_data_dump4
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:)
-  integer                           :: npoints, myunit, ierr
+  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
+  integer                           :: npoints, nelements, myunit, ierr, i
 
   call inv_mesh%read_abaqus_mesh('unit_tests/sphere.inp')
   call inv_mesh%init_node_data(3)
@@ -249,6 +295,30 @@ subroutine test_mesh_data_dump4
   call assert_file_exists('unit_tests/testsphere_points.dat', 'test xdmf data dump')
   call assert_file_exists('unit_tests/testsphere_grid.dat', 'test xdmf data dump')
   call assert_file_exists('unit_tests/testsphere_data.dat', 'test xdmf data dump')
+
+
+  call inv_mesh%init_cell_data(3)
+
+  nelements = inv_mesh%get_nelements()
+  allocate(datat_cell(3,nelements))
+
+  do i=1, nelements
+    datat_cell(:,i) = inv_mesh%get_volume(i)
+  enddo
+  datat_cell(2,:) = datat_cell(2,:) + 1
+  datat_cell(3,:) = datat_cell(3,:) + 2
+
+  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
+
+  call inv_mesh%dump_cell_data_xdmf('unit_tests/testspherecell')
+
+  call assert_file_exists('unit_tests/testspherecell.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testspherecell_points.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testspherecell_grid.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testspherecell_data.dat', 'test xdmf cell data dump')
+
 
   ! tidy up
   !open(newunit=myunit, file='unit_tests/testsphere.xdmf', iostat=ierr)
@@ -270,8 +340,8 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_mesh_data_dump5
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:)
-  integer                           :: npoints, myunit, ierr
+  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
+  integer                           :: npoints, nelements, myunit, ierr, i
 
   call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
   call inv_mesh%init_node_data(3)
@@ -290,6 +360,30 @@ subroutine test_mesh_data_dump5
   call assert_file_exists('unit_tests/testtetrahedrons_points.dat', 'test xdmf data dump')
   call assert_file_exists('unit_tests/testtetrahedrons_grid.dat', 'test xdmf data dump')
   call assert_file_exists('unit_tests/testtetrahedrons_data.dat', 'test xdmf data dump')
+
+
+  call inv_mesh%init_cell_data(3)
+
+  nelements = inv_mesh%get_nelements()
+  allocate(datat_cell(3,nelements))
+
+  do i=1, nelements
+    datat_cell(:,i) = inv_mesh%get_volume(i)
+  enddo
+  datat_cell(2,:) = datat_cell(2,:) + 1
+  datat_cell(3,:) = datat_cell(3,:) + 2
+
+  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
+
+  call inv_mesh%dump_cell_data_xdmf('unit_tests/testtetrahedronscell')
+
+  call assert_file_exists('unit_tests/testtetrahedronscell.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testtetrahedronscell_points.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testtetrahedronscell_grid.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testtetrahedronscell_data.dat', 'test xdmf cell data dump')
+
 
   ! tidy up
   !open(newunit=myunit, file='unit_tests/testtetrahedrons.xdmf', iostat=ierr)
