@@ -18,7 +18,9 @@ module buffer
    end type
 
 contains
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 function init(this, nbuffer, nvalues)
     class(buffer_type)      :: this
     integer, intent(in)     :: nbuffer  !< How many elements should the buffer be 
@@ -43,7 +45,9 @@ function init(this, nbuffer, nvalues)
     this%initialized = .true.
     init = 0
 end function
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 function freeme(this)
     class(buffer_type)       :: this
     integer                  :: freeme    !< Return value, 0=Success
@@ -59,7 +63,9 @@ function freeme(this)
     this%initialized = .false.
     freeme = 0
 end function
+!-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
 function get(this, iindex, values)
     class(buffer_type)          :: this
     integer, intent(in)         :: iindex   !< Index under which the value was stored.
@@ -87,9 +93,11 @@ function get(this, iindex, values)
        exit
     end do
 
- end function
+end function
+!-----------------------------------------------------------------------------------------
 
- function put(this, iindex, values)
+!-----------------------------------------------------------------------------------------
+function put(this, iindex, values)
     class(buffer_type)        :: this
     integer, intent(in)       :: iindex      !< Index under which the values can later
                                              !! be accessed
@@ -113,14 +121,16 @@ function get(this, iindex, values)
        put = 0
     end if
 
- end function
+end function
+!-----------------------------------------------------------------------------------------
 
- function efficiency(this)
+!-----------------------------------------------------------------------------------------
+function efficiency(this)
     class(buffer_type)  :: this
     real(kind=sp)       :: efficiency
   
     efficiency = real(this%nhit)/real(this%naccess)
- end function
-
+end function
+!-----------------------------------------------------------------------------------------
 
 end module buffer
