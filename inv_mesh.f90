@@ -225,38 +225,38 @@ function weights(this, ielem, ivertex, points)
 
   select case(this%element_type) 
 
-!  case('tet')
-!
-!  !    ! Version from Karin's code
-!
-!  !    ivert = vertices(1,itetr)          ! first vertex in this tetrahedron
-!  !    dx = x - points(1,ivert)           ! location of (x,y,z) wrt first vertex
-!  !    dy = y - points(2,ivert)
-!  !    dz = z - points(3,ivert)
-!
-!  do ipoint = 1, size(points, 2)
-!     dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
-!     dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
-!     dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
-!
-!     weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
-!                       + this%abinv(ivertex, 2, ielem) * dy &
-!                       + this%abinv(ivertex, 3, ielem) * dz
-!  end do
-!
-!
-!
-!  !    ! compute interpolation coefficient for each vertex
-!  !    pointweights(1)=abinv(1,1,itetr)*dx+abinv(1,2,itetr)*dy+ &
-!  !          abinv(1,3,itetr)*dz + abinv(1,4,itetr)
-!  !    pointweights(2)=abinv(2,1,itetr)*dx+abinv(2,2,itetr)*dy+ &
-!  !          abinv(2,3,itetr)*dz + abinv(2,4,itetr)
-!  !    pointweights(3)=abinv(3,1,itetr)*dx+abinv(3,2,itetr)*dy+ &
-!  !          abinv(3,3,itetr)*dz + abinv(3,4,itetr)
-!  !    pointweights(4)=abinv(4,1,itetr)*dx+abinv(4,2,itetr)*dy+ &
-!  !          abinv(4,3,itetr)*dz + abinv(4,4,itetr)
-!  !    ivertices = vertices(:,itetr)
-!
+  case('tet')
+
+  !    ! Version from Karin's code
+
+  !    ivert = vertices(1,itetr)          ! first vertex in this tetrahedron
+  !    dx = x - points(1,ivert)           ! location of (x,y,z) wrt first vertex
+  !    dy = y - points(2,ivert)
+  !    dz = z - points(3,ivert)
+
+  do ipoint = 1, size(points, 2)
+     dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
+     dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
+     dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
+
+     weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
+                       + this%abinv(ivertex, 2, ielem) * dy &
+                       + this%abinv(ivertex, 3, ielem) * dz
+  end do
+
+
+
+  !    ! compute interpolation coefficient for each vertex
+  !    pointweights(1)=abinv(1,1,itetr)*dx+abinv(1,2,itetr)*dy+ &
+  !          abinv(1,3,itetr)*dz + abinv(1,4,itetr)
+  !    pointweights(2)=abinv(2,1,itetr)*dx+abinv(2,2,itetr)*dy+ &
+  !          abinv(2,3,itetr)*dz + abinv(2,4,itetr)
+  !    pointweights(3)=abinv(3,1,itetr)*dx+abinv(3,2,itetr)*dy+ &
+  !          abinv(3,3,itetr)*dz + abinv(3,4,itetr)
+  !    pointweights(4)=abinv(4,1,itetr)*dx+abinv(4,2,itetr)*dy+ &
+  !          abinv(4,3,itetr)*dz + abinv(4,4,itetr)
+  !    ivertices = vertices(:,itetr)
+
   case default
       ! Least sophisticated version possible
       weights = 1
@@ -478,30 +478,6 @@ subroutine read_abaqus_meshtype(this, filename)
 end subroutine read_abaqus_meshtype
 !-----------------------------------------------------------------------------------------
 
-
-!-----------------------------------------------------------------------------------------
-!subroutine freeme(this)
-!    class(inversion_mesh_type)  :: this
-!
-!    this%nvertices = -1
-!    this%nelements = -1
-!    this%nvertices_per_elem = -1
-!    this%element_type = ''
-!    deallocate(this%vertices)
-!    deallocate(this%connectivity)
-!    if (allocated(this%v_2d)) deallocate(this%v_2d)
-!    if (allocated(this%p_2d)) deallocate(this%p_2d)
-!
-!    this%ntimes = -1
-!    this%ngroups = -1
-!    if (allocated(this%datat))            deallocate(this%datat)
-!    if (allocated(this%data_group_names)) deallocate(this%data_group_names)
-!    if (allocated(this%group_id))         deallocate(this%group_id)
-!
-!end subroutine freeme
-!-----------------------------------------------------------------------------------------
-
-
 !-----------------------------------------------------------------------------------------
 subroutine read_abaqus_mesh(this, filename)
   class(inversion_mesh_type)        :: this
@@ -626,6 +602,7 @@ subroutine init_weight_tet_mesh(this)
   real(kind=dp)                    :: x1, y1, z1, ab(4,4)
   integer                          :: ielem, ivertex
 
+  allocate(this%abinv(4,4,this%nelements))
   do ielem = 1, this%nelements
      x1 = this%vertices(1, this%connectivity(1,ielem)+1)
      y1 = this%vertices(2, this%connectivity(1,ielem)+1)
@@ -859,6 +836,7 @@ subroutine freeme(this)
   this%element_type = ''
   if (allocated(this%v_2d)) deallocate(this%v_2d)
   if (allocated(this%p_2d)) deallocate(this%p_2d)
+  if (allocated(this%abinv)) deallocate(this%abinv)
 
 
   select type (this)
