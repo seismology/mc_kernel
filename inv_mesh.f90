@@ -1,7 +1,7 @@
 !=========================================================================================
 module inversion_mesh
 
-  use global_parameters, only: sp, dp
+  use global_parameters, only: sp, dp, lu_out
   use tetrahedra,        only: get_volume_tet, get_volume_poly, &
                                generate_random_points_tet, generate_random_points_poly
   implicit none
@@ -17,9 +17,11 @@ module inversion_mesh
      integer, allocatable               :: connectivity(:,:)
      real(kind=dp), allocatable         :: vertices(:,:)
      real(kind=dp), allocatable         :: v_2d(:,:,:), p_2d(:,:,:)
+     real(kind=dp), allocatable         :: abinv(:,:,:)
      character(len=4)                   :: element_type
      logical                            :: initialized = .false.
      contains
+     procedure, pass :: get_element_type
      procedure, pass :: get_nelements
      procedure, pass :: get_element
      procedure, pass :: get_nvertices
@@ -29,6 +31,7 @@ module inversion_mesh
      procedure, pass :: get_connectivity
      procedure, pass :: read_tet_mesh
      procedure, pass :: read_abaqus_mesh
+     procedure, pass :: read_abaqus_meshtype
      procedure, pass :: dump_mesh_xdmf
      procedure, pass :: get_volume
      procedure, pass :: generate_random_points
@@ -36,6 +39,7 @@ module inversion_mesh
      procedure, pass :: weights
      procedure, pass :: initialize_mesh
      procedure, pass :: freeme
+     procedure       :: init_weight_tet_mesh
   end type
 
   type, extends(inversion_mesh_type)    :: inversion_mesh_data_type
@@ -43,7 +47,7 @@ module inversion_mesh
      integer                            :: ntimes_node, ntimes_cell
      real(kind=sp), allocatable         :: datat_node(:,:), datat_cell(:,:)
      integer, allocatable               :: group_id_node(:), group_id_cell(:)
-     character(len=16), allocatable     :: data_group_names_node(:), data_group_names_cell(:)
+     character(len=32), allocatable     :: data_group_names_node(:), data_group_names_cell(:)
      integer                            :: ngroups_node, ngroups_cell
      contains
      procedure, pass :: get_ntimes_node
@@ -57,6 +61,24 @@ module inversion_mesh
   end type
 
 contains
+
+!-----------------------------------------------------------------------------------------
+integer function get_element_type(this)
+  class(inversion_mesh_type)        :: this
+  if (.not. this%initialized) &
+     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  select case(this%element_type)
+  case('tri')
+     get_element_type = 1
+  case('quad')
+     get_element_type = 2
+  case('hex')
+     get_element_type = 3
+  case('tet')
+     get_element_type = 4
+  end select
+end function
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 integer function get_nelements(this)
@@ -191,17 +213,55 @@ end function get_volume
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function weights(this, ielement, ivertex, points)
+function weights(this, ielem, ivertex, points)
 !< Calculates the weight that a value at location "points" has on a kernel on vertex 
 !! "ivertex" of element "ielement". Quadrature rules come in here   
   class(inversion_mesh_type)     :: this
-  integer, intent(in)            :: ielement, ivertex
+  integer, intent(in)            :: ielem, ivertex
   real(kind=dp), intent(in)      :: points(:,:)
   real(kind=dp)                  :: weights(size(points,2))
+  real(kind=dp)                  :: dx, dy, dz
+  integer                        :: ipoint
 
-  ! Least sophisticated version possible
-  weights = 1
+  select case(this%element_type) 
 
+!  case('tet')
+!
+!  !    ! Version from Karin's code
+!
+!  !    ivert = vertices(1,itetr)          ! first vertex in this tetrahedron
+!  !    dx = x - points(1,ivert)           ! location of (x,y,z) wrt first vertex
+!  !    dy = y - points(2,ivert)
+!  !    dz = z - points(3,ivert)
+!
+!  do ipoint = 1, size(points, 2)
+!     dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
+!     dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
+!     dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
+!
+!     weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
+!                       + this%abinv(ivertex, 2, ielem) * dy &
+!                       + this%abinv(ivertex, 3, ielem) * dz
+!  end do
+!
+!
+!
+!  !    ! compute interpolation coefficient for each vertex
+!  !    pointweights(1)=abinv(1,1,itetr)*dx+abinv(1,2,itetr)*dy+ &
+!  !          abinv(1,3,itetr)*dz + abinv(1,4,itetr)
+!  !    pointweights(2)=abinv(2,1,itetr)*dx+abinv(2,2,itetr)*dy+ &
+!  !          abinv(2,3,itetr)*dz + abinv(2,4,itetr)
+!  !    pointweights(3)=abinv(3,1,itetr)*dx+abinv(3,2,itetr)*dy+ &
+!  !          abinv(3,3,itetr)*dz + abinv(3,4,itetr)
+!  !    pointweights(4)=abinv(4,1,itetr)*dx+abinv(4,2,itetr)*dy+ &
+!  !          abinv(4,3,itetr)*dz + abinv(4,4,itetr)
+!  !    ivertices = vertices(:,itetr)
+!
+  case default
+      ! Least sophisticated version possible
+      weights = 1
+
+  end select
 end function weights
 !-----------------------------------------------------------------------------------------
 
@@ -248,6 +308,9 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   integer                           :: iinput_vertices, iinput_connectivity
   integer                           :: i, ierr
 
+  if (this%initialized) &
+     stop 'ERROR: Trying to read mesh into inversion mesh type that is already initialized'
+
   this%nvertices_per_elem = 4
   this%element_type = 'tet'
   
@@ -284,35 +347,44 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   enddo
   close(iinput_connectivity)
 
+  call this%init_weight_tet_mesh()
+
   this%initialized = .true.
 end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine initialize_mesh(this, elem_type, vertices, connectivity) 
+subroutine initialize_mesh(this, ielem_type, vertices, connectivity) 
   class(inversion_mesh_type)        :: this
-  character(len=*), intent(in)     :: elem_type
+  !character(len=*), intent(in)     :: elem_type
+  integer                          :: ielem_type !1-tet, 2-quad, 3-tri, 4-hex
   real(kind=dp),    intent(in)     :: vertices(:,:)
   integer,          intent(in)     :: connectivity(:,:)
+  integer                          :: ielement
+
+  if (this%initialized) &
+     stop 'ERROR: Trying to initialize inversion mesh type that is already initialized'
 
   this%nvertices = size(vertices,2)
   this%nelements = size(connectivity,2)
 
-  select case(trim(elem_type))
-  case('tri')
+  write(lu_out,*) 'Initialize mesh with ', this%nvertices, ' vertices and ', this%nelements, 'elements'
+
+  select case(ielem_type)
+  case(1) ! tri
      this%nvertices_per_elem = 3
      this%element_type = 'tri'
-  case('quad')
+  case(2) ! quad
      this%nvertices_per_elem = 4
      this%element_type = 'quad'
-  case('hex')
+  case(3) ! hex
      this%nvertices_per_elem = 8
      this%element_type = 'hex'
-  case('tet')
+  case(4) ! tet
      this%nvertices_per_elem = 4
      this%element_type = 'tet'
   case default
-     write(6,*) 'ERROR: Initializing with elementtype ', trim(elem_type), &
+     write(6,*) 'ERROR: Initializing with elementtype ', ielem_type, &
                 'not yet implemented'
      stop
   end select
@@ -320,7 +392,7 @@ subroutine initialize_mesh(this, elem_type, vertices, connectivity)
   if (this%nvertices_per_elem.ne.size(connectivity,1)) then
       write(*,*) 'ERROR at initialize_mesh:'
       write(*,*) 'Wrong number of vertices per element for type ', trim(this%element_type)
-      write(*, '(A,I2,A,I2)') 'is: ', size(connectivity,1), ', should be: ', this%nvertices_per_elem
+      write(*, '(A,I5,A,I2)') 'is: ', size(connectivity,1), ', should be: ', this%nvertices_per_elem
       stop
   end if
 
@@ -329,16 +401,106 @@ subroutine initialize_mesh(this, elem_type, vertices, connectivity)
   allocate(this%connectivity(this%nvertices_per_elem,this%nelements))
 
   this%vertices = vertices
-  this%connectivity = connectivity
+  this%connectivity = connectivity - 1
 
   if (this%element_type.eq.'tri'.or.this%element_type.eq.'quad') then
      call this%make_2d_vectors
+  elseif (this%element_type.eq.'tet') then
+     call this%init_weight_tet_mesh()
   end if
 
   this%initialized = .true.
 
 end subroutine initialize_mesh
 !-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine read_abaqus_meshtype(this, filename)
+  class(inversion_mesh_type)        :: this
+  character(len=*), intent(in)      :: filename
+  integer                           :: iinput
+  integer                           :: i, ierr, ct
+  character(len=128)                :: line
+  character(len=16)                 :: elem_type
+
+
+  ! open file 
+  open(newunit=iinput, file=trim(filename), status='old', &
+       action='read', iostat=ierr)
+  if ( ierr /= 0 ) then
+     write(*,*) 'ERROR: Could not open file: ', trim(filename)
+     stop
+  endif
+
+  ! go to vertex block
+  do
+    read(iinput,*) line
+    if (index(line, '*NODE') == 1) exit
+  enddo
+
+  ! scan number of vertices
+  ct = 0
+  do
+    read(iinput,*) line
+    if (index(line, '**') == 1) exit
+    ct = ct + 1
+  enddo
+  this%nvertices = ct
+  
+  ! go to element block
+  do
+    read(iinput,*) line, elem_type
+    if (index(line, '*ELEMENT') == 1) exit
+  enddo
+ 
+  ! get element type
+  elem_type = trim(elem_type(6:))
+
+  select case (trim(elem_type))
+  case('STRI3')
+     this%nvertices_per_elem = 3
+     this%element_type = 'tri'
+  case('S4R')
+     this%nvertices_per_elem = 4
+     this%element_type = 'quad'
+  case('C3D8R')
+     this%nvertices_per_elem = 8
+     this%element_type = 'hex'
+  case('C3D4')
+     this%nvertices_per_elem = 4
+     this%element_type = 'tet'
+  case default
+     write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
+                'not yet implemented'
+     stop
+  end select
+
+end subroutine read_abaqus_meshtype
+!-----------------------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------------------
+!subroutine freeme(this)
+!    class(inversion_mesh_type)  :: this
+!
+!    this%nvertices = -1
+!    this%nelements = -1
+!    this%nvertices_per_elem = -1
+!    this%element_type = ''
+!    deallocate(this%vertices)
+!    deallocate(this%connectivity)
+!    if (allocated(this%v_2d)) deallocate(this%v_2d)
+!    if (allocated(this%p_2d)) deallocate(this%p_2d)
+!
+!    this%ntimes = -1
+!    this%ngroups = -1
+!    if (allocated(this%datat))            deallocate(this%datat)
+!    if (allocated(this%data_group_names)) deallocate(this%data_group_names)
+!    if (allocated(this%group_id))         deallocate(this%group_id)
+!
+!end subroutine freeme
+!-----------------------------------------------------------------------------------------
+
 
 !-----------------------------------------------------------------------------------------
 subroutine read_abaqus_mesh(this, filename)
@@ -348,6 +510,9 @@ subroutine read_abaqus_mesh(this, filename)
   integer                           :: i, ierr, ct
   character(len=128)                :: line
   character(len=16)                 :: elem_type
+
+  if (this%initialized) &
+     stop 'ERROR: Trying to read mesh into inversion mesh type that is already initialized'
 
   ! open file 
   open(newunit=iinput, file=trim(filename), status='old', &
@@ -446,11 +611,67 @@ subroutine read_abaqus_mesh(this, filename)
   
   if (this%element_type.eq.'tri'.or.this%element_type.eq.'quad') then
      call this%make_2d_vectors
+  elseif (this%element_type.eq.'tet') then
+     call this%init_weight_tet_mesh()
   end if
 
 
   this%initialized = .true.
 end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine init_weight_tet_mesh(this)
+  class(inversion_mesh_type)       :: this
+  real(kind=dp)                    :: x1, y1, z1, ab(4,4)
+  integer                          :: ielem, ivertex
+
+  do ielem = 1, this%nelements
+     x1 = this%vertices(1, this%connectivity(1,ielem)+1)
+     y1 = this%vertices(2, this%connectivity(1,ielem)+1)
+     z1 = this%vertices(3, this%connectivity(1,ielem)+1)
+
+     do ivertex = 1, 4
+        ab(1, ivertex) = this%vertices(1, this%connectivity(ivertex,ielem)+1) - x1
+        ab(2, ivertex) = this%vertices(2, this%connectivity(ivertex,ielem)+1) - y1
+        ab(3, ivertex) = this%vertices(3, this%connectivity(ivertex,ielem)+1) - z1
+        ab(4, ivertex) = 1
+     end do
+
+     this%abinv(:,:,ielem) = invert(ab, 4)
+  end do
+
+end subroutine init_weight_tet_mesh
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function invert(A, nrows) result(A_inv)
+!< Inverts a square matrix of dimension nrows using LAPACK routines
+  integer, intent(in)           :: nrows 
+  real(kind=dp), intent(in)     :: A(nrows, nrows)
+  real(kind=dp)                 :: A_inv(nrows, nrows)
+  integer                       :: lda, lwork, info
+  real(kind=dp), allocatable    :: work(:)
+  integer, allocatable          :: ipiv(:)
+
+  ! This is done in LAPACK routines
+  A_inv = A
+  lda = nrows
+  lwork = nrows
+  allocate(ipiv(nrows))
+  allocate(work(nrows))
+  
+  call dgetrf( nrows, nrows, A_inv, lda, ipiv, info )               
+  
+  ! Inverse der LU-faktorisierten Matrix A        
+  call dgetri( nrows, A_inv, lda, ipiv, work, lwork, info )
+  if (info.eq.0) then
+      !if(lroot) print *, 'Covariance matrix inverted'
+  else
+      stop 'Error in Covariance matrix inversion'
+  end if
+
+end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -632,14 +853,27 @@ subroutine freeme(this)
   if (allocated(this%vertices)) deallocate(this%vertices)
   if (allocated(this%connectivity)) deallocate(this%connectivity)
 
+  this%nvertices = -1
+  this%nelements = -1
+  this%nvertices_per_elem = -1
+  this%element_type = ''
+  if (allocated(this%v_2d)) deallocate(this%v_2d)
+  if (allocated(this%p_2d)) deallocate(this%p_2d)
+
+
   select type (this)
   type is (inversion_mesh_data_type)
-     if (allocated(this%datat_node)) deallocate(this%datat_node)
+     if (allocated(this%datat_node))       deallocate(this%datat_node)
+     if (allocated(this%datat_cell))       deallocate(this%datat_cell)
+     if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
+     if (allocated(this%group_id_node))         deallocate(this%group_id_node)
+     if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
+     if (allocated(this%group_id_cell))         deallocate(this%group_id_cell)
   end select
 
   this%initialized = .false.
 
-end subroutine
+end subroutine freeme
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -823,9 +1057,10 @@ subroutine dump_cell_data_xdmf(this, filename)
            enddo
 
            ! write attribute
-           write(iinput_xdmf, 7342) this%data_group_names_cell(igroup), &
-                                    this%nelements, isnap-1, this%nelements, &
-                                    this%ntimes_cell, &
+           ! @TODO: Change numbers to nelements
+           write(iinput_xdmf, 7342) trim(this%data_group_names_cell(igroup)), &
+                                    this%nelements, isnap-1, this%nelements,  &
+                                    this%ntimes_cell,                         &
                                     this%nelements, trim(filename_np)//'_data.dat'
            i = i + 1
         endif
@@ -970,9 +1205,9 @@ subroutine dump_node_data_xdmf(this, filename)
            enddo
 
            ! write attribute
-           write(iinput_xdmf, 7342) this%data_group_names_node(igroup), &
-                                    this%nvertices, isnap-1, this%nvertices, &
-                                    this%ntimes_node, &
+           write(iinput_xdmf, 7342) trim(this%data_group_names_node(igroup)), &
+                                    this%nvertices, isnap-1, this%nvertices,  &
+                                    this%ntimes_node,                         &
                                     this%nvertices, trim(filename_np)//'_data.dat'
            i = i + 1
         endif
