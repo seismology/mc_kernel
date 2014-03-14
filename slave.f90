@@ -38,8 +38,8 @@ subroutine do_slave() !, inv_mesh)
     real(kind=dp)                       :: df
     real(kind=dp), allocatable          :: K_x(:,:)
     integer                             :: iel, ielement, ivertex
-    character(len=32)                   :: filtername, fnam
-    character(len=64)                   :: fmtstring
+    character(len=32)                   :: filtername
+    character(len=64)                   :: fmtstring, fnam
     integer                             :: nptperstep
     real(kind=dp), allocatable          :: workresult(:,:,:)
 
@@ -113,31 +113,32 @@ subroutine do_slave() !, inv_mesh)
 
        wt%kernel_values = slave_result%kernel_values
        wt%kernel_errors = slave_result%kernel_errors
+       wt%niterations   = slave_result%niterations
 
 
-       ! Write out my part of the mesh
-       call inv_mesh%init_node_data(parameters%nkernel)
-       
-       if (.not.allocated(K_x)) allocate(K_x(inv_mesh%get_nvertices(), parameters%nkernel))
-       K_x = 0
-       do iel = 1, parameters%nelems_per_task
-           ielement = iel  
-           if (ielement.eq.-1) cycle
-           do ivertex = 1, inv_mesh%nvertices_per_elem
-              K_x(wt%connectivity(ivertex, ielement),:) = K_x(wt%connectivity(ivertex, ielement),:) &
-                                                       + wt%kernel_values(:, ivertex, iel)
-           end do
-       end do
+       !! Write out my part of the mesh
+       !call inv_mesh%init_node_data(parameters%nkernel)
+       !
+       !if (.not.allocated(K_x)) allocate(K_x(inv_mesh%get_nvertices(), parameters%nkernel))
+       !K_x = 0
+       !do iel = 1, parameters%nelems_per_task
+       !    ielement = iel  
+       !    if (ielement.eq.-1) cycle
+       !    do ivertex = 1, inv_mesh%nvertices_per_elem
+       !       K_x(wt%connectivity(ivertex, ielement),:) = K_x(wt%connectivity(ivertex, ielement),:) &
+       !                                                + wt%kernel_values(:, ivertex, iel)
+       !    end do
+       !end do
 
-       write(fnam, "('kernel_part_data_', I5.5)") wt%itask
-       do ikernel = 1, parameters%nkernel
-          call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
-                                      ikernel, parameters%kernel(ikernel)%name )
-       end do
+       !write(fnam, "('partial_kernels/kernel_part_data_', I5.5)") wt%itask
+       !do ikernel = 1, parameters%nkernel
+       !   call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
+       !                               ikernel, parameters%kernel(ikernel)%name )
+       !end do
 
-       call inv_mesh%dump_node_data_xdmf(fnam)
+       !call inv_mesh%dump_node_data_xdmf(fnam)
+
        ! Finished writing my part of the mesh
-       
        call inv_mesh%freeme
 
        ! Send the result back
@@ -332,7 +333,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
         do ivertex = 1, inv_mesh%nvertices_per_elem
             slave_result%kernel_values(:, ivertex, ielement) = int_kernel(ivertex)%getintegral()
-            slave_result%kernel_errors(:, ivertex, ielement) = int_kernel(ivertex)%getvariance()
+            slave_result%kernel_errors(:, ivertex, ielement) = sqrt(int_kernel(ivertex)%getvariance())
             slave_result%niterations(:,ielement)             = niterations(:,ielement)
             call int_kernel(ivertex)%freeme()
         end do

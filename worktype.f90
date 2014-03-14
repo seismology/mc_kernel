@@ -25,7 +25,7 @@ module work_type_mod
      real(kind=dp), allocatable :: vertices(:,:)
      real(kind=dp), allocatable :: kernel_values(:,:,:)
      real(kind=dp), allocatable :: kernel_errors(:,:,:)
-     !integer, allocatable       :: ielements(:)
+     integer, allocatable       :: niterations(:,:)
   end type
 
   type(work_type) :: wt
@@ -41,7 +41,7 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   integer               :: ierr, i
   integer, allocatable  :: oldtypes(:), blocklengths(:)
   integer(kind=MPI_ADDRESS_KIND), allocatable  :: offsets(:)
-  integer, parameter    :: nblocks = 5
+  integer, parameter    :: nblocks = 6
   character(len=64)     :: fmtstring
 
   wt%ntotal_kernel      = nkernel
@@ -57,17 +57,17 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
       write(lu_out, fmtstring), 'nvertices:', wt%nvertices          
   end if
 
-  !allocate(wt%ielements(wt%nelems_per_task))
   allocate(wt%connectivity(wt%nvertices_per_elem, wt%nelems_per_task))
-  !allocate(wt%ielements(wt%nelems_per_task))
   allocate(wt%vertices(3, wt%nvertices))
   allocate(wt%kernel_values(wt%ntotal_kernel, wt%nvertices_per_elem, wt%nelems_per_task))
   allocate(wt%kernel_errors(wt%ntotal_kernel, wt%nvertices_per_elem, wt%nelems_per_task))
+  allocate(wt%niterations(wt%ntotal_kernel, wt%nelems_per_task))
 
   wt%connectivity  = 0
   wt%vertices      = 0
   wt%kernel_values = 0
   wt%kernel_errors = 0
+  wt%niterations   = 0
 
   ! define blocks for the mpi type. NB: it seems to be necessary to define one
   ! block per array, otherwise having segfaults.
@@ -75,27 +75,27 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   allocate(blocklengths(nblocks))
   allocate(offsets(nblocks))
 
-  blocklengths(1) = 6 ! Variable sizes and itask
+  blocklengths(1) = 7 ! Variable sizes and itask
   blocklengths(2) = wt%nelems_per_task * wt%nvertices_per_elem ! connectivity
   blocklengths(3) = wt%nvertices * 3                  ! vertices
   blocklengths(4) = wt%ntotal_kernel * wt%nvertices_per_elem * wt%nelems_per_task !kernel_values
   blocklengths(5) = wt%ntotal_kernel * wt%nvertices_per_elem * wt%nelems_per_task !kernel_errors
+  blocklengths(6) = wt%ntotal_kernel * wt%nelems_per_task                         !niterations
 
   oldtypes(1) = MPI_INTEGER            ! 
   oldtypes(2) = MPI_INTEGER            ! connectivity
   oldtypes(3) = MPI_DOUBLE_PRECISION   ! vertices 
   oldtypes(4) = MPI_DOUBLE_PRECISION   ! kernel_values 
   oldtypes(5) = MPI_DOUBLE_PRECISION   ! kernel_errors
+  oldtypes(6) = MPI_INTEGER            ! kernel_errors
 
   ! find memory offsets, more stable then computing with MPI_TYPE_EXTEND
-  !call MPI_GET_ADDRESS(wt%ntotal_kernel, offsets(1), ierr)
-  !call MPI_GET_ADDRESS(wt%ielements,     offsets(2), ierr)
-  !call MPI_GET_ADDRESS(wt%kernel_values, offsets(3), ierr)
   call MPI_GET_ADDRESS(wt%ntotal_kernel, offsets(1), ierr)
   call MPI_GET_ADDRESS(wt%connectivity,  offsets(2), ierr)
   call MPI_GET_ADDRESS(wt%vertices,      offsets(3), ierr)
   call MPI_GET_ADDRESS(wt%kernel_values, offsets(4), ierr)
   call MPI_GET_ADDRESS(wt%kernel_errors, offsets(5), ierr)
+  call MPI_GET_ADDRESS(wt%niterations,   offsets(6), ierr)
 
   ! make offsets relative
   do i=2, size(offsets)

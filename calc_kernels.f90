@@ -49,17 +49,20 @@ program kerner
 
         if (master) then
             ! Get type of mesh and number of vertices per element
-            call inv_mesh%read_abaqus_meshtype(parameters%mesh_file)
+            if (trim(parameters%mesh_file).eq.'Karin') then
+                nvertices_per_elem = 4
+            else
+                call inv_mesh%read_abaqus_meshtype(parameters%mesh_file)
+                nvertices_per_elem = inv_mesh%nvertices_per_elem
+            end if
         end if
-            
+        call pbroadcast_int(nvertices_per_elem, 0)
+        nvertices_per_task = parameters%nelems_per_task * nvertices_per_elem
+        call pbroadcast_int(nvertices_per_task, 0)
 
         write(lu_out,*) '***************************************************************'
         write(lu_out,*) ' Initialize MPI work type'
         write(lu_out,*) '***************************************************************'
-        nvertices_per_task = parameters%nelems_per_task * inv_mesh%nvertices_per_elem
-        nvertices_per_elem = inv_mesh%nvertices_per_elem
-        call pbroadcast_int(nvertices_per_task, 0)
-        call pbroadcast_int(nvertices_per_elem, 0)
 
         call init_work_type(nkernel            = parameters%nkernel,         &
                             nelems_per_task    = parameters%nelems_per_task, &

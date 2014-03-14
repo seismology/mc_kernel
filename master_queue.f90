@@ -13,6 +13,7 @@ module master_queue
   integer, allocatable                :: tasks(:), elems_in_task(:,:)
   real(kind=dp), allocatable          :: K_x(:,:), Err(:,:)
   integer,       allocatable          :: connectivity(:,:)
+  integer,       allocatable          :: niterations(:,:), element_proc(:)
 
 contains
 
@@ -37,21 +38,14 @@ subroutine init_queue(ntasks)
   write(lu_out,*) '***************************************************************'
   write(lu_out,*) ' Read inversion mesh'
   write(lu_out,*) '***************************************************************'
-  !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
-  call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
+  if (trim(parameters%mesh_file).eq.'Karin') then
+    call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+  else
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
+  end if
   
   wt%ielement_type = inv_mesh%get_element_type()
-  !select case(inv_mesh%element_type)
-  !case('tri')
-  !   wt%ielement_type = 1
-  !case('quad')
-  !   wt%ielement_type = 2
-  !case('hex')
-  !   wt%ielement_type = 3
-  !case('tet')
-  !   wt%ielement_type = 4
-  !end select
-
+  print *, 'Inversion mesh type: ', wt%ielement_type
   
   nelems    = inv_mesh%get_nelements()
   allocate(connectivity(inv_mesh%nvertices_per_elem, nelems))
@@ -67,6 +61,8 @@ subroutine init_queue(ntasks)
   write(lu_out,*) '***************************************************************'
   call parameters%read_kernel()
 
+  allocate(niterations(parameters%nkernel, nelems))
+  allocate(element_proc(nelems))
   
   fmtstring = '(A, I8, A, I8)'
   ! Calculate number of tasks
@@ -128,11 +124,11 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine extract_receive_buffer(itask)
+subroutine extract_receive_buffer(itask, irank)
 ! extract information received back from a slave
 
   use work_type_mod, only    : wt
-  integer, intent(in)       :: itask
+  integer, intent(in)       :: itask, irank
   integer                   :: iel, ielement, ivertex
 
   ! extract from receive buffer
@@ -148,9 +144,10 @@ subroutine extract_receive_buffer(itask)
                                                   / abs(wt%kernel_values(:, ivertex, iel))
 
       end do
+      niterations(:,ielement)  = wt%niterations(:,iel)
+      element_proc(ielement) = irank 
   end do
-  !output(ioutput,1) = wt%ntotal_kernel
-  !output(ioutput,2) = wt%ndimensions
+
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -176,6 +173,17 @@ subroutine finalize()
   end do
 
   call inv_mesh%dump_node_data_xdmf('gaborkernel')
+
+  ! Save mesh partition and convergence information
+  call inv_mesh%init_cell_data(parameters%nkernel + 1)
+  call inv_mesh%set_cell_data_snap(real(element_proc, kind=sp), 1,  &
+                                   'element_proc')
+  do ikernel = 1, parameters%nkernel
+      call inv_mesh%set_cell_data_snap(real(niterations(ikernel, :), kind=sp), 1+ikernel,&
+                                       'nit_'//parameters%kernel(ikernel)%name)
+  end do 
+  call inv_mesh%dump_cell_data_xdmf('gaborkernel_stat')
+
   call inv_mesh%freeme()
 
 end subroutine

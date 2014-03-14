@@ -79,7 +79,7 @@ subroutine do_master()
                    mpistatus,        & ! info about the received message
                    ierror)
 
-     call extract_receive_buffer(wt%itask)
+     call extract_receive_buffer(wt%itask, mpistatus(MPI_SOURCE))
      
      ! Plot status of slaves
      work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
@@ -113,7 +113,7 @@ subroutine do_master()
                    mpistatus,       & ! info about the received message
                    ierror)
      
-     call extract_receive_buffer(wt%itask)
+     call extract_receive_buffer(wt%itask, mpistatus(MPI_SOURCE))
      
      ! Plot status of slaves
      work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
