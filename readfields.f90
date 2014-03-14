@@ -1,6 +1,6 @@
 module readfields
     use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank
-    !use type_parameter, only               : src_param_type, rec_param_type, parameter_type
+    use commpi, only                       : myrank
     use source_class,          only        : src_param_type
     use receiver_class,        only        : rec_param_type
     use buffer, only                       : buffer_type
@@ -25,7 +25,6 @@ module readfields
         integer                           :: ndumps, nseis
         integer                           :: source_shift_samples    
         real(kind=dp)                     :: source_shift_t
-        !logical                           :: ordered_output
         type(buffer_type)                 :: buffer
         real(kind=dp)                     :: dt
         real(kind=dp)                     :: amplitude
@@ -47,7 +46,7 @@ module readfields
         logical                            :: kdtree_built
         real(kind=dp), public              :: dt
         integer,       public              :: ndumps, decimate_factor
-        integer,       public              :: nseis ! ndumps * decimate_factor
+        integer,       public              :: nseis 
         real(kind=dp), public              :: windowlength
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
@@ -94,7 +93,6 @@ subroutine set_params(this, fwd_dir, bwd_dir)
        write(lu_out,*) 'Forward simulation was ''single'' source'
     end if
 
-    !this%nsim_fwd = parameters%nsim_fwd
     this%nsim_bwd =  1 !parameters%nsim_bwd
     
     allocate( this%fwd(this%nsim_fwd) )
@@ -146,12 +144,7 @@ subroutine open_files(this)
         ! Forward wavefield
         filename=trim(this%fwd(isim)%meshdir)//'/ordered_output.nc4'
         
-        !inquire(file=filename, exist=this%fwd(isim)%ordered_output)
-        !if (.not.this%fwd(isim)%ordered_output) then
-        !    filename = trim(this%fwd(isim)%meshdir)//'/Data/axisem_output.nc4'
-        !end if
-        
-        if (verbose>0) write(6,format20) trim(filename), myrank
+        if (verbose>0) write(lu_out,format20) trim(filename), myrank
         call nc_open_for_read(    filename = filename,              &
                                   ncid     = this%fwd(isim)%ncid) 
 
@@ -171,15 +164,6 @@ subroutine open_files(this)
         write(lu_out, "('FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
         if (verbose>0) write(lu_out,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
-        
-        !if (this%fwd(isim)%ordered_output) then
-        !    filename = trim(this%fwd(isim)%meshdir)//'/Data/axisem_output.nc4'
-       
-        !    if (verbose>0) write(6,format20) trim(filename), myrank
-        !    call nc_open_for_read(filename = filename,              &
-        !                          ncid     = this%fwd(isim)%ncid) 
-
-        !end if
         
         call getgrpid(           ncid      = this%fwd(isim)%ncid,   &
                                  name      = "Surface",             &
@@ -243,12 +227,7 @@ subroutine open_files(this)
         ! Backward wavefield
         filename=trim(this%bwd(isim)%meshdir)//'/ordered_output.nc4'
         
-        !inquire(file=filename, exist=this%bwd(isim)%ordered_output)
-        !if (.not.this%bwd(isim)%ordered_output) then
-        !    filename = trim(this%bwd(isim)%meshdir)//'/Data/axisem_output.nc4'
-        !end if
-
-        if (verbose>0) write(6,format20) trim(filename), myrank
+        if (verbose>0) write(lu_out,format20) trim(filename), myrank
         call nc_open_for_read(filename = filename,              &
                               ncid     = this%bwd(isim)%ncid) 
 
@@ -259,17 +238,8 @@ subroutine open_files(this)
         call getvarid(ncid     = this%bwd(isim)%snap,   &
                       name     = "straintrace",         &
                       varid    = this%bwd(isim)%straintrace) 
-        if (verbose>0) write(6,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
+        if (verbose>0) write(lu_out,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
         
-        !if (this%bwd(isim)%ordered_output) then
-        !    filename = trim(this%bwd(isim)%meshdir)//'/Data/axisem_output.nc4'
-       
-        !    if (verbose>0) write(6,format20) trim(filename), myrank
-        !    call nc_open_for_read(filename = filename,              &
-        !                          ncid     = this%bwd(isim)%ncid) 
-
-        !end if
-
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
                        name     = "Surface",             &
                        grp_ncid = this%bwd(isim)%surf)
@@ -279,15 +249,6 @@ subroutine open_files(this)
         !call getgrpid( ncid     = this%bwd(isim)%ncid,   &
         !               name     = "Seismograms",         &
         !               grp_ncid = this%bwd(isim)%seis)
-        !call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
-        !                          name     = "Surface",             &
-        !                          grp_ncid = this%bwd(isim)%surf))
-        !call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
-        !                          name     = "Mesh",                &
-        !                          grp_ncid = this%bwd(isim)%mesh))
-        !call check(nf90_inq_ncid( ncid     = this%bwd(isim)%ncid,   &
-        !                          name     = "Seismograms",         &
-        !                          grp_ncid = this%bwd(isim)%seis))
 
         call nc_read_att_int(     this%bwd(isim)%ndumps,            &
                                   'number of strain dumps',         &
@@ -512,37 +473,22 @@ function load_fw_points(this, coordinates, source_params)
     
     do ipoint = 1, npoints
         
-        !print *, 'Azim factors: '
         do isim = 1, this%nsim_fwd
            !write(*,*) 'Reading point ', pointid(ipoint), ' (', ipoint, ') with ', &
            !           this%fwd(isim)%ndumps, ' values'
             status = this%fwd(isim)%buffer%get(pointid(ipoint), utemp)
             if (status.ne.0) then
-               !write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
-               !if (this%fwd(isim)%ordered_output) then
-               !   call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
-               !                             varid  = this%fwd(isim)%straintrace, &
-               !                             start  = [1, pointid(ipoint)],       &
-               !                             count  = [this%fwd(isim)%ndumps, 1], &
-               !                             values = utemp) )
-               !else
-                  call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
+               call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
                                             varid  = this%fwd(isim)%straintrace, &
                                             start  = [pointid(ipoint), 1],       &
                                             count  = [1, this%fwd(isim)%ndumps], &
                                             values = utemp) )
-               !end if
                status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
-            !else
-            !   write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
             end if
             load_fw_points(:, ipoint) = load_fw_points(:,ipoint) &
                                       + azim_factor(rotmesh_phi(ipoint), &
                                                     source_params%mij, isim) &
                                       * real(utemp, kind=dp)
-            !load_fw_points(:, ipoint) = utemp
-            !print *, 'isim', isim, '; azim. factor:', azim_factor(rotmesh_phi(ipoint),&
-            !                                                      source_params%mij, isim)
         end do !isim
         !read(*,*)
         write(1002,'(7(ES15.6))') rotmesh_s(ipoint), rotmesh_z(ipoint), rotmesh_phi(ipoint), &
@@ -684,8 +630,6 @@ function load_bw_points(this, coordinates, receiver)
     end if
     npoints = size(coordinates,2)
 
-    !allocate(load_bw_points(this%bwd(1)%ndumps,npoints))
-    
     ! Rotate points to BWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
                           coordinates*1e3,                              &
@@ -714,23 +658,12 @@ function load_bw_points(this, coordinates, receiver)
         
         status = this%bwd(1)%buffer%get(pointid(ipoint), utemp)
         if (status.ne.0) then
-           !write(*,*) 'Did not find point', ipoint, ' in buffer, rereading'
-           !if (this%bwd(1)%ordered_output) then
-           !   call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
-           !                             varid  = this%bwd(1)%straintrace, &
-           !                             start  = [1, pointid(ipoint)],    &
-           !                             count  = [this%bwd(1)%ndumps, 1], &
-           !                             values = utemp) )
-           !else
-              call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
+           call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
                                         varid  = this%bwd(1)%straintrace, &
                                         start  = [pointid(ipoint), 1],    &
                                         count  = [1, this%bwd(1)%ndumps], &
                                         values = utemp) )
-           !end if
            status = this%bwd(1)%buffer%put(pointid(ipoint), utemp)
-        !else
-        !   write(*,*) 'Found point', ipoint, ' (',pointid(ipoint),') in buffer!'
         end if
 
 
@@ -790,11 +723,6 @@ subroutine build_kdtree(this)
 
     allocate(mesh(2, this%fwdmesh%npoints))
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
-
-    !print *, 'Maximum s:', maxval(this%fwdmesh%s)
-    !print *, 'Minimum s:', minval(this%fwdmesh%s)
-    !print *, 'Maximum z:', maxval(this%fwdmesh%z)
-    !print *, 'Minimum z:', minval(this%fwdmesh%z)
 
     write(lu_out,*) ' Building forward KD-Tree'
     ! KDtree in forward field
