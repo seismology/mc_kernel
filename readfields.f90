@@ -50,6 +50,7 @@ module readfields
         real(kind=dp), public              :: windowlength
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
+        integer                            :: chunk_gll_fwd, chunk_gll_bwd
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
 
@@ -163,6 +164,8 @@ subroutine open_files(this)
 
         write(lu_out, "('FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
+        this%chunk_gll_fwd = chunks(1)
+
         if (verbose>0) write(lu_out,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
         
         call getgrpid(           ncid      = this%fwd(isim)%ncid,   &
@@ -238,6 +241,15 @@ subroutine open_files(this)
         call getvarid(ncid     = this%bwd(isim)%snap,   &
                       name     = "straintrace",         &
                       varid    = this%bwd(isim)%straintrace) 
+
+        call check(nf90_inquire_variable(ncid       = this%bwd(isim)%snap,   &
+                                         varid      = this%bwd(isim)%straintrace, &
+                                         chunksizes = chunks, &
+                                         deflate_level = deflev) )
+
+        write(lu_out, "('BWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
+              isim, chunks, deflev
+        this%chunk_gll_bwd = chunks(1)
         if (verbose>0) write(lu_out,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
         
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
@@ -432,7 +444,7 @@ function load_fw_points(this, coordinates, source_params)
     real(kind=sp)                     :: utemp(this%fwd(1)%ndumps)
     type(kdtree2_result), allocatable :: nextpoint(:)
 
-    integer                           :: npoints
+    integer                           :: npoints, first_gll
     integer                           :: pointid(size(coordinates,2))
     integer                           :: ipoint, isim, status
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
@@ -478,11 +490,13 @@ function load_fw_points(this, coordinates, source_params)
            !           this%fwd(isim)%ndumps, ' values'
             status = this%fwd(isim)%buffer%get(pointid(ipoint), utemp)
             if (status.ne.0) then
+               first_gll = (pointid(ipoint)/this%chunk_gll_fwd) * this%chunk_gll_fwd + 1
+
                call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
-                                            varid  = this%fwd(isim)%straintrace, &
-                                            start  = [pointid(ipoint), 1],       &
-                                            count  = [1, this%fwd(isim)%ndumps], &
-                                            values = utemp) )
+                                         varid  = this%fwd(isim)%straintrace, &
+                                         start  = [pointid(ipoint), 1],       &
+                                         count  = [1, this%fwd(isim)%ndumps], &
+                                         values = utemp) )
                status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
             end if
             load_fw_points(:, ipoint) = load_fw_points(:,ipoint) &
