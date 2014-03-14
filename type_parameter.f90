@@ -1,11 +1,11 @@
 module type_parameter
-    use global_parameters,               only : sp, dp, pi, deg2rad, verbose, lu_out
+    use global_parameters,               only : sp, dp, pi, deg2rad, verbose, lu_out, master
     use source_class,                    only : src_param_type
     use kernel,                          only : kernelspec_type
     use receiver_class,                  only : rec_param_type
     use filtering,                       only : filter_type
     use commpi,                          only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
-                                                pbroadcast_dble_arr, master
+                                                pbroadcast_dble_arr, pbarrier
     implicit none    
 
     type parameter_type
@@ -30,6 +30,11 @@ module type_parameter
         integer                              :: nelems_per_task
         integer                              :: npoints_per_step
         integer                              :: max_iter
+        logical                              :: parameters_read = .false.
+        logical                              :: receiver_read   = .false.
+        logical                              :: source_read     = .false.
+        logical                              :: filter_read     = .false.
+        logical                              :: kernel_read     = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -56,21 +61,22 @@ contains
 subroutine read_parameters(this, input_file)
    class(parameter_type)           :: this
    character(len=*), intent(in)    :: input_file
-   integer                         :: iinparam_basic=500, ioerr
+   integer                         :: lu_inparam_basic, ioerr
    character(len=256)              :: line
    character(len=256)              :: keyword, keyvalue
 
+   call pbarrier
 
    if (master) then
-     if (verbose > 0) write(lu_out,'(A)', advance='no') '    Reading inparam_basic...'
-     open(unit=iinparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
+     if (verbose > 0) write(lu_out,'(A)') '    Reading inparam_basic...'
+     open(newunit=lu_inparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
      if (ioerr /= 0) then
         print *, 'ERROR: Check input file ''', trim(input_file), '''! Is it still there?' 
         stop
      end if
 
      do
-        read(iinparam_basic, fmt='(a256)', iostat=ioerr) line
+        read(lu_inparam_basic, fmt='(a256)', iostat=ioerr) line
         if (ioerr < 0) exit
         if (len(trim(line)) < 1 .or. line(1:1) == '#') cycle
      
@@ -111,8 +117,13 @@ subroutine read_parameters(this, input_file)
            this%whattodo = keyvalue
 
         end select parameter_to_read
-
+        print "(A32,' ',A)", keyword, trim(keyvalue)
      end do
+     close(lu_inparam_basic)
+
+  else
+     if (verbose > 0) write(lu_out,'(A)') '    Waiting for master to distribute inparam_basic...'
+
   end if
 
   
@@ -129,7 +140,9 @@ subroutine read_parameters(this, input_file)
   call pbroadcast_int(this%npoints_per_step, 0)
   call pbroadcast_char(this%whattodo, 0)
 
-  call flush(6)
+  call flush(lu_out)
+
+  this%parameters_read = .true.
 
 end subroutine read_parameters
 !------------------------------------------------------------------------------
@@ -143,8 +156,13 @@ subroutine read_source(this)
    character(len=16)              :: event_name
    integer, parameter             :: lu_source=1000
 
+   if (.not.this%parameters_read) then
+       write(6,*) 'General parameters not read. Call read_parameters before read_source!'
+       stop
+   end if
+
    if (master) then
-       write(lu_out,*)'  reading source from file ', trim(this%source_file)
+       write(lu_out,*)'  Reading source from file ', trim(this%source_file)
        open(unit=lu_source, file=trim(this%source_file), status='old')
        read(lu_source,*) junk
        read(lu_source,*) junk, event_name
@@ -171,6 +189,8 @@ subroutine read_source(this)
    call this%source%init(lat = latd, lon = lond, mij = Mij_dyncm*1.E-7)
    call flush(6)
 
+   this%source_read = .true.
+
 end subroutine read_source
 !------------------------------------------------------------------------------
 
@@ -183,6 +203,16 @@ subroutine read_receiver(this)
    real(kind=dp)                 :: timewindow(2), reclatd, reclond
    character(len=16)             :: recname, kernelname, filtername
    character(len=80)             :: fmtstring
+
+   if (.not.this%parameters_read) then
+       write(6,*) 'General parameters not read. Call read_parameters before read_receiver!'
+       stop
+   end if
+
+   if (.not.this%source_read) then
+       write(6,*) 'Source parameters not read. Call read_source before read_receiver!'
+       stop
+   end if
 
    if (master) then
        write(lu_out,*)'  reading receivers from file ', trim(this%receiver_file)
@@ -240,10 +270,13 @@ subroutine read_receiver(this)
    if (master) then 
        close(lu_receiver)
    end if
+
+   this%nkernel = lastkernel
+
    write(lu_out,*) ' In total ', this%nkernel, ' Kernels to calculate'
    call flush(lu_out)
 
-   this%nkernel = lastkernel
+   this%receiver_read = .true.
 
 end subroutine read_receiver
 !------------------------------------------------------------------------------
@@ -264,6 +297,26 @@ subroutine read_kernel(this, sem_data, filter)
    character(len=4)               :: misfit_type
    character(len=32)              :: recname, kernelname, filtername, kernel_shortname
    character(len=80)              :: fmtstring
+
+   if (.not.this%parameters_read) then
+       write(6,*) 'General parameters not read. Call read_parameters before read_kernel!'
+       stop
+   end if
+
+   if (.not.this%source_read) then
+       write(6,*) 'Source parameters not read. Call read_source before read_kernel!'
+       stop
+   end if
+
+   if (.not.this%receiver_read) then
+       write(6,*) 'Receiver parameters not read. Call read_receiver before read_kernel!'
+       stop
+   end if
+
+   if (.not.this%filter_read) then
+       write(6,*) 'Filter parameters not read. Call read_filter before read_kernel!'
+       stop
+   end if
 
    if (master) then
        write(6,*)'  reading kernels from file ', trim(this%receiver_file)
@@ -326,7 +379,9 @@ subroutine read_kernel(this, sem_data, filter)
 
    this%nkernel = this%receiver(this%nrec)%lastkernel
 
-   call flush(6)
+   call flush(lu_out)
+   this%kernel_read = .true.
+
 end subroutine read_kernel
 !------------------------------------------------------------------------------
 
@@ -341,6 +396,11 @@ subroutine read_filter(this, nomega, df)
    character(len=32)                    :: filtername, filtertype
    character(len=80)                    :: fmtstring
    real(kind=dp)                        :: freqs(4)
+
+   if (.not.this%parameters_read) then
+       write(6,*) 'General parameters not read. Call read_parameters before read_filter!'
+       stop
+   end if
 
    write(lu_out,*)'  reading filters from file ', trim(this%filter_file)
    if (master) then
@@ -372,6 +432,7 @@ subroutine read_filter(this, nomega, df)
 
    if (master) close(lu_filter)
    call flush(lu_out)
+   this%filter_read = .true.
 end subroutine
 !------------------------------------------------------------------------------
 
