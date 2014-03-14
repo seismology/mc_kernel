@@ -10,11 +10,13 @@ module global_parameters
   real(kind=dp), parameter   :: pi = 3.1415926535898D0
   real(kind=dp), parameter   :: deg2rad = pi / 180.d0
   real(kind=dp), parameter   :: rad2deg = 180.d0 / pi
-  integer                    :: myrank, verbose 
+  integer                    :: verbose 
 
   integer, parameter         :: WORKTAG = 1
   integer, parameter         :: DIETAG  = 2
   
+  logical                    :: master, firstslave
+  integer                    :: myrank, nproc
   integer                    :: lu_out !< Logical unit for output. 
                                        !! 6 (Screen) for master
                                        !! file 'OUTPUT_#rank' for slaves

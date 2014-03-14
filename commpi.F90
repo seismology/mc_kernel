@@ -8,14 +8,13 @@ module commpi
   ! include below, in which case you will have to specify the location in the 
   ! Makefile or copy to the build directory!
   use mpi
-  use global_parameters, only: dp
+  use global_parameters, only: dp, lu_out, master, myrank, nproc, firstslave
   implicit none
 
-  integer :: myrank, nproc
-  logical :: master
+  private 
 
-  public  :: pbroadcast_dble, pbroadcast_char, pbroadcast_log
-  public  :: pbroadcast_int_arr, pbroadcast_int, ppinit
+  public  :: pbroadcast_dble, pbroadcast_dble_arr, pbroadcast_char, pbroadcast_log
+  public  :: pbroadcast_int_arr, pbroadcast_int, ppinit, pbarrier, ppend
 
 contains
 
@@ -24,17 +23,25 @@ subroutine ppinit
 !< Start message-passing interface, assigning the total number of processors 
 !! nproc and each processor with its local number mynum=0,...,nproc-1.
 
-  integer :: ierror
+  integer            :: ierror
+  character(len=10)  :: fnam
   
   call MPI_INIT( ierror)
   call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierror )
   call MPI_COMM_SIZE( MPI_COMM_WORLD, nproc, ierror )
 
+  firstslave = .false. 
+
   if (myrank == 0) then
       master = .true.
+      lu_out = 6
   else
       master = .false.
+      if (myrank == 1) firstslave = .true.
+      write(fnam,"('OUTPUT_', I3.3)") myrank
+      open(newunit=lu_out, file=fnam, status='replace')
   end if
+
   
 end subroutine ppinit
 !=============================================================================
@@ -122,4 +129,22 @@ subroutine pbroadcast_dble_arr(input_dble,input_proc)
 end subroutine pbroadcast_dble_arr
 !=============================================================================
 
+!-----------------------------------------------------------------------------
+subroutine pbarrier
+  integer :: ierror
+ 
+  CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
+
+end subroutine pbarrier
+!=============================================================================
+
+!-----------------------------------------------------------------------------
+subroutine ppend
+!< Calls MPI_FINALIZE
+  integer :: ierror
+
+  call MPI_FINALIZE(ierror)
+
+end subroutine ppend
+!=============================================================================
 end module
