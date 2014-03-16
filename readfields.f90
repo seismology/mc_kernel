@@ -1,9 +1,10 @@
 module readfields
-    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank
+    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank, id_buffer, id_netcdf
     use commpi, only                       : myrank
     use source_class,          only        : src_param_type
     use receiver_class,        only        : rec_param_type
     use buffer, only                       : buffer_type
+    use clocks_mod, only                   : tick
     use netcdf
     use kdtree2_module                     
 
@@ -51,6 +52,7 @@ module readfields
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
         integer                            :: chunk_gll_fwd, chunk_gll_bwd
+        integer                            :: buffer_size
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
 
@@ -69,12 +71,15 @@ module readfields
 contains
 
 !-------------------------------------------------------------------------------
-subroutine set_params(this, fwd_dir, bwd_dir)
+subroutine set_params(this, fwd_dir, bwd_dir, buffer_size)
     class(semdata_type)            :: this
     character(len=512), intent(in) :: fwd_dir, bwd_dir
+    integer,            intent(in) :: buffer_size
     character(len=512)             :: dirnam
     integer                        :: isim
     logical                        :: moment=.false., force=.false.
+
+    this%buffer_size = buffer_size
 
     dirnam = trim(fwd_dir)//'/MZZ/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
@@ -297,10 +302,10 @@ subroutine open_files(this)
     this%files_open = .true.
 
     do isim = 1, this%nsim_fwd
-       status = this%fwd(isim)%buffer%init(100, this%fwd(isim)%ndumps)
+       status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps)
     end do
     do isim = 1, this%nsim_bwd
-       status = this%bwd(isim)%buffer%init(100, this%bwd(isim)%ndumps)
+       status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps)
     end do
 
 end subroutine open_files
@@ -442,11 +447,12 @@ function load_fw_points(this, coordinates, source_params)
     real(kind=dp)                     :: load_fw_points(this%fwd(1)%ndumps, &
                                                         size(coordinates,2))
     real(kind=sp)                     :: utemp(this%fwd(1)%ndumps)
+    real(kind=sp)                     :: utemp_chunk(this%chunk_gll_fwd, this%fwd(1)%ndumps)
     type(kdtree2_result), allocatable :: nextpoint(:)
 
-    integer                           :: npoints, first_gll
+    integer                           :: npoints, start_chunk, iread
     integer                           :: pointid(size(coordinates,2))
-    integer                           :: ipoint, isim, status
+    integer                           :: ipoint, isim, status, iclockold
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
@@ -476,8 +482,8 @@ function load_fw_points(this, coordinates, source_params)
         !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
         !print *, 'CO of SEM point:', this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint))
 
-        write(1000, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
-                                       this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint)), pointid(ipoint)
+        !write(1000, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
+        !                               this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint)), pointid(ipoint)
 
     end do
 
@@ -488,16 +494,30 @@ function load_fw_points(this, coordinates, source_params)
         do isim = 1, this%nsim_fwd
            !write(*,*) 'Reading point ', pointid(ipoint), ' (', ipoint, ') with ', &
            !           this%fwd(isim)%ndumps, ' values'
+            iclockold = tick()
             status = this%fwd(isim)%buffer%get(pointid(ipoint), utemp)
-            if (status.ne.0) then
-               first_gll = (pointid(ipoint)/this%chunk_gll_fwd) * this%chunk_gll_fwd + 1
+            iclockold = tick(id=id_buffer, since=iclockold)
 
+            if (status.ne.0) then
+               start_chunk = ((pointid(ipoint)-1) / this%chunk_gll_fwd)*this%chunk_gll_fwd + 1
+               iclockold = tick()
                call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
-                                         varid  = this%fwd(isim)%straintrace, &
-                                         start  = [pointid(ipoint), 1],       &
-                                         count  = [1, this%fwd(isim)%ndumps], &
-                                         values = utemp) )
-               status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
+                                            varid  = this%fwd(isim)%straintrace, &
+                                            start  = [start_chunk, 1],    &
+                                            count  = [this%chunk_gll_fwd, this%fwd(1)%ndumps], &
+                                            values = utemp_chunk) )
+               iclockold = tick(id=id_netcdf, since=iclockold)
+               do iread = 0, this%chunk_gll_fwd-1
+                   status = this%fwd(isim)%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:))
+               end do
+               iclockold = tick(id=id_buffer, since=iclockold)
+               utemp = utemp_chunk(pointid(ipoint)-start_chunk+1, :)
+               !call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
+               !                          varid  = this%fwd(isim)%straintrace, &
+               !                          start  = [pointid(ipoint), 1],       &
+               !                          count  = [1, this%fwd(isim)%ndumps], &
+               !                          values = utemp) )
+               !status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
             end if
             load_fw_points(:, ipoint) = load_fw_points(:,ipoint) &
                                       + azim_factor(rotmesh_phi(ipoint), &
@@ -505,11 +525,11 @@ function load_fw_points(this, coordinates, source_params)
                                       * real(utemp, kind=dp)
         end do !isim
         !read(*,*)
-        write(1002,'(7(ES15.6))') rotmesh_s(ipoint), rotmesh_z(ipoint), rotmesh_phi(ipoint), &
-                      azim_factor(rotmesh_phi(ipoint), source_params%mij, 1), &
-                      azim_factor(rotmesh_phi(ipoint), source_params%mij, 2), &
-                      azim_factor(rotmesh_phi(ipoint), source_params%mij, 3), &
-                      azim_factor(rotmesh_phi(ipoint), source_params%mij, 4)
+        !write(1002,'(7(ES15.6))') rotmesh_s(ipoint), rotmesh_z(ipoint), rotmesh_phi(ipoint), &
+        !              azim_factor(rotmesh_phi(ipoint), source_params%mij, 1), &
+        !              azim_factor(rotmesh_phi(ipoint), source_params%mij, 2), &
+        !              azim_factor(rotmesh_phi(ipoint), source_params%mij, 3), &
+        !              azim_factor(rotmesh_phi(ipoint), source_params%mij, 4)
     end do !ipoint
 
 end function load_fw_points
@@ -627,12 +647,12 @@ function load_bw_points(this, coordinates, receiver)
     real(kind=dp), intent(in)                      :: coordinates(:,:)
     type(rec_param_type)                           :: receiver
     real(kind=dp)                                  :: load_bw_points(this%ndumps, size(coordinates,2))
-    real(kind=sp)                                  :: utemp(this%ndumps)
+    real(kind=sp)                                  :: utemp(this%ndumps), utemp_chunk(this%chunk_gll_bwd, this%ndumps)
     type(kdtree2_result), allocatable              :: nextpoint(:)
 
     integer, dimension(size(coordinates,2))        :: pointid, idx
     integer                                        :: npoints
-    integer                                        :: ipoint, status
+    integer                                        :: ipoint, status, start_chunk, iread
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
@@ -661,8 +681,8 @@ function load_bw_points(this, coordinates, receiver)
         !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
         !print *, 'CO of SEM point:', this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint))
 
-        write(1001, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
-                                       this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint)), pointid(ipoint)
+        !write(1001, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
+        !                               this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint)), pointid(ipoint)
 
     end do
     
@@ -671,13 +691,24 @@ function load_bw_points(this, coordinates, receiver)
     do ipoint = 1, npoints
         
         status = this%bwd(1)%buffer%get(pointid(ipoint), utemp)
+        start_chunk = ((pointid(ipoint)-1) / this%chunk_gll_bwd)*this%chunk_gll_bwd + 1
+        !print *, pointid(ipoint), start_chunk, pointid(ipoint)-start_chunk+1
         if (status.ne.0) then
            call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
                                         varid  = this%bwd(1)%straintrace, &
-                                        start  = [pointid(ipoint), 1],    &
-                                        count  = [1, this%bwd(1)%ndumps], &
-                                        values = utemp) )
-           status = this%bwd(1)%buffer%put(pointid(ipoint), utemp)
+                                        start  = [start_chunk, 1],    &
+                                        count  = [this%chunk_gll_bwd, this%bwd(1)%ndumps], &
+                                        values = utemp_chunk) )
+           do iread = 0, this%chunk_gll_bwd-1
+               status = this%bwd(1)%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:))
+           end do
+           utemp = utemp_chunk(pointid(ipoint)-start_chunk+1, :)
+           !call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
+           !                             varid  = this%bwd(1)%straintrace, &
+           !                             start  = [pointid(ipoint), 1],    &
+           !                             count  = [1, this%bwd(1)%ndumps], &
+           !                             values = utemp) )
+           !status = this%bwd(1)%buffer%put(pointid(ipoint), utemp)
         end if
 
 

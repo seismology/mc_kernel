@@ -17,12 +17,13 @@ contains
 !=========================================================================================
 subroutine do_slave() !, inv_mesh)
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, &
-                                           init_random_seed, DIETAG
+                                           init_random_seed, DIETAG, id_mpi
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
     use fft,                         only: rfft_type, taperandzeropad
     use mpi
+    use clocks_mod,                  only: tick
 
     implicit none
     !type(parameter_type), intent(in)    :: parameters
@@ -33,7 +34,7 @@ subroutine do_slave() !, inv_mesh)
     type(slave_result_type)             :: slave_result
 
     integer                             :: npoints, ndumps, nelems, ntimes, nomega
-    integer                             :: ikernel, ierror
+    integer                             :: ikernel, ierror, iclockold
     integer                             :: mpistatus(MPI_STATUS_SIZE)
     real(kind=dp)                       :: df
     real(kind=dp), allocatable          :: K_x(:,:)
@@ -65,7 +66,7 @@ subroutine do_slave() !, inv_mesh)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Initialize and open AxiSEM wavefield files'
     write(lu_out,*) '***************************************************************'
-    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir)
+    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, parameters%buffer_size)
     call sem_data%open_files()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
@@ -100,7 +101,10 @@ subroutine do_slave() !, inv_mesh)
 
     do 
        ! Receive a message from the master
+       iclockold = tick()
        call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
+       iclockold = tick(id=id_mpi, since=iclockold)
+
 
        call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, wt%connectivity)
        ! Check the tag of the received message. If no more work to do, exit loop
@@ -142,7 +146,9 @@ subroutine do_slave() !, inv_mesh)
        call inv_mesh%freeme
 
        ! Send the result back
+       iclockold = tick()
        call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
+       iclockold = tick(id=id_mpi, since=iclockold)
           
     end do
 
@@ -179,7 +185,7 @@ end subroutine do_slave
 !=========================================================================================
 function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_result)
 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, myrank
+    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, myrank, id_fwd, id_bwd, id_fft, id_mc, id_filter_conv, id_inv_mesh, id_kernel, id_init
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
@@ -187,6 +193,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use fft,                         only: rfft_type, taperandzeropad
     use filtering,                   only: timeshift
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
+    use clocks_mod,                  only: tick
 
     type(inversion_mesh_data_type), intent(in)    :: inv_mesh
     type(parameter_type),           intent(in)    :: parameters
@@ -214,7 +221,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: idump, ipoint, ielement, irec, iel, ivertex, ikernel
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nvertices_per_elem
+    integer                             :: iclockold
 
+    iclockold = tick()
     nptperstep = parameters%npoints_per_step
     ndumps = sem_data%ndumps
     ntimes = fft_data%get_ntimes()
@@ -253,13 +262,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(random_points(3, nptperstep))
     allocate(int_kernel(inv_mesh%nvertices_per_elem))
 
+    iclockold = tick(id=id_init, since=iclockold)
 
     do ielement = 1, nelements 
 
+        iclockold = tick()
         volume = inv_mesh%get_volume(ielement)
 
-        
         ! Initialize Monte Carlo integral for this element
+        iclockold = tick(id=id_inv_mesh)
         do ivertex = 1, inv_mesh%nvertices_per_elem
             call int_kernel(ivertex)%initialize_montecarlo(parameters%nkernel, &
                                                            volume,   &
@@ -267,15 +278,26 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         end do
       
         do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
+           iclockold = tick(id=id_mc)
            random_points = inv_mesh%generate_random_points( ielement, nptperstep )
+           iclockold = tick(id=id_inv_mesh)
            
            ! Stop MC integration in this element after max_iter iterations
            if (any(niterations(:, ielement)>parameters%max_iter)) exit 
            
-           ! Load, FT and timeshift forward field
+           ! Load forward field
+           iclockold = tick()
            fw_field = sem_data%load_fw_points( random_points, parameters%source )
+           iclockold = tick(id=id_fwd, since=iclockold)
+           
+           ! FFT of forward field
+           iclockold = tick()
            call fft_data%rfft( taperandzeropad(fw_field, ntimes), fw_field_fd )
+           iclockold = tick(id=id_fft, since=iclockold)
+
+           ! Timeshift forward field
            call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
+           iclockold = tick(id=id_filter_conv, since=iclockold)
          
            do irec = 1, parameters%nrec
                 
@@ -284,13 +306,22 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                                                         parameters%receiver(irec)%lastkernel) ])) &
                                               cycle
           
-              ! Load, FT and timeshift backward field
+              iclockold = tick(id=id_mc, since=iclockold)
+
+              ! Load backward field
               bw_field = sem_data%load_bw_points( random_points, parameters%receiver(irec) )
+              iclockold = tick(id=id_bwd, since=iclockold)
+
+              ! FFT of forward field
               call fft_data%rfft( taperandzeropad(bw_field, ntimes), bw_field_fd )
+              iclockold = tick(id=id_fft, since=iclockold)
+
+              ! Timeshift forward field
               call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
 
               ! Convolve forward and backward fields
               conv_field_fd = fw_field_fd * bw_field_fd
+              iclockold = tick(id=id_filter_conv, since=iclockold)
 
               do ikernel = parameters%receiver(irec)%firstkernel, &
                            parameters%receiver(irec)%lastkernel 
@@ -298,27 +329,36 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  ! If this kernel is already converged, go to the next one
                  if (allisconverged(int_kernel, ikernel)) cycle
                  niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                 iclockold = tick(id=id_mc, since=iclockold)
 
                  ! Apply Filter 
                  conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
+                 iclockold = tick(id=id_filter_conv, since=iclockold)
 
                  ! Backward FFT
                  call fft_data%irfft(conv_field_fd_filt, conv_field)
+                 iclockold = tick(id=id_fft, since=iclockold)
 
                  ! Calculate Scalar kernel from convolved time traces
                  kernelvalue(:,ikernel) = &
                      parameters%kernel(ikernel)%calc_misfit_kernel(conv_field)
+                 iclockold = tick(id=id_kernel, since=iclockold)
               end do ! ikernel
+              iclockold = tick(id=id_mc, since=iclockold)
 
            end do ! irec
+           iclockold = tick(id=id_mc, since=iclockold)
            ! Check for convergence
            
            do ivertex = 1, inv_mesh%nvertices_per_elem
+               iclockold = tick()
                do ikernel = 1, parameters%nkernel
                    kernelvalue_vertex(:, ikernel) = kernelvalue(:, ikernel) &
                                                   * inv_mesh%weights(ielement, ivertex, random_points)
                end do
+               iclockold = tick(id=id_kernel, since=iclockold)
                call int_kernel(ivertex)%check_montecarlo_integral(kernelvalue_vertex)
+               iclockold = tick(id=id_mc, since=iclockold)
            end do
 
            ! Print convergence info

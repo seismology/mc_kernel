@@ -30,6 +30,7 @@ module type_parameter
         integer                              :: nelems_per_task
         integer                              :: npoints_per_step
         integer                              :: max_iter
+        integer                              :: buffer_size
         logical                              :: parameters_read = .false.
         logical                              :: receiver_read   = .false.
         logical                              :: source_read     = .false.
@@ -104,6 +105,9 @@ subroutine read_parameters(this, input_file)
         case('MESH_FILE')
            this%mesh_file = keyvalue
 
+        case('NETCDF_BUFFER_SIZE')
+           read(keyvalue, *) this%buffer_size
+
         case('MAXIMUM_ITERATIONS')
            read(keyvalue, *) this%max_iter
 
@@ -135,6 +139,7 @@ subroutine read_parameters(this, input_file)
   call pbroadcast_char(this%receiver_file, 0)
   call pbroadcast_char(this%filter_file, 0)
   call pbroadcast_char(this%mesh_file, 0)
+  call pbroadcast_int(this%buffer_size, 0)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)
