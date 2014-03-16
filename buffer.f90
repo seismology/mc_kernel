@@ -1,5 +1,5 @@
 module buffer
-   use global_parameters, only     : sp, dp
+   use global_parameters, only     : sp, dp, lu_out
    implicit none
    type buffer_type
       private
@@ -29,6 +29,8 @@ function init(this, nbuffer, nvalues)
                                         !! i.e. how many samples of a time trace.
     integer                 :: init     !< Return value, 0=Success
 
+    write(lu_out, '(A,I5,A,I5,A)') ' Initialize buffer with ', nbuffer, ' memories for ', &
+                              nvalues, ' values'
     init = -1
     allocate(this%val(nvalues, nbuffer))
     allocate(this%idx(nbuffer))
@@ -111,7 +113,7 @@ function put(this, iindex, values)
        stop
     end if
     if (any(this%idx==iindex)) then
-       print *, 'Buffer with this index', iindex, ' already exists'
+       !print *, 'Buffer with this index', iindex, ' already exists'
        put = -1
     else
        call random_number(randtemp)
