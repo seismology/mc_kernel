@@ -186,8 +186,8 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
          
-         calc_misfit_kernel(itrace) = sum( cut_timeseries * this%seis, 1 ) &
-                                      * this%dt * this%normalization
+         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
+                                      * this%normalization
       end do
 
    case('AM')
@@ -197,8 +197,8 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
          
-         calc_misfit_kernel(itrace) = sum( cut_timeseries * this%seis, 1 ) &
-                                      * this%dt * this%normalization
+         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
+                                      * this%normalization
       end do
    end select
 
@@ -274,6 +274,21 @@ function apply_filter(this, freq_series)
    apply_filter = this%filter%apply_2d(apply_filter)
 
 end function apply_filter
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+pure function integrate(timeseries, dt)
+    real(kind=dp), intent(in)   :: timeseries(:), dt
+    real(kind=dp)               :: integrate
+    integer                     :: npoints
+
+    npoints = size(timeseries, 1)
+
+    ! Trapezoidal rule: I = dt/2 * (f(x1) + 2f(x2) + ... + 2f(xN-1) + f(xN))
+    integrate = timeseries(1) + timeseries(npoints) + 2*sum(timeseries(2:npoints-1), 1)
+    integrate = integrate * dt * 0.5
+
+end function integrate
 !-------------------------------------------------------------------------------
 
 
