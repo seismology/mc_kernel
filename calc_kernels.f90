@@ -39,10 +39,10 @@ program kerner
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' MPI communication initialized, I have rank', myrank
     write(lu_out,*) '***************************************************************'
-    
-    call start_clock()
+   
+    if (.not.master) call start_clock()
 
-    call parameters%read_parameters('inparam_basic')
+    call parameters%read_parameters()
     call parameters%read_source()
     call parameters%read_receiver()
     
@@ -95,7 +95,7 @@ program kerner
         end if
     end select
 
-    call end_clock()
+    if (.not.master) call end_clock()
 
     write(lu_out,*)
     write(lu_out,*) ' Finished!'

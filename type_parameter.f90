@@ -59,17 +59,30 @@ module type_parameter
 contains
 
 !------------------------------------------------------------------------------
-subroutine read_parameters(this, input_file)
+subroutine read_parameters(this, input_file_in)
    class(parameter_type)           :: this
-   character(len=*), intent(in)    :: input_file
-   integer                         :: lu_inparam_basic, ioerr
+   character(len=*), intent(in), optional :: input_file_in
+   character(len=256)              :: input_file
+   integer                         :: lu_inparam_basic, ioerr, narg
    character(len=256)              :: line
    character(len=256)              :: keyword, keyvalue
 
    call pbarrier
 
    if (master) then
-     if (verbose > 0) write(lu_out,'(A)') '    Reading inparam_basic...'
+
+     if (present(input_file_in)) then
+         input_file = input_file_in
+     else
+         narg = command_argument_count()
+         if (narg<1) then
+             print *, 'ERROR: Argument "parameter file" is missing'
+             stop
+         end if
+         call get_command_argument(1, input_file)
+     end if
+
+     if (verbose > 0) write(lu_out,'("Reading ", A, "...")') trim(input_file)
      open(newunit=lu_inparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
      if (ioerr /= 0) then
         print *, 'ERROR: Check input file ''', trim(input_file), '''! Is it still there?' 

@@ -38,7 +38,7 @@ subroutine plot_wavefields()
     write(*,*) '***************************************************************'
     write(*,*) ' Read input files for parameters, source and receivers'
     write(*,*) '***************************************************************'
-    call parameters%read_parameters('inparam_basic')
+    call parameters%read_parameters()
     call parameters%read_source()
     call parameters%read_receiver()
 
