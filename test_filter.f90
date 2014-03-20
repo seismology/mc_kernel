@@ -27,7 +27,7 @@ subroutine test_filter_gabor_response
    real(kind=dp), parameter      :: dt = 0.1d0
    character(len=32)             :: filtername, filterclass
 
-   call fft_data%init(ntimes, 1, npoints, dt)
+   call fft_data%init(ntimes, npoints, dt)
    ntimes_ft = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
 
@@ -125,7 +125,7 @@ subroutine test_filter_timeshift()
 
    dt = 0.1
 
-   call fft_data%init(ntimes, 1, npoints, dt)
+   call fft_data%init(ntimes, npoints, dt)
    ntimes_ft = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
    allocate(data_fd(nomega, npoints))

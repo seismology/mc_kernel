@@ -2,7 +2,6 @@ module kernel
 use global_parameters,                    only: sp, dp, verbose, lu_out
 use filtering,                            only: filter_type
 implicit none
-
     type kernelspec_type
         character(len=32), public            :: name
         real(kind=dp), dimension(2)          :: time_window
@@ -20,20 +19,15 @@ implicit none
         !type(rec_param_type), pointer        :: receiver
         type(filter_type), pointer           :: filter
         logical                              :: initialized = .false.
+
         contains 
            procedure, pass                   :: init 
            procedure, pass                   :: calc_misfit_kernel
            procedure, pass                   :: isinitialized
            procedure, pass                   :: freeme
-           procedure, pass                   :: apply_filter_2d
-           procedure, pass                   :: apply_filter_3d
-           generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
+           procedure, pass                   :: apply_filter
     end type
 
-    !interface apply_filter
-    !   module procedure                      :: apply_filter_3d
-    !   module procedure                      :: apply_filter_2d
-    !end interface apply_filter
 
 contains 
 
@@ -53,9 +47,9 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    real(kind=dp), intent(in)               :: timeshift_fwd
    
    type(rfft_type)                         :: fft_data
-   complex(kind=dp), allocatable           :: seis_fd(:,:,:)
-   real(kind=dp),    allocatable           :: seis_td(:,:,:), t_cut(:)
-   real(kind=dp),    allocatable           :: seis_filtered(:,:,:)
+   complex(kind=dp), allocatable           :: seis_fd(:,:)
+   real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
+   real(kind=dp),    allocatable           :: seis_filtered(:,:)
    character(len=32)                       :: fmtstring
 
    integer                                 :: ntimes, ntimes_ft, nomega, isample
@@ -88,20 +82,20 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    ! Save seismogram in the timewindow of this kernel
 
    ! Allocate temporary variable
-   ntimes = size(seis, 1)
-   allocate(seis_td(ntimes, 1, 1))
-   seis_td(:,1,1) = seis
+   ntimes = size(seis,1)
+   allocate(seis_td(ntimes, 1))
+   seis_td(:,1) = seis
 
    ! Initialize FFT for the seismogram
-   call fft_data%init(ntimes, 1, 1, dt)
+   call fft_data%init(ntimes, 1, dt)
    ntimes_ft = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
 
    fmtstring = '(A, I8, A, I8)'
    write(lu_out,fmtstring) '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
 
-   allocate(seis_fd(nomega, 1, 1))
-   allocate(seis_filtered(ntimes_ft, 1, 1))
+   allocate(seis_fd(nomega,1))
+   allocate(seis_filtered(ntimes_ft,1))
    allocate(this%t(ntimes_ft))
    this%t = fft_data%get_t()
 
@@ -109,13 +103,13 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    ! FFT, timeshift and filter the seismogram
    call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft), seis_fd)
    call timeshift(seis_fd, fft_data%get_f(), timeshift_fwd)
-   seis_fd = this%filter%apply_3d(seis_fd)
+   seis_fd = this%filter%apply_2d(seis_fd)
    call fft_data%irfft(seis_fd, seis_filtered)
    call fft_data%freeme()
 
    ! Cut timewindow of the kernel from the seismogram
    call cut_timewindow(this%t,                 &
-                       seis_filtered(:,1,1),   &
+                       seis_filtered(:,1), &
                        this%time_window,       &
                        this%seis )
    call cut_timewindow(this%t,                 &
@@ -144,7 +138,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
 
    open(unit=100,file='seismogram_'//trim(this%name), action='write')
    do isample = 1, size(seis_filtered,1)
-      write(100,*) this%t(isample), seis_filtered(isample,1,1)
+      write(100,*) this%t(isample), seis_filtered(isample,1)
    end do
    close(100)
 
@@ -269,32 +263,17 @@ end subroutine
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function apply_filter_3d(this, freq_series)
-   class(kernelspec_type)           :: this
-   complex(kind=dp), intent(in)     :: freq_series(:,:,:)
-   complex(kind=dp)                 :: apply_filter_3d(size(freq_series,1), &
-                                                       size(freq_series,2), &
-                                                       size(freq_series,3))
-
-
-   apply_filter_3d = this%filter%apply_3d(freq_series)
-   apply_filter_3d = this%filter%apply_3d(apply_filter_3d)
-
-end function apply_filter_3d
-!-------------------------------------------------------------------------------
-
-!-------------------------------------------------------------------------------
-function apply_filter_2d(this, freq_series)
+function apply_filter(this, freq_series)
    class(kernelspec_type)           :: this
    complex(kind=dp), intent(in)     :: freq_series(:,:)
-   complex(kind=dp)                 :: apply_filter_2d(size(freq_series,1), &
-                                                       size(freq_series,2))
+   complex(kind=dp)                 :: apply_filter(size(freq_series,1), &
+                                                    size(freq_series,2))
 
 
-   apply_filter_2d = this%filter%apply_2d(freq_series)
-   apply_filter_2d = this%filter%apply_2d(apply_filter_2d)
+   apply_filter = this%filter%apply_2d(freq_series)
+   apply_filter = this%filter%apply_2d(apply_filter)
 
-end function apply_filter_2d
+end function apply_filter
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------

@@ -1,11 +1,8 @@
 module filtering
-   
    use global_parameters
-   use simple_routines,  only           : mult2d_1d, mult3d_1d
-   
    implicit none
-
    type filter_type
+
        character(len=32)               :: name
        complex(kind=dp), allocatable   :: transferfunction(:)
        integer                         :: nfreq                !< Number of frequencies
@@ -14,20 +11,18 @@ module filtering
        character(len=32)               :: filterclass
        real(kind=dp)                   :: frequencies(4)
 
-       contains
+
+   contains
+
        procedure, pass   :: create
        procedure, pass   :: deleteme
        procedure, pass   :: apply_1d
        procedure, pass   :: apply_2d
-       procedure, pass   :: apply_3d
        procedure, pass   :: isinitialized
        procedure, pass   :: get_transferfunction
+
    end type
 
-   interface timeshift
-      module procedure   :: timeshift_1d
-      module procedure   :: timeshift_md
-   end interface
 
 contains
 
@@ -133,27 +128,6 @@ function apply_2d(this, freq_series)
 end function apply_2d
 
 ! -----------------------------------------------------------------------------
-!> Apply this filter to multiple dimensions and traces (in the frequency domain)
-function apply_3d(this, freq_series)
-   use simple_routines, only       : mult3d_1d
-   class(filter_type)              :: this
-   complex(kind=dp), intent(in)    :: freq_series(:,:,:)
-   complex(kind=dp)                :: apply_3d(size(freq_series,1), size(freq_series,2), size(freq_series,3))
-   integer                         :: itrace
-
-   if (.not.this%initialized) then
-      write(*,*) 'ERROR: Filter is not initialized yet'
-      stop
-   end if
-   if (size(freq_series, 1).ne.this%nfreq) then
-      write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', size(freq_series, 1)
-      stop
-   end if
-
-   apply_3d = mult3d_1d(freq_series, this%transferfunction)
-end function apply_3d
-
-! -----------------------------------------------------------------------------
 !> Returns the transfer function of this filter
 function get_transferfunction(this)
     class(filter_type)           :: this
@@ -169,7 +143,7 @@ function get_transferfunction(this)
 
 end function
 
-!-----------------------------------------------------------------------------
+! -----------------------------------------------------------------------------
 function isinitialized(this)
    class(filter_type)            :: this
    logical                       :: isinitialized
@@ -177,17 +151,17 @@ function isinitialized(this)
    isinitialized = this%initialized
 end function
 
-!------------------------------------------------------------------------------
+! ------------------------------------------------------------------------------
 !> Apply a timeshift of dtshift on the frequency domain traces in field
-subroutine timeshift_md(field, freq, dtshift)
+subroutine timeshift(field, freq, dtshift)
 
-   complex(kind=dp), intent(inout)  :: field(:,:,:) !< Frequency domain traces to apply 
-                                                   !! time shift on. 
-                                                   !! Dimension: nfreq x ndim x ntraces
-   real(kind=dp),    intent(in)     :: freq(:)     !< 1D array with the frequencies of 
-                                                   !! the entries in field
-                                                   !! Dimension: nfreq
-   real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
+   complex(kind=dp), intent(inout)  :: field(:,:) !< Frequency domain traces to apply 
+                                                  !! time shift on. 
+                                                  !! Dimension: nfreq x ntraces
+   real(kind=dp),    intent(in)     :: freq(:)    !< 1D array with the frequencies of 
+                                                  !! the entries in field
+                                                  !! Dimension: nfreq
+   real(kind=dp),    intent(in)     :: dtshift    !< Time shift to apply (in seconds)
    
    integer                          :: ipoint
    complex(kind=dp), allocatable    :: shift_fd(:)
@@ -195,30 +169,11 @@ subroutine timeshift_md(field, freq, dtshift)
    allocate( shift_fd(size(field,1)) )
    shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
 
-   field(:,:,:) = mult3d_1d(field, shift_fd)
+   do ipoint = 1, size(field,2)
+      field(:, ipoint) = field(:, ipoint) * shift_fd
+   end do
 
-end subroutine timeshift_md
-
-subroutine timeshift_1d(field, freq, dtshift)
-
-   complex(kind=dp), intent(inout)  :: field(:,:)  !< Frequency domain traces to apply 
-                                                   !! time shift on. 
-                                                   !! Dimension: nfreq x ntraces
-   real(kind=dp),    intent(in)     :: freq(:)     !< 1D array with the frequencies of 
-                                                   !! the entries in field
-                                                   !! Dimension: nfreq
-   real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
-   
-   integer                          :: ipoint
-   complex(kind=dp), allocatable    :: shift_fd(:)
-
-   allocate( shift_fd(size(field,1)) )
-   shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
-
-   field(:,:) = mult2d_1d(field, shift_fd)
-
-end subroutine timeshift_1d
-!-----------------------------------------------------------------------------
+end subroutine timeshift
 
 !-----------------------------------------------------------------------------!
 !                 BLOCK WITH SEPARATE FILTER ROUTINES                         !

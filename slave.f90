@@ -51,6 +51,14 @@ subroutine do_slave() !, inv_mesh)
     call parameters%read_source()
     call parameters%read_receiver()
 
+
+    !write(lu_out,*) '***************************************************************'
+    !write(lu_out,*) ' Read inversion mesh'
+    !write(lu_out,*) '***************************************************************'
+    !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
+    !call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
+
+
     nptperstep = parameters%npoints_per_step
     !nvertices = inv_mesh%nvertices_per_elem
     ! nelems    = inv_mesh%get_nelements()
@@ -58,10 +66,7 @@ subroutine do_slave() !, inv_mesh)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Initialize and open AxiSEM wavefield files'
     write(lu_out,*) '***************************************************************'
-    call sem_data%set_params(parameters%fwd_dir,     &
-                             parameters%bwd_dir,     &
-                             parameters%buffer_size, & 
-                             parameters%model_param)
+    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, parameters%buffer_size)
     call sem_data%open_files()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
@@ -72,10 +77,10 @@ subroutine do_slave() !, inv_mesh)
 
     !print *, 'What to do: ', trim(parameters%whattodo)
 
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Initialize FFT'
-    write(lu_out,*) '***************************************************************'
-    call fft_data%init(ndumps, nptperstep, sem_data%get_ndim(), sem_data%dt)
+    !!write(*,*) '***************************************************************'
+    !write(*,*) ' Initialize FFT'
+    !write(*,*) '***************************************************************'
+    call fft_data%init(ndumps, nptperstep, sem_data%dt)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()
@@ -180,9 +185,7 @@ end subroutine do_slave
 !=========================================================================================
 function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_result)
 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, myrank, &
-                                           id_fwd, id_bwd, id_fft, id_mc, id_filter_conv, &
-                                           id_inv_mesh, id_kernel, id_init
+    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, myrank, id_fwd, id_bwd, id_fft, id_mc, id_filter_conv, id_inv_mesh, id_kernel, id_init
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
@@ -204,10 +207,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     real(kind=dp),    allocatable       :: results(:,:,:)
     real(kind=dp),    allocatable       :: element_points(:,:,:)
     real(kind=dp),    allocatable       :: co_points(:,:), K_x(:,:), veloseis(:)
-    real(kind=dp),    allocatable       :: fw_field(:,:,:)
-    real(kind=dp),    allocatable       :: bw_field(:,:,:)
-    complex(kind=dp), allocatable       :: fw_field_fd(:,:,:)
-    complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
+    real(kind=dp),    allocatable       :: fw_field(:,:)
+    real(kind=dp),    allocatable       :: bw_field(:,:)
+    complex(kind=dp), allocatable       :: fw_field_fd(:,:)
+    complex(kind=dp), allocatable       :: bw_field_fd(:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:)
     real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:), kernelvalue_vertex(:,:)
@@ -219,9 +222,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nvertices_per_elem
     integer                             :: iclockold
-    integer                             :: ndim
 
-    ndim = 1
     iclockold = tick()
     nptperstep = parameters%npoints_per_step
     ndumps = sem_data%ndumps
@@ -239,13 +240,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(kernelvalue_vertex(nptperstep, parameters%nkernel))
 
     
-    allocate(fw_field(ndumps, ndim, nptperstep))
-    allocate(bw_field(ndumps, ndim, nptperstep))
+    allocate(fw_field(ndumps, nptperstep))
+    allocate(bw_field(ndumps, nptperstep))
 
-    allocate(conv_field        (ntimes, nptperstep))
-    allocate(fw_field_fd       (nomega, ndim, nptperstep))
-    allocate(bw_field_fd       (nomega, ndim, nptperstep))
-    allocate(conv_field_fd     (nomega, nptperstep))
+    allocate(conv_field   (ntimes, nptperstep))
+    allocate(fw_field_fd  (nomega, nptperstep))
+    allocate(bw_field_fd  (nomega, nptperstep))
+    allocate(conv_field_fd(nomega, nptperstep))
     allocate(conv_field_fd_filt(nomega, nptperstep))
 
     !allocate(volume(nelements))
@@ -319,7 +320,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
 
               ! Convolve forward and backward fields
-              conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
+              conv_field_fd = fw_field_fd * bw_field_fd
               iclockold = tick(id=id_filter_conv, since=iclockold)
 
               do ikernel = parameters%receiver(irec)%firstkernel, &
