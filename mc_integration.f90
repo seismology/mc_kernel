@@ -178,7 +178,7 @@ end function
 
 !-------------------------------------------------------------------------------
 function allallconverged(int_object, ikernels)
-    class(integrated_type), intent(in)   :: int_object(:)
+    type(integrated_type), intent(in)   :: int_object(:)
     logical                              :: allallconverged
     logical                              :: anynotconverged
     integer, optional, intent(in)        :: ikernels(:)
@@ -201,7 +201,7 @@ end function
 
 !-------------------------------------------------------------------------------
 function allisconverged(int_object, ikernel)
-    class(integrated_type), intent(in)   :: int_object(:)
+    type(integrated_type), intent(in)   :: int_object(:)
     logical                              :: allisconverged
     logical                              :: anynotconverged
     integer, optional, intent(in)        :: ikernel
