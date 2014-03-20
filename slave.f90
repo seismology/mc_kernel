@@ -75,7 +75,7 @@ subroutine do_slave() !, inv_mesh)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Initialize FFT'
     write(lu_out,*) '***************************************************************'
-    call fft_data%init(ndumps, nptperstep, sem_data%get_ndim(), sem_data%dt)
+    call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, measure=.true.)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()

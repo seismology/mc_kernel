@@ -118,7 +118,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init(this, ntimes_in, ndim, ntraces, dt)
+subroutine init(this, ntimes_in, ndim, ntraces, dt, measure)
 !< This routines initializes a FFTw plan for 1D DFTs. 
 !! The time series is supposed to have length ntimes_in, and is stored along the first 
 !! dimension of a three-dimensional array. The other two dimensions are ndim and ntraces.
@@ -127,6 +127,7 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt)
   class(rfft_type)                     :: this
   integer, intent(in)                  :: ntimes_in, ntraces, ndim
   real(kind=dp), intent(in), optional  :: dt
+  logical, intent(in), optional        :: measure 
   integer                              :: ntimes_np2, nomega_np2, i, ntraces_fft
   integer                              :: rank, istride, ostride, np2
 
@@ -139,10 +140,20 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt)
 
   ntraces_fft = ntraces * ndim
 
-  this%ntimes = ntimes_np2
-  this%nomega = nomega_np2
-  this%ntraces = ntraces 
+  this%ntimes      = ntimes_np2
+  this%nomega      = nomega_np2
+  this%ndim        = ndim
+  this%ntraces     = ntraces 
   this%ntraces_fft = ntraces_fft 
+
+  this%fftw_mode = FFTW_ESTIMATE
+  if (present(measure)) then
+      if (measure==.true.) then
+          this%fftw_mode = FFTW_MEASURE
+      end if
+  end if
+
+
  
   ! determine spectral resolution
   if (present(dt)) then

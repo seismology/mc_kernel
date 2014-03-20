@@ -53,9 +53,9 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    real(kind=dp), intent(in)               :: timeshift_fwd
    
    type(rfft_type)                         :: fft_data
-   complex(kind=dp), allocatable           :: seis_fd(:,:,:)
-   real(kind=dp),    allocatable           :: seis_td(:,:,:), t_cut(:)
-   real(kind=dp),    allocatable           :: seis_filtered(:,:,:)
+   complex(kind=dp), allocatable           :: seis_fd(:,:)
+   real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
+   real(kind=dp),    allocatable           :: seis_filtered(:,:)
    character(len=32)                       :: fmtstring
 
    integer                                 :: ntimes, ntimes_ft, nomega, isample
@@ -89,8 +89,8 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
 
    ! Allocate temporary variable
    ntimes = size(seis, 1)
-   allocate(seis_td(ntimes, 1, 1))
-   seis_td(:,1,1) = seis
+   allocate(seis_td(ntimes, 1))
+   seis_td(:,1) = seis
 
    ! Initialize FFT for the seismogram
    call fft_data%init(ntimes, 1, 1, dt)
@@ -100,8 +100,8 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    fmtstring = '(A, I8, A, I8)'
    write(lu_out,fmtstring) '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
 
-   allocate(seis_fd(nomega, 1, 1))
-   allocate(seis_filtered(ntimes_ft, 1, 1))
+   allocate(seis_fd(nomega, 1))
+   allocate(seis_filtered(ntimes_ft, 1))
    allocate(this%t(ntimes_ft))
    this%t = fft_data%get_t()
 
@@ -109,18 +109,18 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    ! FFT, timeshift and filter the seismogram
    call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft), seis_fd)
    call timeshift(seis_fd, fft_data%get_f(), timeshift_fwd)
-   seis_fd = this%filter%apply_3d(seis_fd)
+   seis_fd = this%filter%apply_2d(seis_fd)
    call fft_data%irfft(seis_fd, seis_filtered)
    call fft_data%freeme()
 
    ! Cut timewindow of the kernel from the seismogram
-   call cut_timewindow(this%t,                 &
-                       seis_filtered(:,1,1),   &
-                       this%time_window,       &
+   call cut_timewindow(this%t,             &
+                       seis_filtered(:,1), &
+                       this%time_window,   &
                        this%seis )
-   call cut_timewindow(this%t,                 &
-                       this%t,                 &
-                       this%time_window,       &
+   call cut_timewindow(this%t,             &
+                       this%t,             &
+                       this%time_window,   &
                        t_cut )
 
    if (abs(sum(this%seis**2)).lt.1.e-30) then
@@ -144,7 +144,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
 
    open(unit=100,file='seismogram_'//trim(this%name), action='write')
    do isample = 1, size(seis_filtered,1)
-      write(100,*) this%t(isample), seis_filtered(isample,1,1)
+      write(100,*) this%t(isample), seis_filtered(isample,1)
    end do
    close(100)
 

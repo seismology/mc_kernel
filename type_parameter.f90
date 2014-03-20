@@ -214,6 +214,7 @@ end subroutine read_source
 
 !------------------------------------------------------------------------------
 subroutine read_receiver(this)
+   use simple_routines, only      : to_lower 
    class(parameter_type)         :: this
    integer, parameter            :: lu_receiver = 1001
    integer                       :: irec, firstkernel, lastkernel
@@ -243,6 +244,7 @@ subroutine read_receiver(this)
    call pbroadcast_char(this%model_param, 0)
    call pbroadcast_char(this%component, 0)
 
+   this%model_param = to_lower(this%model_param)
    if (master) then
        fmtstring = '("  Using ", I5, " receivers")'
        write(lu_out, fmtstring) this%nrec

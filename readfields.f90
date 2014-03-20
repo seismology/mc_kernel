@@ -769,18 +769,17 @@ function load_strain_point(sem_obj, pointid, pointphi, model_param)
     real(kind=dp), intent(in)       :: pointphi
     character(len=*), intent(in)    :: model_param
     real(kind=dp), allocatable      :: load_strain_point(:,:)
-    !real(kind=dp)                   :: load_strain_point(sem_obj%ndumps, ndim)
 
     integer                         :: start_chunk, iread
     integer                         :: iclockold, status
     real(kind=sp)                   :: utemp(sem_obj%ndumps)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
 
-    load_strain_point = 0.0
 
     select case(model_param)
-    case('lam')
-       allocate(load_strain_point(sem_obj%ndumps, 1))
+    case('vp')
+        allocate(load_strain_point(sem_obj%ndumps, 1))
+        load_strain_point = 0.0
 
         iclockold = tick()
         status = sem_obj%buffer%get(pointid, utemp)
