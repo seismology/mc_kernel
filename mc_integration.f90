@@ -56,13 +56,6 @@ subroutine check_montecarlo_integral(this, func_values)
 
         if (this%variance(ifuncs) < this%allowed_variance(ifuncs)) then
            this%converged(ifuncs) = .true.
-           ! Extra condition: Consider not converged, if error is more than twice 
-           ! the integral value and the integral value is more than 1E-3 of allowed 
-           ! error.
-           if (this%variance(ifuncs)         > 2. * abs(this%integral(ifuncs))  .and. &
-               this%variance(ifuncs) * 100.0 > this%allowed_variance(ifuncs) ) then
-               this%converged(ifuncs) = .false.
-           end if
         end if
     end do
 
