@@ -35,7 +35,7 @@ print MAKEFILE "\n\n";
 #
 $LIBS = '';
 print MAKEFILE "#Example to include specific netcdf libraries: \n";
-print MAKEFILE 'LIBS = -lm -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib';
+print MAKEFILE 'LIBS = -lm -llapack -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib';
 print MAKEFILE " \n\n";
 print MAKEFILE "# set unc to compile with netcdf: \n";
 print MAKEFILE "#F90FLAGS = -Dunc \n";

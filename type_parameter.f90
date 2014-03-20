@@ -23,7 +23,7 @@ module type_parameter
         character(len=512)                   :: filter_file
         character(len=512)                   :: mesh_file
         character(len=1)                     :: component
-        character(len=4)                     :: model_parameter
+        character(len=4)                     :: model_param
         character(len=32)                    :: whattodo
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
@@ -236,11 +236,11 @@ subroutine read_receiver(this)
        write(lu_out,*)'  reading receivers from file ', trim(this%receiver_file)
        open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) this%nrec
-       read(lu_receiver,*) this%model_parameter, this%component
+       read(lu_receiver,*) this%model_param, this%component
    end if
 
    call pbroadcast_int(this%nrec, 0)
-   call pbroadcast_char(this%model_parameter, 0)
+   call pbroadcast_char(this%model_param, 0)
    call pbroadcast_char(this%component, 0)
 
    if (master) then
@@ -248,7 +248,7 @@ subroutine read_receiver(this)
        write(lu_out, fmtstring) this%nrec
    
        fmtstring = '("  Kernel for parameter ", A, " on component ", A)'
-       write(lu_out, fmtstring) this%model_parameter, this%component
+       write(lu_out, fmtstring) this%model_param, this%component
    end if
 
    allocate(this%receiver(this%nrec))
@@ -381,7 +381,7 @@ subroutine read_kernel(this, sem_data, filter)
                                             time_window     = timewindow                , &
                                             filter          = filter(ifilter)           , &
                                             misfit_type     = misfit_type               , &  
-                                            model_parameter = this%model_parameter      , &
+                                            model_parameter = this%model_param          , &
                                             seis            = sem_data%veloseis(:,irec) , &
                                             dt              = sem_data%dt               , &
                                             timeshift_fwd   = sem_data%timeshift_fwd    )

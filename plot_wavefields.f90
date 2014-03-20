@@ -22,12 +22,13 @@ subroutine plot_wavefields()
     integer                             :: nkernel, ikernel, ivertex, nvertices
     real(kind=dp),    allocatable       :: element_points(:,:,:)
     real(kind=dp),    allocatable       :: co_points(:,:)
-    real(kind=dp),    allocatable       :: fw_field(:,:)
-    real(kind=dp),    allocatable       :: bw_field(:,:)
-    complex(kind=dp), allocatable       :: fw_field_fd(:,:)
-    complex(kind=dp), allocatable       :: bw_field_fd(:,:)
-    complex(kind=dp), allocatable       :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
-    real(kind=dp),    allocatable       :: conv_field(:,:)
+    real(kind=dp),    allocatable       :: fw_field(:,:,:)
+    real(kind=dp),    allocatable       :: bw_field(:,:,:)
+    complex(kind=dp), allocatable       :: fw_field_fd(:,:,:)
+    complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
+    complex(kind=dp), allocatable       :: conv_field_fd(:,:,:)
+    complex(kind=dp), allocatable       :: conv_field_fd_filt(:,:,:)
+    real(kind=dp),    allocatable       :: conv_field(:,:,:)
     real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:)
     integer,          allocatable       :: connectivity(:,:), niterations(:,:)
     real(kind=dp),    allocatable       :: volume(:)
@@ -48,7 +49,10 @@ subroutine plot_wavefields()
     write(*,*) '***************************************************************'
     write(*,*) ' Initialize and open AxiSEM wavefield files'
     write(*,*) '***************************************************************'
-    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, parameters%buffer_size)
+    call sem_data%set_params(parameters%fwd_dir,     &
+                             parameters%bwd_dir,     &
+                             parameters%buffer_size, & 
+                             parameters%model_param)
     call sem_data%open_files()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
@@ -75,7 +79,7 @@ subroutine plot_wavefields()
     write(*,*) '***************************************************************'
     write(*,*) ' Initialize FFT'
     write(*,*) '***************************************************************'
-    call fft_data%init(ndumps, nvertices, sem_data%dt)
+    call fft_data%init(ndumps, ndim=1, ntraces=nvertices, dt=sem_data%dt)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()
@@ -90,8 +94,8 @@ subroutine plot_wavefields()
     call inv_mesh%init_node_data(ndumps + 2*ndumps*nrec)
 
     write(*,*) ' Read in forward field'
-    allocate(fw_field(ndumps, nvertices))
-    fw_field = sem_data%load_fw_points(dble(co_points), parameters%source)
+    allocate(fw_field(ndumps, 1, nvertices))
+    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source)
 
     
     ! Dump forward field to XDMF file
@@ -100,37 +104,37 @@ subroutine plot_wavefields()
         !Test of planar wave , works
         !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
         !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-        call inv_mesh%set_node_data_snap(real(fw_field(idump,:), kind=sp), idump, 'fwd_wavefield')
+        call inv_mesh%set_node_data_snap(real(fw_field(idump,1,:), kind=sp), idump, 'fwd_wavefield')
     end do
     write(*,*) ' FFT forward field'
-    allocate(fw_field_fd(nomega, nvertices))
+    allocate(fw_field_fd(nomega, 1, nvertices))
     call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
     deallocate(fw_field)
     call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
 
     do irec = 1, nrec
         write(*,*) ' Read in backward field of receiver', irec
-        allocate(bw_field(ndumps, nvertices))
-        bw_field = sem_data%load_bw_points(dble(co_points), parameters%receiver(irec))
+        allocate(bw_field(ndumps, 1, nvertices))
+        bw_field(:,:,:) = sem_data%load_bw_points(dble(co_points), parameters%receiver(irec))
         ! Dump backward field to XDMF file
         do idump = 1, ndumps
             if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
             !Test of planar wave , works
             !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
             !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-            call inv_mesh%set_node_data_snap(real(bw_field(idump,:), kind=sp),              &
+            call inv_mesh%set_node_data_snap(real(bw_field(idump,1,:), kind=sp),              &
                                              idump+(ndumps*irec),                           &
                                              'bwd_'//trim(parameters%receiver(irec)%name))
         end do
         write(*,*) ' FFT backward field'
-        allocate(bw_field_fd  (nomega, nvertices))
+        allocate(bw_field_fd  (nomega, 1, nvertices))
         call fft_data%rfft(taperandzeropad(bw_field, ntimes), bw_field_fd)
         deallocate(bw_field)
         call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
 
         write(*,*) ' Convolve wavefields'
-        allocate(conv_field(ntimes, nvertices))
-        allocate(conv_field_fd(nomega, nvertices))
+        allocate(conv_field(ntimes, 1, nvertices))
+        allocate(conv_field_fd(nomega, 1, nvertices))
         conv_field_fd = fw_field_fd * bw_field_fd
         call fft_data%irfft(conv_field_fd, conv_field)
         deallocate(bw_field_fd)
@@ -151,7 +155,7 @@ subroutine plot_wavefields()
 
         do idump = 1, ndumps
            if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
-           call inv_mesh%set_node_data_snap(real(conv_field(idump,:), kind=sp), &
+           call inv_mesh%set_node_data_snap(real(conv_field(idump,1,:), kind=sp), &
                                             idump + ndumps*2 + (irec-1)*ndumps, &
                                             'convolved_'//trim(parameters%receiver(irec)%name))
         end do 

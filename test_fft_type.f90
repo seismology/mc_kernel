@@ -21,7 +21,7 @@ subroutine test_fft_dirac
     ntimes = 4
     ntraces = 2
 
-    call fftt%init(ntimes, ntraces)
+    call fftt%init(ntimes, 1, ntraces)
 
     ntimes = fftt%get_ntimes()
     nomega = fftt%get_nomega()
@@ -80,7 +80,7 @@ subroutine test_fft_sine
     ntraces = 1
 
     dt = 0.1
-    call fftt%init(ntimes, ntraces, dt)
+    call fftt%init(ntimes, 1, ntraces, dt)
 
     ntimes = fftt%get_ntimes()
     nomega = fftt%get_nomega()
@@ -164,7 +164,7 @@ subroutine test_fft_inverse
     ntimes = 4
     ntraces = 1
 
-    call fftt%init(ntimes, ntraces)
+    call fftt%init(ntimes, 1, ntraces)
 
     ntimes = fftt%get_ntimes()
     nomega = fftt%get_nomega()
@@ -209,7 +209,7 @@ subroutine test_fft_convolve
     ntimes = 6
     ntraces = 1
 
-    call fftt%init(ntimes, ntraces)
+    call fftt%init(ntimes, ndim = 1, ntraces=ntraces)
     
     ntimes_fft = fftt%get_ntimes()
     nomega = fftt%get_nomega()
