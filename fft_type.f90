@@ -148,7 +148,7 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt, measure)
 
   this%fftw_mode = FFTW_ESTIMATE
   if (present(measure)) then
-      if (measure==.true.) then
+      if (measure) then
           this%fftw_mode = FFTW_MEASURE
       end if
   end if
