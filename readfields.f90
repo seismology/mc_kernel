@@ -19,14 +19,14 @@ module readfields
     type ncparamtype
         integer                           :: ncid
         integer                           :: snap, surf, mesh, seis  ! Group IDs
-        integer                           :: straintrace, dev_strain ! Variable IDs
+        integer                           :: strainvarid(6)          ! Variable IDs
         integer                           :: seis_disp, seis_velo    ! Variable IDs
         integer                           :: chunk_gll
         character(len=200)                :: meshdir
         integer                           :: ndumps, nseis
         integer                           :: source_shift_samples    
         real(kind=dp)                     :: source_shift_t
-        type(buffer_type)                 :: buffer
+        type(buffer_type), allocatable    :: buffer(:)
         real(kind=dp)                     :: dt
         real(kind=dp)                     :: amplitude
     end type
@@ -148,6 +148,8 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     select case(trim(this%model_param))
     case('vp')
        this%ndim = 1
+    case('vs')
+       this%ndim = 6
     end select
 
 
@@ -163,13 +165,18 @@ subroutine open_files(this)
     class(semdata_type)              :: this
     integer                          :: status, isim, chunks(2), deflev
     character(len=200)               :: format20, format21, filename
+    character(len=11)                :: nc_varnamelist(6)
     real(kind=sp)                    :: temp
+    integer                          :: istrainvar
 
     if (.not.this%params_set) then
         print *, 'ERROR in open_files(): Parameters have to be set first'
         print *, 'Call set_params before open_files()'
         stop
     end if
+
+    nc_varnamelist = ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
+                      'strain_dsup', 'strain_dzup', 'straintrace']
 
     format20 = "('  Trying to open NetCDF file ', A, ' on CPU ', I5)"
     format21 = "('  Succeded,  has NCID ', I6, ', Snapshots group NCID: ', I6)"
@@ -187,11 +194,24 @@ subroutine open_files(this)
                         grp_ncid = this%fwd(isim)%snap)
 
         
-        call getvarid(  ncid     = this%fwd(isim)%snap,   &
-                        name     = "straintrace",         &
-                        varid    = this%fwd(isim)%straintrace) 
+        do istrainvar = 1, 6            
+            !call getvarid(  ncid     = this%fwd(isim)%snap,   &
+            !                name     = "strainvarid(istrainvar)",         &
+            !                varid    = this%fwd(isim)%strainvarid(istrainvar)) 
+            status = nf90_inq_varid(ncid     = this%fwd(isim)%snap,                  &
+                                    name     = nc_varnamelist(istrainvar),           &
+                                    varid    = this%fwd(isim)%strainvarid(istrainvar)) 
+            if (status.ne.NF90_NOERR) then
+                this%fwd(isim)%strainvarid(istrainvar) = -1
+                if (istrainvar==6.) then
+                    print *, 'Did not find variable ''straintrace'' in NetCDF file'
+                    stop
+                end if
+            end if
+        end do
+
         call check(nf90_inquire_variable(ncid       = this%fwd(isim)%snap,   &
-                                         varid      = this%fwd(isim)%straintrace, &
+                                         varid      = this%fwd(isim)%strainvarid(6), &
                                          chunksizes = chunks, &
                                          deflate_level = deflev) )
 
@@ -271,12 +291,21 @@ subroutine open_files(this)
                        name     = "Snapshots",           &
                        grp_ncid = this%bwd(isim)%snap)
 
-        call getvarid(ncid     = this%bwd(isim)%snap,   &
-                      name     = "straintrace",         &
-                      varid    = this%bwd(isim)%straintrace) 
+        do istrainvar = 1, 6            
+            status = nf90_inq_varid(ncid     = this%bwd(isim)%snap,                  &
+                                    name     = nc_varnamelist(istrainvar),           &
+                                    varid    = this%bwd(isim)%strainvarid(istrainvar)) 
+            if (status.ne.NF90_NOERR) then
+                this%bwd(isim)%strainvarid(istrainvar) = -1
+                if (istrainvar==6.) then
+                    print *, 'Did not find variable ''straintrace'' in NetCDF file'
+                    stop
+                end if
+            end if
+        end do
 
         call check(nf90_inquire_variable(ncid       = this%bwd(isim)%snap,   &
-                                         varid      = this%bwd(isim)%straintrace, &
+                                         varid      = this%bwd(isim)%strainvarid(6), &
                                          chunksizes = chunks, &
                                          deflate_level = deflev) )
 
@@ -329,11 +358,18 @@ subroutine open_files(this)
     call flush(6) 
     this%files_open = .true.
 
-    do isim = 1, this%nsim_fwd
-       status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps)
-    end do
-    do isim = 1, this%nsim_bwd
-       status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps)
+
+    do istrainvar = 1, this%ndim
+        do isim = 1, this%nsim_fwd
+           allocate(this%fwd(isim)%buffer(this%ndim))
+           status = this%fwd(isim)%buffer(istrainvar)%init(this%buffer_size,     &
+                                                           this%fwd(isim)%ndumps)
+        end do
+        do isim = 1, this%nsim_bwd
+           allocate(this%bwd(isim)%buffer(this%ndim))
+           status = this%bwd(isim)%buffer(istrainvar)%init(this%buffer_size,     &
+                                                           this%bwd(isim)%ndumps)
+        end do
     end do
 
 end subroutine open_files
@@ -341,24 +377,29 @@ end subroutine open_files
 !-------------------------------------------------------------------------------
 subroutine close_files(this)
     class(semdata_type)   :: this
-    integer              :: status, isim
+    integer              :: status, isim, istrainvar
 
     do isim = 1, this%nsim_fwd
        status = nf90_close(this%fwd(isim)%ncid)
        if (verbose>0) then
           write(lu_out,'(A,I1,A,F9.6)') ' Buffer efficiency fwd(', isim, '): ',  &
-                                   this%fwd(isim)%buffer%efficiency()
+                                   this%fwd(isim)%buffer(1)%efficiency()
        end if
-       status = this%fwd(isim)%buffer%freeme()
+       do istrainvar = 1, this%ndim
+           status = this%fwd(isim)%buffer(istrainvar)%freeme()
+       end do
     end do
     deallocate(this%fwd)
+
     do isim = 1, this%nsim_bwd
        status = nf90_close(this%bwd(isim)%ncid)
        if (verbose>0) then
        write(lu_out,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
-                           this%bwd(1)%buffer%efficiency()
+                           this%bwd(isim)%buffer(1)%efficiency()
        end if
-       status = this%bwd(isim)%buffer%freeme()
+       do istrainvar = 1, this%ndim
+           status = this%bwd(isim)%buffer(istrainvar)%freeme()
+       end do
     end do
     deallocate(this%bwd)
 
@@ -519,33 +560,6 @@ function load_fw_points(this, coordinates, source_params)
     do ipoint = 1, npoints
     
        do isim = 1, this%nsim_fwd
-        !   !write(*,*) 'Reading point ', pointid(ipoint), ' (', ipoint, ') with ', &
-        !   !           this%fwd(isim)%ndumps, ' values'
-        !    iclockold = tick()
-        !    status = this%fwd(isim)%buffer%get(pointid(ipoint), utemp)
-        !    iclockold = tick(id=id_buffer, since=iclockold)
-
-        !    if (status.ne.0) then
-        !       start_chunk = ((pointid(ipoint)-1) / this%chunk_gll_fwd)*this%chunk_gll_fwd + 1
-        !       iclockold = tick()
-        !       call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
-        !                                 varid  = this%fwd(isim)%straintrace, &
-        !                                 start  = [start_chunk, 1],    &
-        !                                 count  = [this%chunk_gll_fwd, this%fwd(1)%ndumps], &
-        !                                 values = utemp_chunk) )
-        !       iclockold = tick(id=id_netcdf, since=iclockold)
-        !       do iread = 0, this%chunk_gll_fwd-1
-        !           status = this%fwd(isim)%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:))
-        !       end do
-        !       iclockold = tick(id=id_buffer, since=iclockold)
-        !       utemp = utemp_chunk(pointid(ipoint)-start_chunk+1, :)
-        !       !call check( nf90_get_var( ncid   = this%fwd(isim)%snap,        & 
-        !       !                          varid  = this%fwd(isim)%straintrace, &
-        !       !                          start  = [pointid(ipoint), 1],       &
-        !       !                          count  = [1, this%fwd(isim)%ndumps], &
-        !       !                          values = utemp) )
-        !       !status = this%fwd(isim)%buffer%put(pointid(ipoint), utemp)
-        !    end if
             utemp = load_strain_point(this%fwd(isim),      &
                                       pointid(ipoint),     &
                                       rotmesh_phi(ipoint), &
@@ -724,28 +738,6 @@ function load_bw_points(this, coordinates, receiver)
     do ipoint = 1, npoints
         utemp = load_strain_point(this%bwd(1), pointid(ipoint), rotmesh_phi(ipoint), this%model_param)
         
-        !status = this%bwd(1)%buffer%get(pointid(ipoint), utemp)
-        !start_chunk = ((pointid(ipoint)-1) / this%chunk_gll_bwd)*this%chunk_gll_bwd + 1
-        !!print *, pointid(ipoint), start_chunk, pointid(ipoint)-start_chunk+1
-        !if (status.ne.0) then
-        !   call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
-        !                                varid  = this%bwd(1)%straintrace, &
-        !                                start  = [start_chunk, 1],    &
-        !                                count  = [this%chunk_gll_bwd, this%bwd(1)%ndumps], &
-        !                                values = utemp_chunk) )
-        !   do iread = 0, this%chunk_gll_bwd-1
-        !       status = this%bwd(1)%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:))
-        !   end do
-        !   utemp = utemp_chunk(pointid(ipoint)-start_chunk+1, :)
-        !   !call check( nf90_get_var( ncid   = this%bwd(1)%snap,        & 
-        !   !                             varid  = this%bwd(1)%straintrace, &
-        !   !                             start  = [pointid(ipoint), 1],    &
-        !   !                             count  = [1, this%bwd(1)%ndumps], &
-        !   !                             values = utemp) )
-        !   !status = this%bwd(1)%buffer%put(pointid(ipoint), utemp)
-        !end if
-
-
         select case(receiver%component)
         case('Z')
             load_bw_points(:,:,ipoint) =                               utemp / this%bwd(1)%amplitude
@@ -771,9 +763,10 @@ function load_strain_point(sem_obj, pointid, pointphi, model_param)
     real(kind=dp), allocatable      :: load_strain_point(:,:)
 
     integer                         :: start_chunk, iread
-    integer                         :: iclockold, status
+    integer                         :: iclockold, status, istrainvar
     real(kind=sp)                   :: utemp(sem_obj%ndumps)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+
 
 
     select case(model_param)
@@ -782,26 +775,63 @@ function load_strain_point(sem_obj, pointid, pointphi, model_param)
         load_strain_point = 0.0
 
         iclockold = tick()
-        status = sem_obj%buffer%get(pointid, utemp)
+        status = sem_obj%buffer(1)%get(pointid, utemp)
         iclockold = tick(id=id_buffer, since=iclockold)
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
            iclockold = tick()
-           call check( nf90_get_var( ncid   = sem_obj%snap,        & 
-                                     varid  = sem_obj%straintrace, &
-                                     start  = [start_chunk, 1],    &
+           call check( nf90_get_var( ncid   = sem_obj%snap,           & 
+                                     varid  = sem_obj%strainvarid(6), &
+                                     start  = [start_chunk, 1],       &
                                      count  = [sem_obj%chunk_gll, sem_obj%ndumps], &
                                      values = utemp_chunk) )
            iclockold = tick(id=id_netcdf, since=iclockold)
            do iread = 0, sem_obj%chunk_gll - 1
-               status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:))
+               status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
            iclockold = tick(id=id_buffer, since=iclockold)
            load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
         else
            load_strain_point(:,1) = real(utemp, kind=dp)
         end if
+
+    case('vs')
+        allocate(load_strain_point(sem_obj%ndumps, 6))
+        load_strain_point = 0.0
+
+        do istrainvar = 1, 6
+
+            if (sem_obj%strainvarid(istrainvar).eq.-1) cycle ! For monopole source which does
+                                                             ! not have this component.
+
+            iclockold = tick()
+            status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
+            iclockold = tick(id=id_buffer, since=iclockold)
+            
+            if (status.ne.0) then
+               start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+               iclockold = tick()
+               call check( nf90_get_var( ncid   = sem_obj%snap,        & 
+                                         varid  = sem_obj%strainvarid(istrainvar), &
+                                         start  = [start_chunk, 1],    &
+                                         count  = [sem_obj%chunk_gll, sem_obj%ndumps], &
+                                         values = utemp_chunk) )
+               iclockold = tick(id=id_netcdf, since=iclockold)
+               do iread = 0, sem_obj%chunk_gll - 1
+                   status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, utemp_chunk(iread+1,:))
+               end do
+               iclockold = tick(id=id_buffer, since=iclockold)
+               load_strain_point(:,istrainvar) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
+            else
+               load_strain_point(:,istrainvar) = real(utemp, kind=dp)
+            end if
+
+        end do
+
+
+
+
     end select
 
 end function load_strain_point
