@@ -1,6 +1,7 @@
 !=========================================================================================
 module unit_tests
-  use ftnunit, only: test
+  use ftnunit,           only: test
+  use global_parameters, only: lu_out
   use test_montecarlo
   use test_fft
   use test_tetrahedra
@@ -15,6 +16,8 @@ module unit_tests
 contains
 !-----------------------------------------------------------------------------------------
 subroutine test_all
+
+  call init_output()  
 
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
@@ -81,6 +84,24 @@ subroutine test_all
   call test(test_buffer_storage, 'put data into the buffer')
   call test(test_buffer_retrieval, 'get data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
+
+  call finish_output()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine init_output()
+  character(len=11)     :: fnam
+
+  fnam = 'OUTPUT_test'
+  open(newunit=lu_out, file=fnam, status='unknown', position='append')
+  write(lu_out,*) '*********************************************************************'
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine finish_output()
+  close(lu_out)
 end subroutine
 !-----------------------------------------------------------------------------------------
 

@@ -6,6 +6,11 @@
 #    $Id: runtests.sh,v 1.2 2008/01/26 11:15:10 arjenmarkus Exp $
 #
 make -sj
+
+if test -f OUTPUT_test ; then
+    rm OUTPUT_test
+fi
+
 if test -f runtests.log ; then
     rm runtests.log
 fi
