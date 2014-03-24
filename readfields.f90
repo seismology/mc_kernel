@@ -482,7 +482,7 @@ function load_fw_points(this, coordinates, source_params)
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
-    real(kind=dp)                     :: utemp(this%ndim, size(coordinates,2))
+    real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
     
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
