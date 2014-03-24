@@ -180,7 +180,8 @@ function calc_misfit_kernel(this, timeseries)
    real(kind=dp)                           :: calc_misfit_kernel(size(timeseries,2))
    real(kind=dp), allocatable              :: cut_timeseries(:)
    real(kind=dp)                           :: dt
-   integer                                 :: lenseis, itrace, ntrace
+   integer                                 :: lenseis, itrace, ntrace, lu_errorlog
+   character(len=64)                       :: fmtstring
 
    ntrace = size(timeseries,2)
 
@@ -207,6 +208,24 @@ function calc_misfit_kernel(this, timeseries)
                                       * this%normalization
       end do
    end select
+
+   if (any(calc_misfit_kernel.ne.calc_misfit_kernel)) then ! Kernel is NaN
+       print *, 'ERROR Kernel has value NaN!'
+       print *, 'Values of Kernel:'
+       write(fmtstring, "('(',I6,'(ES11.3))')") ntrace
+       print fmtstring, calc_misfit_kernel
+       print *, 'Value of normalization:'
+       print *, this%normalization
+       print *, 'Convolved time series is written into "errorlog_timeseries",'
+       print *, 'seismogram is written into "errorlog_seismogram"'
+       open(newunit=lu_errorlog, file='errorlog_timeseries', status='replace')
+       write(lu_errorlog, *) cut_timeseries
+       close(lu_errorlog)
+       open(newunit=lu_errorlog, file='errorlog_seismogram', status='replace')
+       write(lu_errorlog, *) this%seis
+       close(lu_errorlog)
+       stop
+   end if
 
 end function
 !-------------------------------------------------------------------------------
