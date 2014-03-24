@@ -562,7 +562,6 @@ function load_fw_points(this, coordinates, source_params)
        do isim = 1, this%nsim_fwd
             utemp = load_strain_point(this%fwd(isim),      &
                                       pointid(ipoint),     &
-                                      rotmesh_phi(ipoint), &
                                       this%model_param)
 
             load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)                   &
@@ -736,7 +735,7 @@ function load_bw_points(this, coordinates, receiver)
     load_bw_points(:,:,:) = 0.0
     
     do ipoint = 1, npoints
-        utemp = load_strain_point(this%bwd(1), pointid(ipoint), rotmesh_phi(ipoint), this%model_param)
+        utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%model_param)
         
         select case(receiver%component)
         case('Z')
@@ -755,10 +754,9 @@ end function load_bw_points
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function load_strain_point(sem_obj, pointid, pointphi, model_param)
+function load_strain_point(sem_obj, pointid, model_param)
     type(ncparamtype), intent(in)   :: sem_obj
     integer, intent(in)             :: pointid
-    real(kind=dp), intent(in)       :: pointphi
     character(len=*), intent(in)    :: model_param
     real(kind=dp), allocatable      :: load_strain_point(:,:)
 
