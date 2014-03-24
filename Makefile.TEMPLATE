@@ -20,18 +20,17 @@ OBJS =	commpi.o buffer.o calc_kernels.o clocks.o fft_type.o filtering.o \
 	type_parameter.o worktype.o
 
 #Example to include specific netcdf libraries: 
-LIBS = -lm -lfftw3 -lfftw3f -llapack -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib 
+LIBS = -lm -lfftw3 -lfftw3f -llapack -L $(HOME)/local_ifort/lib -lnetcdff -Wl,-rpath,$(HOME)/local_ifort/lib 
 
 # set unc to compile with netcdf: 
 #F90FLAGS = -Dunc 
 CC = gcc
 CFLAGS = -O3 -DF_UNDERSCORE
 #F90 = mpiifort -traceback -g -heap-arrays 10 -g -check all -check noarg_temp_created 
-F90 = mpif90 -O3 -g -fbacktrace
-FC = mpif90 -O3 -g -fbacktrace
+F90 = mpiifort -O3 -g -traceback
  
 # to include local built of netcdf you might want to use sth like this: 
-INCLUDE = -I $(HOME)/local/include -I /usr/include 
+INCLUDE = -I $(HOME)/local_ifort/include -I /usr/include 
 
 
 # cancel m2c implicit rule 
