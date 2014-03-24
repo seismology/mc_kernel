@@ -375,7 +375,16 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
             slave_result%kernel_values(:, ivertex, ielement) = int_kernel(ivertex)%getintegral()
             slave_result%kernel_errors(:, ivertex, ielement) = sqrt(int_kernel(ivertex)%getvariance())
             slave_result%niterations(:,ielement)             = niterations(:,ielement)
+            if (any(slave_result%kernel_values(:, ivertex, ielement).ne.&
+                    slave_result%kernel_values(:, ivertex, ielement))) then
+                print *, myrank, ': found NaN!'
+                write(lu_out, *) 'Found NaN!'
+                write(lu_out, *) 'iVertex:   ', ivertex
+                write(lu_out, *) 'Integrals: ', int_kernel(ivertex)%getintegral()
+                write(lu_out, *) 'Variances: ', int_kernel(ivertex)%getvariance()
+            end if
             call int_kernel(ivertex)%freeme()
+            
         end do
 
     end do ! iel
