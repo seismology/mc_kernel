@@ -426,7 +426,7 @@ subroutine test_get_connected_elements
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
 
   ! uncomment to NOT use automatic allocation
-  !allocate(cn_elems(inv_mesh%get_valence(1)))
+  allocate(cn_elems(inv_mesh%get_valence(1)))
   cn_elems = inv_mesh%get_connected_elements(1)
 
   ! somewhat redundant two tests, for now to test ftnunit :)

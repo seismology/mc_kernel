@@ -198,6 +198,8 @@ function get_volume(this, ielement)
   integer, intent(in)               :: ielement
   real(kind=dp)                     :: get_volume
 
+  get_volume = 0
+
   select case(this%element_type)
   case('tet')
      get_volume = get_volume_tet(this%get_element(ielement))

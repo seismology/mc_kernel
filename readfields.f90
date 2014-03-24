@@ -145,7 +145,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%model_param = 'vp'
     end if
 
-    select case(model_param)
+    select case(trim(this%model_param))
     case('vp')
        this%ndim = 1
     end select
