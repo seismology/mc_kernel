@@ -157,5 +157,49 @@ subroutine test_readfields_rotate
 
 end subroutine
 !------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_readfields_rotate_straintensor()
+   real(kind=dp)        :: straintensor(1,6)
+   real(kind=sp)        :: straintensor_rot(1,6)
+   real(kind=sp)        :: straintensor_rot_ref(1,6)
+   real(kind=dp)        :: mij(6)
+   real(kind=dp)        :: phi
+   integer              :: isim
+
+   !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
+   !! 'strain_dsup', 'strain_dzup', 'straintrace']
+
+   ! Explosion source, pure diagonal strain
+   straintensor(1,:) = [1, 0, 1, 0, 0, 3]
+   mij = [1, 1, 1, 0, 0, 0] / 2.d0
+
+   ! Azimuth zero
+   phi = 0
+   straintensor_rot = 0
+   do isim = 1, 4
+       straintensor_rot = rotate_straintensor(straintensor, phi, mij, isim) &
+                        + straintensor_rot
+   enddo
+   straintensor_rot_ref(1,:) = [1, 1, 1, 0, 0, 0] 
+
+   call assert_comparable_real1d(straintensor_rot(1,:), straintensor_rot_ref(1,:), &
+                                 1e-7, 'Rotation of explosion source, phi = 0')
+
+   ! Arbitrary azimuth
+   call random_number(phi)
+   straintensor_rot = 0
+   do isim = 1, 4
+       straintensor_rot = rotate_straintensor(straintensor, phi, mij, isim) &
+                        + straintensor_rot
+   enddo
+   straintensor_rot_ref(1,:) = [1, 1, 1, 0, 0, 0]
+
+   call assert_comparable_real1d(straintensor_rot(1,:), straintensor_rot_ref(1,:), &
+                                 1e-7, 'Rotation of explosion source, arbitrary phi')
+
+
+end subroutine test_readfields_rotate_straintensor
+!------------------------------------------------------------------------------
 end module
 !-----------------------------------------------------------------------------------------
