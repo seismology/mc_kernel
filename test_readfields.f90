@@ -163,7 +163,7 @@ subroutine test_readfields_rotate_straintensor()
    real(kind=dp)        :: straintensor(1,6)
    real(kind=sp)        :: straintensor_rot(1,6)
    real(kind=sp)        :: straintensor_rot_ref(1,6)
-   real(kind=dp)        :: mij(6)
+   real(kind=dp)        :: mij(6)  !Mrr Mtt Mpp Mrt Mrp Mtp
    real(kind=dp)        :: phi
    integer              :: isim
 
