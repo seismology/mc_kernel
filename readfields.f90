@@ -1,5 +1,5 @@
 module readfields
-    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank, id_buffer, id_netcdf
+    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank, id_buffer, id_netcdf, id_rotate
     use source_class,          only        : src_param_type
     use receiver_class,        only        : rec_param_type
     use buffer, only                       : buffer_type
@@ -572,6 +572,7 @@ function load_fw_points(this, coordinates, source_params)
                                       pointid(ipoint),     &
                                       this%model_param)
 
+            iclockold = tick()
             select case(trim(this%model_param))
             !if (this%model_param.eq.'vs') then
             case('vp')
@@ -584,6 +585,7 @@ function load_fw_points(this, coordinates, source_params)
                                                                    rotmesh_phi(ipoint),     &
                                                                    source_params%mij, isim) 
             end select
+            iclockold = tick(id=id_rotate, since=iclockold)
         end do !isim
 
 
@@ -1210,33 +1212,39 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
     real(kind=dp), intent(in)    :: phi, mij(6)
     integer      , intent(in)    :: isim
 
-    real(kind=dp)                :: tensor_return(size(tensor_vector, 1), 6)
+    real(kind=dp), allocatable   :: tensor_return(:,:)
 
-    real(kind=dp)                :: tensor_matrix(3, 3, size(tensor_vector, 1)) !s,z,phi
+    real(kind=dp), allocatable   :: tensor_matrix(:,:,:)
     real(kind=dp)                :: conv_mat(3,3)     !from s,z,phi to x,y,z
     real(kind=dp)                :: azim_factor_1, azim_factor_2
     integer                      :: idump
 
+    print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
     if (size(tensor_vector,2).ne.6) then
         print *, 'ERROR in rotate_straintensor: size of first dimension of tensor_vector:'
         print *, 'should be: 6, is: ', size(tensor_vector, 2)
     end if
 
+    allocate(tensor_return(size(tensor_vector, 1), 6))
+    allocate(tensor_matrix(3, 3, size(tensor_vector, 1)))
+
     azim_factor_1 = azim_factor(phi, mij, isim, 1)
     azim_factor_2 = azim_factor(phi, mij, isim, 2)
 
 
-    tensor_matrix(1,1,:) =  tensor_vector(:,1) * azim_factor_1 !ss
-    tensor_matrix(1,2,:) =  tensor_vector(:,2) * azim_factor_2 !sz
-    tensor_matrix(1,3,:) =  tensor_vector(:,4) * azim_factor_1 !sp
-    tensor_matrix(2,1,:) =  tensor_vector(:,2) * azim_factor_2 !zs
-    tensor_matrix(2,2,:) = (tensor_vector(:,6) - &
-                            tensor_vector(:,1) - &
-                            tensor_vector(:,3)) * azim_factor_1 !zz
-    tensor_matrix(2,3,:) =  tensor_vector(:,5) * azim_factor_2 !zp
-    tensor_matrix(3,1,:) =  tensor_vector(:,4) * azim_factor_1 !ps
-    tensor_matrix(3,2,:) =  tensor_vector(:,5) * azim_factor_2 !pz
-    tensor_matrix(3,3,:) =  tensor_vector(:,3) * azim_factor_1 !pp
+    do idump = 1, size(tensor_vector, 1)
+        tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
+        tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
+        tensor_matrix(1,3,idump) =  tensor_vector(idump,4) * azim_factor_1  !sp
+        tensor_matrix(2,1,idump) =  tensor_matrix(1,2,idump)                !zs
+        tensor_matrix(2,2,idump) = (tensor_vector(idump,6) - &
+                                    tensor_vector(idump,1) - &
+                                    tensor_vector(idump,3)) * azim_factor_1 !zz
+        tensor_matrix(2,3,idump) =  tensor_vector(idump,5) * azim_factor_2  !zp
+        tensor_matrix(3,1,idump) =  tensor_matrix(1,3,idump)                !ps
+        tensor_matrix(3,2,idump) =  tensor_matrix(2,3,idump)                !pz
+        tensor_matrix(3,3,idump) =  tensor_vector(idump,3) * azim_factor_1  !pp
+    end do
 
 
     ! Conversion to cartesian coordinates, from s,z,phi to x,y,z
@@ -1248,7 +1256,13 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
         tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
                                                  tensor_matrix(:,:,idump)), &
                                           conv_mat)
+        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
+            abs(tensor_matrix(1,3,idump))>1e-5) then
+            print *, 'nonsymmetric strain components (1,3) at dump', idump
+            print *, '(1,3),(3,1):',tensor_matrix(1,3,idump),tensor_matrix(3,1,idump)
+        end if
     end do
+
 
     tensor_return(:,1) = tensor_matrix(1,1,:) !xx
     tensor_return(:,2) = tensor_matrix(2,2,:) !yy
