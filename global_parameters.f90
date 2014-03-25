@@ -23,7 +23,7 @@ module global_parameters
 
   integer                    :: id_read, id_fft, id_fwd, id_bwd, id_mc, id_mpi,&
                                 id_filter_conv, id_inv_mesh, id_kernel, id_init, &
-                                id_buffer, id_netcdf
+                                id_buffer, id_netcdf, id_rotate
   contains
 
 
