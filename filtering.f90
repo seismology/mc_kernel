@@ -82,6 +82,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     end do
     close(10)
     this%initialized = .true.
+    this%stf_added = .false.
 end subroutine
 ! -----------------------------------------------------------------------------
 
@@ -108,7 +109,7 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
        stop
     end if
 
-    if (.not.this%stf_added) then
+    if (this%stf_added) then
        write(*,*) 'ERROR: STF has already been added to filter ', trim(this%name)
        stop
     end if
@@ -124,17 +125,27 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     stfs(:,1) = stf_fwd
     stfs(:,2) = stf_bwd
     
-    call fft_stf%rfft(stfs, stfs_fd)
+    call fft_stf%rfft(taperandzeropad(stfs, fft_stf%get_ntimes()), stfs_fd)
 
     this%transferfunction = this%transferfunction / sqrt(stfs_fd(:,1) * stfs_fd(:,2))
     
     call fft_stf%freeme()
 
-20  format('filterresponse_stf_', A, 2('_', F0.6))
+20  format('filterresponse_stf_', A, 2('_', F0.3))
     write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
     open(10, file=trim(fnam), action='write')
     do ifreq = 1, this%nfreq
        write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), imag(this%transferfunction(ifreq))
+    end do
+    close(10)
+    
+21  format('stf_spectrum_', A, 2('_', F0.3))
+22  format(5(E15.8))
+    write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
+    open(10, file=trim(fnam), action='write')
+    do ifreq = 1, this%nfreq
+        write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
+                                     real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
     end do
     close(10)
     

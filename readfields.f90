@@ -539,6 +539,8 @@ subroutine check_consistency(this)
     this%timeshift_fwd = real(source_shift_agreed_fwd, kind=dp)
     this%timeshift_bwd = real(source_shift_agreed_bwd, kind=dp)
 
+    allocate(this%stf_fwd(ndumps_agreed))
+    allocate(this%stf_bwd(ndumps_agreed))
     this%stf_fwd = real(stf_agreed_fwd, kind=dp)
     this%stf_bwd = real(stf_agreed_bwd, kind=dp)
 

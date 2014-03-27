@@ -44,18 +44,6 @@ module type_parameter
            procedure, pass                   :: read_filter
     end type
 
-!    type kernelspec_type
-!        real, dimension(2)                   :: time_window
-!        real, dimension(4)                   :: corner_frequencies
-!        integer                              :: filter_type
-!        character                            :: misfit_type
-!        character                            :: model_parameter
-!        integer                              :: receiver_index
-!        integer                              :: src_index
-!        type(rec_param_type), pointer        :: receiver
-!        !pointer                              :: filter
-!    end type
-
 contains
 
 !------------------------------------------------------------------------------
@@ -347,11 +335,12 @@ subroutine read_kernel(this, sem_data, filter)
 
    allocate(this%kernel(this%nkernel))
 
-   if (.not. master) nfilter     = size(filter)
-
-   do ifilter = 1, nfilter
-       call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
-   end do
+   if (.not. master) then
+       nfilter     = size(filter)
+       do ifilter = 1, nfilter
+           call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
+       end do
+   end if
 
    do irec = 1, this%nrec
       if (master) then
