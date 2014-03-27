@@ -1,5 +1,5 @@
 module readfields
-    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank, id_buffer, id_netcdf
+    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank, id_buffer, id_netcdf, id_rotate
     use source_class,          only        : src_param_type
     use receiver_class,        only        : rec_param_type
     use buffer, only                       : buffer_type
@@ -82,7 +82,11 @@ contains
 function get_ndim(this)
     class(semdata_type)            :: this
     integer                        :: get_ndim
-
+    if (.not.this%params_set) then
+        print *, 'ERROR in get_ndim(): Parameters have to be set first'
+        print *, 'Call set_params before get_ndim()'
+        stop
+    end if
     get_ndim = this%ndim
 end function
 !-------------------------------------------------------------------------------
@@ -154,6 +158,8 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     case('vs')
        this%ndim = 6
     end select
+    write(lu_out, *) 'Model parameter: ', trim(this%model_param), &
+                     ', Dimension of wavefields: ', this%ndim
 
 
     this%params_set = .true.
@@ -372,15 +378,17 @@ subroutine open_files(this)
     call flush(6) 
     this%files_open = .true.
 
-
-    do istrainvar = 1, this%ndim
-        do isim = 1, this%nsim_fwd
-           allocate(this%fwd(isim)%buffer(this%ndim))
+    do isim = 1, this%nsim_fwd
+        allocate(this%fwd(isim)%buffer(this%ndim))
+        do istrainvar = 1, this%ndim
            status = this%fwd(isim)%buffer(istrainvar)%init(this%buffer_size,     &
                                                            this%fwd(isim)%ndumps)
         end do
-        do isim = 1, this%nsim_bwd
-           allocate(this%bwd(isim)%buffer(this%ndim))
+    end do
+
+    do isim = 1, this%nsim_bwd
+        allocate(this%bwd(isim)%buffer(this%ndim))
+        do istrainvar = 1, this%ndim
            status = this%bwd(isim)%buffer(istrainvar)%init(this%buffer_size,     &
                                                            this%bwd(isim)%ndumps)
         end do
@@ -597,9 +605,20 @@ function load_fw_points(this, coordinates, source_params)
                                       pointid(ipoint),     &
                                       this%model_param)
 
-            load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)                   &
-                                         + utemp * azim_factor(rotmesh_phi(ipoint),     &
-                                                               source_params%mij, isim) 
+            iclockold = tick()
+            select case(trim(this%model_param))
+            !if (this%model_param.eq.'vs') then
+            case('vp')
+                load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)                   &
+                                             + utemp * azim_factor(rotmesh_phi(ipoint),     &
+                                                                   source_params%mij, isim, 1) 
+            case('vs')
+                load_fw_points(:, :, ipoint) = load_fw_points(:, :, ipoint)                 &
+                                             + rotate_straintensor(utemp,                   &
+                                                                   rotmesh_phi(ipoint),     &
+                                                                   source_params%mij, isim) 
+            end select
+            iclockold = tick(id=id_rotate, since=iclockold)
         end do !isim
 
 
@@ -779,8 +798,11 @@ function load_bw_points(this, coordinates, receiver)
             load_bw_points(:,:,ipoint) = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude 
         end select
 
-        
-
+        if (this%model_param.eq.'vs') then
+            load_bw_points(:,:,ipoint) = rotate_straintensor(load_bw_points(:,:,ipoint), &
+                                                             rotmesh_phi(ipoint),        &
+                                                             real([1, 1, 1, 0, 0, 0], kind=dp), 1)
+        end if
     end do !ipoint
 
 end function load_bw_points
@@ -869,31 +891,47 @@ end function load_strain_point
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function azim_factor(phi, mij, isim)
+function azim_factor(phi, mij, isim, ikind)
     real(kind=dp), intent(in)    :: phi
     real(kind=dp), intent(in)    :: mij(6)
-    integer, intent(in)          :: isim
+    integer, intent(in)          :: isim, ikind
     real(kind=dp)                :: azim_factor
-
 
     select case(isim)
     case(1) ! Mzz
-       azim_factor = Mij(1)
+       if (ikind==1) then 
+           azim_factor = Mij(1)
+       else
+           azim_factor = 0
+       end if
        
     case(2) ! Mxx+Myy
-       azim_factor = 0.5*(Mij(2)+Mij(3))
+       if (ikind==1) then 
+           azim_factor = 0.5*(Mij(2)+Mij(3))
+       else
+           azim_factor = 0
+       end if
        
     case(3) ! dipole
-       azim_factor = Mij(4)*dcos(phi) + Mij(5)*dsin(phi)
+       if (ikind==1) then
+           azim_factor =   Mij(4)*dcos(phi) + Mij(5)*dsin(phi)
+       else
+           azim_factor = - Mij(4)*dsin(phi) + Mij(5)*dcos(phi) 
+       end if
        
     case(4) ! quadrupole
-       azim_factor = 0.5*(Mij(2)-Mij(3))*dcos(2.d0*phi) + Mij(6)*dsin(2.d0*phi)
+       if (ikind==1) then
+           azim_factor =   0.5*( Mij(2)-Mij(3) ) * dcos(2.d0*phi) + Mij(6)*dsin(2.d0*phi)
+       else
+           azim_factor = - 0.5*( Mij(2)-Mij(3) ) * dsin(2.d0*phi) + Mij(6)*dcos(2.d0*phi)  
+       end if
 
     case default
        write(6,*) myrank,': unknown number of simulations',isim
     end select
 
 end function
+!-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
 subroutine build_kdtree(this)
@@ -930,9 +968,9 @@ subroutine build_kdtree(this)
     deallocate(mesh)                           
 
 end subroutine build_kdtree
-
 !-------------------------------------------------------------------------------
 
+!-------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
     class(semdata_type)    :: this
@@ -1046,6 +1084,7 @@ subroutine read_meshes(this)
     this%meshes_read = .true.
 
 end subroutine read_meshes
+!-------------------------------------------------------------------------------
  
 
 !-------------------------------------------------------------------------------
@@ -1063,6 +1102,7 @@ subroutine check(status)
 end subroutine check  
 !-------------------------------------------------------------------------------
 
+!-------------------------------------------------------------------------------
 subroutine getvarid(ncid, name, varid)
     integer, intent(in)          :: ncid
     character(len=*), intent(in) :: name
@@ -1195,6 +1235,76 @@ subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
       stop 2
   end if
 end subroutine nc_read_att_dble
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
+    !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
+    !! 'strain_dsup', 'strain_dzup', 'straintrace']
+    real(kind=dp), intent(in)    :: tensor_vector(:,:)
+    real(kind=dp), intent(in)    :: phi, mij(6)
+    integer      , intent(in)    :: isim
+
+    real(kind=dp), allocatable   :: tensor_return(:,:)
+
+    real(kind=dp), allocatable   :: tensor_matrix(:,:,:)
+    real(kind=dp)                :: conv_mat(3,3)     !from s,z,phi to x,y,z
+    real(kind=dp)                :: azim_factor_1, azim_factor_2
+    integer                      :: idump
+
+    print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
+    if (size(tensor_vector,2).ne.6) then
+        print *, 'ERROR in rotate_straintensor: size of first dimension of tensor_vector:'
+        print *, 'should be: 6, is: ', size(tensor_vector, 2)
+    end if
+
+    allocate(tensor_return(size(tensor_vector, 1), 6))
+    allocate(tensor_matrix(3, 3, size(tensor_vector, 1)))
+
+    azim_factor_1 = azim_factor(phi, mij, isim, 1)
+    azim_factor_2 = azim_factor(phi, mij, isim, 2)
+
+
+    do idump = 1, size(tensor_vector, 1)
+        tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
+        tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
+        tensor_matrix(1,3,idump) =  tensor_vector(idump,4) * azim_factor_1  !sp
+        tensor_matrix(2,1,idump) =  tensor_matrix(1,2,idump)                !zs
+        tensor_matrix(2,2,idump) = (tensor_vector(idump,6) - &
+                                    tensor_vector(idump,1) - &
+                                    tensor_vector(idump,3)) * azim_factor_1 !zz
+        tensor_matrix(2,3,idump) =  tensor_vector(idump,5) * azim_factor_2  !zp
+        tensor_matrix(3,1,idump) =  tensor_matrix(1,3,idump)                !ps
+        tensor_matrix(3,2,idump) =  tensor_matrix(2,3,idump)                !pz
+        tensor_matrix(3,3,idump) =  tensor_vector(idump,3) * azim_factor_1  !pp
+    end do
+
+
+    ! Conversion to cartesian coordinates, from s,z,phi to x,y,z
+    conv_mat(1,:) = [ dcos(phi), dsin(phi),       0]
+    conv_mat(2,:) = [         0,         0,       1]
+    conv_mat(3,:) = [-dsin(phi), dcos(phi),       0]
+    
+    do idump = 1, size(tensor_vector, 1)
+        tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
+                                                 tensor_matrix(:,:,idump)), &
+                                          conv_mat)
+        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
+            abs(tensor_matrix(1,3,idump))>1e-5) then
+            print *, 'nonsymmetric strain components (1,3) at dump', idump
+            print *, '(1,3),(3,1):',tensor_matrix(1,3,idump),tensor_matrix(3,1,idump)
+        end if
+    end do
+
+
+    tensor_return(:,1) = tensor_matrix(1,1,:) !xx
+    tensor_return(:,2) = tensor_matrix(2,2,:) !yy
+    tensor_return(:,3) = tensor_matrix(3,3,:) !zz
+    tensor_return(:,4) = tensor_matrix(1,2,:) !xy
+    tensor_return(:,5) = tensor_matrix(1,3,:) !xz
+    tensor_return(:,6) = tensor_matrix(2,3,:) !yz
+
+end function rotate_straintensor
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------

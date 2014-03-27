@@ -22,6 +22,7 @@ subroutine test_all
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
   call test(test_readfields_rotate, 'Field rotation')
+  call test(test_readfields_rotate_straintensor, 'Strainfield rotation')
   call test(test_readfields_set_params, 'Set SEM file params')
   call test(test_readfields_open_files, 'Open SEM file')
   call test(test_readfields_load_seismogram, 'Load seismogram')

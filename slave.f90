@@ -221,7 +221,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: iclockold
     integer                             :: ndim
 
-    ndim = 1
+    ndim = sem_data%get_ndim()
     iclockold = tick()
     nptperstep = parameters%npoints_per_step
     ndumps = sem_data%ndumps

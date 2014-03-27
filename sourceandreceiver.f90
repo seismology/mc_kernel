@@ -96,6 +96,7 @@ module receiver_class
                                                              !! in the earth system (degrees)
         real(kind=dp)                  :: theta, phi         !< receiver coordinates 
                                                              !! in the source system
+        real(kind=dp), dimension(3,3)  :: rot_mat, trans_rot_mat
         integer                        :: nkernel
         integer                        :: firstkernel, lastkernel
         type(kernelspec_type), pointer :: kernel(:)
