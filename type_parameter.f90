@@ -349,6 +349,10 @@ subroutine read_kernel(this, sem_data, filter)
 
    if (.not. master) nfilter     = size(filter)
 
+   do ifilter = 1, nfilter
+       call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
+   end do
+
    do irec = 1, this%nrec
       if (master) then
           read(lu_receiver, *) ! recname, reclatd, reclond, recnkernel

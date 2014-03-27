@@ -11,11 +11,13 @@ module filtering
        integer                         :: nfreq                !< Number of frequencies
        real(kind=dp), allocatable      :: f(:)
        logical                         :: initialized = .false.
+       logical                         :: stf_added = .false.
        character(len=32)               :: filterclass
        real(kind=dp)                   :: frequencies(4)
 
        contains
        procedure, pass   :: create
+       procedure, pass   :: add_stfs
        procedure, pass   :: deleteme
        procedure, pass   :: apply_1d
        procedure, pass   :: apply_2d
@@ -91,7 +93,7 @@ end subroutine
 !! the forward and the backward field.
 subroutine add_stfs(this, stf_fwd, stf_bwd)
     use fft,                     only: rfft_type, taperandzeropad
-    type(filter_type)               :: this
+    class(filter_type)              :: this
     real(kind=dp)   , intent(in)    :: stf_fwd(:), stf_bwd(:)
 
     real(kind=dp)   , allocatable   :: stfs(:,:)
@@ -101,6 +103,15 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     character(len=64)               :: fnam
     integer                         :: ifreq
 
+    if (.not.this%initialized) then
+       write(*,*) 'ERROR: Filter is not initialized yet'
+       stop
+    end if
+
+    if (.not.this%stf_added) then
+       write(*,*) 'ERROR: STF has already been added to filter ', trim(this%name)
+       stop
+    end if
 
     call fft_stf%init(ntimes_in = size(stf_fwd), &
                       ndim      = 1,             &
@@ -126,7 +137,10 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
        write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), imag(this%transferfunction(ifreq))
     end do
     close(10)
-end subroutine
+    
+    this%stf_added = .true.
+
+end subroutine add_stfs
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
