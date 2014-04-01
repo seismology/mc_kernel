@@ -321,6 +321,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
        action='read', iostat=ierr)
   if ( ierr /= 0 ) then
      write(*,*) 'ERROR: Could not open file: ', trim(filename_vertices)
+     write(*,*) 'ierr :', ierr
      stop
   endif
 
@@ -338,6 +339,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
        action='read', iostat=ierr)
   if ( ierr /= 0 ) then
      write(*,*) 'ERROR: Could not open file: ', trim(filename_connectivity)
+     write(*,*) 'ierr :', ierr
      stop
   endif
 
@@ -431,6 +433,7 @@ subroutine read_abaqus_meshtype(this, filename)
        action='read', iostat=ierr)
   if ( ierr /= 0 ) then
      write(*,*) 'ERROR: Could not open file: ', trim(filename)
+     write(*,*) 'ierr :', ierr
      stop
   endif
 
@@ -476,6 +479,7 @@ subroutine read_abaqus_meshtype(this, filename)
                 'not yet implemented'
      stop
   end select
+  close(iinput)
 
 end subroutine read_abaqus_meshtype
 !-----------------------------------------------------------------------------------------
@@ -497,6 +501,7 @@ subroutine read_abaqus_mesh(this, filename)
        action='read', iostat=ierr)
   if ( ierr /= 0 ) then
      write(*,*) 'ERROR: Could not open file: ', trim(filename)
+     write(*,*) 'ierr :', ierr
      stop
   endif
 
