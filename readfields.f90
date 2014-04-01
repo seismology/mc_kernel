@@ -1248,9 +1248,9 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
 
 
     ! Conversion to cartesian coordinates, from s,z,phi to x,y,z
-    conv_mat(1,:) = [ dcos(phi), dsin(phi),       0]
-    conv_mat(2,:) = [         0,         0,       1]
-    conv_mat(3,:) = [-dsin(phi), dcos(phi),       0]
+    conv_mat(1,:) = [ dcos(phi), dsin(phi),       0.0d0]
+    conv_mat(2,:) = [     0.0d0,     0.0d0,       1.0d0]
+    conv_mat(3,:) = [-dsin(phi), dcos(phi),       0.0d0]
     
     do idump = 1, size(tensor_vector, 1)
         tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
