@@ -48,7 +48,7 @@ subroutine def_rot_matrix(this)
    srccolat = this%colat
    srclon   = this%lon
 
-   fmtstring = '(" Source colatitude: ", F8.3, "; source longitude: ", F8.3)'
+   fmtstring = '("  Source colatitude: ", F8.3, "; source longitude: ", F8.3)'
   
    if (verbose>0) write(lu_out,fmtstring) srccolat/deg2rad, srclon/deg2rad
    
@@ -67,10 +67,10 @@ subroutine def_rot_matrix(this)
    this%trans_rot_mat = transpose(this%rot_mat)
 
    if (verbose>0) then
-      write(lu_out,*)             'Rotation matrix:'
-      write(lu_out,'(3(ES11.3))') this%rot_mat
-      write(lu_out,*)             'Rotation matrix, transposed:'
-      write(lu_out,'(3(ES11.3))') this%trans_rot_mat
+      write(lu_out,*)             '  Rotation matrix:'
+      write(lu_out,'(3("  ", 3(ES11.3)/))') this%rot_mat
+      write(lu_out,*)             '  Rotation matrix, transposed:'
+      write(lu_out,'(3("  ", 3(ES11.3)/))') this%trans_rot_mat
    end if
 
 end subroutine def_rot_matrix

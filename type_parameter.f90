@@ -82,7 +82,7 @@ subroutine read_parameters(this, input_file_in)
          call get_command_argument(1, input_file)
      end if
 
-     if (verbose > 0) write(lu_out,'("Reading ", A, "...")') trim(input_file)
+     write(lu_out,'(" Reading ", A, "...")') trim(input_file)
      open(newunit=lu_inparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
      if (ioerr /= 0) then
         print *, 'ERROR: Check input file ''', trim(input_file), '''! Is it still there?' 
@@ -134,12 +134,12 @@ subroutine read_parameters(this, input_file_in)
            this%whattodo = keyvalue
 
         end select parameter_to_read
-        print "(A32,' ',A)", keyword, trim(keyvalue)
+        print "('  ', A32,' ',A)", keyword, trim(keyvalue)
      end do
      close(lu_inparam_basic)
 
   else
-     if (verbose > 0) write(lu_out,'(A)') '    Waiting for master to distribute inparam_basic...'
+     write(lu_out,*) 'Waiting for master to distribute inparam_basic...'
 
   end if
 
@@ -179,8 +179,10 @@ subroutine read_source(this)
        stop
    end if
 
+   call pbarrier
+
    if (master) then
-       write(lu_out,*)'  Reading source from file ', trim(this%source_file)
+       write(lu_out,*) 'Reading source from file ', trim(this%source_file)
        open(unit=lu_source, file=trim(this%source_file), status='old')
        read(lu_source,*) junk
        read(lu_source,*) junk, event_name
@@ -196,6 +198,10 @@ subroutine read_source(this)
        read(lu_source,*) junk, Mij_dyncm(5) !Mrp
        read(lu_source,*) junk, Mij_dyncm(6) !Mtp
        close(lu_source)
+
+   else
+      write(lu_out,*) 'Waiting for master to distribute source...'
+
    end if
 
    call pbroadcast_dble(latd, 0)
@@ -233,11 +239,17 @@ subroutine read_receiver(this)
        stop
    end if
 
+   call pbarrier
+
    if (master) then
-       write(lu_out,*)'  reading receivers from file ', trim(this%receiver_file)
+       write(lu_out,*)'Reading receivers from file ', trim(this%receiver_file)
        open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) this%nrec
        read(lu_receiver,*) this%model_param, this%component
+
+   else
+      write(lu_out,*) 'Waiting for master to distribute receivers...'
+
    end if
 
    call pbroadcast_int(this%nrec, 0)
@@ -294,7 +306,6 @@ subroutine read_receiver(this)
    this%nkernel = lastkernel
 
    write(lu_out,*) ' In total ', this%nkernel, ' Kernels to calculate'
-   call flush(lu_out)
 
    this%receiver_read = .true.
 
@@ -338,11 +349,17 @@ subroutine read_kernel(this, sem_data, filter)
        stop
    end if
 
+   call pbarrier
+
    if (master) then
-       write(6,*)'  reading kernels from file ', trim(this%receiver_file)
+       write(6,*)'Reading kernels from file ', trim(this%receiver_file)
        open(newunit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) 
        read(lu_receiver,*)
+
+   else
+      write(lu_out,*) 'Waiting for master to distribute kernels...'
+
    end if
 
    allocate(this%kernel(this%nkernel))
@@ -422,10 +439,14 @@ subroutine read_filter(this, nomega, df)
        stop
    end if
 
-   write(lu_out,*)'  reading filters from file ', trim(this%filter_file)
+   write(lu_out,*)'Reading filters from file ', trim(this%filter_file)
    if (master) then
        open(newunit=lu_filter, file=trim(this%filter_file), status='old')
        read(lu_filter, *) nfilter
+
+   else
+      write(lu_out,*) 'Waiting for master to distribute filters...'
+
    end if
 
    call pbroadcast_int(nfilter, 0)
