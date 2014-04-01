@@ -158,6 +158,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_int(this%npoints_per_step, 0)
   call pbroadcast_char(this%whattodo, 0)
 
+  write(lu_out,*)
   call flush(lu_out)
 
   this%parameters_read = .true.
@@ -211,7 +212,9 @@ subroutine read_source(this)
    
 
    call this%source%init(lat = latd, lon = lond, mij = Mij_dyncm*1.E-7)
-   call flush(6)
+
+   write(lu_out,*)
+   call flush(lu_out)
 
    this%source_read = .true.
 
@@ -308,6 +311,9 @@ subroutine read_receiver(this)
    write(lu_out,*) ' In total ', this%nkernel, ' Kernels to calculate'
 
    this%receiver_read = .true.
+
+   write(lu_out,*)
+   call flush(lu_out)
 
 end subroutine read_receiver
 !------------------------------------------------------------------------------
@@ -416,7 +422,9 @@ subroutine read_kernel(this, sem_data, filter)
 
    this%nkernel = this%receiver(this%nrec)%lastkernel
 
+   write(lu_out,*)
    call flush(lu_out)
+
    this%kernel_read = .true.
 
 end subroutine read_kernel
@@ -472,7 +480,10 @@ subroutine read_filter(this, nomega, df)
    end do
 
    if (master) close(lu_filter)
+
+   write(lu_out,*)
    call flush(lu_out)
+
    this%filter_read = .true.
 end subroutine
 !------------------------------------------------------------------------------
