@@ -38,7 +38,7 @@ subroutine do_slave() !, inv_mesh)
     integer                             :: mpistatus(MPI_STATUS_SIZE)
     real(kind=dp)                       :: df
     real(kind=dp), allocatable          :: K_x(:,:)
-    integer                             :: iel, ielement, ivertex
+    integer                             :: iel, ielement, ivertex, itask
     character(len=32)                   :: filtername
     character(len=64)                   :: fmtstring, fnam
     integer                             :: nptperstep
@@ -93,8 +93,13 @@ subroutine do_slave() !, inv_mesh)
     write(lu_out,*) ' Define kernels'
     write(lu_out,*) '***************************************************************'
     call parameters%read_kernel(sem_data, parameters%filter)
-
+    
+    itask = 0
     do 
+       write(lu_out,*) '***************************************************************'
+       write(lu_out,*) ' Waiting for tasks from master rank'
+       write(lu_out,*) '***************************************************************'
+
        ! Receive a message from the master
        iclockold = tick()
        call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
@@ -103,9 +108,12 @@ subroutine do_slave() !, inv_mesh)
 
        call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, wt%connectivity)
        ! Check the tag of the received message. If no more work to do, exit loop
-       ! and return to main programm
+       ! and return to main program
        if (mpistatus(MPI_TAG) == DIETAG) exit
 
+       itask = itask + 1
+       write(lu_out,*) '***************************************************************'
+       write(lu_out,*) ' Received task # ', itask, ', going to work'
        write(lu_out,*) '***************************************************************'
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
@@ -146,6 +154,11 @@ subroutine do_slave() !, inv_mesh)
        iclockold = tick(id=id_mpi, since=iclockold)
           
     end do
+
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' All work done. Did ', itask, ' tasks in total'
+    write(lu_out,*) '***************************************************************'
+
 
     write(lu_out,*)
     write(lu_out,*) '***************************************************************'
