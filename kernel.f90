@@ -98,7 +98,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    nomega = fft_data%get_nomega()
 
    fmtstring = '(A, I8, A, I8)'
-   write(lu_out,fmtstring) '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
+   write(lu_out,fmtstring) '   ntimes: ',  ntimes,     '  , nfreq: ', nomega
 
    allocate(seis_fd(nomega, 1))
    allocate(seis_filtered(ntimes_ft, 1))

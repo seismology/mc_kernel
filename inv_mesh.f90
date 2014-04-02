@@ -279,8 +279,6 @@ function generate_random_points(this, ielement, npoints) result(points)
   case('tet')
      points = generate_random_points_tet(this%get_element(ielement), npoints)
   case('quad')
-     !generate_random_points = generate_random_points_poly(4, this%get_element(ielement), &
-     !                                                     npoints)
      points2d = generate_random_points_poly(4, this%p_2d(:,:,ielement), npoints)
      do ipoint = 1, npoints
         points(:,ipoint) =   this%v_2d(:,0,ielement)                         &
@@ -365,6 +363,7 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
   real(kind=dp),    intent(in)     :: vertices(:,:)
   integer,          intent(in)     :: connectivity(:,:)
   integer                          :: ielement
+  character(len=255)               :: fmtstring
 
   if (this%initialized) &
      stop 'ERROR: Trying to initialize inversion mesh type that is already initialized'
@@ -372,7 +371,8 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
   this%nvertices = size(vertices,2)
   this%nelements = size(connectivity,2)
 
-  write(lu_out,*) 'Initialize mesh with ', this%nvertices, ' vertices and ', this%nelements, 'elements'
+  fmtstring = "('Initialize mesh with ', I5, ' vertices and ', I5, 'elements')"
+  write(lu_out,fmtstring) this%nvertices, this%nelements
 
   select case(ielem_type)
   case(1) ! tri
@@ -496,6 +496,8 @@ subroutine read_abaqus_mesh(this, filename)
   if (this%initialized) &
      stop 'ERROR: Trying to read mesh into inversion mesh type that is already initialized'
 
+  write(lu_out, *) 'Reading Mesh file from ', trim(filename)
+
   ! open file 
   open(newunit=iinput, file=trim(filename), status='old', &
        action='read', iostat=ierr)
@@ -598,6 +600,9 @@ subroutine read_abaqus_mesh(this, filename)
      call this%init_weight_tet_mesh()
   end if
 
+  write(lu_out, '("  Mesh type: ", A)')  trim(this%element_type)
+  write(lu_out, '("  nvertices: ", I8)') this%nvertices
+  write(lu_out, '("  nelements: ", I8)') this%nelements
 
   this%initialized = .true.
 end subroutine

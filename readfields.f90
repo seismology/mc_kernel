@@ -428,6 +428,8 @@ subroutine close_files(this)
     end do
     deallocate(this%bwd)
 
+    call flush(lu_out)
+
 end subroutine close_files
 
 !------------------------------------------------------------------------------
@@ -551,7 +553,9 @@ subroutine check_consistency(this)
     this%decimate_factor = nseis_agreed / ndumps_agreed
     this%nseis  = ndumps_agreed * this%decimate_factor        
 
-end subroutine
+    call flush(lu_out)
+
+end subroutine check_consistency
 
 !-------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
@@ -741,6 +745,8 @@ subroutine load_seismogram(this, receivers, src)
       this%veloseis(:, irec) = seismogram_velo(1:this%ndumps)
    end do
   
+   call flush(lu_out)
+
 
 end subroutine load_seismogram
 
@@ -825,8 +831,6 @@ function load_strain_point(sem_obj, pointid, model_param)
     real(kind=sp)                   :: utemp(sem_obj%ndumps)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
 
-
-
     select case(model_param)
     case('vp')
         allocate(load_strain_point(sem_obj%ndumps, 1))
@@ -886,9 +890,6 @@ function load_strain_point(sem_obj, pointid, model_param)
             end if
 
         end do
-
-
-
 
     end select
 
@@ -950,11 +951,15 @@ subroutine build_kdtree(this)
         stop
     end if
 
+    write(lu_out,*) ' Reshaping mesh variables'
+    call flush(lu_out)
     allocate(mesh(2, this%fwdmesh%npoints))
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
 
     write(lu_out,*) ' Building forward KD-Tree'
+    call flush(lu_out)
     ! KDtree in forward field
+    ! Gfortran gives a segfault somewhere around here. Not traceable, no idea, why
     this%fwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
                                    sort = .true.,     &
@@ -964,6 +969,7 @@ subroutine build_kdtree(this)
 
     ! KDtree in backward field
     write(lu_out,*) ' Building backward KD-Tree'
+    call flush(lu_out)
     allocate(mesh(2, this%bwdmesh%npoints))
     mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
     this%bwdtree => kdtree2_create(mesh,              &
@@ -971,6 +977,8 @@ subroutine build_kdtree(this)
                                    sort = .true.,     &
                                    rearrange = .true.)
     deallocate(mesh)                           
+
+    call flush(lu_out)
 
 end subroutine build_kdtree
 !-------------------------------------------------------------------------------
@@ -1088,6 +1096,9 @@ subroutine read_meshes(this)
                                    
     this%meshes_read = .true.
 
+    write(lu_out, *) 'Forward and backward SEM mesh reading succeeded'
+    call flush(lu_out)
+
 end subroutine read_meshes
 !-------------------------------------------------------------------------------
  
@@ -1145,7 +1156,7 @@ subroutine nc_open_for_read(filename, ncid)
       stop
    end if
 
-end subroutine
+end subroutine nc_open_for_read
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------

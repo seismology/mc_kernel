@@ -248,13 +248,11 @@ subroutine read_receiver(this)
    call pbroadcast_char(this%component, 0)
 
    this%model_param = to_lower(this%model_param)
-   if (master) then
-       fmtstring = '("  Using ", I5, " receivers")'
-       write(lu_out, fmtstring) this%nrec
-   
-       fmtstring = '("  Kernel for parameter ", A, " on component ", A)'
-       write(lu_out, fmtstring) this%model_param, this%component
-   end if
+   fmtstring = '("  Using ", I5, " receivers")'
+   write(lu_out, fmtstring) this%nrec
+
+   fmtstring = '("  Kernel for parameter ", A, " on component ", A)'
+   write(lu_out, fmtstring) this%model_param, this%component
 
    allocate(this%receiver(this%nrec))
 
@@ -284,6 +282,7 @@ subroutine read_receiver(this)
       write(lu_out, fmtstring) trim(recname), reclatd, reclond
       if (master) then
           do ikernel = 1, recnkernel
+             ! Just to advance the receiver file
              read(lu_receiver, *) !kernelname, filtername, timewindow
           end do
       end if
@@ -359,7 +358,7 @@ subroutine read_kernel(this, sem_data, filter)
    allocate(this%kernel(this%nkernel))
 
    if (.not. master) then
-       nfilter     = size(filter)
+       nfilter = size(filter)
        do ifilter = 1, nfilter
            call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
        end do
@@ -368,11 +367,11 @@ subroutine read_kernel(this, sem_data, filter)
    do irec = 1, this%nrec
       if (master) then
           read(lu_receiver, *) ! recname, reclatd, reclond, recnkernel
-
-          fmtstring = '("  Receiver ", A, ", has ", I3, " kernel, first and last:", 2(I5))'
-          write(lu_out,fmtstring) trim(this%receiver(irec)%name),  this%receiver(irec)%nkernel,&
-                           this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
       end if
+
+      fmtstring = '("  Receiver ", A, ", has ", I3, " kernel, first and last:", 2(I5))'
+      write(lu_out,fmtstring) trim(this%receiver(irec)%name),  this%receiver(irec)%nkernel,   &
+                              this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
 
       do ikernel = this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
 
