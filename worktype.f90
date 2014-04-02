@@ -50,10 +50,10 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   wt%nvertices          = nvertices
 
   fmtstring = '(A32, I5)'
-  write(lu_out, fmtstring), 'nkernel:', wt%ntotal_kernel
-  write(lu_out, fmtstring), 'nelems_per_task:', wt%nelems_per_task   
-  write(lu_out, fmtstring), 'nvertices_per_elem:', wt%nvertices_per_elem 
-  write(lu_out, fmtstring), 'nvertices:', wt%nvertices          
+  write(lu_out, fmtstring) 'nkernel:', wt%ntotal_kernel
+  write(lu_out, fmtstring) 'nelems_per_task:', wt%nelems_per_task   
+  write(lu_out, fmtstring) 'nvertices_per_elem:', wt%nvertices_per_elem 
+  write(lu_out, fmtstring) 'nvertices:', wt%nvertices          
 
   allocate(wt%connectivity(wt%nvertices_per_elem, wt%nelems_per_task))
   allocate(wt%vertices(3, wt%nvertices))
