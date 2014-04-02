@@ -1,0 +1,95 @@
+\documentclass[a4wide]{scrartcl}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amssymb}
+
+\author{Simon Stähler, Martin van Driel}
+\title{Kerner manual}
+
+
+\begin{document}
+ \maketitle
+ 
+ \begin{abstract}
+  This document is a very preliminary manual how to use the kerner program together with AxiSEM. It will be extended (hopefully).
+ \end{abstract} 
+ 
+ \section{Prequisites}
+ The \textit{kerner} should be run under Linux in combination with a recent version of AxiSEM (Release version 1.0 is not enough!). To get the latest version of AxiSEM, use \\
+ \verb|git clone https://github.com/geodynamics/axisem.git|.
+ 
+ NetCDF is needed as well, preferrably version 4.2. It can be downloaded and installed using the script shipped with AxiSEM.
+ 
+ The Makefile in axisem/SOLVER/UTILS is wrong. Replace it with the one in kerner/manual before compiling AxiSEM.
+ \subsection{Run AxiSEM}
+ The kerner needs two separate AxiSEM runs, one for the forward and one for the backward wavefield. One has to decide for a frequency first. This should especially depend on the disk space. A 50s run needs 5 GB in total, the space scales with the cube of the frequency. The background model of the mesh does not matter.
+ \subsubsection{Forward field}
+ Set these parameters, all others do not matter: \\
+ inparam\_basic
+ \begin{verbatim}
+  SIMULATION_TYPE   	moment
+  SEISMOGRAM_LENGTH  	1800.
+  MESHNAME            	IASP_50s
+  LAT_HETEROGENEITY   	false
+  SAVE_SNAPSHOTS       	false
+ \end{verbatim}
+ inparam\_advanced
+ \begin{verbatim}
+  SAMPLING_PERIOD     0.0
+  SOURCE_PERIOD       0.0
+  SOURCE_FUNCTION     errorf
+  USE_NETCDF          true
+  KERNEL_WAVEFIELDS   true
+  KERNEL_SPP          8
+  KERNEL_SOURCE       mask
+  KERNEL_IBEG         1
+  KERNEL_IEND         3
+ \end{verbatim}
+ Set the requested depth in CMTSOLUTION (can be any value)
+ 
+ \subsubsection{Backward field}
+ Set these parameters, all others do not matter:  \\
+ inparam\_basic:
+ \begin{verbatim}
+  SIMULATION_TYPE   	single
+  SEISMOGRAM_LENGTH  	1800.
+  MESHNAME            	IASP_50s
+  LAT_HETEROGENEITY   	false
+  SAVE_SNAPSHOTS       	false
+ \end{verbatim}
+ inparam\_advanced:
+ \begin{verbatim}
+  SAMPLING_PERIOD     0.0
+  SOURCE_PERIOD       0.0
+  SOURCE_FUNCTION     errorf
+  USE_NETCDF          true
+  KERNEL_WAVEFIELDS   true
+  KERNEL_SPP          8
+  KERNEL_SOURCE       mask
+  KERNEL_IBEG         1
+  KERNEL_IEND         3
+ \end{verbatim}
+ inparam\_source:
+ \begin{verbatim}
+  SOURCE_TYPE       vertforce
+  SOURCE_DEPTH      000.0
+  SOURCE_LAT         90.0
+  SOURCE_LON          0.0
+  SOURCE_AMPLITUDE   1E20
+ \end{verbatim}
+ Only depth and source type matter. 
+ \subsection{Reorder fields in NetCDF file}
+ After the runs have finished, run the script \verb|kerner/manual/ordered.sh| in the AxiSEM Solver directory. You may have to adapt the directory names of the forward and backward runs. This script will occupy another several GB on your disk. 
+ 
+ \section{Run the kerner}
+ The kerner settings are mainly set in \verb|inparam_basic|. The variables \verb|fwd_dir| and \verb|bwd_dir| should point to the run directories of the AxiSEM runs. I always use symbolic links in the \verb|wavefield| directory.\\
+ The kerner itself is run with:
+ \begin{verbatim}
+  mpirun -n $NTASKS ./kerner $PATH_TO_inparam_basic
+ \end{verbatim}
+ It can be run from any directory, as long as the \verb|$PATH_TO_inparam_basic| and the directories set within are correct. \verb|$NTASKS| has to be at least 2, to have one master and one slave.\\
+ For just plotting wavefields, start the code without MPI.
+ 
+ 
+\end{document}
