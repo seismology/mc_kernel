@@ -193,8 +193,8 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
          
-         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
-                                      * this%normalization
+         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) !&
+                                      !* this%normalization
       end do
 
    case('AM')
@@ -204,8 +204,8 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
          
-         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
-                                      * this%normalization
+         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt )! &
+                                      !* this%normalization
       end do
    end select
 

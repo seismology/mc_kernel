@@ -11,11 +11,13 @@ module filtering
        integer                         :: nfreq                !< Number of frequencies
        real(kind=dp), allocatable      :: f(:)
        logical                         :: initialized = .false.
+       logical                         :: stf_added = .false.
        character(len=32)               :: filterclass
        real(kind=dp)                   :: frequencies(4)
 
        contains
        procedure, pass   :: create
+       procedure, pass   :: add_stfs
        procedure, pass   :: deleteme
        procedure, pass   :: apply_1d
        procedure, pass   :: apply_2d
@@ -80,7 +82,77 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     end do
     close(10)
     this%initialized = .true.
+    this%stf_added = .false.
 end subroutine
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+!> Multiplies the transferfunction of the filter with the complex spectra of 
+!! the Source time functions of the SEM simulation, to cancel its effect.
+!! The filter is multiplied with the square root of the STF spectra, since it is
+!! applied twice later. (We could get around this by having separate filters for 
+!! the forward and the backward field.
+subroutine add_stfs(this, stf_fwd, stf_bwd)
+    use fft,                     only: rfft_type, taperandzeropad
+    class(filter_type)              :: this
+    real(kind=dp)   , intent(in)    :: stf_fwd(:), stf_bwd(:)
+
+    real(kind=dp)   , allocatable   :: stfs(:,:)
+    complex(kind=dp), allocatable   :: stfs_fd(:,:)
+
+    type(rfft_type)                 :: fft_stf
+    character(len=64)               :: fnam
+    integer                         :: ifreq
+
+    if (.not.this%initialized) then
+       write(*,*) 'ERROR: Filter is not initialized yet'
+       stop
+    end if
+
+    if (this%stf_added) then
+       write(*,*) 'ERROR: STF has already been added to filter ', trim(this%name)
+       stop
+    end if
+
+    call fft_stf%init(ntimes_in = size(stf_fwd), &
+                      ndim      = 1,             &
+                      ntraces   = 2             )
+
+
+    allocate(stfs(size(stf_fwd), 2))
+    allocate(stfs_fd(this%nfreq, 2))
+
+    stfs(:,1) = stf_fwd
+    stfs(:,2) = stf_bwd
+    
+    call fft_stf%rfft(taperandzeropad(stfs, fft_stf%get_ntimes()), stfs_fd)
+
+    this%transferfunction = this%transferfunction / sqrt(stfs_fd(:,1) * stfs_fd(:,2))
+    
+    call fft_stf%freeme()
+
+20  format('filterresponse_stf_', A, 2('_', F0.3))
+    write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
+    open(10, file=trim(fnam), action='write')
+    do ifreq = 1, this%nfreq
+       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), imag(this%transferfunction(ifreq))
+    end do
+    close(10)
+    
+21  format('stf_spectrum_', A, 2('_', F0.3))
+22  format(5(E15.8))
+    write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
+    open(10, file=trim(fnam), action='write')
+    do ifreq = 1, this%nfreq
+        write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
+                                     real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
+    end do
+    close(10)
+    
+    this%stf_added = .true.
+
+end subroutine add_stfs
+! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
 !> Delete this filter and free the memory
@@ -109,6 +181,7 @@ function apply_1d(this, freq_series)
    end if
    apply_1d = freq_series * this%transferfunction
 end function apply_1d 
+! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
 !> Apply this filter to multiple traces (in the frequency domain)
@@ -131,6 +204,7 @@ function apply_2d(this, freq_series)
    end do
 
 end function apply_2d
+! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
 !> Apply this filter to multiple dimensions and traces (in the frequency domain)
@@ -152,6 +226,7 @@ function apply_3d(this, freq_series)
 
    apply_3d = mult3d_1d(freq_series, this%transferfunction)
 end function apply_3d
+! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
 !> Returns the transfer function of this filter
@@ -168,6 +243,7 @@ function get_transferfunction(this)
     get_transferfunction(:,3) = imag(this%transferfunction(:))
 
 end function
+! -----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 function isinitialized(this)
@@ -176,6 +252,7 @@ function isinitialized(this)
 
    isinitialized = this%initialized
 end function
+! -----------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
 !> Apply a timeshift of dtshift on the frequency domain traces in field
@@ -198,7 +275,10 @@ subroutine timeshift_md(field, freq, dtshift)
    field(:,:,:) = mult3d_1d(field, shift_fd)
 
 end subroutine timeshift_md
+!-----------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------
+!> Apply a timeshift of dtshift on the frequency domain traces in field
 subroutine timeshift_1d(field, freq, dtshift)
 
    complex(kind=dp), intent(inout)  :: field(:,:)  !< Frequency domain traces to apply 
