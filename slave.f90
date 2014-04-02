@@ -15,7 +15,7 @@ module slave_mod
 contains
 
 !=========================================================================================
-subroutine do_slave() !, inv_mesh)
+subroutine do_slave() 
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, &
                                            init_random_seed, DIETAG, id_mpi
     use inversion_mesh,              only: inversion_mesh_data_type
@@ -26,7 +26,6 @@ subroutine do_slave() !, inv_mesh)
     use clocks_mod,                  only: tick
 
     implicit none
-    !type(parameter_type), intent(in)    :: parameters
     type(parameter_type)                :: parameters
     type(inversion_mesh_data_type)      :: inv_mesh
     type(semdata_type)                  :: sem_data
@@ -47,17 +46,22 @@ subroutine do_slave() !, inv_mesh)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Read input files for parameters, source and receivers'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
+
     call parameters%read_parameters()
     call parameters%read_source()
     call parameters%read_receiver()
 
     nptperstep = parameters%npoints_per_step
-    !nvertices = inv_mesh%nvertices_per_elem
-    ! nelems    = inv_mesh%get_nelements()
+
+    ! Master and slave part ways here for some time. 
+    ! Master reads in the inversion mesh, slaves initialize the FFT
 
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Initialize and open AxiSEM wavefield files'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
+
     call sem_data%set_params(parameters%fwd_dir,     &
                              parameters%bwd_dir,     &
                              parameters%buffer_size, & 
@@ -70,11 +74,11 @@ subroutine do_slave() !, inv_mesh)
 
     ndumps = sem_data%ndumps
 
-    !print *, 'What to do: ', trim(parameters%whattodo)
-
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Initialize FFT'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
+
     call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, measure=.true.)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
@@ -84,14 +88,20 @@ subroutine do_slave() !, inv_mesh)
     fmtstring = '(A, F8.3, A, F8.3, A)'
     write(lu_out,fmtstring) '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
+    ! Master and slave synchronize again
+
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Define filters'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
+
     call parameters%read_filter(nomega, df)
 
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Define kernels'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
+
     call parameters%read_kernel(sem_data, parameters%filter)
     
     itask = 0
@@ -99,6 +109,8 @@ subroutine do_slave() !, inv_mesh)
        write(lu_out,*) '***************************************************************'
        write(lu_out,*) ' Waiting for tasks from master rank'
        write(lu_out,*) '***************************************************************'
+       call flush(lu_out)
+
 
        ! Receive a message from the master
        iclockold = tick()
@@ -115,6 +127,7 @@ subroutine do_slave() !, inv_mesh)
        write(lu_out,*) '***************************************************************'
        write(lu_out,*) ' Received task # ', itask, ', going to work'
        write(lu_out,*) '***************************************************************'
+       call flush(lu_out)
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
 
@@ -158,12 +171,14 @@ subroutine do_slave() !, inv_mesh)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' All work done. Did ', itask, ' tasks in total'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
 
 
     write(lu_out,*)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Free memory of Kernelspecs'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
     do ikernel = 1, parameters%nkernel
        call parameters%kernel(ikernel)%freeme() 
     end do
@@ -172,18 +187,21 @@ subroutine do_slave() !, inv_mesh)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Free memory of inversion mesh datatype'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
     call inv_mesh%freeme
 
     write(lu_out,*)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Close AxiSEM wavefield files'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
     call sem_data%close_files()
 
     write(lu_out,*)
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Free memory of FFT datatype'
     write(lu_out,*) '***************************************************************'
+    call flush(lu_out)
     call fft_data%freeme()
 
 end subroutine do_slave
