@@ -27,17 +27,19 @@ subroutine init_queue(ntasks)
   integer               :: itask, nelems, iel
   character(len=64)     :: fmtstring
   
-  write(lu_out,*) '***************************************************************'
-  write(lu_out,*) ' Read input files for parameters, source and receivers'
-  write(lu_out,*) '***************************************************************'
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
+  write(lu_out,'(A)') '***************************************************************'
   call parameters%read_parameters()
   call parameters%read_source()
   call parameters%read_receiver()
 
+  ! Master and slave part ways here for some time. 
+  ! Master reads in the inversion mesh, slaves initialize the FFT
 
-  write(lu_out,*) '***************************************************************'
-  write(lu_out,*) ' Read inversion mesh'
-  write(lu_out,*) '***************************************************************'
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Read inversion mesh'
+  write(lu_out,'(A)') '***************************************************************'
   if (trim(parameters%mesh_file).eq.'Karin') then
     call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
   else
@@ -51,14 +53,16 @@ subroutine init_queue(ntasks)
   allocate(connectivity(inv_mesh%nvertices_per_elem, nelems))
   connectivity = inv_mesh%get_connectivity()
   
-  write(lu_out,*) '***************************************************************'
-  write(lu_out,*) ' Define filters'
-  write(lu_out,*) '***************************************************************'
+  ! Master and slave synchronize again
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Define filters'
+  write(lu_out,'(A)') '***************************************************************'
   call parameters%read_filter()
 
-  write(lu_out,*) '***************************************************************'
-  write(lu_out,*) ' Define kernels'
-  write(lu_out,*) '***************************************************************'
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Define kernels'
+  write(lu_out,'(A)') '***************************************************************'
   call parameters%read_kernel()
 
   allocate(niterations(parameters%nkernel, nelems))
@@ -87,9 +91,9 @@ subroutine init_queue(ntasks)
   allocate(Err(inv_mesh%get_nvertices(), parameters%nkernel))
   Err = 0.0
 
-  write(lu_out,*) '***************************************************************'
-  write(lu_out,*) ' Starting to distribute the work'
-  write(lu_out,*) '***************************************************************'
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Starting to distribute the work'
+  write(lu_out,'(A)') '***************************************************************'
   
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -156,9 +160,9 @@ end subroutine
 subroutine finalize()
   integer       :: ikernel, ivertex
 
-  write(lu_out,*) '***************************************************************'
-  write(lu_out,*) 'Initialize output file'
-  write(lu_out,*) '***************************************************************'
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') 'Initialize output file'
+  write(lu_out,'(A)') '***************************************************************'
   call inv_mesh%init_node_data(parameters%nkernel*2)
 
   ! Save big kernel variable to disk

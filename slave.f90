@@ -43,9 +43,9 @@ subroutine do_slave()
     integer                             :: nptperstep
     real(kind=dp), allocatable          :: workresult(:,:,:)
 
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Read input files for parameters, source and receivers'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
     call parameters%read_parameters()
@@ -57,9 +57,9 @@ subroutine do_slave()
     ! Master and slave part ways here for some time. 
     ! Master reads in the inversion mesh, slaves initialize the FFT
 
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Initialize and open AxiSEM wavefield files'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Initialize and open AxiSEM wavefield files'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
     call sem_data%set_params(parameters%fwd_dir,     &
@@ -74,9 +74,9 @@ subroutine do_slave()
 
     ndumps = sem_data%ndumps
 
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Initialize FFT'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Initialize FFT'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
     call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, measure=.true.)
@@ -90,25 +90,25 @@ subroutine do_slave()
 
     ! Master and slave synchronize again
 
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Define filters'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Define filters'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
     call parameters%read_filter(nomega, df)
 
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Define kernels'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Define kernels'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
     call parameters%read_kernel(sem_data, parameters%filter)
     
     itask = 0
     do 
-       write(lu_out,*) '***************************************************************'
-       write(lu_out,*) ' Waiting for tasks from master rank'
-       write(lu_out,*) '***************************************************************'
+       write(lu_out,'(A)') '***************************************************************'
+       write(lu_out,'(A)') ' Waiting for tasks from master rank'
+       write(lu_out,'(A)') '***************************************************************'
        call flush(lu_out)
 
 
@@ -124,9 +124,9 @@ subroutine do_slave()
        if (mpistatus(MPI_TAG) == DIETAG) exit
 
        itask = itask + 1
-       write(lu_out,*) '***************************************************************'
-       write(lu_out,*) ' Received task # ', itask, ', going to work'
-       write(lu_out,*) '***************************************************************'
+       write(lu_out,'(A)') '***************************************************************'
+       write(lu_out,'(A, I3, A)') ' Received task # ', itask, ', going to work'
+       write(lu_out,'(A)') '***************************************************************'
        call flush(lu_out)
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
@@ -168,39 +168,39 @@ subroutine do_slave()
           
     end do
 
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' All work done. Did ', itask, ' tasks in total'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A, I3, A)') ' All work done. Did ', itask, ' tasks in total'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
 
-    write(lu_out,*)
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Free memory of Kernelspecs'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)')
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Free memory of Kernelspecs'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
     do ikernel = 1, parameters%nkernel
        call parameters%kernel(ikernel)%freeme() 
     end do
    
-    write(lu_out,*)
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Free memory of inversion mesh datatype'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)')
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Free memory of inversion mesh datatype'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
     call inv_mesh%freeme
 
-    write(lu_out,*)
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Close AxiSEM wavefield files'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)')
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Close AxiSEM wavefield files'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
     call sem_data%close_files()
 
-    write(lu_out,*)
-    write(lu_out,*) '***************************************************************'
-    write(lu_out,*) ' Free memory of FFT datatype'
-    write(lu_out,*) '***************************************************************'
+    write(lu_out,'(A)')
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Free memory of FFT datatype'
+    write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
     call fft_data%freeme()
 
