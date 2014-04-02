@@ -147,4 +147,17 @@ subroutine ppend
 
 end subroutine ppend
 !=============================================================================
+
+!-----------------------------------------------------------------------------
+subroutine pabort
+!< Calls MPI_ABORT
+  integer :: ierror
+
+  print *, 'Processor ', myrank, ' has found an error and aborts computation'
+  call MPI_ABORT(MPI_COMM_WORLD, 0, ierror)
+
+  stop
+
+end subroutine pabort
+!=============================================================================
 end module
