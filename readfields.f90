@@ -1,9 +1,9 @@
 module readfields
     use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank, id_buffer, id_netcdf, id_rotate
-    use source_class,          only        : src_param_type
-    use receiver_class,        only        : rec_param_type
-    use buffer, only                       : buffer_type
-    use clocks_mod, only                   : tick
+    use source_class,      only             : src_param_type
+    use receiver_class,    only            : rec_param_type
+    use buffer,            only            : buffer_type
+    use clocks_mod,        only            : tick
     use netcdf
     use kdtree2_module                     
 
@@ -161,7 +161,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     write(lu_out, *) 'Model parameter: ', trim(this%model_param), &
                      ', Dimension of wavefields: ', this%ndim
 
-
+    call flush(lu_out)
     this%params_set = .true.
 
 end subroutine
@@ -289,6 +289,7 @@ subroutine open_files(this)
                                   values = this%fwd(isim)%stf  ))
     end do
         
+    call flush(lu_out)
 
     do isim = 1, this%nsim_bwd
         ! Backward wavefield
@@ -373,6 +374,7 @@ subroutine open_files(this)
     end do
 
 
+    call flush(lu_out)
     call this%check_consistency()
 
     call flush(6) 
@@ -393,6 +395,7 @@ subroutine open_files(this)
                                                            this%bwd(isim)%ndumps)
         end do
     end do
+    call flush(lu_out)
 
 end subroutine open_files
 
