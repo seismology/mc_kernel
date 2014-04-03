@@ -1,11 +1,12 @@
+!=========================================================================================
 module type_parameter
-    use global_parameters,               only : sp, dp, pi, deg2rad, verbose, lu_out, master
-    use source_class,                    only : src_param_type
-    use kernel,                          only : kernelspec_type
-    use receiver_class,                  only : rec_param_type
-    use filtering,                       only : filter_type
-    use commpi,                          only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
-                                                pbroadcast_dble_arr, pbarrier
+    use global_parameters,  only : sp, dp, pi, deg2rad, verbose, lu_out, master
+    use source_class,       only : src_param_type
+    use kernel,             only : kernelspec_type
+    use receiver_class,     only : rec_param_type
+    use filtering,          only : filter_type
+    use commpi,             only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
+                                   pbroadcast_dble_arr, pbarrier
     implicit none    
 
     type parameter_type
@@ -46,7 +47,7 @@ module type_parameter
 
 contains
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine read_parameters(this, input_file_in)
    class(parameter_type)           :: this
    character(len=*), intent(in), optional :: input_file_in
@@ -71,7 +72,8 @@ subroutine read_parameters(this, input_file_in)
      end if
 
      write(lu_out,'(" Reading ", A, "...")') trim(input_file)
-     open(newunit=lu_inparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
+     open(newunit=lu_inparam_basic, file=trim(input_file), status='old', &
+          action='read', iostat=ioerr)
      if (ioerr /= 0) then
         print *, 'ERROR: Check input file ''', trim(input_file), '''! Is it still there?' 
         stop
@@ -152,10 +154,9 @@ subroutine read_parameters(this, input_file_in)
   this%parameters_read = .true.
 
 end subroutine read_parameters
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine read_source(this)
    class(parameter_type)          :: this
    real(kind=dp)                  :: Mij_dyncm(6), latd, lond, depth
@@ -207,9 +208,9 @@ subroutine read_source(this)
    this%source_read = .true.
 
 end subroutine read_source
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine read_receiver(this)
    use simple_routines, only      : to_lower 
    class(parameter_type)         :: this
@@ -303,9 +304,9 @@ subroutine read_receiver(this)
    call flush(lu_out)
 
 end subroutine read_receiver
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine read_kernel(this, sem_data, filter)
    use readfields, only            : semdata_type
    use filtering,  only            : filter_type
@@ -420,9 +421,9 @@ subroutine read_kernel(this, sem_data, filter)
    this%kernel_read = .true.
 
 end subroutine read_kernel
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine read_filter(this, nomega, df)
    use filtering, only        : filter_type
    class(parameter_type)     :: this
@@ -478,6 +479,7 @@ subroutine read_filter(this, nomega, df)
 
    this%filter_read = .true.
 end subroutine
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
 end module
+!=========================================================================================
