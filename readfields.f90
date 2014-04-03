@@ -1,6 +1,8 @@
+!=========================================================================================
 module readfields
-    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, myrank, id_buffer, id_netcdf, id_rotate
-    use source_class,      only             : src_param_type
+    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, &
+                                             myrank, id_buffer, id_netcdf, id_rotate
+    use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
     use clocks_mod,        only            : tick
@@ -78,7 +80,7 @@ module readfields
     end type
 contains
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 function get_ndim(this)
     class(semdata_type)            :: this
     integer                        :: get_ndim
@@ -89,10 +91,9 @@ function get_ndim(this)
     end if
     get_ndim = this%ndim
 end function
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     class(semdata_type)            :: this
     character(len=512), intent(in) :: fwd_dir, bwd_dir
@@ -165,10 +166,9 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     this%params_set = .true.
 
 end subroutine
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine open_files(this)
 
     class(semdata_type)              :: this
@@ -398,8 +398,9 @@ subroutine open_files(this)
     call flush(lu_out)
 
 end subroutine open_files
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine close_files(this)
     class(semdata_type)   :: this
     integer              :: status, isim, istrainvar
@@ -431,8 +432,9 @@ subroutine close_files(this)
     call flush(lu_out)
 
 end subroutine close_files
+!-----------------------------------------------------------------------------------------
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine check_consistency(this)
     !< Checks consistency of the wavefield dumps
     class(semdata_type)    :: this
@@ -556,8 +558,9 @@ subroutine check_consistency(this)
     call flush(lu_out)
 
 end subroutine check_consistency
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
     use source_class, only             : src_param_type
     use simple_routines, only          : mult2d_1d
@@ -565,7 +568,8 @@ function load_fw_points(this, coordinates, source_params)
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type), intent(in)  :: source_params
     type(kdtree2_result), allocatable :: nextpoint(:)
-    real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, size(coordinates,2))
+    real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
+                                                        size(coordinates,2))
 
     integer                           :: npoints
     integer                           :: pointid(size(coordinates,2))
@@ -640,8 +644,9 @@ function load_fw_points(this, coordinates, source_params)
     end do !ipoint
 
 end function load_fw_points
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine load_seismogram(this, receivers, src)
 !< This function loads a seismogram 
    class(semdata_type)      :: this
@@ -710,9 +715,10 @@ subroutine load_seismogram(this, receivers, src)
       end select
       
       isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receivers(irec)%theta), 1 )
-      write(lu_out,'(A,F8.4,A,I5,A,F8.4)') 'Receiver with theta ', receivers(irec)%theta/deg2rad, &
-                                    ' has element ', isurfelem, &
-                                    ' with theta: ', this%fwdmesh%theta(isurfelem)
+      write(lu_out,'(A,F8.4,A,I5,A,F8.4)') &
+                'Receiver with theta ', receivers(irec)%theta/deg2rad, &
+                ' has element ', isurfelem, &
+                ' with theta: ', this%fwdmesh%theta(isurfelem)
       
       seismogram_disp = 0.0
       seismogram_velo = 0.0
@@ -720,8 +726,10 @@ subroutine load_seismogram(this, receivers, src)
       write(lu_out,'(A,4(E12.4))') 'Mij prefactors: ', mij_prefact
       
       do isim = 1, this%nsim_fwd
-         write(lu_out,'(A,I1,A,I5,A,I2,A,I6)') 'Sim: ', isim, ' Read element', isurfelem, &
-                                               ', component: ', reccomp, ', no of samples:', this%ndumps
+         write(lu_out,'(A,I1,A,I5,A,I2,A,I6)') &
+                'Sim: ', isim, ' Read element', isurfelem, &
+                ', component: ', reccomp, ', no of samples:', this%ndumps
+
          ! Displacement seismogram
          call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
                                    varid  = this%fwd(isim)%seis_disp,   &
@@ -749,13 +757,15 @@ subroutine load_seismogram(this, receivers, src)
 
 
 end subroutine load_seismogram
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 function load_bw_points(this, coordinates, receiver)
     class(semdata_type)                :: this
     real(kind=dp), intent(in)          :: coordinates(:,:)
     type(rec_param_type)               :: receiver
-    real(kind=dp)                      :: load_bw_points(this%ndumps, this%ndim, size(coordinates,2))
+    real(kind=dp)                      :: load_bw_points(this%ndumps, this%ndim, &
+                                                         size(coordinates,2))
     real(kind=sp)                      :: utemp(this%ndumps, this%ndim)
     type(kdtree2_result), allocatable  :: nextpoint(:)
 
@@ -802,24 +812,28 @@ function load_bw_points(this, coordinates, receiver)
         
         select case(receiver%component)
         case('Z')
-            load_bw_points(:,:,ipoint) =                               utemp / this%bwd(1)%amplitude
+            load_bw_points(:,:,ipoint) &
+                =                               utemp / this%bwd(1)%amplitude
         case('R')
-            load_bw_points(:,:,ipoint) =   dcos(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude
+            load_bw_points(:,:,ipoint) &
+                =   dcos(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude
         case('T')
-            load_bw_points(:,:,ipoint) = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude 
+            load_bw_points(:,:,ipoint) &
+                = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude 
         end select
 
         if (this%model_param.eq.'vs') then
-            load_bw_points(:,:,ipoint) = rotate_straintensor(load_bw_points(:,:,ipoint), &
-                                                             rotmesh_phi(ipoint),        &
-                                                             real([1, 1, 1, 0, 0, 0], kind=dp), 1)
+            load_bw_points(:,:,ipoint) &
+                = rotate_straintensor(load_bw_points(:,:,ipoint), &
+                                      rotmesh_phi(ipoint),        &
+                                      real([1, 1, 1, 0, 0, 0], kind=dp), 1)
         end if
     end do !ipoint
 
 end function load_bw_points
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 function load_strain_point(sem_obj, pointid, model_param)
     type(ncparamtype), intent(in)   :: sem_obj
     integer, intent(in)             :: pointid
@@ -881,10 +895,12 @@ function load_strain_point(sem_obj, pointid, model_param)
                                          values = utemp_chunk) )
                iclockold = tick(id=id_netcdf, since=iclockold)
                do iread = 0, sem_obj%chunk_gll - 1
-                   status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, utemp_chunk(iread+1,:))
+                   status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
+                                                           utemp_chunk(iread+1,:))
                end do
                iclockold = tick(id=id_buffer, since=iclockold)
-               load_strain_point(:,istrainvar) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
+               load_strain_point(:,istrainvar) &
+                    = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
             else
                load_strain_point(:,istrainvar) = real(utemp, kind=dp)
             end if
@@ -894,9 +910,9 @@ function load_strain_point(sem_obj, pointid, model_param)
     end select
 
 end function load_strain_point
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 function azim_factor(phi, mij, isim, ikind)
     real(kind=dp), intent(in)    :: phi
     real(kind=dp), intent(in)    :: mij(6)
@@ -937,9 +953,9 @@ function azim_factor(phi, mij, isim, ikind)
     end select
 
 end function
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine build_kdtree(this)
     class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
@@ -981,9 +997,9 @@ subroutine build_kdtree(this)
     call flush(lu_out)
 
 end subroutine build_kdtree
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
     class(semdata_type)    :: this
@@ -1100,10 +1116,9 @@ subroutine read_meshes(this)
     call flush(lu_out)
 
 end subroutine read_meshes
-!-------------------------------------------------------------------------------
- 
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine check(status)
 ! Translates netcdf error codes into error messages
 
@@ -1116,9 +1131,9 @@ subroutine check(status)
      !call tracebackqq()
   end if
 end subroutine check  
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine getvarid(ncid, name, varid)
     integer, intent(in)          :: ncid
     character(len=*), intent(in) :: name
@@ -1137,9 +1152,9 @@ subroutine getvarid(ncid, name, varid)
 100 format('ERROR: CPU ', I4, ' could not find variable: ''', A, ''' in NCID', I7)
 101 format('  Variable ''', A, ''' found in NCID', I7, ', has ID:', I7)
 end subroutine
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine nc_open_for_read(filename, ncid)
    character(len=*), intent(in)  :: filename
    integer, intent(out)          :: ncid
@@ -1151,15 +1166,16 @@ subroutine nc_open_for_read(filename, ncid)
                       ncid     = ncid)
 
    if (status.ne.nf90_noerr) then
-      fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', but could not find it')"
+      fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', " &
+                    // "but could not find it')"
       print fmtstring, myrank, trim(filename)
       stop
    end if
 
 end subroutine nc_open_for_read
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine getgrpid(ncid, name, grp_ncid)
     integer, intent(in)          :: ncid
     character(len=*), intent(in) :: name
@@ -1179,9 +1195,9 @@ subroutine getgrpid(ncid, name, grp_ncid)
 100 format('ERROR: CPU ', I4, ' could not find group: ''', A, ''' in NCID', I7)
 101 format('    Group ''', A, ''' found in NCID', I7, ', has ID:', I7)
 end subroutine getgrpid
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
 subroutine nc_read_att_int(attribute_value, attribute_name, nc)
   character(len=*),  intent(in)     :: attribute_name
@@ -1197,9 +1213,9 @@ subroutine nc_read_att_int(attribute_value, attribute_name, nc)
       stop
   end if
 end subroutine nc_read_att_int
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Character
 subroutine nc_read_att_char(attribute_value, attribute_name, nc)
   character(len=*),  intent(in)     :: attribute_name
@@ -1215,9 +1231,9 @@ subroutine nc_read_att_char(attribute_value, attribute_name, nc)
       stop 2
   end if
 end subroutine nc_read_att_char
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Real
 subroutine nc_read_att_real(attribute_value, attribute_name, nc)
   character(len=*),  intent(in)     :: attribute_name
@@ -1233,9 +1249,9 @@ subroutine nc_read_att_real(attribute_value, attribute_name, nc)
       stop 2
   end if
 end subroutine nc_read_att_real
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Double
 subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
   character(len=*),  intent(in)     :: attribute_name
@@ -1251,9 +1267,9 @@ subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
       stop 2
   end if
 end subroutine nc_read_att_dble
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
     !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
     !! 'strain_dsup', 'strain_dzup', 'straintrace']
@@ -1321,9 +1337,9 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
     tensor_return(:,6) = tensor_matrix(2,3,:) !yz
 
 end function rotate_straintensor
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
 
     implicit none
@@ -1344,7 +1360,7 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
     real(kind=dp)                                  :: phi_cp
     integer                                        :: ipt
 
-    !!first rotation (longitude)
+    !first rotation (longitude)
     xp_cp =  rgd(1,:) * dcos(phigr) + rgd(2,:) * dsin(phigr)
     yp_cp = -rgd(1,:) * dsin(phigr) + rgd(2,:) * dcos(phigr)
     zp_cp =  rgd(3,:)
@@ -1365,7 +1381,7 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
        endif
     enddo
 end subroutine rotate_frame_rd
-!-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!=============================================================================
 end module
+!=========================================================================================
