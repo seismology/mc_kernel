@@ -14,7 +14,7 @@ module commpi
   private 
 
   public  :: pbroadcast_dble, pbroadcast_dble_arr, pbroadcast_char, pbroadcast_log
-  public  :: pbroadcast_int_arr, pbroadcast_int, ppinit, pbarrier, ppend
+  public  :: pbroadcast_int_arr, pbroadcast_int, ppinit, pbarrier, ppend, pabort
 
 contains
 
@@ -154,6 +154,16 @@ subroutine pabort
   integer :: ierror
 
   print *, 'Processor ', myrank, ' has found an error and aborts computation'
+
+#if defined(__GFORTRAN__)
+#if (__GNUC_MINOR__>=8)
+  call backtrace
+#endif
+#endif
+#if defined(__INTEL_COMPILER)
+  call tracebackqq()
+#endif
+
   call MPI_ABORT(MPI_COMM_WORLD, 0, ierror)
 
   stop
