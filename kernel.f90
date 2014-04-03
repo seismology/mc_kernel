@@ -1,3 +1,4 @@
+!=========================================================================================
 module kernel
 use global_parameters,                    only: sp, dp, verbose, lu_out
 use filtering,                            only: filter_type
@@ -334,7 +335,5 @@ pure function integrate(timeseries, dt)
 end function integrate
 !-------------------------------------------------------------------------------
 
-
-
-
 end module
+!=========================================================================================

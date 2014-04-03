@@ -27,20 +27,22 @@ module global_parameters
   contains
 
 
-SUBROUTINE init_random_seed()
-   INTEGER :: i, n, clock
-   INTEGER, DIMENSION(:), ALLOCATABLE :: seed
+!-----------------------------------------------------------------------------------------
+subroutine init_random_seed()
+   integer :: i, n, clock
+   integer, dimension(:), allocatable :: seed
                                                   
-   CALL RANDOM_SEED(size = n)
-   ALLOCATE(seed(n))
+   call random_seed(size = n)
+   allocate(seed(n))
 
-   CALL SYSTEM_CLOCK(COUNT=clock)
+   call system_clock(count=clock)
 
    seed = clock + 37 * (/ (i - 1, i = 1, n) /)
-   CALL RANDOM_SEED(PUT = seed)
+   call random_seed(put = seed)
 
-   DEALLOCATE(seed)
-END SUBROUTINE
+   deallocate(seed)
+end subroutine
+!-----------------------------------------------------------------------------------------
 
 
 end module
