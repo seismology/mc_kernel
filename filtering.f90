@@ -2,6 +2,7 @@ module filtering
    
    use global_parameters
    use simple_routines,  only           : mult2d_1d, mult3d_1d
+   use commpi,           only           : pabort
    
    implicit none
 
@@ -51,7 +52,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        write(*,*) 'ERROR: This filter is already initialized as'
        write(*, fmtstring) trim(this%filterclass), this%frequencies
        write(*,*) 'delete it first before using'
-       stop
+       call pabort
     end if
     allocate(this%transferfunction(nfreq))
     allocate(this%f(nfreq))
@@ -71,7 +72,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2))
     case default
        print *, 'ERROR: Unknown filter type: ', trim(filterclass)
-       stop
+       call pabort
     end select
 
 20  format('filterresponse_', A, 2('_', F0.6))
@@ -106,12 +107,12 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 
     if (.not.this%initialized) then
        write(*,*) 'ERROR: Filter is not initialized yet'
-       stop
+       call pabort
     end if
 
     if (this%stf_added) then
        write(*,*) 'ERROR: STF has already been added to filter ', trim(this%name)
-       stop
+       call pabort
     end if
 
     call fft_stf%init(ntimes_in = size(stf_fwd), &
@@ -173,11 +174,11 @@ function apply_1d(this, freq_series)
    complex(kind=dp)                 :: apply_1d(size(freq_series))
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      stop
+      call pabort
    end if
    if (size(freq_series, 1).ne.this%nfreq) then
       write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', size(freq_series, 1)
-      stop
+      call pabort
    end if
    apply_1d = freq_series * this%transferfunction
 end function apply_1d 
@@ -193,11 +194,11 @@ function apply_2d(this, freq_series)
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      stop
+      call pabort
    end if
    if (size(freq_series, 1).ne.this%nfreq) then
       write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', size(freq_series, 1)
-      stop
+      call pabort
    end if
    do itrace = 1, (size(freq_series, 2))
       apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction(:)
@@ -217,11 +218,11 @@ function apply_3d(this, freq_series)
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      stop
+      call pabort
    end if
    if (size(freq_series, 1).ne.this%nfreq) then
       write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', size(freq_series, 1)
-      stop
+      call pabort
    end if
 
    apply_3d = mult3d_1d(freq_series, this%transferfunction)
@@ -236,7 +237,7 @@ function get_transferfunction(this)
 
     if (.not.this%initialized) then
        write(*,*) 'ERROR: Filter is not initialized yet'
-       stop
+       call pabort
     end if
     get_transferfunction(:,1) = this%f(:)
     get_transferfunction(:,2) = real(this%transferfunction(:))

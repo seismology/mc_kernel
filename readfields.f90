@@ -4,6 +4,7 @@ module readfields
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
     use clocks_mod,        only            : tick
+    use commpi,            only            : pabort
     use netcdf
     use kdtree2_module                     
 
@@ -85,7 +86,7 @@ function get_ndim(this)
     if (.not.this%params_set) then
         print *, 'ERROR in get_ndim(): Parameters have to be set first'
         print *, 'Call set_params before get_ndim()'
-        stop
+        call pabort
     end if
     get_ndim = this%ndim
 end function
@@ -181,7 +182,7 @@ subroutine open_files(this)
     if (.not.this%params_set) then
         print *, 'ERROR in open_files(): Parameters have to be set first'
         print *, 'Call set_params before open_files()'
-        stop
+        call pabort
     end if
 
     nc_varnamelist = ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
@@ -214,7 +215,7 @@ subroutine open_files(this)
                 this%fwd(isim)%strainvarid(istrainvar) = -1
                 if (istrainvar==6.) then
                     print *, 'Did not find variable ''straintrace'' in NetCDF file'
-                    stop
+                    call pabort
                 end if
             end if
         end do
@@ -311,7 +312,7 @@ subroutine open_files(this)
                 this%bwd(isim)%strainvarid(istrainvar) = -1
                 if (istrainvar==6.) then
                     print *, 'Did not find variable ''straintrace'' in NetCDF file'
-                    stop
+                    call pabort
                 end if
             end if
         end do
@@ -451,7 +452,7 @@ subroutine check_consistency(this)
     do isim = 1, this%nsim_fwd
        if (dt_agreed.ne.this%fwd(isim)%dt) then
           write(*,fmtstring) 'dt', isim, dt_agreed, this%fwd(isim)%dt
-          stop
+          call pabort
        end if
     end do
 
@@ -461,7 +462,7 @@ subroutine check_consistency(this)
     do isim = 1, this%nsim_bwd
        if (dt_agreed.ne.this%bwd(isim)%dt) then
           write(*,fmtstring) 'dt', isim, dt_agreed, this%bwd(isim)%dt
-          stop
+          call pabort
        end if
     end do
 
@@ -476,11 +477,11 @@ subroutine check_consistency(this)
     do isim = 1, this%nsim_fwd
        if (ndumps_agreed.ne.this%fwd(isim)%ndumps) then
           write(*,fmtstring) 'ndumps', isim, ndumps_agreed, this%fwd(isim)%ndumps
-          stop
+          call pabort
        end if
        if (nseis_agreed.ne.this%fwd(isim)%nseis) then
           write(*,fmtstring) 'nseis', isim, nseis_agreed, this%fwd(isim)%nseis
-          stop
+          call pabort
        end if
     end do
 
@@ -491,11 +492,11 @@ subroutine check_consistency(this)
     do isim = 1, this%nsim_bwd
        if (ndumps_agreed.ne.this%bwd(isim)%ndumps) then
           write(*,fmtstring) 'ndumps', isim, ndumps_agreed, this%bwd(isim)%ndumps
-          stop
+          call pabort
        end if
        if (nseis_agreed.ne.this%bwd(isim)%nseis) then
           write(*,fmtstring) 'nseis', isim, nseis_agreed, this%bwd(isim)%nseis
-          stop
+          call pabort
        end if
     end do
 
@@ -514,11 +515,11 @@ subroutine check_consistency(this)
        if (source_shift_agreed_fwd.ne.this%fwd(isim)%source_shift_t) then
           write(*,fmtstring) 'source time shift', isim, source_shift_agreed_fwd, &
                              this%fwd(isim)%source_shift_t
-          stop
+          call pabort
        end if
        if (any(abs(stf_agreed_fwd - this%fwd(isim)%stf).gt.1e-10)) then
            write(*,fmtstring) 'stf', isim
-           stop
+           call pabort
        end if
     end do
 
@@ -533,11 +534,11 @@ subroutine check_consistency(this)
        if (source_shift_agreed_bwd.ne.this%bwd(isim)%source_shift_t) then
           write(*,fmtstring) 'source time shift', isim, source_shift_agreed_bwd, &
                              this%bwd(isim)%source_shift_t
-          stop
+          call pabort
        end if
        if (any(abs(stf_agreed_bwd - this%bwd(isim)%stf).gt.1e-10)) then
            write(*,fmtstring) 'stf', isim
-           stop
+           call pabort
        end if
     end do
 
@@ -578,7 +579,7 @@ function load_fw_points(this, coordinates, source_params)
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
        write(*,*) ' 3 x npoints array'
-       stop 2
+       call pabort 
     end if
     npoints = size(coordinates,2)
 
@@ -656,7 +657,7 @@ subroutine load_seismogram(this, receivers, src)
    if (.not.this%meshes_read) then
        print *, 'ERROR in load_seismogram(): Meshes have not been read yet'
        print *, 'Call read_meshes() before build_kdtree!'
-       stop
+       call pabort
    end if
       
    nrec = size(receivers)
@@ -706,7 +707,7 @@ subroutine load_seismogram(this, receivers, src)
          reccomp = 3
       case default
          print *, 'ERROR: Unknown receiver component: ', receivers(irec)%component
-         stop
+         call pabort
       end select
       
       isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receivers(irec)%theta), 1 )
@@ -769,7 +770,7 @@ function load_bw_points(this, coordinates, receiver)
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_bw_points: input variable coordinates has to be a '
        write(*,*) ' 3 x npoints array'
-       stop 2
+       call pabort 
     end if
     npoints = size(coordinates,2)
 
@@ -948,7 +949,7 @@ subroutine build_kdtree(this)
     if (.not.this%meshes_read) then
         print *, 'ERROR in build_kdtree(): Meshes have not been read yet'
         print *, 'Call read_meshes() before build_kdtree!'
-        stop
+        call pabort
     end if
 
     write(lu_out,*) ' Reshaping mesh variables'
@@ -994,7 +995,7 @@ subroutine read_meshes(this)
     if (.not.this%files_open) then
         print *, 'ERROR in read_meshes(): Files have not been opened!'
         print *, 'Call open_files() before read_meshes()'
-        stop
+        call pabort
     end if
 
     ! Forward SEM mesh
@@ -1112,7 +1113,7 @@ subroutine check(status)
 
   if(status /= nf90_noerr) then 
      print *, trim(nf90_strerror(status))
-     stop 2
+     call pabort
      !call tracebackqq()
   end if
 end subroutine check  
@@ -1130,7 +1131,7 @@ subroutine getvarid(ncid, name, varid)
                              varid = varid )
     if (status.ne.NF90_NOERR) then
         write(6,100) myrank, trim(name), ncid
-        stop
+        call pabort
     elseif (myrank.eq.0) then
         if (verbose>0) write(lu_out,101) trim(name), ncid, varid
     end if
@@ -1153,7 +1154,7 @@ subroutine nc_open_for_read(filename, ncid)
    if (status.ne.nf90_noerr) then
       fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', but could not find it')"
       print fmtstring, myrank, trim(filename)
-      stop
+      call pabort
    end if
 
 end subroutine nc_open_for_read
@@ -1171,7 +1172,7 @@ subroutine getgrpid(ncid, name, grp_ncid)
                             grp_ncid = grp_ncid )
     if (status.ne.NF90_NOERR) then
         write(6,100) myrank, trim(name), ncid
-        stop
+        call pabort
     elseif (verbose>1) then
         write(lu_out,101) trim(name), ncid, grp_ncid
         call flush(lu_out)
@@ -1194,7 +1195,7 @@ subroutine nc_read_att_int(attribute_value, attribute_name, nc)
       write(6,*) 'Could not find attribute ', trim(attribute_name)
       write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
-      stop
+      call pabort
   end if
 end subroutine nc_read_att_int
 !------------------------------------------------------------------------------
@@ -1212,7 +1213,7 @@ subroutine nc_read_att_char(attribute_value, attribute_name, nc)
       write(6,*) 'Could not find attribute ', trim(attribute_name)
       write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
-      stop 2
+      call pabort 
   end if
 end subroutine nc_read_att_char
 !-------------------------------------------------------------------------------
@@ -1230,7 +1231,7 @@ subroutine nc_read_att_real(attribute_value, attribute_name, nc)
       write(6,*) 'Could not find attribute ', trim(attribute_name)
       write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
-      stop 2
+      call pabort
   end if
 end subroutine nc_read_att_real
 !-------------------------------------------------------------------------------
@@ -1248,7 +1249,7 @@ subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
       write(6,*) 'Could not find attribute ', trim(attribute_name)
       write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
-      stop 2
+      call pabort
   end if
 end subroutine nc_read_att_dble
 !-------------------------------------------------------------------------------

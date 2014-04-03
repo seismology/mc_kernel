@@ -1,5 +1,6 @@
 module buffer
    use global_parameters, only     : sp, dp, lu_out
+   use commpi,            only     : pabort
    implicit none
    type buffer_type
       private
@@ -78,11 +79,12 @@ function get(this, iindex, values)
     integer                     :: ibuffer
 
     if (.not.this%initialized) then
-       stop "Buffer has not been initialized"
+       write(*, '(A)') "ERROR: Buffer has not been initialized"
+       call pabort 
     end if
     if (iindex<0) then
        write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
-       stop
+       call pabort
     end if
     this%naccess = this%naccess + 1
     get = -1
@@ -110,7 +112,7 @@ function put(this, iindex, values)
 
     if (iindex<0) then
        write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
-       stop
+       call pabort
     end if
     if (any(this%idx==iindex)) then
        !print *, 'Buffer with this index', iindex, ' already exists'

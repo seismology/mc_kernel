@@ -4,6 +4,7 @@ module inversion_mesh
   use global_parameters, only: sp, dp, lu_out
   use tetrahedra,        only: get_volume_tet, get_volume_poly, &
                                generate_random_points_tet, generate_random_points_poly
+  use commpi,            only: pabort
   implicit none
   private
   public :: inversion_mesh_type
@@ -65,8 +66,12 @@ contains
 !-----------------------------------------------------------------------------------------
 integer function get_element_type(this)
   class(inversion_mesh_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
+
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
   select case(this%element_type)
   case('tri')
      get_element_type = 1
@@ -83,8 +88,11 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_nelements(this)
   class(inversion_mesh_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
   get_nelements = this%nelements
 end function
 !-----------------------------------------------------------------------------------------
@@ -96,8 +104,10 @@ function get_element(this, ielement)
   integer, intent(in)               :: ielement
   integer                           :: ivert
 
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
 
   do ivert=1, this%nvertices_per_elem
      get_element(:,ivert) = this%vertices(:, this%connectivity(ivert,ielement)+1) 
@@ -108,8 +118,11 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_nvertices(this)
   class(inversion_mesh_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
   get_nvertices = this%nvertices
 end function
 !-----------------------------------------------------------------------------------------
@@ -119,8 +132,11 @@ function get_vertices(this)
   class(inversion_mesh_type)        :: this
   real(kind=sp)                     :: get_vertices(3,this%nvertices)
 
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
   get_vertices = this%vertices
 end function
 !-----------------------------------------------------------------------------------------
@@ -131,8 +147,10 @@ function get_valence(this, ivert)
   integer                           :: get_valence
   integer, intent(in)               :: ivert
   
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
 
   get_valence = count(this%connectivity == ivert - 1) ! -1 because counting in
                                                       ! the mesh starts from 0
@@ -147,8 +165,10 @@ function get_connected_elements(this, ivert)
   integer, intent(in)               :: ivert
   integer                           :: ielement, ct
   
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
 
   allocate(get_connected_elements(this%get_valence(ivert)))
   get_connected_elements = -1
@@ -168,8 +188,10 @@ end function
 function get_connectivity(this)
   class(inversion_mesh_type)        :: this
   integer                           :: get_connectivity(this%nvertices_per_elem, this%nelements)
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
   get_connectivity = this%connectivity + 1
 end function
 !-----------------------------------------------------------------------------------------
@@ -177,8 +199,10 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntimes_node(this)
   class(inversion_mesh_data_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh data type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
   get_ntimes_node = this%ntimes_node
 end function
 !-----------------------------------------------------------------------------------------
@@ -186,8 +210,10 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntimes_cell(this)
   class(inversion_mesh_data_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing inversion mesh data type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
   get_ntimes_cell = this%ntimes_cell
 end function
 !-----------------------------------------------------------------------------------------
@@ -197,6 +223,10 @@ function get_volume(this, ielement)
   class(inversion_mesh_type)        :: this
   integer, intent(in)               :: ielement
   real(kind=dp)                     :: get_volume
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
 
   get_volume = 0
 
@@ -225,6 +255,10 @@ function weights(this, ielem, ivertex, points)
   real(kind=dp)                  :: dx, dy, dz
   integer                        :: ipoint
 
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
   select case(this%element_type) 
 
   case('tet')
@@ -275,6 +309,10 @@ function generate_random_points(this, ielement, npoints) result(points)
   real(kind=dp)                  :: points2d(2, npoints)
   integer                        :: ipoint
 
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
   select case(this%element_type)
   case('tet')
      points = generate_random_points_tet(this%get_element(ielement), npoints)
@@ -308,8 +346,10 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   integer                           :: iinput_vertices, iinput_connectivity
   integer                           :: i, ierr
 
-  if (this%initialized) &
-     stop 'ERROR: Trying to read mesh into inversion mesh type that is already initialized'
+  if (this%initialized) then
+     write(*,'(A)') 'ERROR: Trying to read mesh into inversion mesh type that is already initialized'
+     call pabort 
+  end if
 
   this%nvertices_per_elem = 4
   this%element_type = 'tet'
@@ -320,7 +360,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   if ( ierr /= 0 ) then
      write(*,*) 'ERROR: Could not open file: ', trim(filename_vertices)
      write(*,*) 'ierr :', ierr
-     stop
+     call pabort
   endif
 
   read(iinput_vertices,*) this%nvertices
@@ -338,7 +378,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   if ( ierr /= 0 ) then
      write(*,*) 'ERROR: Could not open file: ', trim(filename_connectivity)
      write(*,*) 'ierr :', ierr
-     stop
+     call pabort
   endif
 
   read(iinput_connectivity,*) this%nelements
@@ -352,7 +392,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   call this%init_weight_tet_mesh()
 
   this%initialized = .true.
-end subroutine
+end subroutine read_tet_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -365,8 +405,10 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
   integer                          :: ielement
   character(len=255)               :: fmtstring
 
-  if (this%initialized) &
-     stop 'ERROR: Trying to initialize inversion mesh type that is already initialized'
+  if (this%initialized) then
+     write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
+     call pabort 
+  end if
 
   this%nvertices = size(vertices,2)
   this%nelements = size(connectivity,2)
@@ -390,14 +432,14 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
   case default
      write(6,*) 'ERROR: Initializing with elementtype ', ielem_type, &
                 'not yet implemented'
-     stop
+     call pabort
   end select
 
   if (this%nvertices_per_elem.ne.size(connectivity,1)) then
       write(*,*) 'ERROR at initialize_mesh:'
       write(*,*) 'Wrong number of vertices per element for type ', trim(this%element_type)
       write(*, '(A,I5,A,I2)') 'is: ', size(connectivity,1), ', should be: ', this%nvertices_per_elem
-      stop
+      call pabort
   end if
 
   ! prepare arrays
@@ -427,6 +469,11 @@ subroutine read_abaqus_meshtype(this, filename)
   character(len=128)                :: line
   character(len=16)                 :: elem_type
 
+  if (this%initialized) then
+     write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
+     call pabort 
+  end if
+
 
   ! open file 
   open(newunit=iinput, file=trim(filename), status='old', &
@@ -434,7 +481,7 @@ subroutine read_abaqus_meshtype(this, filename)
   if ( ierr /= 0 ) then
      write(*,*) 'ERROR: Could not open file: ', trim(filename)
      write(*,*) 'ierr :', ierr
-     stop
+     call pabort
   endif
 
   ! go to vertex block
@@ -477,7 +524,7 @@ subroutine read_abaqus_meshtype(this, filename)
   case default
      write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
                 'not yet implemented'
-     stop
+     call pabort
   end select
   close(iinput)
 
@@ -493,8 +540,10 @@ subroutine read_abaqus_mesh(this, filename)
   character(len=128)                :: line
   character(len=16)                 :: elem_type
 
-  if (this%initialized) &
-     stop 'ERROR: Trying to read mesh into inversion mesh type that is already initialized'
+  if (this%initialized) then
+     write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
+     call pabort 
+  end if
 
   write(lu_out, *) 'Reading Mesh file from ', trim(filename)
 
@@ -504,7 +553,7 @@ subroutine read_abaqus_mesh(this, filename)
   if ( ierr /= 0 ) then
      write(*,*) 'ERROR: Could not open file: ', trim(filename)
      write(*,*) 'ierr :', ierr
-     stop
+     call pabort
   endif
 
   ! go to vertex block
@@ -547,7 +596,7 @@ subroutine read_abaqus_mesh(this, filename)
   case default
      write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
                 'not yet implemented'
-     stop
+     call pabort
   end select
 
   ! scan number of elements
@@ -614,6 +663,12 @@ subroutine init_weight_tet_mesh(this)
   real(kind=dp)                    :: x1, y1, z1, ab(4,4)
   integer                          :: ielem, ivertex
 
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
+     call pabort 
+  end if
+
+
   allocate(this%abinv(4,4,this%nelements))
   do ielem = 1, this%nelements
      x1 = this%vertices(1, this%connectivity(1,ielem)+1)
@@ -654,10 +709,9 @@ function invert(A, nrows) result(A_inv)
   
   ! Inverse der LU-faktorisierten Matrix A        
   call dgetri( nrows, A_inv, lda, ipiv, work, lwork, info )
-  if (info.eq.0) then
-      !if(lroot) print *, 'Covariance matrix inverted'
-  else
-      stop 'Error in Covariance matrix inversion'
+  if (info.ne.0) then
+     write(*,*) 'Error in matrix inversion'
+     call pabort 
   end if
 
 end function
@@ -771,8 +825,10 @@ subroutine dump_mesh_xdmf(this, filename)
   character(len=16)                 :: xdmf_elem_type
   character(len=512)                :: filename_np
 
-  if (.not. this%initialized) &
-     stop 'ERROR: trying to dump a non initialized mesh'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: trying to dump a non initialized mesh'
+     call pabort 
+  end if
 
   ! relative filename for xdmf content
   filename_np = trim(filename(index(filename, '/', back=.true.)+1:))
@@ -789,7 +845,7 @@ subroutine dump_mesh_xdmf(this, filename)
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
                 ' not implemented'
-     stop
+     call pabort
   end select
 
   ! XML Data
@@ -915,13 +971,16 @@ subroutine set_node_data_snap(this, data_snap, isnap, data_name)
   integer                                   :: i
   logical                                   :: name_exists
 
-  if (.not. allocated(this%datat_node)) &
-     stop 'ERROR: trying to write node data without initialization!'
+  if (.not. allocated(this%datat_node)) then
+     write(*,*) 'ERROR: trying to write node data without initialization!'
+     call pabort 
+  end if
 
   if (size(data_snap) /= this%nvertices) then
      write(*,*) 'size(data_snap):', size(data_snap), '; this%nvertices', this%nvertices
      write(*,*) 'data_name:', trim(data_name), '; isnap:', isnap
-     stop 'ERROR: wrong dimensions of input data_snap for writing vertex data'
+     write(*,*) 'ERROR: wrong dimensions of input data_snap for writing vertex data'
+     call pabort 
   end if
 
   this%datat_node(:,isnap) = data_snap(:)
@@ -955,13 +1014,16 @@ subroutine set_cell_data_snap(this, data_snap, isnap, data_name)
   integer                                   :: i
   logical                                   :: name_exists
 
-  if (.not. allocated(this%datat_cell)) &
-     stop 'ERROR: trying to write cell data without initialization!'
+  if (.not. allocated(this%datat_cell)) then
+     write(*,*) 'ERROR: trying to write cell data without initialization!'
+     call pabort 
+  end if
 
   if (size(data_snap) /= this%nelements) then
      write(*,*) 'size(data_snap):', size(data_snap), '; this%nvertices', this%nvertices
      write(*,*) 'data_name:', trim(data_name), '; isnap:', isnap
-     stop 'ERROR: wrong dimensions of input data_snap for writing cell data'
+     write(*,*) 'ERROR: wrong dimensions of input data_snap for writing cell data'
+     call pabort 
   end if
 
   this%datat_cell(:,isnap) = data_snap(:)
@@ -995,11 +1057,15 @@ subroutine dump_cell_data_xdmf(this, filename)
   character(len=16)                 :: xdmf_elem_type
   character(len=512)                :: filename_np
 
-  if (.not. this%initialized) &
-     stop 'ERROR: trying to dump a non initialized mesh'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: trying to dump a non initialized mesh'
+     call pabort 
+  end if
   
-  if (.not. allocated(this%datat_cell)) &
-     stop 'ERROR: no data to dump available'
+  if (.not. allocated(this%datat_cell)) then
+     write(*,*) 'ERROR: no data to dump available'
+     call pabort 
+  end if
 
   ! relative filename for xdmf content
   filename_np = trim(filename(index(filename, '/', back=.true.)+1:))
@@ -1016,7 +1082,7 @@ subroutine dump_cell_data_xdmf(this, filename)
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
                 ' not implemented'
-     stop
+     call pabort
   end select
 
   ! XML header
@@ -1143,11 +1209,15 @@ subroutine dump_node_data_xdmf(this, filename)
   character(len=16)                 :: xdmf_elem_type
   character(len=512)                :: filename_np
 
-  if (.not. this%initialized) &
-     stop 'ERROR: trying to dump a non initialized mesh'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: trying to dump a non initialized mesh'
+     call pabort 
+  end if
   
-  if (.not. allocated(this%datat_node)) &
-     stop 'ERROR: no data to dump available'
+  if (.not. allocated(this%datat_node)) then
+     write(*,*) 'ERROR: no data to dump available'
+     call pabort 
+  end if
 
   ! relative filename for xdmf content
   filename_np = trim(filename(index(filename, '/', back=.true.)+1:))
@@ -1164,7 +1234,7 @@ subroutine dump_node_data_xdmf(this, filename)
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
                 ' not implemented'
-     stop
+     call pabort
   end select
 
   ! XML header

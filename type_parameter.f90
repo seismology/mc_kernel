@@ -5,7 +5,7 @@ module type_parameter
     use receiver_class,                  only : rec_param_type
     use filtering,                       only : filter_type
     use commpi,                          only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
-                                                pbroadcast_dble_arr, pbarrier
+                                                pbroadcast_dble_arr, pbarrier, pabort
     implicit none    
 
     type parameter_type
@@ -65,7 +65,7 @@ subroutine read_parameters(this, input_file_in)
          narg = command_argument_count()
          if (narg<1) then
              print *, 'ERROR: Argument "parameter file" is missing'
-             stop
+             call pabort
          end if
          call get_command_argument(1, input_file)
      end if
@@ -74,7 +74,7 @@ subroutine read_parameters(this, input_file_in)
      open(newunit=lu_inparam_basic, file=trim(input_file), status='old', action='read',  iostat=ioerr)
      if (ioerr /= 0) then
         print *, 'ERROR: Check input file ''', trim(input_file), '''! Is it still there?' 
-        stop
+        call pabort
      end if
 
      do
@@ -165,7 +165,7 @@ subroutine read_source(this)
 
    if (.not.this%parameters_read) then
        write(6,*) 'General parameters not read. Call read_parameters before read_source!'
-       stop
+       call pabort
    end if
 
    call pbarrier
@@ -222,12 +222,12 @@ subroutine read_receiver(this)
 
    if (.not.this%parameters_read) then
        write(6,*) 'General parameters not read. Call read_parameters before read_receiver!'
-       stop
+       call pabort
    end if
 
    if (.not.this%source_read) then
        write(6,*) 'Source parameters not read. Call read_source before read_receiver!'
-       stop
+       call pabort
    end if
 
    call pbarrier
@@ -324,22 +324,22 @@ subroutine read_kernel(this, sem_data, filter)
 
    if (.not.this%parameters_read) then
        write(6,*) 'General parameters not read. Call read_parameters before read_kernel!'
-       stop
+       call pabort
    end if
 
    if (.not.this%source_read) then
        write(6,*) 'Source parameters not read. Call read_source before read_kernel!'
-       stop
+       call pabort
    end if
 
    if (.not.this%receiver_read) then
        write(6,*) 'Receiver parameters not read. Call read_receiver before read_kernel!'
-       stop
+       call pabort
    end if
 
    if (.not.this%filter_read) then
        write(6,*) 'Filter parameters not read. Call read_filter before read_kernel!'
-       stop
+       call pabort
    end if
 
    call pbarrier
@@ -391,7 +391,7 @@ subroutine read_kernel(this, sem_data, filter)
                 print *, 'Could not find filter ', trim(filtername), ', which was requested'
                 print *, 'by kernel ', trim(kernelname)
                 print *, 'Available filters: ', [(filter(ifilter)%name, ifilter = 1, nfilter)]
-                stop
+                call pabort
              end if
 
              call this%kernel(ikernel)%init(name            = kernelname                , &
@@ -436,7 +436,7 @@ subroutine read_filter(this, nomega, df)
 
    if (.not.this%parameters_read) then
        write(6,*) 'General parameters not read. Call read_parameters before read_filter!'
-       stop
+       call pabort
    end if
 
    write(lu_out,*)'Reading filters from file ', trim(this%filter_file)
