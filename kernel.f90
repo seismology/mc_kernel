@@ -1,39 +1,41 @@
+!=========================================================================================
 module kernel
-use global_parameters,                    only: sp, dp, verbose, lu_out
-use filtering,                            only: filter_type
-implicit none
 
-    type kernelspec_type
-        character(len=32), public            :: name
-        real(kind=dp), dimension(2)          :: time_window
-        real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
-                                                                  ! in the time window of 
-                                                                  ! this kernel
-        real(kind=dp), allocatable           :: t(:)
-        real(kind=dp)                        :: dt
-        real(kind=dp)                        :: normalization
-        integer                              :: filter_type
-        character(len=4)                     :: misfit_type
-        character(len=4)                     :: model_parameter
-        !integer                              :: receiver_index
-        !integer                              :: src_index
-        !type(rec_param_type), pointer        :: receiver
-        type(filter_type), pointer           :: filter
-        logical                              :: initialized = .false.
-        contains 
-           procedure, pass                   :: init 
-           procedure, pass                   :: calc_misfit_kernel
-           procedure, pass                   :: isinitialized
-           procedure, pass                   :: freeme
-           procedure, pass                   :: apply_filter_2d
-           procedure, pass                   :: apply_filter_3d
-           generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
-    end type
+  use global_parameters,                    only: sp, dp, verbose, lu_out
+  use filtering,                            only: filter_type
+  implicit none
 
-    !interface apply_filter
-    !   module procedure                      :: apply_filter_3d
-    !   module procedure                      :: apply_filter_2d
-    !end interface apply_filter
+  type kernelspec_type
+      character(len=32), public            :: name
+      real(kind=dp), dimension(2)          :: time_window
+      real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
+                                                                ! in the time window of 
+                                                                ! this kernel
+      real(kind=dp), allocatable           :: t(:)
+      real(kind=dp)                        :: dt
+      real(kind=dp)                        :: normalization
+      integer                              :: filter_type
+      character(len=4)                     :: misfit_type
+      character(len=4)                     :: model_parameter
+      !integer                              :: receiver_index
+      !integer                              :: src_index
+      !type(rec_param_type), pointer        :: receiver
+      type(filter_type), pointer           :: filter
+      logical                              :: initialized = .false.
+      contains 
+         procedure, pass                   :: init 
+         procedure, pass                   :: calc_misfit_kernel
+         procedure, pass                   :: isinitialized
+         procedure, pass                   :: freeme
+         procedure, pass                   :: apply_filter_2d
+         procedure, pass                   :: apply_filter_3d
+         generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
+  end type
+
+  !interface apply_filter
+  !   module procedure                      :: apply_filter_3d
+  !   module procedure                      :: apply_filter_2d
+  !end interface apply_filter
 
 contains 
 
@@ -332,6 +334,5 @@ end function integrate
 !-------------------------------------------------------------------------------
 
 
-
-
 end module
+!=========================================================================================

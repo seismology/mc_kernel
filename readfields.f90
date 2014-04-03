@@ -112,6 +112,8 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     dirnam = trim(fwd_dir)//'/PZ/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = force)
+
+    ! @TODO: is this robust?
     if (moment) then
        this%nsim_fwd = 4
        write(lu_out,*) 'Forward simulation was ''moment'' source'
@@ -142,7 +144,8 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
         this%fwd(3)%meshdir = trim(fwd_dir)//'/MXZ_MYZ/'
         this%fwd(4)%meshdir = trim(fwd_dir)//'/MXY_MXX_M_MYY/'
     end select
-    
+   
+    ! MvD: why is bwd always single?
     do isim = 1, this%nsim_bwd
         this%bwd(isim)%meshdir = trim(bwd_dir)//'/'
     end do
@@ -562,8 +565,8 @@ end subroutine check_consistency
 
 !-----------------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
-    use source_class, only             : src_param_type
     use simple_routines, only          : mult2d_1d
+
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type), intent(in)  :: source_params
@@ -660,7 +663,7 @@ subroutine load_seismogram(this, receivers, src)
 
    if (.not.this%meshes_read) then
        print *, 'ERROR in load_seismogram(): Meshes have not been read yet'
-       print *, 'Call read_meshes() before build_kdtree!'
+       print *, 'Call read_meshes() before load_seismogram!'
        stop
    end if
       
