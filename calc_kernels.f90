@@ -58,6 +58,7 @@ program kerner
             else
                 call inv_mesh%read_abaqus_meshtype(parameters%mesh_file)
                 nvertices_per_elem = inv_mesh%nvertices_per_elem
+                call inv_mesh%freeme()
             end if
         end if
         call pbroadcast_int(nvertices_per_elem, 0)
