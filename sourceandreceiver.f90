@@ -28,8 +28,10 @@ subroutine init(this, lat, lon, mij)
    this%latd   = lat
    this%lond   = lon
    this%colatd = 90 - this%latd
+
    this%colat  = this%colatd * deg2rad
    this%lon    = this%lond   * deg2rad
+   this%lat    = this%latd   * deg2rad
 
    this%mij    = mij
    call this%def_rot_matrix()
@@ -124,6 +126,7 @@ subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkerne
 
    this%colat       = this%colatd * deg2rad
    this%lon         = this%lond   * deg2rad
+   this%lat         = this%latd   * deg2rad
 
    this%nkernel     = nkernel
    this%firstkernel = firstkernel
