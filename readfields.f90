@@ -74,6 +74,7 @@ module readfields
             procedure, pass                :: read_meshes
             procedure, pass                :: build_kdtree
             procedure, pass                :: load_fw_points
+            procedure, pass                :: load_fw_points_rdbm
             procedure, pass                :: load_bw_points
             procedure, pass                :: close_files
             procedure, pass                :: load_seismogram
@@ -616,13 +617,13 @@ function load_fw_points(this, coordinates, source_params)
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type), intent(in)  :: source_params
-    type(kdtree2_result), allocatable :: nextpoint(:)
     real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
                                                         size(coordinates,2))
 
+    type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints
     integer                           :: pointid(size(coordinates,2))
-    integer                           :: ipoint, isim, status, iclockold
+    integer                           :: ipoint, isim, iclockold
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
@@ -819,7 +820,7 @@ function load_bw_points(this, coordinates, receiver)
 
     integer                            :: pointid(size(coordinates,2))
     integer                            :: npoints
-    integer                            :: ipoint, status, start_chunk, iread
+    integer                            :: ipoint, start_chunk, iread
     real(kind=dp)                      :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                      :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                      :: rotmesh_z(size(coordinates,2))
@@ -879,6 +880,79 @@ function load_bw_points(this, coordinates, receiver)
     end do !ipoint
 
 end function load_bw_points
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function load_fw_points_rdbm(this, coordinates, source_params)
+    use simple_routines, only          : mult2d_1d
+
+    class(semdata_type)               :: this
+    real(kind=dp), intent(in)         :: coordinates(:,:)
+    type(src_param_type), intent(in)  :: source_params
+    real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
+                                                             size(coordinates,2))
+
+    type(kdtree2_result), allocatable :: nextpoint(:)
+    integer                           :: npoints
+    integer                           :: pointid(size(coordinates,2))
+    integer                           :: ipoint, isim, iclockold
+    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
+    real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
+    
+    if (size(coordinates,1).ne.3) then
+       write(*,*) ' Error in load_fw_points_rdbm: input variable coordinates has to be a '
+       write(*,*) ' 3 x npoints array'
+       call pabort 
+    end if
+    npoints = size(coordinates,2)
+
+    
+    ! Rotate points to FWD coordinate system
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
+                          coordinates*1d3,                              &
+                          source_params%lon, source_params%colat)
+
+    allocate(nextpoint(1))
+    do ipoint = 1, npoints
+        call kdtree2_n_nearest( this%fwdtree,                           &
+                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                nn = 1,                                 &
+                                results = nextpoint )
+        
+        pointid(ipoint) = nextpoint(1)%idx
+
+    end do
+
+    load_fw_points_rdbm(:,:,:) = 0.0
+    
+    do ipoint = 1, npoints
+    
+       do isim = 1, this%nsim_fwd
+            utemp = load_strain_point(this%fwd(isim),      &
+                                      pointid(ipoint),     &
+                                      this%model_param)
+
+            iclockold = tick()
+            select case(trim(this%model_param))
+            !if (this%model_param.eq.'vs') then
+            case('vp')
+                load_fw_points_rdbm(:, :, ipoint) = load_fw_points_rdbm(:,:,ipoint)                   &
+                                             + utemp * azim_factor(rotmesh_phi(ipoint),     &
+                                                                   source_params%mij, isim, 1) 
+            case('vs')
+                load_fw_points_rdbm(:, :, ipoint) = load_fw_points_rdbm(:, :, ipoint)                 &
+                                             + rotate_straintensor(utemp,                   &
+                                                                   rotmesh_phi(ipoint),     &
+                                                                   source_params%mij, isim) 
+            end select
+            iclockold = tick(id=id_rotate, since=iclockold)
+        end do !isim
+
+    end do !ipoint
+
+end function load_fw_points_rdbm
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

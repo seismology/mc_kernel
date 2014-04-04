@@ -40,7 +40,7 @@ program rdbm
   coordinates(:,2) = (/0d0, 0d0, 5.9d3/)
   coordinates(:,3) = (/0d0, 0d0, 5.8d3/)
 
-  fw_field = sem_data%load_fw_points(coordinates, source)
+  fw_field = sem_data%load_fw_points_rdbm(coordinates, source)
 
   do i = 1, sem_data%ndumps
      write(111,*) fw_field(i,1,:)
