@@ -152,8 +152,8 @@ end subroutine ppend
 subroutine pabort
 !< Calls MPI_ABORT
   integer :: ierror
+  logical :: isinitialized
 
-  print *, 'Processor ', myrank, ' has found an error and aborts computation'
 
 #if defined(__GFORTRAN__)
 #if (__GNUC_MINOR__>=8)
@@ -164,9 +164,14 @@ subroutine pabort
   call tracebackqq()
 #endif
 
-  call MPI_ABORT(MPI_COMM_WORLD, 0, ierror)
+  call MPI_Initialized(isinitialized, ierror)
 
-  stop
+  if (isinitialized) then
+     print *, 'Processor ', myrank, ' has found an error and aborts computation'
+     call MPI_ABORT(MPI_COMM_WORLD, 0, ierror)
+  else
+     stop
+  end if
 
 end subroutine pabort
 !=============================================================================
