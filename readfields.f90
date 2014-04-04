@@ -1179,8 +1179,8 @@ subroutine read_meshes(this)
     end if
     if (maxval(this%fwdmesh%theta).gt.180) then
        write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-       write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-       write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+       write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
+       write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
        mesherror = .true.
     end if
 
