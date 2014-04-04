@@ -2,7 +2,7 @@
 module readfields
     use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
-    use source_class,      only            : src_param_type
+    use source_class,      only             : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
     use clocks_mod,        only            : tick
@@ -76,6 +76,7 @@ module readfields
             procedure, pass                :: read_meshes
             procedure, pass                :: build_kdtree
             procedure, pass                :: load_fw_points
+            procedure, pass                :: load_fw_points_rdbm
             procedure, pass                :: load_bw_points
             procedure, pass                :: close_files
             procedure, pass                :: load_seismogram
@@ -105,7 +106,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     character(len=4),   intent(in), optional :: model_param
     character(len=512)             :: dirnam
     integer                        :: isim
-    logical                        :: moment=.false., force=.false.
+    logical                        :: moment=.false., force=.false., single=.false.
 
     this%buffer_size = buffer_size
 
@@ -116,19 +117,57 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     dirnam = trim(fwd_dir)//'/PZ/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = force)
-    ! @TODO: is this robust?
+    dirnam = trim(fwd_dir)//'/simulation.info'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = single)
     if (moment) then
        this%nsim_fwd = 4
        write(lu_out,*) 'Forward simulation was ''moment'' source'
     elseif (force) then
        this%nsim_fwd = 2
        write(lu_out,*) 'Forward simulation was ''forces'' source'
-    else 
+    elseif (single) then
        this%nsim_fwd = 1
        write(lu_out,*) 'Forward simulation was ''single'' source'
+    else 
+       this%nsim_fwd = 0
+       write(lu_out,*) 'ERROR: Forward rundir does not seem to be an axisem rundirectory'
+       call pabort
     end if
 
-    this%nsim_bwd =  1 !parameters%nsim_bwd
+    moment = .false.
+    force  = .false.
+    single = .false.
+
+    dirnam = trim(bwd_dir)//'/MZZ/simulation.info'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = moment)
+
+    dirnam = trim(bwd_dir)//'/PZ/simulation.info'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = force)
+
+    dirnam = trim(bwd_dir)//'/simulation.info'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = single)
+
+    if (moment) then
+       this%nsim_bwd = 4
+       write(lu_out,*) 'Backword simulation was ''moment'' source'
+       write(lu_out,*) 'This is not implemented yet!'
+       call pabort
+    elseif (force) then
+       this%nsim_bwd = 2
+       write(lu_out,*) 'Backword simulation was ''forces'' source'
+       write(lu_out,*) 'This is not implemented yet!'
+    elseif (single) then
+       this%nsim_bwd = 1
+       write(lu_out,*) 'Backword simulation was ''single'' source'
+    else 
+       this%nsim_bwd = 0
+       write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
+       write(lu_out,*) 'continuing anyway, as this is default in db mode'
+    end if
     
     allocate( this%fwd(this%nsim_fwd) )
     allocate( this%bwd(this%nsim_bwd) )
@@ -159,11 +198,15 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%model_param = 'vp'
     end if
 
+    print *, this%model_param
     select case(trim(this%model_param))
     case('vp')
        this%ndim = 1
     case('vs')
        this%ndim = 6
+    case default
+        print *, 'ERROR in set_params(): unknown model param '//this%model_param
+        call pabort
     end select
     write(lu_out, *) 'Model parameter: ', trim(this%model_param), &
                      ', Dimension of wavefields: ', this%ndim
@@ -573,13 +616,13 @@ function load_fw_points(this, coordinates, source_params)
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type), intent(in)  :: source_params
-    type(kdtree2_result), allocatable :: nextpoint(:)
     real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
                                                         size(coordinates,2))
 
+    type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints
     integer                           :: pointid(size(coordinates,2))
-    integer                           :: ipoint, isim, status, iclockold
+    integer                           :: ipoint, isim, iclockold
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
@@ -743,9 +786,9 @@ subroutine load_seismogram(this, receivers, src)
          !                          values = utemp) )
       
          call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-                         varid  = this%fwd(isim)%seis_disp,   &
-                         start  = [1, reccomp, isurfelem],    &
-                         count  = [this%ndumps, 1, 1],        &
+                                   varid  = this%fwd(isim)%seis_disp,   &
+                                   start  = [1, reccomp, isurfelem],    &
+                                   count  = [this%ndumps, 1, 1],        &
                          values = utemp) 
       
          seismogram_disp = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_disp
@@ -758,9 +801,9 @@ subroutine load_seismogram(this, receivers, src)
          !                          values = utemp) )
       
          call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-                         varid  = this%fwd(isim)%seis_velo,   &
-                         start  = [1, reccomp, isurfelem],    &
-                         count  = [this%ndumps, 1, 1],        &
+                                   varid  = this%fwd(isim)%seis_velo,   &
+                                   start  = [1, reccomp, isurfelem],    &
+                                   count  = [this%ndumps, 1, 1],        &
                          values = utemp) 
       
          seismogram_velo = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_velo
@@ -788,7 +831,7 @@ function load_bw_points(this, coordinates, receiver)
 
     integer                            :: pointid(size(coordinates,2))
     integer                            :: npoints
-    integer                            :: ipoint, status, start_chunk, iread
+    integer                            :: ipoint, start_chunk, iread
     real(kind=dp)                      :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                      :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                      :: rotmesh_z(size(coordinates,2))
@@ -851,6 +894,79 @@ end function load_bw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function load_fw_points_rdbm(this, coordinates, source_params)
+    use simple_routines, only          : mult2d_1d
+
+    class(semdata_type)               :: this
+    real(kind=dp), intent(in)         :: coordinates(:,:)
+    type(src_param_type), intent(in)  :: source_params
+    real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
+                                                             size(coordinates,2))
+
+    type(kdtree2_result), allocatable :: nextpoint(:)
+    integer                           :: npoints
+    integer                           :: pointid(size(coordinates,2))
+    integer                           :: ipoint, isim, iclockold
+    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
+    real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
+    
+    if (size(coordinates,1).ne.3) then
+       write(*,*) ' Error in load_fw_points_rdbm: input variable coordinates has to be a '
+       write(*,*) ' 3 x npoints array'
+       call pabort 
+    end if
+    npoints = size(coordinates,2)
+
+    
+    ! Rotate points to FWD coordinate system
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
+                          coordinates*1d3,                              &
+                          source_params%lon, source_params%colat)
+
+    allocate(nextpoint(1))
+    do ipoint = 1, npoints
+        call kdtree2_n_nearest( this%fwdtree,                           &
+                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                nn = 1,                                 &
+                                results = nextpoint )
+        
+        pointid(ipoint) = nextpoint(1)%idx
+
+    end do
+
+    load_fw_points_rdbm(:,:,:) = 0.0
+    
+    do ipoint = 1, npoints
+    
+       do isim = 1, this%nsim_fwd
+            utemp = load_strain_point(this%fwd(isim),      &
+                                      pointid(ipoint),     &
+                                      this%model_param)
+
+            iclockold = tick()
+            select case(trim(this%model_param))
+            !if (this%model_param.eq.'vs') then
+            case('vp')
+                load_fw_points_rdbm(:, :, ipoint) = load_fw_points_rdbm(:,:,ipoint)                   &
+                                             + utemp * azim_factor(rotmesh_phi(ipoint),     &
+                                                                   source_params%mij, isim, 1) 
+            case('vs')
+                load_fw_points_rdbm(:, :, ipoint) = load_fw_points_rdbm(:, :, ipoint)                 &
+                                             + rotate_straintensor(utemp,                   &
+                                                                   rotmesh_phi(ipoint),     &
+                                                                   source_params%mij, isim) 
+            end select
+            iclockold = tick(id=id_rotate, since=iclockold)
+        end do !isim
+
+    end do !ipoint
+
+end function load_fw_points_rdbm
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function load_strain_point(sem_obj, pointid, model_param)
     type(ncparamtype), intent(in)   :: sem_obj
     integer, intent(in)             :: pointid
@@ -873,18 +989,15 @@ function load_strain_point(sem_obj, pointid, model_param)
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-
            ! Only read to last point, not further
            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
            iclockold = tick()
            call nc_getvar( ncid   = sem_obj%snap,           & 
-                           varid  = sem_obj%strainvarid(6), &
-                           start  = [start_chunk, 1],       &
+                                     varid  = sem_obj%strainvarid(6), &
+                                     start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
                            values = utemp_chunk(1:gll_to_read, :)) 
-
            iclockold = tick(id=id_netcdf, since=iclockold)
-
            do iread = 0, sem_obj%chunk_gll - 1
                status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
@@ -909,17 +1022,14 @@ function load_strain_point(sem_obj, pointid, model_param)
             
             if (status.ne.0) then
                start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-               
                ! Only read to last point, not further
                gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-
                iclockold = tick()
                call nc_getvar( ncid   = sem_obj%snap,           & 
-                               varid  = sem_obj%strainvarid(istrainvar), &
-                               start  = [start_chunk, 1],       &
+                                         varid  = sem_obj%strainvarid(istrainvar), &
+                                         start  = [start_chunk, 1],    &
                                count  = [gll_to_read, sem_obj%ndumps], &
                                values = utemp_chunk(1:gll_to_read, :)) 
-
                iclockold = tick(id=id_netcdf, since=iclockold)
                do iread = 0, gll_to_read - 1
                    status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
@@ -1033,11 +1143,11 @@ end subroutine build_kdtree
 !-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
-    class(semdata_type)        :: this
-    integer                    :: ncvarid_mesh_s, ncvarid_mesh_z
-    integer                    :: surfdimid, ncvarid_theta
+    class(semdata_type)    :: this
+    integer                :: ncvarid_mesh_s, ncvarid_mesh_z
+    integer                :: surfdimid, ncvarid_theta
     integer                    :: ielem, isim
-    logical                    :: mesherror
+    logical                :: mesherror
     real(kind=sp), allocatable :: theta(:)
    
     if (.not.this%files_open) then
@@ -1055,11 +1165,10 @@ subroutine read_meshes(this)
 
     allocate(this%fwdmesh%s(this%fwdmesh%npoints))
     allocate(this%fwdmesh%z(this%fwdmesh%npoints))
-
+    
     do isim = 1, this%nsim_fwd
        this%fwd(isim)%ngll = this%fwdmesh%npoints
     end do
-       
     call  getvarid( ncid  = this%fwd(1)%mesh, &
                     name  = "mesh_S", &
                     varid = ncvarid_mesh_s) 
@@ -1068,18 +1177,19 @@ subroutine read_meshes(this)
                     varid = ncvarid_mesh_z) 
 
     call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                   varid  = ncvarid_mesh_s,         &
+                             varid  = ncvarid_mesh_s,         &
                    start  = 1,                    &
                    count  = this%fwdmesh%npoints, &
                    values = this%fwdmesh%s ) 
     call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                   varid  = ncvarid_mesh_z,         &
+                             varid  = ncvarid_mesh_z,         &
                    start  = 1,                    &
                    count  = this%fwdmesh%npoints, &
                    values = this%fwdmesh%z ) 
    
    
     ! Backward SEM mesh                     
+    if (this%nsim_bwd > 0) then
     write(lu_out,*) 'Read SEM mesh from first backward simulation'
     
     call nc_read_att_int(this%bwdmesh%npoints, &
@@ -1088,11 +1198,10 @@ subroutine read_meshes(this)
 
     allocate(this%bwdmesh%s(this%bwdmesh%npoints))
     allocate(this%bwdmesh%z(this%bwdmesh%npoints))
-    
     do isim = 1, this%nsim_bwd
        this%bwd(isim)%ngll = this%bwdmesh%npoints
     end do
-       
+    
     call  getvarid( ncid  = this%bwd(1)%mesh, &
                     name  = "mesh_S", &
                     varid = ncvarid_mesh_s) 
@@ -1101,17 +1210,18 @@ subroutine read_meshes(this)
                     varid = ncvarid_mesh_z) 
 
     call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                   varid  = ncvarid_mesh_s,   &
+                             varid  = ncvarid_mesh_s,   &
                    start  = 1,                    &
                    count  = this%bwdmesh%npoints, &
                    values = this%bwdmesh%s ) 
     call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                   varid  = ncvarid_mesh_z,   &
+                             varid  = ncvarid_mesh_z,   &
                    start  = 1,                    &
                    count  = this%bwdmesh%npoints, &
                    values = this%bwdmesh%z ) 
 
    
+    endif
    
    ! Read surface element theta
    ! Forward mesh
@@ -1130,13 +1240,15 @@ subroutine read_meshes(this)
    allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
    allocate( theta(this%fwdmesh%nsurfelem) )
    call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                   varid  = ncvarid_theta,          &
+                             varid  = ncvarid_theta,       &
                    start  = 1,                      & 
                    count  = this%fwdmesh%nsurfelem, &
                    values = theta                    )
    this%fwdmesh%theta = real(theta, kind=dp)
+
    
    ! Backward mesh
+    if (this%nsim_bwd > 0) then
    call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
                                name  = 'surf_elems',     &
                                dimid = surfdimid) ) 
@@ -1151,12 +1263,12 @@ subroutine read_meshes(this)
 
    allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
    call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                   varid  = ncvarid_theta,          &
+                             varid  = ncvarid_theta,       &
                    start  = 1,                      & 
                    count  = this%bwdmesh%nsurfelem, &
                    values = theta                    )
    this%fwdmesh%theta = real(theta, kind=dp)
-                             
+   endif                          
 
    ! Mesh sanity checks
    mesherror = .false.

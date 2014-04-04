@@ -1,13 +1,54 @@
+!=========================================================================================
 program rdbm
 
-  use readfields
+  use readfields, only : semdata_type
+  use commpi
+  use global_parameters
+  use source_class
 
-  write(6,*) 'kuckuck'
+  implicit none
+
+  type(semdata_type)                  :: sem_data
+  type(src_param_type)                :: source
+  character(len=512)                  :: fwd_dir, bwd_dir
+  character(len=4)                    :: model_param
+  real(kind=dp)                       :: coordinates(3,3)
+  real(kind=dp),    allocatable       :: fw_field(:,:,:)
+  integer                             :: i
+
+  verbose = 1
+
+  write(*,*) '***************************************************************'
+  write(*,*) ' Initialize and open AxiSEM wavefield files'
+  write(*,*) '***************************************************************'
+
+  fwd_dir = '/home/ex/local/src/axisem/SOLVER/50s_kernel_output'
+  bwd_dir = ''
+
+  model_param = 'vp'
+  call sem_data%set_params(fwd_dir, bwd_dir, 100, model_param)
+  call sem_data%open_files()
+  call sem_data%read_meshes()
+  call sem_data%build_kdtree()
+
+  call source%init(90d0, 0d0, (/1d10, 1d10, 1d10, 0d0, 0d0, 0d0 /))
+
+
+  allocate(fw_field(sem_data%ndumps, 1, 3))
+
+  coordinates(:,1) = (/0d0, 0d0, 6d3/)
+  coordinates(:,2) = (/0d0, 0d0, 5.9d3/)
+  coordinates(:,3) = (/0d0, 0d0, 5.8d3/)
+
+  fw_field = sem_data%load_fw_points_rdbm(coordinates, source)
+
+  do i = 1, sem_data%ndumps
+     write(111,*) fw_field(i,1,:)
+  enddo
 
 contains
 
-
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine start_clock
   !
   ! Driver routine to start the timing, using the clocks_mod module.
@@ -43,9 +84,9 @@ subroutine start_clock
   id_mpi         = clock_id('MPI communication with Master')
 
 end subroutine start_clock
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine end_clock 
   !
   ! Wapper routine to end timing and display clock informations.
@@ -66,5 +107,7 @@ subroutine end_clock
   write(lu_out,*)
 
 end subroutine end_clock
-!=============================================================================
+!-----------------------------------------------------------------------------------------
+
 end program
+!=========================================================================================
