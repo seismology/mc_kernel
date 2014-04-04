@@ -1177,18 +1177,6 @@ subroutine read_meshes(this)
        write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
        mesherror = .true.
     end if
-
-    if (maxval(abs(this%bwdmesh%s)) > 1e32) then
-       write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
-       write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
-       mesherror = .true.
-    end if
-    if (maxval(abs(this%bwdmesh%z)) > 1e32) then
-       write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
-       write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
-       mesherror = .true.
-    end if
-
     if (maxval(this%fwdmesh%theta).gt.180) then
        write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
        write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
@@ -1196,12 +1184,25 @@ subroutine read_meshes(this)
        mesherror = .true.
     end if
 
-    if (maxval(this%fwdmesh%theta).gt.180) then
-       write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-       write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-       write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
-       mesherror = .true.
-    end if
+    if (this%nsim_bwd > 0) then
+        if (maxval(abs(this%bwdmesh%s)) > 1e32) then
+           write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
+           mesherror = .true.
+        end if
+        if (maxval(abs(this%bwdmesh%z)) > 1e32) then
+           write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
+           mesherror = .true.
+        end if
+        if (maxval(this%bwdmesh%theta).gt.180) then
+           write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+           write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+           write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+           mesherror = .true.
+        end if
+    endif
+
 
     if (mesherror) then
        write(*,*) 'ERROR: One or more mesh errors found!'
