@@ -328,7 +328,7 @@ subroutine rfft_md(this, datat_in, dataf_out)
   ! compiler does not change the order of execution (stupid, but known issue)
   datat = reshape(datat_in, [this%ntimes, this%ntraces_fft])
   call dfftw_execute_dft_r2c(this%plan_fft, datat, dataf)
-  dataf_out = reshape(dataf, [this%ntimes, this%ndim, this%ntraces])
+  dataf_out = reshape(dataf, [this%nomega, this%ndim, this%ntraces])
 
 end subroutine rfft_md
 !-----------------------------------------------------------------------------------------
@@ -367,7 +367,7 @@ subroutine irfft_md(this, dataf_in, datat_out)
   ! http://www.fftw.org/doc/The-1d-Discrete-Fourier-Transform-_0028DFT_0029.html
   datat = datat / this%ntimes
 
-  datat_out = reshape(datat, [this%nomega, this%ndim, this%ntraces]) 
+  datat_out = reshape(datat, [this%ntimes, this%ndim, this%ntraces]) 
 
 end subroutine irfft_md
 !-----------------------------------------------------------------------------------------
