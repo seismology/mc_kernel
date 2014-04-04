@@ -32,18 +32,13 @@ implicit none
            generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
     end type
 
-    !interface apply_filter
-    !   module procedure                      :: apply_filter_3d
-    !   module procedure                      :: apply_filter_2d
-    !end interface apply_filter
-
 contains 
 
 !-------------------------------------------------------------------------------
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                 seis, dt, timeshift_fwd)
    use fft,       only                      : rfft_type, taperandzeropad
-   use filtering, only                      : timeshift
+   !use filtering, only                      : timeshift
    class(kernelspec_type)                  :: this
    character(len=16), intent(in)           :: name
    real(kind=dp), intent(in)               :: time_window(2)
@@ -111,7 +106,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
 
    ! FFT, timeshift and filter the seismogram
    call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft), seis_fd)
-   call timeshift(seis_fd, fft_data%get_f(), timeshift_fwd)
+   !call timeshift(seis_fd, fft_data%get_f(), timeshift_fwd)
    seis_fd = this%filter%apply_2d(seis_fd)
    call fft_data%irfft(seis_fd, seis_filtered)
    call fft_data%freeme()
@@ -126,7 +121,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                        this%time_window,   &
                        t_cut )
 
-   if (abs(sum(this%seis**2)).lt.1.e-30) then
+   if (sum(this%seis**2).lt.1.e-30) then
        this%normalization = 0
    else
        this%normalization = 1./sum(this%seis**2)
@@ -196,8 +191,8 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
          
-         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) !&
-                                      !* this%normalization
+         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
+                                      * this%normalization
       end do
 
    case('AM')
@@ -207,8 +202,8 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
          
-         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt )! &
-                                      !* this%normalization
+         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
+                                      * this%normalization
       end do
    end select
 

@@ -84,7 +84,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     close(10)
     this%initialized = .true.
     this%stf_added = .false.
-end subroutine
+end subroutine create
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
@@ -164,7 +164,7 @@ subroutine deleteme(this)
     deallocate(this%transferfunction)
     deallocate(this%f)
     this%initialized = .false.
-end subroutine
+end subroutine deleteme
 
 ! -----------------------------------------------------------------------------
 !> Apply this filter to one trace (in the frequency domain)
