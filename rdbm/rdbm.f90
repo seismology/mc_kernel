@@ -1,14 +1,20 @@
+!=========================================================================================
 program rdbm
 
   use readfields, only : semdata_type
   use commpi
   use global_parameters
+  use source_class
 
   implicit none
 
   type(semdata_type)                  :: sem_data
+  type(src_param_type)                :: source
   character(len=512)                  :: fwd_dir, bwd_dir
   character(len=4)                    :: model_param
+  real(kind=dp)                       :: coordinates(3,3)
+  real(kind=dp),    allocatable       :: fw_field(:,:,:)
+  integer                             :: i
 
   verbose = 1
 
@@ -25,12 +31,24 @@ program rdbm
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
-  write(6,*) 'kuckuck'
+  call source%init(90d0, 0d0, (/1d10, 1d10, 1d10, 0d0, 0d0, 0d0 /))
+
+
+  allocate(fw_field(sem_data%ndumps, 1, 3))
+
+  coordinates(:,1) = (/0d0, 0d0, 6d3/)
+  coordinates(:,2) = (/0d0, 0d0, 5.9d3/)
+  coordinates(:,3) = (/0d0, 0d0, 5.8d3/)
+
+  fw_field = sem_data%load_fw_points(coordinates, source)
+
+  do i = 1, sem_data%ndumps
+     write(111,*) fw_field(i,1,:)
+  enddo
 
 contains
 
-
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine start_clock
   !
   ! Driver routine to start the timing, using the clocks_mod module.
@@ -66,9 +84,9 @@ subroutine start_clock
   id_mpi         = clock_id('MPI communication with Master')
 
 end subroutine start_clock
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine end_clock 
   !
   ! Wapper routine to end timing and display clock informations.
@@ -89,5 +107,7 @@ subroutine end_clock
   write(lu_out,*)
 
 end subroutine end_clock
-!=============================================================================
+!-----------------------------------------------------------------------------------------
+
 end program
+!=========================================================================================

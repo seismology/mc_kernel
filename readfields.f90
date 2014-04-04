@@ -612,6 +612,7 @@ end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
     use simple_routines, only          : mult2d_1d
+
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type), intent(in)  :: source_params
