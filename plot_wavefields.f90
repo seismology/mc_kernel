@@ -1,15 +1,17 @@
+!=========================================================================================
 module plot_wavefields_mod
 
 contains
-!------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine plot_wavefields()
 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed
-    use inversion_mesh,              only: inversion_mesh_data_type
-    use readfields,                  only: semdata_type
-    use type_parameter,              only: parameter_type
-    use fft,                         only: rfft_type, taperandzeropad
-    use filtering,                   only: timeshift
+    use global_parameters,  only : sp, dp, pi, deg2rad, verbose, init_random_seed
+    use inversion_mesh,     only : inversion_mesh_data_type
+    use readfields,         only : semdata_type
+    use type_parameter,     only : parameter_type
+    use fft,                only : rfft_type, taperandzeropad
+    use filtering,          only : timeshift
 
     implicit none
     type(inversion_mesh_data_type)      :: inv_mesh
@@ -100,12 +102,15 @@ subroutine plot_wavefields()
     
     ! Dump forward field to XDMF file
     do idump = 1, ndumps
-        if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
+        if (mod(idump, 100)==0) &
+            write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
         !Test of planar wave , works
         !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
         !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-        call inv_mesh%set_node_data_snap(real(fw_field(idump,1,:), kind=sp), idump, 'fwd_wavefield')
+        call inv_mesh%set_node_data_snap(real(fw_field(idump,1,:), kind=sp), &
+                                         idump, 'fwd_wavefield')
     end do
+
     write(*,*) ' FFT forward field'
     allocate(fw_field_fd(nomega, 1, nvertices))
     call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
@@ -115,15 +120,17 @@ subroutine plot_wavefields()
     do irec = 1, nrec
         write(*,*) ' Read in backward field of receiver', irec
         allocate(bw_field(ndumps, 1, nvertices))
-        bw_field(:,:,:) = sem_data%load_bw_points(dble(co_points), parameters%receiver(irec))
+        bw_field(:,:,:) = sem_data%load_bw_points(dble(co_points), &
+                                                  parameters%receiver(irec))
         ! Dump backward field to XDMF file
         do idump = 1, ndumps
-            if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
+            if (mod(idump, 100)==0) &
+                write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
             !Test of planar wave , works
             !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
             !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-            call inv_mesh%set_node_data_snap(real(bw_field(idump,1,:), kind=sp),              &
-                                             idump+(ndumps*irec),                           &
+            call inv_mesh%set_node_data_snap(real(bw_field(idump,1,:), kind=sp), &
+                                             idump+(ndumps*irec), &
                                              'bwd_'//trim(parameters%receiver(irec)%name))
         end do
         write(*,*) ' FFT backward field'
@@ -139,6 +146,7 @@ subroutine plot_wavefields()
         call fft_data%irfft(conv_field_fd, conv_field)
         deallocate(bw_field_fd)
         deallocate(conv_field_fd)
+
     !   write(*,*) ' Apply filter'
     !   fw_field_fd = gabor20%apply_2d(fw_field_fd)
 
@@ -190,6 +198,8 @@ subroutine plot_wavefields()
     write(*,*) ' Finished!'
 
 end subroutine plot_wavefields
+!-----------------------------------------------------------------------------------------
 
 end module plot_wavefields_mod
+!=========================================================================================
 
