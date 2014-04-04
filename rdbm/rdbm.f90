@@ -22,8 +22,8 @@ program rdbm
   model_param = 'vp'
   call sem_data%set_params(fwd_dir, bwd_dir, 100, model_param)
   call sem_data%open_files()
-  !call sem_data%read_meshes()
-  !call sem_data%build_kdtree()
+  call sem_data%read_meshes()
+  call sem_data%build_kdtree()
 
   write(6,*) 'kuckuck'
 

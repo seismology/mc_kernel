@@ -273,7 +273,7 @@ subroutine open_files(this)
                                          chunksizes = chunks, &
                                          deflate_level = deflev) )
 
-        write(lu_out, "('FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
+        write(lu_out, "('  FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
         this%fwd(isim)%chunk_gll = chunks(1)
 
@@ -370,7 +370,7 @@ subroutine open_files(this)
                                          chunksizes = chunks, &
                                          deflate_level = deflev) )
 
-        write(lu_out, "('BWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
+        write(lu_out, "('  BWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
         this%bwd(isim)%chunk_gll = chunks(1)
         if (verbose>0) write(lu_out,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
@@ -1031,15 +1031,17 @@ subroutine build_kdtree(this)
     deallocate(mesh)                           
 
     ! KDtree in backward field
-    write(lu_out,*) ' Building backward KD-Tree'
-    call flush(lu_out)
-    allocate(mesh(2, this%bwdmesh%npoints))
-    mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
-    this%bwdtree => kdtree2_create(mesh,              &
-                                   dim = 2,           &
-                                   sort = .true.,     &
-                                   rearrange = .true.)
-    deallocate(mesh)                           
+    if (this%nsim_bwd > 0) then
+        write(lu_out,*) ' Building backward KD-Tree'
+        call flush(lu_out)
+        allocate(mesh(2, this%bwdmesh%npoints))
+        mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
+        this%bwdtree => kdtree2_create(mesh,              &
+                                       dim = 2,           &
+                                       sort = .true.,     &
+                                       rearrange = .true.)
+        deallocate(mesh)                           
+    endif
 
     call flush(lu_out)
 
@@ -1089,73 +1091,74 @@ subroutine read_meshes(this)
                              values = this%fwdmesh%z )) 
    
     ! Backward SEM mesh                     
-    write(lu_out,*) 'Read SEM mesh from first backward simulation'
+    if (this%nsim_bwd > 0) then
+        write(lu_out,*) 'Read SEM mesh from first backward simulation'
+        
+        call nc_read_att_int(this%bwdmesh%npoints, &
+                             'npoints', &
+                             this%bwd(1))
+
+        allocate(this%bwdmesh%s(this%bwdmesh%npoints))
+        allocate(this%bwdmesh%z(this%bwdmesh%npoints))
+        
+        call  getvarid( ncid  = this%bwd(1)%mesh, &
+                        name  = "mesh_S", &
+                        varid = ncvarid_mesh_s) 
+        call  getvarid( ncid  = this%bwd(1)%mesh, &
+                        name  = "mesh_Z", &
+                        varid = ncvarid_mesh_z) 
+
+        call check( nf90_get_var(ncid   = this%bwd(1)%mesh, &
+                                 varid  = ncvarid_mesh_s,   &
+                                 start  = [1],                    &
+                                 count  = [this%bwdmesh%npoints], &
+                                 values = this%bwdmesh%s )) 
+        call check( nf90_get_var(ncid   = this%bwd(1)%mesh, &
+                                 varid  = ncvarid_mesh_z,   &
+                                 start  = [1],                    &
+                                 count  = [this%bwdmesh%npoints], &
+                                 values = this%bwdmesh%z )) 
+    endif
     
-    call nc_read_att_int(this%bwdmesh%npoints, &
-                         'npoints', &
-                         this%bwd(1))
+    ! Read surface element theta
+    ! Forward mesh
+    call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
+                                name  = 'surf_elems',     &
+                                dimid = surfdimid) ) 
 
-    allocate(this%bwdmesh%s(this%bwdmesh%npoints))
-    allocate(this%bwdmesh%z(this%bwdmesh%npoints))
+    call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
+                                       dimid = surfdimid,               &
+                                       len   = this%fwdmesh%nsurfelem) )
+
+    call  getvarid( ncid  = this%fwd(1)%surf, &
+                    name  = "elem_theta",     &
+                    varid = ncvarid_theta) 
+
+    allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
+    call check( nf90_get_var( ncid   = this%fwd(1)%surf,    &
+                              varid  = ncvarid_theta,       &
+                              values = this%fwdmesh%theta) )
+
     
-    call  getvarid( ncid  = this%bwd(1)%mesh, &
-                    name  = "mesh_S", &
-                    varid = ncvarid_mesh_s) 
-    call  getvarid( ncid  = this%bwd(1)%mesh, &
-                    name  = "mesh_Z", &
-                    varid = ncvarid_mesh_z) 
+    ! Backward mesh
+    if (this%nsim_bwd > 0) then
+        call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
+                                    name  = 'surf_elems',     &
+                                    dimid = surfdimid) ) 
 
-    call check( nf90_get_var(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_s,   &
-                             start  = [1],                    &
-                             count  = [this%bwdmesh%npoints], &
-                             values = this%bwdmesh%s )) 
-    call check( nf90_get_var(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_z,   &
-                             start  = [1],                    &
-                             count  = [this%bwdmesh%npoints], &
-                             values = this%bwdmesh%z )) 
+        call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
+                                           dimid = surfdimid,               &
+                                           len   = this%fwdmesh%nsurfelem) )
 
-   
-   ! Read surface element theta
-   ! Forward mesh
-   call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
-                               name  = 'surf_elems',     &
-                               dimid = surfdimid) ) 
+        call  getvarid(ncid  = this%bwd(1)%surf, &
+                       name  = "elem_theta",     &
+                       varid = ncvarid_theta) 
 
-   call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
-                                      dimid = surfdimid,               &
-                                      len   = this%fwdmesh%nsurfelem) )
-
-   call  getvarid( ncid  = this%fwd(1)%surf, &
-                   name  = "elem_theta",     &
-                   varid = ncvarid_theta) 
-
-   allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
-   call check( nf90_get_var( ncid   = this%fwd(1)%surf,    &
-                             varid  = ncvarid_theta,       &
-                             values = this%fwdmesh%theta) )
-
-   
-   ! Backward mesh
-   call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
-                               name  = 'surf_elems',     &
-                               dimid = surfdimid) ) 
-
-   call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
-                                      dimid = surfdimid,               &
-                                      len   = this%fwdmesh%nsurfelem) )
-
-   call  getvarid(ncid  = this%bwd(1)%surf, &
-                  name  = "elem_theta",     &
-                  varid = ncvarid_theta) 
-
-   allocate( this%bwdmesh%theta(this%fwdmesh%nsurfelem) )
-   call check( nf90_get_var( ncid   = this%bwd(1)%surf,    &
-                             varid  = ncvarid_theta,       &
-                             values = this%bwdmesh%theta) )
-                             
-
+        allocate( this%bwdmesh%theta(this%fwdmesh%nsurfelem) )
+        call check( nf90_get_var( ncid   = this%bwd(1)%surf,    &
+                                  varid  = ncvarid_theta,       &
+                                  values = this%bwdmesh%theta) )
+    endif
                                    
     this%meshes_read = .true.
 
