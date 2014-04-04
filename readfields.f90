@@ -370,7 +370,7 @@ subroutine open_files(this)
                                          chunksizes = chunks, &
                                          deflate_level = deflev) )
 
-        write(lu_out, "('  BWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
+        write(lu_out, "('BWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
         this%bwd(isim)%chunk_gll = chunks(1)
         if (verbose>0) write(lu_out,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
@@ -1019,6 +1019,10 @@ subroutine build_kdtree(this)
     allocate(mesh(2, this%fwdmesh%npoints))
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
 
+    print *, this%fwdmesh%npoints
+
+    write(1000,*) mesh
+
     write(lu_out,*) ' Building forward KD-Tree'
     call flush(lu_out)
     ! KDtree in forward field
@@ -1055,6 +1059,7 @@ subroutine read_meshes(this)
     integer                :: ncvarid_mesh_s, ncvarid_mesh_z
     integer                :: surfdimid, ncvarid_theta
     integer                :: ielem
+    logical                :: mesherror
    
     if (.not.this%files_open) then
         print *, 'ERROR in read_meshes(): Files have not been opened!'
@@ -1119,7 +1124,7 @@ subroutine read_meshes(this)
                                  count  = [this%bwdmesh%npoints], &
                                  values = this%bwdmesh%z )) 
     endif
-    
+
     ! Read surface element theta
     ! Forward mesh
     call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
@@ -1142,23 +1147,67 @@ subroutine read_meshes(this)
     
     ! Backward mesh
     if (this%nsim_bwd > 0) then
-        call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
-                                    name  = 'surf_elems',     &
-                                    dimid = surfdimid) ) 
+       call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
+                                   name  = 'surf_elems',     &
+                                   dimid = surfdimid) ) 
 
-        call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
-                                           dimid = surfdimid,               &
-                                           len   = this%fwdmesh%nsurfelem) )
+       call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
+                                          dimid = surfdimid,               &
+                                          len   = this%fwdmesh%nsurfelem) )
 
-        call  getvarid(ncid  = this%bwd(1)%surf, &
-                       name  = "elem_theta",     &
-                       varid = ncvarid_theta) 
+       call  getvarid(ncid  = this%bwd(1)%surf, &
+                      name  = "elem_theta",     &
+                      varid = ncvarid_theta) 
 
-        allocate( this%bwdmesh%theta(this%fwdmesh%nsurfelem) )
-        call check( nf90_get_var( ncid   = this%bwd(1)%surf,    &
-                                  varid  = ncvarid_theta,       &
-                                  values = this%bwdmesh%theta) )
+       allocate( this%bwdmesh%theta(this%fwdmesh%nsurfelem) )
+       call check( nf90_get_var( ncid   = this%bwd(1)%surf,    &
+                                 varid  = ncvarid_theta,       &
+                                 values = this%bwdmesh%theta) )
     endif
+
+    ! Mesh sanity checks
+    mesherror = .false.
+    if (maxval(abs(this%fwdmesh%s)) > 1e32) then
+       write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
+       write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
+       mesherror = .true.
+    end if
+    if (maxval(abs(this%fwdmesh%z)) > 1e32) then
+       write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
+       write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
+       mesherror = .true.
+    end if
+
+    if (maxval(abs(this%bwdmesh%s)) > 1e32) then
+       write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
+       write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
+       mesherror = .true.
+    end if
+    if (maxval(abs(this%bwdmesh%z)) > 1e32) then
+       write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
+       write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
+       mesherror = .true.
+    end if
+
+    if (maxval(this%fwdmesh%theta).gt.180) then
+       write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+       write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+       write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+       mesherror = .true.
+    end if
+
+    if (maxval(this%fwdmesh%theta).gt.180) then
+       write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+       write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+       write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+       mesherror = .true.
+    end if
+
+    if (mesherror) then
+       write(*,*) 'ERROR: One or more mesh errors found!'
+       call pabort
+    end if
+
                                    
     this%meshes_read = .true.
 

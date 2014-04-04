@@ -326,8 +326,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            iclockold = tick(id=id_fft, since=iclockold)
 
            ! Timeshift forward field
-           call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
-           iclockold = tick(id=id_filter_conv, since=iclockold)
+           ! Not necessary, if STF is deconvolved
+           !call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
+           !iclockold = tick(id=id_filter_conv, since=iclockold)
          
            do irec = 1, parameters%nrec
                 
@@ -346,8 +347,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               call fft_data%rfft( taperandzeropad(bw_field, ntimes), bw_field_fd )
               iclockold = tick(id=id_fft, since=iclockold)
 
-              ! Timeshift forward field
-              call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
+              ! Timeshift backward field
+              ! Not necessary, if STF is deconvolved
+              !call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
 
               ! Convolve forward and backward fields
               conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)

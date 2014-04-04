@@ -115,7 +115,7 @@ subroutine plot_wavefields()
     allocate(fw_field_fd(nomega, 1, nvertices))
     call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
     deallocate(fw_field)
-    call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
+    !call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
 
     do irec = 1, nrec
         write(*,*) ' Read in backward field of receiver', irec
@@ -137,7 +137,7 @@ subroutine plot_wavefields()
         allocate(bw_field_fd  (nomega, 1, nvertices))
         call fft_data%rfft(taperandzeropad(bw_field, ntimes), bw_field_fd)
         deallocate(bw_field)
-        call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
+        !call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
 
         write(*,*) ' Convolve wavefields'
         allocate(conv_field(ntimes, 1, nvertices))

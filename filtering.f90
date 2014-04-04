@@ -84,7 +84,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     close(10)
     this%initialized = .true.
     this%stf_added = .false.
-end subroutine
+end subroutine create
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
@@ -141,12 +141,21 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     close(10)
     
 21  format('stf_spectrum_', A, 2('_', F0.3))
-22  format(5(E15.8))
+22  format(5(E16.8))
     write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
     open(10, file=trim(fnam), action='write')
     do ifreq = 1, this%nfreq
         write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
                                      real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
+    end do
+    close(10)
+    
+23  format('stf_', A, 2('_', F0.3))
+24  format(3(E16.8))
+    write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
+    open(10, file=trim(fnam), action='write')
+    do ifreq = 1, size(stf_fwd)
+       write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,1)
     end do
     close(10)
     
@@ -164,7 +173,7 @@ subroutine deleteme(this)
     deallocate(this%transferfunction)
     deallocate(this%f)
     this%initialized = .false.
-end subroutine
+end subroutine deleteme
 
 ! -----------------------------------------------------------------------------
 !> Apply this filter to one trace (in the frequency domain)
