@@ -1,6 +1,29 @@
 program rdbm
 
-  use readfields
+  use readfields, only : semdata_type
+  use commpi
+  use global_parameters
+
+  implicit none
+
+  type(semdata_type)                  :: sem_data
+  character(len=512)                  :: fwd_dir, bwd_dir
+  character(len=4)                    :: model_param
+
+  verbose = 1
+
+  write(*,*) '***************************************************************'
+  write(*,*) ' Initialize and open AxiSEM wavefield files'
+  write(*,*) '***************************************************************'
+
+  fwd_dir = '/home/ex/local/src/axisem/SOLVER/50s_kernel_output'
+  bwd_dir = ''
+
+  model_param = 'vp'
+  call sem_data%set_params(fwd_dir, bwd_dir, 100, model_param)
+  call sem_data%open_files()
+  !call sem_data%read_meshes()
+  !call sem_data%build_kdtree()
 
   write(6,*) 'kuckuck'
 

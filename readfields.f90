@@ -103,7 +103,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     character(len=4),   intent(in), optional :: model_param
     character(len=512)             :: dirnam
     integer                        :: isim
-    logical                        :: moment=.false., force=.false.
+    logical                        :: moment=.false., force=.false., single=.false.
 
     this%buffer_size = buffer_size
 
@@ -114,20 +114,60 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     dirnam = trim(fwd_dir)//'/PZ/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = force)
-    ! @TODO: is this robust?
+
+    dirnam = trim(fwd_dir)//'/simulation.info'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = single)
+
     if (moment) then
        this%nsim_fwd = 4
        write(lu_out,*) 'Forward simulation was ''moment'' source'
     elseif (force) then
        this%nsim_fwd = 2
        write(lu_out,*) 'Forward simulation was ''forces'' source'
-    else 
+    elseif (single) then
        this%nsim_fwd = 1
        write(lu_out,*) 'Forward simulation was ''single'' source'
+    else 
+       this%nsim_fwd = 0
+       write(lu_out,*) 'ERROR: Forward rundir does not seem to be an axisem rundirectory'
+       call pabort
     end if
 
-    this%nsim_bwd =  1 !parameters%nsim_bwd
-    
+    moment = .false.
+    force  = .false.
+    single = .false.
+
+    dirnam = trim(bwd_dir)//'/MZZ/simulation.info'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = moment)
+
+    dirnam = trim(bwd_dir)//'/PZ/simulation.info'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = force)
+
+    dirnam = trim(bwd_dir)//'/simulation.info'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = single)
+
+    if (moment) then
+       this%nsim_bwd = 4
+       write(lu_out,*) 'Backword simulation was ''moment'' source'
+       write(lu_out,*) 'This is not implemented yet!'
+       call pabort
+    elseif (force) then
+       this%nsim_bwd = 2
+       write(lu_out,*) 'Backword simulation was ''forces'' source'
+       write(lu_out,*) 'This is not implemented yet!'
+    elseif (single) then
+       this%nsim_bwd = 1
+       write(lu_out,*) 'Backword simulation was ''single'' source'
+    else 
+       this%nsim_bwd = 0
+       write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
+       write(lu_out,*) 'continuing anyway, as this is default in db mode'
+    end if
+
     allocate( this%fwd(this%nsim_fwd) )
     allocate( this%bwd(this%nsim_bwd) )
 
@@ -157,11 +197,15 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%model_param = 'vp'
     end if
 
+    print *, this%model_param
     select case(trim(this%model_param))
     case('vp')
        this%ndim = 1
     case('vs')
        this%ndim = 6
+    case default
+        print *, 'ERROR in set_params(): unknown model param '//this%model_param
+        call pabort
     end select
     write(lu_out, *) 'Model parameter: ', trim(this%model_param), &
                      ', Dimension of wavefields: ', this%ndim
