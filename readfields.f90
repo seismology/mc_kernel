@@ -2,11 +2,13 @@
 module readfields
     use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
-    use source_class,      only             : src_param_type
+    use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
     use clocks_mod,        only            : tick
     use commpi,            only            : pabort
+    use nc_routines,       only            : getgrpid, getvarid, nc_open_for_read, nc_getvar, &
+                                             check
     use netcdf
     use kdtree2_module                     
 
@@ -27,7 +29,7 @@ module readfields
         integer                           :: stf_varid               ! Variable IDs
         integer                           :: chunk_gll
         character(len=200)                :: meshdir
-        integer                           :: ndumps, nseis
+        integer                           :: ndumps, nseis, ngll
         integer                           :: source_shift_samples    
         real(kind=dp)                     :: source_shift_t
         real(kind=sp), allocatable        :: stf(:)
@@ -658,7 +660,7 @@ subroutine load_seismogram(this, receivers, src)
    type(src_param_type)     :: src
    real(kind=dp)            :: seismogram_disp(this%ndumps)
    real(kind=dp)            :: seismogram_velo(this%ndumps)
-   real(kind=sp)            :: utemp(this%ndumps)
+   real(kind=sp)            :: utemp(this%ndumps,1,1)
    real(kind=dp)            :: Mij_scale(6), mij_prefact(4)
    integer                  :: reccomp, isurfelem, irec, isim, nrec
 
@@ -734,22 +736,34 @@ subroutine load_seismogram(this, receivers, src)
                 'Sim: ', isim, ' Read element', isurfelem, &
                                                ', component: ', reccomp, ', no of samples:', this%ndumps
          ! Displacement seismogram
-         call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
-                                   varid  = this%fwd(isim)%seis_disp,   &
-                                   start  = [1, reccomp, isurfelem],    &
-                                   count  = [this%ndumps, 1, 1],        &
-                                   values = utemp) )
+         !call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
+         !                          varid  = this%fwd(isim)%seis_disp,   &
+         !                          start  = [1, reccomp, isurfelem],    &
+         !                          count  = [this%ndumps, 1, 1],        &
+         !                          values = utemp) )
       
-         seismogram_disp = real(utemp, kind=dp) * mij_prefact(isim) + seismogram_disp
+         call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
+                         varid  = this%fwd(isim)%seis_disp,   &
+                         start  = [1, reccomp, isurfelem],    &
+                         count  = [this%ndumps, 1, 1],        &
+                         values = utemp) 
+      
+         seismogram_disp = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_disp
 
          ! Velocity seismogram
-         call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
-                                   varid  = this%fwd(isim)%seis_velo,   &
-                                   start  = [1, reccomp, isurfelem],    &
-                                   count  = [this%ndumps, 1, 1],        &
-                                   values = utemp) )
+         !call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
+         !                          varid  = this%fwd(isim)%seis_velo,   &
+         !                          start  = [1, reccomp, isurfelem],    &
+         !                          count  = [this%ndumps, 1, 1],        &
+         !                          values = utemp) )
       
-         seismogram_velo = real(utemp, kind=dp) * mij_prefact(isim) + seismogram_velo
+         call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
+                         varid  = this%fwd(isim)%seis_velo,   &
+                         start  = [1, reccomp, isurfelem],    &
+                         count  = [this%ndumps, 1, 1],        &
+                         values = utemp) 
+      
+         seismogram_velo = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_velo
       end do
 
       this%dispseis(:, irec) = seismogram_disp(1:this%ndumps)
@@ -843,7 +857,7 @@ function load_strain_point(sem_obj, pointid, model_param)
     character(len=*), intent(in)    :: model_param
     real(kind=dp), allocatable      :: load_strain_point(:,:)
 
-    integer                         :: start_chunk, iread
+    integer                         :: start_chunk, iread, gll_to_read
     integer                         :: iclockold, status, istrainvar
     real(kind=sp)                   :: utemp(sem_obj%ndumps)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
@@ -859,13 +873,18 @@ function load_strain_point(sem_obj, pointid, model_param)
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+
+           ! Only read to last point, not further
+           gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
            iclockold = tick()
-           call check( nf90_get_var( ncid   = sem_obj%snap,           & 
-                                     varid  = sem_obj%strainvarid(6), &
-                                     start  = [start_chunk, 1],       &
-                                     count  = [sem_obj%chunk_gll, sem_obj%ndumps], &
-                                     values = utemp_chunk) )
+           call nc_getvar( ncid   = sem_obj%snap,           & 
+                           varid  = sem_obj%strainvarid(6), &
+                           start  = [start_chunk, 1],       &
+                           count  = [gll_to_read, sem_obj%ndumps], &
+                           values = utemp_chunk(1:gll_to_read, :)) 
+
            iclockold = tick(id=id_netcdf, since=iclockold)
+
            do iread = 0, sem_obj%chunk_gll - 1
                status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
@@ -890,14 +909,19 @@ function load_strain_point(sem_obj, pointid, model_param)
             
             if (status.ne.0) then
                start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+               
+               ! Only read to last point, not further
+               gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+
                iclockold = tick()
-               call check( nf90_get_var( ncid   = sem_obj%snap,        & 
-                                         varid  = sem_obj%strainvarid(istrainvar), &
-                                         start  = [start_chunk, 1],    &
-                                         count  = [sem_obj%chunk_gll, sem_obj%ndumps], &
-                                         values = utemp_chunk) )
+               call nc_getvar( ncid   = sem_obj%snap,           & 
+                               varid  = sem_obj%strainvarid(istrainvar), &
+                               start  = [start_chunk, 1],       &
+                               count  = [gll_to_read, sem_obj%ndumps], &
+                               values = utemp_chunk(1:gll_to_read, :)) 
+
                iclockold = tick(id=id_netcdf, since=iclockold)
-               do iread = 0, sem_obj%chunk_gll - 1
+               do iread = 0, gll_to_read - 1
                    status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
                                                            utemp_chunk(iread+1,:))
                end do
@@ -1009,11 +1033,12 @@ end subroutine build_kdtree
 !-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
-    class(semdata_type)    :: this
-    integer                :: ncvarid_mesh_s, ncvarid_mesh_z
-    integer                :: surfdimid, ncvarid_theta
-    integer                :: ielem
-    logical                :: mesherror
+    class(semdata_type)        :: this
+    integer                    :: ncvarid_mesh_s, ncvarid_mesh_z
+    integer                    :: surfdimid, ncvarid_theta
+    integer                    :: ielem, isim
+    logical                    :: mesherror
+    real(kind=sp), allocatable :: theta(:)
    
     if (.not.this%files_open) then
         print *, 'ERROR in read_meshes(): Files have not been opened!'
@@ -1030,7 +1055,11 @@ subroutine read_meshes(this)
 
     allocate(this%fwdmesh%s(this%fwdmesh%npoints))
     allocate(this%fwdmesh%z(this%fwdmesh%npoints))
-    
+
+    do isim = 1, this%nsim_fwd
+       this%fwd(isim)%ngll = this%fwdmesh%npoints
+    end do
+       
     call  getvarid( ncid  = this%fwd(1)%mesh, &
                     name  = "mesh_S", &
                     varid = ncvarid_mesh_s) 
@@ -1038,16 +1067,16 @@ subroutine read_meshes(this)
                     name  = "mesh_Z", &
                     varid = ncvarid_mesh_z) 
 
-    call check( nf90_get_var(ncid   = this%fwd(1)%mesh,       &
-                             varid  = ncvarid_mesh_s,         &
-                             start  = [1],                    &
-                             count  = [this%fwdmesh%npoints], &
-                             values = this%fwdmesh%s )) 
-    call check( nf90_get_var(ncid   = this%fwd(1)%mesh,       &
-                             varid  = ncvarid_mesh_z,         &
-                             start  = [1],                    &
-                             count  = [this%fwdmesh%npoints], &
-                             values = this%fwdmesh%z )) 
+    call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                   varid  = ncvarid_mesh_s,         &
+                   start  = 1,                    &
+                   count  = this%fwdmesh%npoints, &
+                   values = this%fwdmesh%s ) 
+    call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                   varid  = ncvarid_mesh_z,         &
+                   start  = 1,                    &
+                   count  = this%fwdmesh%npoints, &
+                   values = this%fwdmesh%z ) 
    
    
     ! Backward SEM mesh                     
@@ -1060,6 +1089,10 @@ subroutine read_meshes(this)
     allocate(this%bwdmesh%s(this%bwdmesh%npoints))
     allocate(this%bwdmesh%z(this%bwdmesh%npoints))
     
+    do isim = 1, this%nsim_bwd
+       this%bwd(isim)%ngll = this%bwdmesh%npoints
+    end do
+       
     call  getvarid( ncid  = this%bwd(1)%mesh, &
                     name  = "mesh_S", &
                     varid = ncvarid_mesh_s) 
@@ -1067,16 +1100,16 @@ subroutine read_meshes(this)
                     name  = "mesh_Z", &
                     varid = ncvarid_mesh_z) 
 
-    call check( nf90_get_var(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_s,   &
-                             start  = [1],                    &
-                             count  = [this%bwdmesh%npoints], &
-                             values = this%bwdmesh%s )) 
-    call check( nf90_get_var(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_z,   &
-                             start  = [1],                    &
-                             count  = [this%bwdmesh%npoints], &
-                             values = this%bwdmesh%z )) 
+    call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                   varid  = ncvarid_mesh_s,   &
+                   start  = 1,                    &
+                   count  = this%bwdmesh%npoints, &
+                   values = this%bwdmesh%s ) 
+    call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                   varid  = ncvarid_mesh_z,   &
+                   start  = 1,                    &
+                   count  = this%bwdmesh%npoints, &
+                   values = this%bwdmesh%z ) 
 
    
    
@@ -1095,10 +1128,13 @@ subroutine read_meshes(this)
                    varid = ncvarid_theta) 
 
    allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
-   call check( nf90_get_var( ncid   = this%fwd(1)%surf,    &
-                             varid  = ncvarid_theta,       &
-                             values = this%fwdmesh%theta) )
-
+   allocate( theta(this%fwdmesh%nsurfelem) )
+   call nc_getvar( ncid   = this%fwd(1)%surf,   &
+                   varid  = ncvarid_theta,          &
+                   start  = 1,                      & 
+                   count  = this%fwdmesh%nsurfelem, &
+                   values = theta                    )
+   this%fwdmesh%theta = real(theta, kind=dp)
    
    ! Backward mesh
    call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
@@ -1107,16 +1143,19 @@ subroutine read_meshes(this)
 
    call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
                                       dimid = surfdimid,               &
-                                      len   = this%fwdmesh%nsurfelem) )
+                                      len   = this%bwdmesh%nsurfelem) )
 
    call  getvarid(ncid  = this%bwd(1)%surf, &
                   name  = "elem_theta",     &
                   varid = ncvarid_theta) 
 
-   allocate( this%bwdmesh%theta(this%fwdmesh%nsurfelem) )
-   call check( nf90_get_var( ncid   = this%bwd(1)%surf,    &
-                             varid  = ncvarid_theta,       &
-                             values = this%bwdmesh%theta) )
+   allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
+   call nc_getvar( ncid   = this%fwd(1)%surf,   &
+                   varid  = ncvarid_theta,          &
+                   start  = 1,                      & 
+                   count  = this%bwdmesh%nsurfelem, &
+                   values = theta                    )
+   this%fwdmesh%theta = real(theta, kind=dp)
                              
 
    ! Mesh sanity checks
@@ -1171,157 +1210,6 @@ subroutine read_meshes(this)
 end subroutine read_meshes
 !-----------------------------------------------------------------------------------------
  
-!-----------------------------------------------------------------------------------------
-subroutine check(status)
-! Translates netcdf error codes into error messages
-
-  implicit none
-  integer, intent ( in) :: status
-
-  if(status /= nf90_noerr) then 
-     print *, trim(nf90_strerror(status))
-     call pabort
-     !call tracebackqq()
-  end if
-end subroutine check  
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine getvarid(ncid, name, varid)
-    integer, intent(in)          :: ncid
-    character(len=*), intent(in) :: name
-    integer, intent(out)         :: varid
-    integer                      :: status
-
-    status = nf90_inq_varid( ncid  = ncid, &
-                             name  = name, &
-                             varid = varid )
-    if (status.ne.NF90_NOERR) then
-        write(6,100) myrank, trim(name), ncid
-        call pabort
-    elseif (myrank.eq.0) then
-        if (verbose>0) write(lu_out,101) trim(name), ncid, varid
-    end if
-100 format('ERROR: CPU ', I4, ' could not find variable: ''', A, ''' in NCID', I7)
-101 format('  Variable ''', A, ''' found in NCID', I7, ', has ID:', I7)
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine nc_open_for_read(filename, ncid)
-   character(len=*), intent(in)  :: filename
-   integer, intent(out)          :: ncid
-   character(len=512)            :: fmtstring
-   integer                       :: status
-
-   status = nf90_open(path     = filename,              &
-                      mode     = nf90_nowrite,          &
-                      ncid     = ncid)
-
-   if (status.ne.nf90_noerr) then
-      fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', " &
-                    // "but could not find it')"
-      print fmtstring, myrank, trim(filename)
-      stop
-   end if
-
-end subroutine nc_open_for_read
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine getgrpid(ncid, name, grp_ncid)
-    integer, intent(in)          :: ncid
-    character(len=*), intent(in) :: name
-    integer, intent(out)         :: grp_ncid
-    integer                      :: status
-
-    status = nf90_inq_ncid( ncid     = ncid, &
-                            name     = name, &
-                            grp_ncid = grp_ncid )
-    if (status.ne.NF90_NOERR) then
-        write(6,100) myrank, trim(name), ncid
-        call pabort
-    elseif (verbose>1) then
-        write(lu_out,101) trim(name), ncid, grp_ncid
-        call flush(lu_out)
-    end if
-100 format('ERROR: CPU ', I4, ' could not find group: ''', A, ''' in NCID', I7)
-101 format('    Group ''', A, ''' found in NCID', I7, ', has ID:', I7)
-end subroutine getgrpid
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-!> Read NetCDF attribute of type Integer
-subroutine nc_read_att_int(attribute_value, attribute_name, nc)
-  character(len=*),  intent(in)     :: attribute_name
-  integer, intent(out)              :: attribute_value
-  type(ncparamtype), intent(in)     :: nc
-  integer                           :: status
-
-  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
-  if (status.ne.NF90_NOERR) then
-      write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
-      write(6,*) ' with NCID: ', nc%ncid
-      call pabort
-  end if
-end subroutine nc_read_att_int
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-!> Read NetCDF attribute of type Character
-subroutine nc_read_att_char(attribute_value, attribute_name, nc)
-  character(len=*),  intent(in)     :: attribute_name
-  character(len=*), intent(out)     :: attribute_value
-  type(ncparamtype), intent(in)     :: nc
-  integer                           :: status
-
-  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
-  if (status.ne.NF90_NOERR) then
-      write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
-      write(6,*) ' with NCID: ', nc%ncid
-      call pabort 
-  end if
-end subroutine nc_read_att_char
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-!> Read NetCDF attribute of type Real
-subroutine nc_read_att_real(attribute_value, attribute_name, nc)
-  character(len=*),  intent(in)     :: attribute_name
-  real, intent(out)                 :: attribute_value
-  type(ncparamtype), intent(in)     :: nc
-  integer                           :: status
-
-  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
-  if (status.ne.NF90_NOERR) then
-      write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
-      write(6,*) ' with NCID: ', nc%ncid
-      call pabort
-  end if
-end subroutine nc_read_att_real
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-!> Read NetCDF attribute of type Double
-subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
-  character(len=*),  intent(in)     :: attribute_name
-  real(kind=dp), intent(out)        :: attribute_value
-  type(ncparamtype), intent(in)     :: nc
-  integer                           :: status
-
-  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
-  if (status.ne.NF90_NOERR) then
-      write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
-      write(6,*) ' with NCID: ', nc%ncid
-      call pabort
-  end if
-end subroutine nc_read_att_dble
-!-----------------------------------------------------------------------------------------
-
 !-----------------------------------------------------------------------------------------
 function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
     !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
@@ -1434,6 +1322,78 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
        endif
     enddo
 end subroutine rotate_frame_rd
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Read NetCDF attribute of type Integer
+subroutine nc_read_att_int(attribute_value, attribute_name, nc)
+  character(len=*),  intent(in)     :: attribute_name
+  integer, intent(out)              :: attribute_value
+  type(ncparamtype), intent(in)     :: nc
+  integer                           :: status
+
+  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
+  if (status.ne.NF90_NOERR) then
+      write(6,*) 'Could not find attribute ', trim(attribute_name)
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' with NCID: ', nc%ncid
+      call pabort
+  end if
+end subroutine nc_read_att_int
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Read NetCDF attribute of type Character
+subroutine nc_read_att_char(attribute_value, attribute_name, nc)
+  character(len=*),  intent(in)     :: attribute_name
+  character(len=*), intent(out)     :: attribute_value
+  type(ncparamtype), intent(in)     :: nc
+  integer                           :: status
+
+  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
+  if (status.ne.NF90_NOERR) then
+      write(6,*) 'Could not find attribute ', trim(attribute_name)
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' with NCID: ', nc%ncid
+      call pabort 
+  end if
+end subroutine nc_read_att_char
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Read NetCDF attribute of type Real
+subroutine nc_read_att_real(attribute_value, attribute_name, nc)
+  character(len=*),  intent(in)     :: attribute_name
+  real, intent(out)                 :: attribute_value
+  type(ncparamtype), intent(in)     :: nc
+  integer                           :: status
+
+  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
+  if (status.ne.NF90_NOERR) then
+      write(6,*) 'Could not find attribute ', trim(attribute_name)
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' with NCID: ', nc%ncid
+      call pabort
+  end if
+end subroutine nc_read_att_real
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Read NetCDF attribute of type Double
+subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
+  character(len=*),  intent(in)     :: attribute_name
+  real(kind=dp), intent(out)        :: attribute_value
+  type(ncparamtype), intent(in)     :: nc
+  integer                           :: status
+
+  status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
+  if (status.ne.NF90_NOERR) then
+      write(6,*) 'Could not find attribute ', trim(attribute_name)
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' with NCID: ', nc%ncid
+      call pabort
+  end if
+end subroutine nc_read_att_dble
 !-----------------------------------------------------------------------------------------
 
 end module
