@@ -975,6 +975,10 @@ subroutine build_kdtree(this)
     allocate(mesh(2, this%fwdmesh%npoints))
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
 
+    print *, this%fwdmesh%npoints
+
+    write(1000,*) mesh
+
     write(lu_out,*) ' Building forward KD-Tree'
     call flush(lu_out)
     ! KDtree in forward field
@@ -1009,6 +1013,7 @@ subroutine read_meshes(this)
     integer                :: ncvarid_mesh_s, ncvarid_mesh_z
     integer                :: surfdimid, ncvarid_theta
     integer                :: ielem
+    logical                :: mesherror
    
     if (.not.this%files_open) then
         print *, 'ERROR in read_meshes(): Files have not been opened!'
@@ -1044,6 +1049,7 @@ subroutine read_meshes(this)
                              count  = [this%fwdmesh%npoints], &
                              values = this%fwdmesh%z )) 
    
+   
     ! Backward SEM mesh                     
     write(lu_out,*) 'Read SEM mesh from first backward simulation'
     
@@ -1072,6 +1078,7 @@ subroutine read_meshes(this)
                              count  = [this%bwdmesh%npoints], &
                              values = this%bwdmesh%z )) 
 
+   
    
    ! Read surface element theta
    ! Forward mesh
@@ -1112,11 +1119,54 @@ subroutine read_meshes(this)
                              values = this%bwdmesh%theta) )
                              
 
-                                   
-    this%meshes_read = .true.
+   ! Mesh sanity checks
+   mesherror = .false.
+   if (maxval(abs(this%fwdmesh%s)) > 1e32) then
+      write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
+      write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
+      mesherror = .true.
+   end if
+   if (maxval(abs(this%fwdmesh%z)) > 1e32) then
+      write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
+      write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
+      mesherror = .true.
+   end if
 
-    write(lu_out, *) 'Forward and backward SEM mesh reading succeeded'
-    call flush(lu_out)
+   if (maxval(abs(this%bwdmesh%s)) > 1e32) then
+      write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
+      write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
+      mesherror = .true.
+   end if
+   if (maxval(abs(this%bwdmesh%z)) > 1e32) then
+      write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
+      write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
+      mesherror = .true.
+   end if
+
+   if (maxval(this%fwdmesh%theta).gt.180) then
+      write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+      write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+      write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+      mesherror = .true.
+   end if
+
+   if (maxval(this%fwdmesh%theta).gt.180) then
+      write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+      write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+      write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+      mesherror = .true.
+   end if
+
+   if (mesherror) then
+      write(*,*) 'ERROR: One or more mesh errors found!'
+      call pabort
+   end if
+
+                                   
+   this%meshes_read = .true.
+
+   write(lu_out, *) 'Forward and backward SEM mesh reading succeeded'
+   call flush(lu_out)
 
 end subroutine read_meshes
 !-----------------------------------------------------------------------------------------
