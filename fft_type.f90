@@ -2,6 +2,7 @@
 module fft
   use global_parameters
   use simple_routines, only      : mult2d_1d, mult3d_1d
+  use commpi,          only      : pabort
   use, intrinsic :: iso_c_binding
   implicit none
   include 'fftw3.f'
@@ -47,8 +48,10 @@ contains
 !-----------------------------------------------------------------------------------------
 integer function get_nomega(this)
   class(rfft_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing fft type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
   get_nomega = this%nomega
 end function
 !-----------------------------------------------------------------------------------------
@@ -56,8 +59,10 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntimes(this)
   class(rfft_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing fft type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
   get_ntimes = this%ntimes
 end function
 !-----------------------------------------------------------------------------------------
@@ -65,8 +70,10 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntraces(this)
   class(rfft_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing fft type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
   get_ntraces = this%ntraces
 end function
 !-----------------------------------------------------------------------------------------
@@ -74,8 +81,10 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ndim(this)
   class(rfft_type)        :: this
-  if (.not. this%initialized) &
-     stop 'ERROR: accessing fft type that is not initialized'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
   get_ndim = this%ndim
 end function
 !-----------------------------------------------------------------------------------------
@@ -89,31 +98,37 @@ end function
 
 !-----------------------------------------------------------------------------------------
 function get_df(this)
-   class(rfft_type) :: this
-   real(kind=dp)    :: get_df
-   if (.not. this%initialized) &
-      stop 'ERROR: accessing fft type that is not initialized'
-   get_df = this%df
+  class(rfft_type) :: this
+  real(kind=dp)    :: get_df
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
+  get_df = this%df
 end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function get_f(this)
-   class(rfft_type) :: this
-   real(kind=dp)    :: get_f(this%nomega)
-   if (.not. this%initialized) &
-      stop 'ERROR: accessing fft type that is not initialized'
-   get_f(:) = this%f(:)
+  class(rfft_type) :: this
+  real(kind=dp)    :: get_f(this%nomega)
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
+  get_f(:) = this%f(:)
 end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function get_t(this)
-   class(rfft_type) :: this
-   real(kind=dp)    :: get_t(this%ntimes)
-   if (.not. this%initialized) &
-      stop 'ERROR: accessing fft type that is not initialized'
-   get_t(:) = this%t(:)
+  class(rfft_type) :: this
+  real(kind=dp)    :: get_t(this%ntimes)
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
+  get_t(:) = this%t(:)
 end function
 !-----------------------------------------------------------------------------------------
 
@@ -227,19 +242,21 @@ subroutine rfft_1d(this, datat, dataf)
   !real(kind=dp)                    :: datat(this%ntimes, this%ntraces)
   !complex(kind=dp)                 :: dataf(this%nomega, this%ntraces)
 
-  if (.not. this%initialized) &
-     stop 'ERROR: trying fft on a plan that was not initialized'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: trying fft on a plan that was not initialized'
+     call pabort 
+  end if
 
   if (any(shape(datat) /= [this%ntimes, this%ntraces])) then
      write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
      write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', this%ntraces, ']'
-     stop
+     call pabort
   end if
 
   if (any(shape(dataf) /= [this%nomega, this%ntraces])) then
      write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
      write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', this%ntraces, ']'
-     stop
+     call pabort
   end if
 
   ! use specific interfaces including the buffer arrays to make sure the
@@ -256,19 +273,20 @@ subroutine irfft_1d(this, dataf, datat)
   real(kind=dp), intent(out)    :: datat(:,:)
 
   if (.not. this%initialized) then
-     stop 'ERROR: trying inverse fft on a plan that was not initialized'
-  endif
+     write(*,*) 'ERROR: trying fft on a plan that was not initialized'
+     call pabort 
+  end if
 
   if (any(shape(dataf) /= (/this%nomega, this%ntraces/))) then
      write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
      write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', this%ntraces, ']'
-     stop 
+     call pabort 
   end if
 
   if (any(shape(datat) /= (/this%ntimes, this%ntraces/))) then
      write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
      write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', this%ntraces, ']'
-     stop 
+     call pabort 
   end if
 
   ! use specific interfaces including the buffer arrays to make sure the
@@ -289,19 +307,21 @@ subroutine rfft_md(this, datat_in, dataf_out)
   real(kind=dp)                    :: datat(this%ntimes, this%ntraces_fft)
   complex(kind=dp)                 :: dataf(this%nomega, this%ntraces_fft)
 
-  if (.not. this%initialized) &
-     stop 'ERROR: trying fft on a plan that was not initialized'
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: trying fft on a plan that was not initialized'
+     call pabort 
+  end if
 
   if (any(shape(datat_in) /= [this%ntimes, this%ndim, this%ntraces])) then
      write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
      write(*,*) 'is: ', shape(datat_in), '; should be: [', this%ntimes, ', ', this%ndim, ', ', this%ntraces, ']'
-     stop
+     call pabort
   end if
 
   if (any(shape(dataf_out) /= [this%nomega, this%ndim, this%ntraces])) then
      write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
      write(*,*) 'is: ', shape(dataf_out), '; should be: [', this%nomega, ', ', this%ndim, ', ', this%ntraces, ']'
-     stop
+     call pabort
   end if
 
   ! use specific interfaces including the buffer arrays to make sure the
@@ -321,20 +341,22 @@ subroutine irfft_md(this, dataf_in, datat_out)
   real(kind=dp)                 :: datat(this%ntimes, this%ntraces_fft)
   complex(kind=dp)              :: dataf(this%nomega, this%ntraces_fft)
 
+
   if (.not. this%initialized) then
-     stop 'ERROR: trying inverse fft on a plan that was not initialized'
-  endif
+     write(*,*) 'ERROR: trying fft on a plan that was not initialized'
+     call pabort 
+  end if
 
   if (any(shape(dataf_in) /= (/this%nomega, this%ndim, this%ntraces/))) then
      write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
      write(*,*) 'is: ', shape(dataf_in), '; should be: [', this%nomega, ', ', this%ndim, ', ', this%ntraces, ']'
-     stop 
+     call pabort 
   end if
 
   if (any(shape(datat_out) /= (/this%ntimes, this%ndim, this%ntraces/))) then
      write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
      write(*,*) 'is: ', shape(datat_out), '; should be: [', this%ntimes, ', ', this%ndim, ', ', this%ntraces, ']'
-     stop 
+     call pabort 
   end if
 
   ! use specific interfaces including the buffer arrays to make sure the
@@ -387,7 +409,7 @@ function taperandzeropad_1d(array, ntimes)
   if (ntimes<ntimes_in) then
      write(*,*) 'For zeropadding to work, ntimes has to be equal or larger ', & 
                 'than the length of the input array'
-     stop
+     call pabort
   end if
 
   ntaper   = ntimes_in / 4
@@ -424,7 +446,7 @@ function taperandzeropad_md(array, ntimes)
   if (ntimes<ntimes_in) then
      write(*,*) 'For zeropadding to work, ntimes has to be equal or larger ', & 
                 'than the length of the input array'
-     stop
+     call pabort
   end if
 
   ntaper   = ntimes_in / 4

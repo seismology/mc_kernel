@@ -1,41 +1,41 @@
 !=========================================================================================
 module kernel
+use global_parameters,                    only: sp, dp, verbose, lu_out
+use filtering,                            only: filter_type
+use commpi,                               only: pabort
+implicit none
 
-  use global_parameters,                    only: sp, dp, verbose, lu_out
-  use filtering,                            only: filter_type
-  implicit none
+    type kernelspec_type
+        character(len=32), public            :: name
+        real(kind=dp), dimension(2)          :: time_window
+        real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
+                                                                  ! in the time window of 
+                                                                  ! this kernel
+        real(kind=dp), allocatable           :: t(:)
+        real(kind=dp)                        :: dt
+        real(kind=dp)                        :: normalization
+        integer                              :: filter_type
+        character(len=4)                     :: misfit_type
+        character(len=4)                     :: model_parameter
+        !integer                              :: receiver_index
+        !integer                              :: src_index
+        !type(rec_param_type), pointer        :: receiver
+        type(filter_type), pointer           :: filter
+        logical                              :: initialized = .false.
+        contains 
+           procedure, pass                   :: init 
+           procedure, pass                   :: calc_misfit_kernel
+           procedure, pass                   :: isinitialized
+           procedure, pass                   :: freeme
+           procedure, pass                   :: apply_filter_2d
+           procedure, pass                   :: apply_filter_3d
+           generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
+    end type
 
-  type kernelspec_type
-      character(len=32), public            :: name
-      real(kind=dp), dimension(2)          :: time_window
-      real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
-                                                                ! in the time window of 
-                                                                ! this kernel
-      real(kind=dp), allocatable           :: t(:)
-      real(kind=dp)                        :: dt
-      real(kind=dp)                        :: normalization
-      integer                              :: filter_type
-      character(len=4)                     :: misfit_type
-      character(len=4)                     :: model_parameter
-      !integer                              :: receiver_index
-      !integer                              :: src_index
-      !type(rec_param_type), pointer        :: receiver
-      type(filter_type), pointer           :: filter
-      logical                              :: initialized = .false.
-      contains 
-         procedure, pass                   :: init 
-         procedure, pass                   :: calc_misfit_kernel
-         procedure, pass                   :: isinitialized
-         procedure, pass                   :: freeme
-         procedure, pass                   :: apply_filter_2d
-         procedure, pass                   :: apply_filter_3d
-         generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
-  end type
-
-  !interface apply_filter
-  !   module procedure                      :: apply_filter_3d
-  !   module procedure                      :: apply_filter_2d
-  !end interface apply_filter
+    !interface apply_filter
+    !   module procedure                      :: apply_filter_3d
+    !   module procedure                      :: apply_filter_2d
+    !end interface apply_filter
 
 contains 
 
@@ -63,7 +63,8 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    integer                                 :: ntimes, ntimes_ft, nomega, isample
 
    if(this%initialized) then
-      stop 'This kernel is already initialized'
+      write(*,*) 'This kernel is already initialized'
+      call pabort 
    end if
    this%name              = name
    this%time_window       = time_window 
@@ -226,7 +227,7 @@ function calc_misfit_kernel(this, timeseries)
        open(newunit=lu_errorlog, file='errorlog_seismogram', status='replace')
        write(lu_errorlog, *) this%seis
        close(lu_errorlog)
-       stop
+       call pabort
    end if
 
 end function
@@ -247,18 +248,18 @@ subroutine cut_timewindow(t, x, timewindow, cut_tw)
    if(timewindow(1).lt.t(1)) then
       write(*,*) 'Time window starts before beginning of time series'
       write(*,*) 'time window:', timewindow, '; t(1):', t(1)
-      stop
+      call pabort
    end if
    if(timewindow(2).gt.t(ntimes)) then
       write(*,*) 'Time window ends after beginning of time series'
       write(*,*) 'time window:', timewindow, '; t(ntimes):', t(ntimes)
-      stop
+      call pabort
    end if
 
    if ((timewindow(2) - timewindow(1)).le.0) then
       write(*,*) 'length of time window is negative'
       write(*,*) 'Beginning: ', timewindow(1), '; end: ', timewindow(2)
-      stop
+      call pabort
    end if
 
    allocate(cut_timewindow_temp(ntimes))
@@ -273,7 +274,8 @@ subroutine cut_timewindow(t, x, timewindow, cut_tw)
 
    if (iintimewindow.eq.0) then
        print *, 'Time window: ', timewindow, ', t(1):', t(1), ', t(ntimes):', t(ntimes)
-       stop 'Time window length was zero'
+       write(*,*) 'Time window length was zero'
+       call pabort 
    end if
 
    !if (allocated(cut_timewindow)) then
@@ -332,7 +334,6 @@ pure function integrate(timeseries, dt)
 
 end function integrate
 !-------------------------------------------------------------------------------
-
 
 end module
 !=========================================================================================

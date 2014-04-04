@@ -1,6 +1,7 @@
 module montecarlo
     
     use global_parameters
+    use commpi, only                              : pabort
     implicit none
 
     type                                         :: integrated_type
@@ -38,7 +39,8 @@ subroutine check_montecarlo_integral(this, func_values)
     integer                                   :: npoints, ifuncs
     
     if (.not.this%isinitialized) then
-       stop 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first'
+       call pabort 
     end if
     npoints = size(func_values, 1)
     this%nmodels = this%nmodels + npoints
@@ -60,7 +62,7 @@ subroutine check_montecarlo_integral(this, func_values)
            print *, 'Integral of function ', ifuncs, ' is NaN'
            print *, 'fsum:  ', this%fsum(ifuncs)
            print *, 'f2sum: ', this%f2sum(ifuncs)
-           stop
+           call pabort
         end if
         if (this%variance(ifuncs) < this%allowed_variance(ifuncs)) then
            this%converged(ifuncs) = .true.
@@ -124,7 +126,8 @@ function getintegral(this)
     real(kind=dp), dimension(this%nfuncs) :: getintegral
 
     if (.not.this%isinitialized) then
-       stop 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first'
+       call pabort 
     end if
     getintegral = this%integral
 
@@ -137,7 +140,8 @@ function getvariance(this)
     real(kind=dp), dimension(this%nfuncs) :: getvariance
 
     if (.not.this%isinitialized) then
-       stop 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first'
+       call pabort 
     end if
     getvariance = this%variance
 
@@ -151,7 +155,8 @@ function areallconverged(this, ikernels)
     integer, optional, intent(in) :: ikernels(:)
 
     if (.not.this%isinitialized) then
-       stop 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first'
+       call pabort 
     end if
 
     if (present(ikernels)) then
@@ -170,8 +175,10 @@ function isconverged(this, ifunc)
     logical                               :: isconverged
 
     if (.not.this%isinitialized) then
-       stop 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first'
+       call pabort 
     end if
+
     isconverged = this%converged(ifunc)
 
 end function
@@ -179,7 +186,7 @@ end function
 
 !-------------------------------------------------------------------------------
 function allallconverged(int_object, ikernels)
-    type(integrated_type), intent(in)   :: int_object(:)
+    type(integrated_type), intent(in)    :: int_object(:)
     logical                              :: allallconverged
     logical                              :: anynotconverged
     integer, optional, intent(in)        :: ikernels(:)
