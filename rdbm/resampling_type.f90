@@ -15,6 +15,7 @@ module resampling
      logical                    :: initialized = .false.
      contains
      procedure, pass            :: init
+     procedure, pass            :: resample
      procedure, pass            :: freeme
      procedure, pass            :: get_ntraces
      procedure, pass            :: get_ntimes_in
@@ -30,7 +31,7 @@ subroutine init(this, ntimes_in, ntimes_out, ntraces, measure)
   integer, intent(in)       :: ntimes_in, ntimes_out, ntraces
   logical, intent(in)       :: measure
 
-  ! hardcoding ndim for now, may be dummy variable in the future
+  ! hardcoding ndim=1 for now, may be dummy variable in the future
   integer                   :: ndim 
   ndim = 1
 
@@ -38,6 +39,54 @@ subroutine init(this, ntimes_in, ntimes_out, ntraces, measure)
   call this%fft_out%init(ntimes_out, ndim, ntraces, measure=measure)
 
   this%initialized = .true.
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> resampling routine for rational number resampling, inspriation taken from
+!! scipy.signal.resample
+subroutine resample(this, data_in, data_out)
+
+  class(resampling_type)            :: this
+  real(kind=dp), intent(in)         :: data_in(:,:), data_out(:,:)
+
+  complex(kind=dp), allocatable     :: dataf_in(:,:), dataf_out(:,:)
+  integer                           :: nomega_min
+
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing resampling type that is not initialized'
+     call pabort 
+  end if
+
+  if (any(shape(data_in) /= [this%fft_in%get_ntimes(), this%fft_in%get_ntraces()])) then
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for resampling'
+     write(*,*) 'is: ', shape(data_in), '; should be: [', this%fft_in%get_ntimes(), &
+                    ', ', this%fft_in%get_ntraces(), ']'
+     call pabort
+  end if
+
+  if (any(shape(data_out) &
+        /= [this%fft_out%get_ntimes(), this%fft_out%get_ntraces()])) then
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for resampling'
+     write(*,*) 'is: ', shape(data_out), '; should be: [', this%fft_out%get_ntimes(), &
+                    ', ', this%fft_out%get_ntraces(), ']'
+     call pabort
+  end if
+
+  allocate(dataf_in(1:this%fft_in%get_nomega(), 1:this%fft_in%get_ntraces()))
+  allocate(dataf_out(1:this%fft_out%get_nomega(), 1:this%fft_out%get_ntraces()))
+
+  call this%fft_in%rfft(data_in, dataf_in)
+  
+  nomega_min = min(this%fft_in%get_nomega(), this%fft_out%get_nomega())
+
+  dataf_out(1:nomega_min,:) = dataf_in(1:nomega_min,:)
+
+  if (nomega_min < this%fft_out%get_nomega()) &
+     dataf_out(nomega_min+1:,:) = 0
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 
