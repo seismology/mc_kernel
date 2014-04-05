@@ -239,8 +239,6 @@ subroutine rfft_1d(this, datat, dataf)
   class(rfft_type) :: this
   real(kind=dp), intent(in)        :: datat(:,:)
   complex(kind=dp), intent(out)    :: dataf(:,:)
-  !real(kind=dp)                    :: datat(this%ntimes, this%ntraces)
-  !complex(kind=dp)                 :: dataf(this%nomega, this%ntraces)
 
   if (.not. this%initialized) then
      write(*,*) 'ERROR: trying fft on a plan that was not initialized'
@@ -248,14 +246,18 @@ subroutine rfft_1d(this, datat, dataf)
   end if
 
   if (any(shape(datat) /= [this%ntimes, this%ntraces])) then
-     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', &
+                    this%ntraces, ']'
      call pabort
   end if
 
   if (any(shape(dataf) /= [this%nomega, this%ntraces])) then
-     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', &
+                    this%ntraces, ']'
      call pabort
   end if
 
@@ -278,14 +280,18 @@ subroutine irfft_1d(this, dataf, datat)
   end if
 
   if (any(shape(dataf) /= (/this%nomega, this%ntraces/))) then
-     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', &
+                    this%ntraces, ']'
      call pabort 
   end if
 
   if (any(shape(datat) /= (/this%ntimes, this%ntraces/))) then
-     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', &
+                    this%ntraces, ']'
      call pabort 
   end if
 
@@ -313,14 +319,18 @@ subroutine rfft_md(this, datat_in, dataf_out)
   end if
 
   if (any(shape(datat_in) /= [this%ntimes, this%ndim, this%ntraces])) then
-     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat_in), '; should be: [', this%ntimes, ', ', this%ndim, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat_in), '; should be: [', this%ntimes, ', ', &
+                    this%ndim, ', ', this%ntraces, ']'
      call pabort
   end if
 
   if (any(shape(dataf_out) /= [this%nomega, this%ndim, this%ntraces])) then
-     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(dataf_out), '; should be: [', this%nomega, ', ', this%ndim, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf_out), '; should be: [', this%nomega, ', ', &
+                    this%ndim, ', ', this%ntraces, ']'
      call pabort
   end if
 
@@ -348,14 +358,18 @@ subroutine irfft_md(this, dataf_in, datat_out)
   end if
 
   if (any(shape(dataf_in) /= (/this%nomega, this%ndim, this%ntraces/))) then
-     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(dataf_in), '; should be: [', this%nomega, ', ', this%ndim, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf_in), '; should be: [', this%nomega, ', ', &
+                    this%ndim, ', ', this%ntraces, ']'
      call pabort 
   end if
 
   if (any(shape(datat_out) /= (/this%ntimes, this%ndim, this%ntraces/))) then
-     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat_out), '; should be: [', this%ntimes, ', ', this%ndim, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat_out), '; should be: [', this%ntimes, ', ', &
+                    this%ndim, ', ', this%ntraces, ']'
      call pabort 
   end if
 
@@ -434,7 +448,8 @@ end function taperandzeropad_1d
 function taperandzeropad_md(array, ntimes)
   real(kind=dp), intent(in)     :: array(:,:,:)
   integer,       intent(in)     :: ntimes
-  real(kind=dp)                 :: taperandzeropad_md(ntimes, size(array,2), size(array,3))
+  real(kind=dp)                 :: taperandzeropad_md(ntimes, size(array,2), &
+                                                      size(array,3))
   real(kind=dp), allocatable    :: win(:)
 
   integer                       :: ntaper ! Taper length in samples
