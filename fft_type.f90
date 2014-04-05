@@ -133,7 +133,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init(this, ntimes_in, ndim, ntraces, dt, measure)
+subroutine init(this, ntimes_in, ndim, ntraces, dt, measure, nfft)
 !< This routines initializes a FFTw plan for 1D DFTs. 
 !! The time series is supposed to have length ntimes_in, and is stored along the first 
 !! dimension of a three-dimensional array. The other two dimensions are ndim and ntraces.
@@ -143,15 +143,26 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt, measure)
   integer, intent(in)                  :: ntimes_in, ntraces, ndim
   real(kind=dp), intent(in), optional  :: dt
   logical, intent(in), optional        :: measure 
+  integer, intent(in), optional        :: nfft
+
   integer                              :: ntimes_np2, nomega_np2, i, ntraces_fft
   integer                              :: rank, istride, ostride, np2
 
   real(kind=dp), dimension(:,:), allocatable       :: datat
   complex(kind=dp), dimension(:,:), allocatable    :: dataf
 
-  np2 = nextpow2(ntimes_in)
-  nomega_np2 = np2 + 1
-  ntimes_np2 = np2 * 2
+  if (present(nfft)) then
+     if (nfft < ntimes_in) then
+        write(*,*) 'ERROR: nfft < ntimes_in in fft_type%init()'
+        call pabort 
+     endif
+     ntimes_np2 = nfft
+     nomega_np2 = ntimes_np2 / 2 + 1
+  else
+    np2 = nextpow2(ntimes_in)
+    nomega_np2 = np2 + 1
+    ntimes_np2 = np2 * 2
+  endif
 
   ntraces_fft = ntraces * ndim
 
@@ -408,13 +419,14 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function taperandzeropad_1d(array, ntimes)
+function taperandzeropad_1d(array, ntimes, ntaper)
   real(kind=dp), intent(in)     :: array(:,:)
-  integer,       intent(in)     :: ntimes
+  integer, intent(in)           :: ntimes
+  integer, intent(in), optional :: ntaper ! Taper length in samples
   real(kind=dp)                 :: taperandzeropad_1d(ntimes, size(array,2))
   real(kind=dp), allocatable    :: win(:)
 
-  integer                       :: ntaper ! Taper length in samples
+  integer                       :: ntaper_loc
   real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
@@ -426,33 +438,42 @@ function taperandzeropad_1d(array, ntimes)
      call pabort
   end if
 
-  ntaper   = ntimes_in / 4
+  if (present(ntaper)) then
+    ntaper_loc = ntaper
+  else
+    ntaper_loc = ntimes_in / 4
+  endif
 
-  allocate(win(ntimes_in))
-  win = 1
-  do i = 1, ntaper
-     win(i) = exp( -(D * (ntaper-i+1) / ntaper)**2 )
-  end do
-  do i = 0, ntaper-1
-     win(ntimes_in - i) = exp( -(D * (ntaper-i) / ntaper)**2 )
-  end do
   taperandzeropad_1d(:,:) = 0
-  taperandzeropad_1d(1:size(array,1),:) = mult2d_1d(array, win)
-  deallocate(win)
 
+  if (ntaper_loc > 0) then
+     allocate(win(ntimes_in))
+     win = 1
+     do i = 1, ntaper_loc
+        win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
+     end do
+     do i = 0, ntaper_loc-1
+        win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
+     end do
+
+     taperandzeropad_1d(1:size(array,1),:) = mult2d_1d(array, win)
+  else
+     taperandzeropad_1d(1:size(array,1),:) = array(:,:)
+  endif
   
 end function taperandzeropad_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function taperandzeropad_md(array, ntimes)
+function taperandzeropad_md(array, ntimes, ntaper)
   real(kind=dp), intent(in)     :: array(:,:,:)
   integer,       intent(in)     :: ntimes
+  integer, intent(in), optional :: ntaper ! Taper length in samples
   real(kind=dp)                 :: taperandzeropad_md(ntimes, size(array,2), &
                                                       size(array,3))
   real(kind=dp), allocatable    :: win(:)
 
-  integer                       :: ntaper ! Taper length in samples
+  integer                       :: ntaper_loc
   real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
@@ -464,19 +485,26 @@ function taperandzeropad_md(array, ntimes)
      call pabort
   end if
 
-  ntaper   = ntimes_in / 4
+  if (present(ntaper)) then
+    ntaper_loc = ntaper
+  else
+    ntaper_loc = ntimes_in / 4
+  endif
 
-  allocate(win(ntimes_in))
-  win = 1
-  do i = 1, ntaper
-     win(i) = exp( -(D * (ntaper-i+1) / ntaper)**2 )
-  end do
-  do i = 0, ntaper-1
-     win(ntimes_in - i) = exp( -(D * (ntaper-i) / ntaper)**2 )
-  end do
   taperandzeropad_md(:,:,:) = 0
-  taperandzeropad_md(1:size(array,1), :, :) = mult3d_1d(array, win)
-  deallocate(win)
+  if (ntaper_loc > 0) then
+     allocate(win(ntimes_in))
+     win = 1
+     do i = 1, ntaper_loc
+        win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
+     end do
+     do i = 0, ntaper_loc-1
+        win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
+     end do
+     taperandzeropad_md(1:size(array,1), :, :) = mult3d_1d(array, win)
+  else
+     taperandzeropad_md(1:size(array,1), :, :) = array(:,:,:)
+  endif
 
   
 end function taperandzeropad_md
