@@ -95,6 +95,7 @@ end subroutine create
 !! the forward and the backward field.
 subroutine add_stfs(this, stf_fwd, stf_bwd)
     use fft,                     only: rfft_type, taperandzeropad
+    use simple_routines,         only: firstderiv
     class(filter_type)              :: this
     real(kind=dp)   , intent(in)    :: stf_fwd(:), stf_bwd(:)
 
@@ -123,10 +124,10 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     allocate(stfs(size(stf_fwd), 2))
     allocate(stfs_fd(this%nfreq, 2))
 
-    stfs(:,1) = stf_fwd
-    stfs(:,2) = stf_bwd
+    stfs(:,1) = firstderiv(stf_fwd)
+    stfs(:,2) = firstderiv(stf_bwd)
     
-    call fft_stf%rfft(taperandzeropad(stfs, fft_stf%get_ntimes()), stfs_fd)
+    call fft_stf%rfft(taperandzeropad(stfs, fft_stf%get_ntimes(), ntaper = 5), stfs_fd)
 
     this%transferfunction = this%transferfunction / sqrt(stfs_fd(:,1) * stfs_fd(:,2))
     
@@ -155,10 +156,19 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
     open(10, file=trim(fnam), action='write')
     do ifreq = 1, size(stf_fwd)
-       write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,1)
+       write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,2)
     end do
     close(10)
-    
+
+    if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
+       write(*,*) 'WARNING: Filter is not vanishing fast enough for high frequencies.'
+       write(*,*) 'Numerical noise from frequencies above mesh limit will be propagated'
+       write(*,*) 'into the kernels. Check the files'
+       write(*,*) 'filterresponse*'
+       write(*,*) 'filterresponse_stf_*'
+       write(*,*) 'stf_spectrum_*'
+    end if
+
     this%stf_added = .true.
 
 end subroutine add_stfs
