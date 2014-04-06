@@ -1,3 +1,4 @@
+!=========================================================================================
 module filtering
    
    use global_parameters
@@ -34,15 +35,17 @@ module filtering
 
 contains
 
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Create a filter object with the specified parameters
 subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
+
     class(filter_type)              :: this
     integer, intent(in)             :: nfreq
     real(kind=dp), intent(in)       :: dfreq, frequencies(4)
     integer                         :: ifreq
     character(len=32), intent(in)   :: name
     character(len=32), intent(in)   :: filterclass
+
     character(len=32)               :: fmtstring
     character(len=64)               :: fnam
 
@@ -77,17 +80,21 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
 
 20  format('filterresponse_', A, 2('_', F0.6))
     write(fnam,20) trim(filterclass), frequencies(1:2)
+
     open(10, file=trim(fnam), action='write')
     do ifreq = 1, nfreq
-       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), imag(this%transferfunction(ifreq))
+       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
+                                   imag(this%transferfunction(ifreq))
     end do
     close(10)
+
     this%initialized = .true.
     this%stf_added = .false.
-end subroutine create
-! -----------------------------------------------------------------------------
 
-! -----------------------------------------------------------------------------
+end subroutine create
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 !> Multiplies the transferfunction of the filter with the complex spectra of 
 !! the Source time functions of the SEM simulation, to cancel its effect.
 !! The filter is multiplied with the square root of the STF spectra, since it is
@@ -137,13 +144,15 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
     open(10, file=trim(fnam), action='write')
     do ifreq = 1, this%nfreq
-       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), imag(this%transferfunction(ifreq))
+       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
+                                   imag(this%transferfunction(ifreq))
     end do
     close(10)
     
 21  format('stf_spectrum_', A, 2('_', F0.3))
 22  format(5(E16.8))
     write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
+
     open(10, file=trim(fnam), action='write')
     do ifreq = 1, this%nfreq
         write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
@@ -154,6 +163,7 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 23  format('stf_', A, 2('_', F0.3))
 24  format(3(E16.8))
     write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
+
     open(10, file=trim(fnam), action='write')
     do ifreq = 1, size(stf_fwd)
        write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,2)
@@ -172,40 +182,49 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     this%stf_added = .true.
 
 end subroutine add_stfs
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Delete this filter and free the memory
 subroutine deleteme(this)
+
     class(filter_type)              :: this
 
     this%filterclass = ''
     deallocate(this%transferfunction)
     deallocate(this%f)
     this%initialized = .false.
-end subroutine deleteme
 
-! -----------------------------------------------------------------------------
+end subroutine deleteme
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 !> Apply this filter to one trace (in the frequency domain)
 function apply_1d(this, freq_series)
+
    class(filter_type)               :: this
    complex(kind=dp), intent(in)     :: freq_series(:)
    complex(kind=dp)                 :: apply_1d(size(freq_series))
+
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
       call pabort
    end if
+
    if (size(freq_series, 1).ne.this%nfreq) then
-      write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', size(freq_series, 1)
+      write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', &
+                    size(freq_series, 1)
       call pabort
    end if
+
    apply_1d = freq_series * this%transferfunction
 end function apply_1d 
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Apply this filter to multiple traces (in the frequency domain)
 function apply_2d(this, freq_series)
+
    class(filter_type)               :: this
    complex(kind=dp), intent(in)     :: freq_series(:,:)
    complex(kind=dp)                 :: apply_2d(size(freq_series,1), size(freq_series,2))
@@ -215,40 +234,49 @@ function apply_2d(this, freq_series)
       write(*,*) 'ERROR: Filter is not initialized yet'
       call pabort
    end if
+
    if (size(freq_series, 1).ne.this%nfreq) then
-      write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', size(freq_series, 1)
+      write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', &
+                    size(freq_series, 1)
       call pabort
    end if
+   
    do itrace = 1, (size(freq_series, 2))
       apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction(:)
    end do
 
 end function apply_2d
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Apply this filter to multiple dimensions and traces (in the frequency domain)
 function apply_3d(this, freq_series)
-   use simple_routines, only       : mult3d_1d
+
+   use simple_routines, only       :  mult3d_1d
+   
    class(filter_type)              :: this
    complex(kind=dp), intent(in)    :: freq_series(:,:,:)
-   complex(kind=dp)                :: apply_3d(size(freq_series,1), size(freq_series,2), size(freq_series,3))
+   complex(kind=dp)                :: apply_3d(size(freq_series,1), size(freq_series,2), &
+                                               size(freq_series,3))
    integer                         :: itrace
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
       call pabort
    end if
+
    if (size(freq_series, 1).ne.this%nfreq) then
-      write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', size(freq_series, 1)
+      write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', &
+                    size(freq_series, 1)
       call pabort
    end if
 
    apply_3d = mult3d_1d(freq_series, this%transferfunction)
-end function apply_3d
-! -----------------------------------------------------------------------------
 
-! -----------------------------------------------------------------------------
+end function apply_3d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 !> Returns the transfer function of this filter
 function get_transferfunction(this)
     class(filter_type)           :: this
@@ -263,18 +291,18 @@ function get_transferfunction(this)
     get_transferfunction(:,3) = imag(this%transferfunction(:))
 
 end function
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 function isinitialized(this)
    class(filter_type)            :: this
    logical                       :: isinitialized
 
    isinitialized = this%initialized
 end function
-! -----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Apply a timeshift of dtshift on the frequency domain traces in field
 subroutine timeshift_md(field, freq, dtshift)
 
@@ -295,9 +323,9 @@ subroutine timeshift_md(field, freq, dtshift)
    field(:,:,:) = mult3d_1d(field, shift_fd)
 
 end subroutine timeshift_md
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 !> Apply a timeshift of dtshift on the frequency domain traces in field
 subroutine timeshift_1d(field, freq, dtshift)
 
@@ -318,22 +346,24 @@ subroutine timeshift_1d(field, freq, dtshift)
    field(:,:) = mult2d_1d(field, shift_fd)
 
 end subroutine timeshift_1d
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------!
 !                 BLOCK WITH SEPARATE FILTER ROUTINES                         !
 !-----------------------------------------------------------------------------!
+
+!-----------------------------------------------------------------------------------------
 function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by K. Sigloch
-    real(kind=dp), intent(in)       :: f(:)  !< Frequency array
-    real(kind=dp), intent(in)       :: p_c   !< Center period of the filter
-    real(kind=dp), intent(in)       :: sigma !< (fixed) ratio of sigma divided by p_c, 
-                                             !! where sigma is the standard
-                                             !! deviation of the Gaussian that describes the
-                                             !! log-Gabor filter in the *time* domain, 
-                                             !! and fc is the filter's center frequency.
-                                             !! Hence larger sigmaIfc means narrower bandwidth
-                                             !! sigmaIfc = .5 means the one-sigma interval i
-                                             !! equals one octave
+
+    real(kind=dp), intent(in)   :: f(:)  !< Frequency array
+    real(kind=dp), intent(in)   :: p_c   !< Center period of the filter
+    real(kind=dp), intent(in)   :: sigma !< (fixed) ratio of sigma divided by p_c, where
+                                         !! sigma is the standard deviation of the
+                                         !! Gaussian that describes the log-Gabor filter
+                                         !! in the *time* domain, and fc is the filter's
+                                         !! center frequency.  Hence larger sigmaIfc means
+                                         !! narrower bandwidth sigmaIfc = .5 means the
+                                         !! one-sigma interval i equals one octave
 
     real(kind=dp)                   :: loggabor(size(f))
     real(kind=dp)                   :: f_c
@@ -343,4 +373,7 @@ function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by 
     ! G(f,k) = exp( -(ln(f/f_k))^2 / (2*ln(sigmaIfc)^2)  )
 
 end function loggabor
+!-----------------------------------------------------------------------------------------
+
 end module
+!=========================================================================================

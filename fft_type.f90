@@ -133,7 +133,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init(this, ntimes_in, ndim, ntraces, dt, measure)
+subroutine init(this, ntimes_in, ndim, ntraces, dt, measure, nfft)
 !< This routines initializes a FFTw plan for 1D DFTs. 
 !! The time series is supposed to have length ntimes_in, and is stored along the first 
 !! dimension of a three-dimensional array. The other two dimensions are ndim and ntraces.
@@ -143,15 +143,26 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt, measure)
   integer, intent(in)                  :: ntimes_in, ntraces, ndim
   real(kind=dp), intent(in), optional  :: dt
   logical, intent(in), optional        :: measure 
+  integer, intent(in), optional        :: nfft
+
   integer                              :: ntimes_np2, nomega_np2, i, ntraces_fft
   integer                              :: rank, istride, ostride, np2
 
   real(kind=dp), dimension(:,:), allocatable       :: datat
   complex(kind=dp), dimension(:,:), allocatable    :: dataf
 
-  np2 = nextpow2(ntimes_in)
-  nomega_np2 = np2 + 1
-  ntimes_np2 = np2 * 2
+  if (present(nfft)) then
+     if (nfft < ntimes_in) then
+        write(*,*) 'ERROR: nfft < ntimes_in in fft_type%init()'
+        call pabort 
+     endif
+     ntimes_np2 = nfft
+     nomega_np2 = ntimes_np2 / 2 + 1
+  else
+    np2 = nextpow2(ntimes_in)
+    nomega_np2 = np2 + 1
+    ntimes_np2 = np2 * 2
+  endif
 
   ntraces_fft = ntraces * ndim
 
@@ -239,8 +250,6 @@ subroutine rfft_1d(this, datat, dataf)
   class(rfft_type) :: this
   real(kind=dp), intent(in)        :: datat(:,:)
   complex(kind=dp), intent(out)    :: dataf(:,:)
-  !real(kind=dp)                    :: datat(this%ntimes, this%ntraces)
-  !complex(kind=dp)                 :: dataf(this%nomega, this%ntraces)
 
   if (.not. this%initialized) then
      write(*,*) 'ERROR: trying fft on a plan that was not initialized'
@@ -248,14 +257,18 @@ subroutine rfft_1d(this, datat, dataf)
   end if
 
   if (any(shape(datat) /= [this%ntimes, this%ntraces])) then
-     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', &
+                    this%ntraces, ']'
      call pabort
   end if
 
   if (any(shape(dataf) /= [this%nomega, this%ntraces])) then
-     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', &
+                    this%ntraces, ']'
      call pabort
   end if
 
@@ -278,14 +291,18 @@ subroutine irfft_1d(this, dataf, datat)
   end if
 
   if (any(shape(dataf) /= (/this%nomega, this%ntraces/))) then
-     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf), '; should be: [', this%nomega, ', ', &
+                    this%ntraces, ']'
      call pabort 
   end if
 
   if (any(shape(datat) /= (/this%ntimes, this%ntraces/))) then
-     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat), '; should be: [', this%ntimes, ', ', &
+                    this%ntraces, ']'
      call pabort 
   end if
 
@@ -313,14 +330,18 @@ subroutine rfft_md(this, datat_in, dataf_out)
   end if
 
   if (any(shape(datat_in) /= [this%ntimes, this%ndim, this%ntraces])) then
-     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat_in), '; should be: [', this%ntimes, ', ', this%ndim, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat_in), '; should be: [', this%ntimes, ', ', &
+                    this%ndim, ', ', this%ntraces, ']'
      call pabort
   end if
 
   if (any(shape(dataf_out) /= [this%nomega, this%ndim, this%ntraces])) then
-     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(dataf_out), '; should be: [', this%nomega, ', ', this%ndim, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf_out), '; should be: [', this%nomega, ', ', &
+                    this%ndim, ', ', this%ntraces, ']'
      call pabort
   end if
 
@@ -348,14 +369,18 @@ subroutine irfft_md(this, dataf_in, datat_out)
   end if
 
   if (any(shape(dataf_in) /= (/this%nomega, this%ndim, this%ntraces/))) then
-     write(*,*) 'ERROR: shape mismatch in first argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(dataf_in), '; should be: [', this%nomega, ', ', this%ndim, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(dataf_in), '; should be: [', this%nomega, ', ', &
+                    this%ndim, ', ', this%ntraces, ']'
      call pabort 
   end if
 
   if (any(shape(datat_out) /= (/this%ntimes, this%ndim, this%ntraces/))) then
-     write(*,*) 'ERROR: shape mismatch in second argument - shape does not match the plan for fftw'
-     write(*,*) 'is: ', shape(datat_out), '; should be: [', this%ntimes, ', ', this%ndim, ', ', this%ntraces, ']'
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for fftw'
+     write(*,*) 'is: ', shape(datat_out), '; should be: [', this%ntimes, ', ', &
+                    this%ndim, ', ', this%ntraces, ']'
      call pabort 
   end if
 
@@ -396,14 +421,13 @@ end function
 !-----------------------------------------------------------------------------------------
 function taperandzeropad_1d(array, ntimes, ntaper)
   real(kind=dp), intent(in)     :: array(:,:)
-  integer,       intent(in)     :: ntimes
-  integer, intent(in), optional :: ntaper !< Taper length in samples, 
-                                          !! default is 1/4 of signal length
+  integer, intent(in)           :: ntimes
+  integer, intent(in), optional :: ntaper ! Taper length in samples
   real(kind=dp)                 :: taperandzeropad_1d(ntimes, size(array,2))
   real(kind=dp), allocatable    :: win(:)
 
-  real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntaper_loc
+  real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
   
@@ -415,23 +439,28 @@ function taperandzeropad_1d(array, ntimes, ntaper)
   end if
 
   if (present(ntaper)) then
-     ntaper_loc = ntaper
+    ntaper_loc = ntaper
   else
-     ntaper_loc = ntimes_in / 4
-  end if
+    ntaper_loc = ntimes_in / 4
+  endif
 
-  allocate(win(ntimes_in))
-  win = 1
-  do i = 1, ntaper_loc
-     win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
-  end do
-  do i = 0, ntaper_loc-1
-     win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
-  end do
   taperandzeropad_1d(:,:) = 0
-  taperandzeropad_1d(1:size(array,1),:) = mult2d_1d(array, win)
-  deallocate(win)
 
+
+  if (ntaper_loc > 0) then
+     allocate(win(ntimes_in))
+     win = 1
+     do i = 1, ntaper_loc
+        win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
+     end do
+     do i = 0, ntaper_loc-1
+        win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
+     end do
+
+     taperandzeropad_1d(1:size(array,1),:) = mult2d_1d(array, win)
+  else
+     taperandzeropad_1d(1:size(array,1),:) = array(:,:)
+  endif
   
 end function taperandzeropad_1d
 !-----------------------------------------------------------------------------------------
@@ -440,13 +469,13 @@ end function taperandzeropad_1d
 function taperandzeropad_md(array, ntimes, ntaper)
   real(kind=dp), intent(in)     :: array(:,:,:)
   integer,       intent(in)     :: ntimes
-  integer, intent(in), optional :: ntaper !< Taper length in samples, 
-                                          !! default is 1/4 of signal length
-  real(kind=dp)                 :: taperandzeropad_md(ntimes, size(array,2), size(array,3))
+  integer, intent(in), optional :: ntaper ! Taper length in samples
+  real(kind=dp)                 :: taperandzeropad_md(ntimes, size(array,2), &
+                                                      size(array,3))
   real(kind=dp), allocatable    :: win(:)
 
-  real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntaper_loc
+  real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
   
@@ -458,22 +487,25 @@ function taperandzeropad_md(array, ntimes, ntaper)
   end if
 
   if (present(ntaper)) then
-     ntaper_loc = ntaper
+    ntaper_loc = ntaper
   else
-     ntaper_loc = ntimes_in / 4
-  end if
+    ntaper_loc = ntimes_in / 4
+  endif
 
-  allocate(win(ntimes_in))
-  win = 1
-  do i = 1, ntaper_loc
-     win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
-  end do
-  do i = 0, ntaper_loc-1
-     win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
-  end do
   taperandzeropad_md(:,:,:) = 0
-  taperandzeropad_md(1:size(array,1), :, :) = mult3d_1d(array, win)
-  deallocate(win)
+  if (ntaper_loc > 0) then
+     allocate(win(ntimes_in))
+     win = 1
+     do i = 1, ntaper_loc
+        win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
+     end do
+     do i = 0, ntaper_loc-1
+        win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
+     end do
+     taperandzeropad_md(1:size(array,1), :, :) = mult3d_1d(array, win)
+  else
+     taperandzeropad_md(1:size(array,1), :, :) = array(:,:,:)
+  endif
 
   
 end function taperandzeropad_md
