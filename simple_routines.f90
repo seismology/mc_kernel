@@ -77,4 +77,18 @@ function to_lower(strIn) result(strOut)
 end function to_lower
 !------------------------------------------------------------------------------
 
+!------------------------------------------------------------------------------
+function firstderiv(timeseries) 
+!< Calculates the first derivative of timeseries, using a compact stencil
+real(kind=dp), intent(in) :: timeseries(:)
+real(kind=dp)             :: firstderiv(size(timeseries,1))
+integer                   :: ntimes
+
+ntimes = size(timeseries, 1)
+firstderiv       = 0
+firstderiv(2:99) = (timeseries(3:100) - timeseries(1:98)) / 2
+
+end function firstderiv
+!------------------------------------------------------------------------------
+
 end module simple_routines
