@@ -394,14 +394,16 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function taperandzeropad_1d(array, ntimes)
+function taperandzeropad_1d(array, ntimes, ntaper)
   real(kind=dp), intent(in)     :: array(:,:)
   integer,       intent(in)     :: ntimes
+  integer, intent(in), optional :: ntaper !< Taper length in samples, 
+                                          !! default is 1/4 of signal length
   real(kind=dp)                 :: taperandzeropad_1d(ntimes, size(array,2))
   real(kind=dp), allocatable    :: win(:)
 
-  integer                       :: ntaper ! Taper length in samples
   real, parameter               :: D=3.3  ! Decay constant
+  integer                       :: ntaper_loc
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
   
@@ -412,15 +414,19 @@ function taperandzeropad_1d(array, ntimes)
      call pabort
   end if
 
-  ntaper   = ntimes_in / 4
+  if (present(ntaper)) then
+     ntaper_loc = ntaper
+  else
+     ntaper_loc = ntimes_in / 4
+  end if
 
   allocate(win(ntimes_in))
   win = 1
-  do i = 1, ntaper
-     win(i) = exp( -(D * (ntaper-i+1) / ntaper)**2 )
+  do i = 1, ntaper_loc
+     win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
   end do
-  do i = 0, ntaper-1
-     win(ntimes_in - i) = exp( -(D * (ntaper-i) / ntaper)**2 )
+  do i = 0, ntaper_loc-1
+     win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
   end do
   taperandzeropad_1d(:,:) = 0
   taperandzeropad_1d(1:size(array,1),:) = mult2d_1d(array, win)
@@ -431,14 +437,16 @@ end function taperandzeropad_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function taperandzeropad_md(array, ntimes)
+function taperandzeropad_md(array, ntimes, ntaper)
   real(kind=dp), intent(in)     :: array(:,:,:)
   integer,       intent(in)     :: ntimes
+  integer, intent(in), optional :: ntaper !< Taper length in samples, 
+                                          !! default is 1/4 of signal length
   real(kind=dp)                 :: taperandzeropad_md(ntimes, size(array,2), size(array,3))
   real(kind=dp), allocatable    :: win(:)
 
-  integer                       :: ntaper ! Taper length in samples
   real, parameter               :: D=3.3  ! Decay constant
+  integer                       :: ntaper_loc
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
   
@@ -449,15 +457,19 @@ function taperandzeropad_md(array, ntimes)
      call pabort
   end if
 
-  ntaper   = ntimes_in / 4
+  if (present(ntaper)) then
+     ntaper_loc = ntaper
+  else
+     ntaper_loc = ntimes_in / 4
+  end if
 
   allocate(win(ntimes_in))
   win = 1
-  do i = 1, ntaper
-     win(i) = exp( -(D * (ntaper-i+1) / ntaper)**2 )
+  do i = 1, ntaper_loc
+     win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
   end do
-  do i = 0, ntaper-1
-     win(ntimes_in - i) = exp( -(D * (ntaper-i) / ntaper)**2 )
+  do i = 0, ntaper_loc-1
+     win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
   end do
   taperandzeropad_md(:,:,:) = 0
   taperandzeropad_md(1:size(array,1), :, :) = mult3d_1d(array, win)
