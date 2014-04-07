@@ -2,7 +2,7 @@
 module readfields
     use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
-    use source_class,      only             : src_param_type
+    use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
     use clocks_mod,        only            : tick
@@ -117,9 +117,11 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     dirnam = trim(fwd_dir)//'/PZ/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = force)
+
     dirnam = trim(fwd_dir)//'/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = single)
+
     if (moment) then
        this%nsim_fwd = 4
        write(lu_out,*) 'Forward simulation was ''moment'' source'
@@ -168,7 +170,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
        write(lu_out,*) 'continuing anyway, as this is default in db mode'
     end if
-    
+
     allocate( this%fwd(this%nsim_fwd) )
     allocate( this%bwd(this%nsim_bwd) )
 
@@ -198,7 +200,6 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%model_param = 'vp'
     end if
 
-    print *, this%model_param
     select case(trim(this%model_param))
     case('vp')
        this%ndim = 1
@@ -274,7 +275,7 @@ subroutine open_files(this)
                                          chunksizes = chunks, &
                                          deflate_level = deflev) )
 
-        write(lu_out, "('FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
+        write(lu_out, "('  FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
         this%fwd(isim)%chunk_gll = chunks(1)
 
@@ -613,13 +614,14 @@ end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
     use simple_routines, only          : mult2d_1d
+
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type), intent(in)  :: source_params
+    type(kdtree2_result), allocatable :: nextpoint(:)
     real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
                                                         size(coordinates,2))
 
-    type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints
     integer                           :: pointid(size(coordinates,2))
     integer                           :: ipoint, isim, iclockold
@@ -786,9 +788,9 @@ subroutine load_seismogram(this, receivers, src)
          !                          values = utemp) )
       
          call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-                                   varid  = this%fwd(isim)%seis_disp,   &
-                                   start  = [1, reccomp, isurfelem],    &
-                                   count  = [this%ndumps, 1, 1],        &
+                         varid  = this%fwd(isim)%seis_disp,   &
+                         start  = [1, reccomp, isurfelem],    &
+                         count  = [this%ndumps, 1, 1],        &
                          values = utemp) 
       
          seismogram_disp = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_disp
@@ -801,9 +803,9 @@ subroutine load_seismogram(this, receivers, src)
          !                          values = utemp) )
       
          call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-                                   varid  = this%fwd(isim)%seis_velo,   &
-                                   start  = [1, reccomp, isurfelem],    &
-                                   count  = [this%ndumps, 1, 1],        &
+                         varid  = this%fwd(isim)%seis_velo,   &
+                         start  = [1, reccomp, isurfelem],    &
+                         count  = [this%ndumps, 1, 1],        &
                          values = utemp) 
       
          seismogram_velo = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_velo
@@ -989,15 +991,18 @@ function load_strain_point(sem_obj, pointid, model_param)
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+
            ! Only read to last point, not further
            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
            iclockold = tick()
            call nc_getvar( ncid   = sem_obj%snap,           & 
-                                     varid  = sem_obj%strainvarid(6), &
-                                     start  = [start_chunk, 1],       &
+                           varid  = sem_obj%strainvarid(6), &
+                           start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
                            values = utemp_chunk(1:gll_to_read, :)) 
+
            iclockold = tick(id=id_netcdf, since=iclockold)
+
            do iread = 0, sem_obj%chunk_gll - 1
                status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
@@ -1022,14 +1027,17 @@ function load_strain_point(sem_obj, pointid, model_param)
             
             if (status.ne.0) then
                start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+               
                ! Only read to last point, not further
                gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+
                iclockold = tick()
                call nc_getvar( ncid   = sem_obj%snap,           & 
-                                         varid  = sem_obj%strainvarid(istrainvar), &
-                                         start  = [start_chunk, 1],    &
+                               varid  = sem_obj%strainvarid(istrainvar), &
+                               start  = [start_chunk, 1],       &
                                count  = [gll_to_read, sem_obj%ndumps], &
                                values = utemp_chunk(1:gll_to_read, :)) 
+
                iclockold = tick(id=id_netcdf, since=iclockold)
                do iread = 0, gll_to_read - 1
                    status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
@@ -1125,15 +1133,17 @@ subroutine build_kdtree(this)
     deallocate(mesh)                           
 
     ! KDtree in backward field
-    write(lu_out,*) ' Building backward KD-Tree'
-    call flush(lu_out)
-    allocate(mesh(2, this%bwdmesh%npoints))
-    mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
-    this%bwdtree => kdtree2_create(mesh,              &
-                                   dim = 2,           &
-                                   sort = .true.,     &
-                                   rearrange = .true.)
-    deallocate(mesh)                           
+    if (this%nsim_bwd > 0) then
+        write(lu_out,*) ' Building backward KD-Tree'
+        call flush(lu_out)
+        allocate(mesh(2, this%bwdmesh%npoints))
+        mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
+        this%bwdtree => kdtree2_create(mesh,              &
+                                       dim = 2,           &
+                                       sort = .true.,     &
+                                       rearrange = .true.)
+        deallocate(mesh)                           
+    endif
 
     call flush(lu_out)
 
@@ -1143,11 +1153,11 @@ end subroutine build_kdtree
 !-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
-    class(semdata_type)    :: this
-    integer                :: ncvarid_mesh_s, ncvarid_mesh_z
-    integer                :: surfdimid, ncvarid_theta
+    class(semdata_type)        :: this
+    integer                    :: ncvarid_mesh_s, ncvarid_mesh_z
+    integer                    :: surfdimid, ncvarid_theta
     integer                    :: ielem, isim
-    logical                :: mesherror
+    logical                    :: mesherror
     real(kind=sp), allocatable :: theta(:)
    
     if (.not.this%files_open) then
@@ -1165,10 +1175,11 @@ subroutine read_meshes(this)
 
     allocate(this%fwdmesh%s(this%fwdmesh%npoints))
     allocate(this%fwdmesh%z(this%fwdmesh%npoints))
-    
+
     do isim = 1, this%nsim_fwd
        this%fwd(isim)%ngll = this%fwdmesh%npoints
     end do
+       
     call  getvarid( ncid  = this%fwd(1)%mesh, &
                     name  = "mesh_S", &
                     varid = ncvarid_mesh_s) 
@@ -1177,12 +1188,12 @@ subroutine read_meshes(this)
                     varid = ncvarid_mesh_z) 
 
     call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                             varid  = ncvarid_mesh_s,         &
+                   varid  = ncvarid_mesh_s,         &
                    start  = 1,                    &
                    count  = this%fwdmesh%npoints, &
                    values = this%fwdmesh%s ) 
     call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                             varid  = ncvarid_mesh_z,         &
+                   varid  = ncvarid_mesh_z,         &
                    start  = 1,                    &
                    count  = this%fwdmesh%npoints, &
                    values = this%fwdmesh%z ) 
@@ -1190,18 +1201,19 @@ subroutine read_meshes(this)
    
     ! Backward SEM mesh                     
     if (this%nsim_bwd > 0) then
-    write(lu_out,*) 'Read SEM mesh from first backward simulation'
-    
-    call nc_read_att_int(this%bwdmesh%npoints, &
-                         'npoints', &
-                         this%bwd(1))
+        write(lu_out,*) 'Read SEM mesh from first backward simulation'
+        
+        call nc_read_att_int(this%bwdmesh%npoints, &
+                             'npoints', &
+                             this%bwd(1))
 
     allocate(this%bwdmesh%s(this%bwdmesh%npoints))
     allocate(this%bwdmesh%z(this%bwdmesh%npoints))
+    
     do isim = 1, this%nsim_bwd
        this%bwd(isim)%ngll = this%bwdmesh%npoints
     end do
-    
+       
     call  getvarid( ncid  = this%bwd(1)%mesh, &
                     name  = "mesh_S", &
                     varid = ncvarid_mesh_s) 
@@ -1210,24 +1222,22 @@ subroutine read_meshes(this)
                     varid = ncvarid_mesh_z) 
 
     call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_s,   &
+                   varid  = ncvarid_mesh_s,   &
                    start  = 1,                    &
                    count  = this%bwdmesh%npoints, &
                    values = this%bwdmesh%s ) 
     call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_z,   &
+                   varid  = ncvarid_mesh_z,   &
                    start  = 1,                    &
                    count  = this%bwdmesh%npoints, &
                    values = this%bwdmesh%z ) 
-
-   
     endif
-   
-   ! Read surface element theta
-   ! Forward mesh
-   call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
-                               name  = 'surf_elems',     &
-                               dimid = surfdimid) ) 
+
+    ! Read surface element theta
+    ! Forward mesh
+    call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
+                                name  = 'surf_elems',     &
+                                dimid = surfdimid) ) 
 
    call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
                                       dimid = surfdimid,               &
@@ -1240,78 +1250,81 @@ subroutine read_meshes(this)
    allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
    allocate( theta(this%fwdmesh%nsurfelem) )
    call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                             varid  = ncvarid_theta,       &
+                   varid  = ncvarid_theta,          &
                    start  = 1,                      & 
                    count  = this%fwdmesh%nsurfelem, &
                    values = theta                    )
    this%fwdmesh%theta = real(theta, kind=dp)
-
    
    ! Backward mesh
+   if (this%nsim_bwd > 0) then
+
+      call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
+                                  name  = 'surf_elems',     &
+                                  dimid = surfdimid) ) 
+
+      call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
+                                         dimid = surfdimid,               &
+                                         len   = this%bwdmesh%nsurfelem) )
+
+      call  getvarid(ncid  = this%bwd(1)%surf, &
+                     name  = "elem_theta",     &
+                     varid = ncvarid_theta) 
+
+      allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
+      ! sure that fwd is correct here??
+      call nc_getvar( ncid   = this%fwd(1)%surf,   &
+                      varid  = ncvarid_theta,          &
+                      start  = 1,                      & 
+                      count  = this%bwdmesh%nsurfelem, &
+                      values = theta                    )
+      this%fwdmesh%theta = real(theta, kind=dp)
+   endif
+                             
+
+    ! Mesh sanity checks
+    mesherror = .false.
+    if (maxval(abs(this%fwdmesh%s)) > 1e32) then
+       write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
+       write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
+       mesherror = .true.
+    end if
+    if (maxval(abs(this%fwdmesh%z)) > 1e32) then
+       write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
+       write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
+       mesherror = .true.
+    end if
+    if (maxval(this%fwdmesh%theta).gt.180) then
+       write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+       write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
+       write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
+       mesherror = .true.
+    end if
+
     if (this%nsim_bwd > 0) then
-   call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
-                               name  = 'surf_elems',     &
-                               dimid = surfdimid) ) 
+        if (maxval(abs(this%bwdmesh%s)) > 1e32) then
+           write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
+           mesherror = .true.
+        end if
+        if (maxval(abs(this%bwdmesh%z)) > 1e32) then
+           write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
+           mesherror = .true.
+        end if
+        if (maxval(this%bwdmesh%theta).gt.180) then
+           write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+           write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+           write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+           mesherror = .true.
+        end if
+    endif
 
-   call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
-                                      dimid = surfdimid,               &
-                                      len   = this%bwdmesh%nsurfelem) )
 
-   call  getvarid(ncid  = this%bwd(1)%surf, &
-                  name  = "elem_theta",     &
-                  varid = ncvarid_theta) 
-
-   allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
-   call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                             varid  = ncvarid_theta,       &
-                   start  = 1,                      & 
-                   count  = this%bwdmesh%nsurfelem, &
-                   values = theta                    )
-   this%fwdmesh%theta = real(theta, kind=dp)
-   endif                          
-
-   ! Mesh sanity checks
-   mesherror = .false.
-   if (maxval(abs(this%fwdmesh%s)) > 1e32) then
-      write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
-      write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
-      mesherror = .true.
-   end if
-   if (maxval(abs(this%fwdmesh%z)) > 1e32) then
-      write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
-      write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
-      mesherror = .true.
-   end if
-
-   if (maxval(abs(this%bwdmesh%s)) > 1e32) then
-      write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
-      write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
-      mesherror = .true.
-   end if
-   if (maxval(abs(this%bwdmesh%z)) > 1e32) then
-      write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
-      write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
-      mesherror = .true.
-   end if
-
-   if (maxval(this%fwdmesh%theta).gt.180) then
-      write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-      write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-      write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
-      mesherror = .true.
-   end if
-
-   if (maxval(this%fwdmesh%theta).gt.180) then
-      write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-      write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-      write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
-      mesherror = .true.
-   end if
-
-   if (mesherror) then
-      write(*,*) 'ERROR: One or more mesh errors found!'
-      call pabort
-   end if
+    if (mesherror) then
+       write(*,*) 'ERROR: One or more mesh errors found!'
+       call pabort
+    end if
 
                                    
    this%meshes_read = .true.
