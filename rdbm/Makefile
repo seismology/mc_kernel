@@ -3,11 +3,11 @@ PROG = rdbm
 SRCS =	commpi.F90 buffer.f90 clocks.f90 fft_type.f90 filtering.f90 \
 	global_parameters.f90 kdtree2.f90 kernel.f90 nc_routines.f90 rdbm.f90 \
 	readfields.f90 resampling_type.f90 simple_routines.f90 \
-	sourceandreceiver.f90
+	sourceandreceiver.f90 test_resampling.f90
 
 OBJS =	commpi.o buffer.o clocks.o fft_type.o filtering.o global_parameters.o \
 	kdtree2.o kernel.o nc_routines.o rdbm.o readfields.o \
-	resampling_type.o simple_routines.o sourceandreceiver.o
+	resampling_type.o simple_routines.o sourceandreceiver.o \
 
 #Example to include specific netcdf libraries: 
 LIBS = -lm -llapack -lfftw3 -lfftw3f -lnetcdff 
@@ -27,9 +27,12 @@ INCLUDE = -I /usr/include
 %.o : %.mod 
  
 
-all: $(PROG)
+all: $(PROG) test_resampling
 
 $(PROG): $(OBJS)
+	$(F90) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+
+test_resampling: $(OBJS)
 	$(F90) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 clean:
@@ -51,11 +54,12 @@ global_parameters.o:  Makefile
 kdtree2.o: kdtree2.o Makefile 
 kernel.o: commpi.o fft_type.o filtering.o global_parameters.o Makefile 
 nc_routines.o: commpi.o global_parameters.o Makefile 
-rdbm.o: clocks.o commpi.o global_parameters.o readfields.o \
-	sourceandreceiver.o Makefile 
+rdbm.o: clocks.o commpi.o fft_type.o global_parameters.o readfields.o \
+	resampling_type.o sourceandreceiver.o Makefile 
 readfields.o: buffer.o clocks.o commpi.o global_parameters.o kdtree2.o \
 	nc_routines.o simple_routines.o sourceandreceiver.o Makefile 
-resampling_type.o: global_parameters.o Makefile 
+resampling_type.o: commpi.o fft_type.o global_parameters.o Makefile 
 simple_routines.o: global_parameters.o Makefile 
 sourceandreceiver.o: global_parameters.o kernel.o Makefile 
+test_resampling.o: commpi.o global_parameters.o resampling_type.o Makefile 
 commpi.F90: global_parameters.o Makefile 
