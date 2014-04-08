@@ -5,6 +5,7 @@ program rdbm
   use commpi
   use global_parameters
   use source_class
+  use resampling
 
   implicit none
 
@@ -16,7 +17,12 @@ program rdbm
   real(kind=dp),    allocatable       :: fw_field(:,:,:)
   integer                             :: i
 
+  type(resampling_type)               :: resamp
+  real(kind=dp),    allocatable       :: fw_field_res(:,:)
+  integer                             :: nsamp
+
   verbose = 1
+  nsamp = 3000
 
   write(*,*) '***************************************************************'
   write(*,*) ' Initialize and open AxiSEM wavefield files'
@@ -35,15 +41,24 @@ program rdbm
 
 
   allocate(fw_field(sem_data%ndumps, 1, 3))
+  allocate(fw_field_res(nsamp, 3))
 
   coordinates(:,1) = (/0d0, 0d0, 6d3/)
-  coordinates(:,2) = (/0d0, 0d0, 5.9d3/)
-  coordinates(:,3) = (/0d0, 0d0, 5.8d3/)
+  coordinates(:,2) = (/0d0, 0d0, 5.95d3/)
+  coordinates(:,3) = (/0d0, 0d0, 5.90d3/)
 
   fw_field = sem_data%load_fw_points_rdbm(coordinates, source)
 
+  call resamp%init(sem_data%ndumps, nsamp, 3)
+
+  call resamp%resample(fw_field(:,1,:), fw_field_res)
+
   do i = 1, sem_data%ndumps
-     write(111,*) fw_field(i,1,:)
+     write(111,*) real(i-1) / (sem_data%ndumps -1), fw_field(i,1,:)
+  enddo
+
+  do i = 1, nsamp
+     write(112,*) real(i-1) / (nsamp -1), fw_field_res(i,:)
   enddo
 
 contains
