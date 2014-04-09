@@ -1,5 +1,6 @@
 !=========================================================================================
 module unit_tests
+
   use ftnunit, only: test
   use global_parameters, only: lu_out
   use test_montecarlo
@@ -10,8 +11,9 @@ module unit_tests
   use test_filter
   use test_kernel
   use test_readfields
-  implicit none
+  use test_resampling
 
+  implicit none
 
 contains
 !-----------------------------------------------------------------------------------------
@@ -40,6 +42,10 @@ subroutine test_all
   call test(test_fft_inverse, 'FFT_inverse')
   call test(test_fft_convolve, 'FFT_convolve')
   call test(test_fft_taperandzeropad, 'FFT_taperandzeropad')
+
+  ! test_resampling
+  write(6,'(/,a)') 'TEST RESAMPLING MODULE'
+  call test(test_resampling_const, 'RESAMPLING_const')
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
