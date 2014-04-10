@@ -1,0 +1,12 @@
+# directory of the single force forward run
+SIM_DIR                 '/home/ex/local/src/axisem/SOLVER/20s_kernel_output'
+
+# number of samples in the seismograms, resampling is done in the frequency domain, 
+# length of the traces depends on the forward run
+NSAMP                   3600
+
+# Size of reading buffer. 1000 is a good value, unless you run into memory problems.
+# Higher values avoid repeated reading of the same point.
+NETCDF_BUFFER_SIZE      100
+
+VERBOSITY               1
