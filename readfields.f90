@@ -575,32 +575,34 @@ subroutine check_consistency(this)
        end if
     end do
 
-    source_shift_agreed_bwd = this%bwd(1)%source_shift_t
-    stf_agreed_bwd = this%bwd(1)%stf
-    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
-                '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
-    fmtstring_stf = '("Inconsistency in backward simulations: ", A, " is different \'// &
-                    '  in simulation ", I1, " vs the others")' 
-
-    do isim = 1, this%nsim_bwd
-       if (source_shift_agreed_bwd.ne.this%bwd(isim)%source_shift_t) then
-          write(*,fmtstring) 'source time shift', isim, source_shift_agreed_bwd, &
-                             this%bwd(isim)%source_shift_t
-          call pabort
-       end if
-       if (any(abs(stf_agreed_bwd - this%bwd(isim)%stf).gt.1e-10)) then
-           write(*,fmtstring) 'stf', isim
-           call pabort
-       end if
-    end do
-
     this%timeshift_fwd = real(source_shift_agreed_fwd, kind=dp)
-    this%timeshift_bwd = real(source_shift_agreed_bwd, kind=dp)
-
     allocate(this%stf_fwd(ndumps_agreed))
-    allocate(this%stf_bwd(ndumps_agreed))
     this%stf_fwd = real(stf_agreed_fwd, kind=dp)
-    this%stf_bwd = real(stf_agreed_bwd, kind=dp)
+    
+    if (this%nsim_bwd > 0) then
+       source_shift_agreed_bwd = this%bwd(1)%source_shift_t
+       stf_agreed_bwd = this%bwd(1)%stf
+       fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                   '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
+       fmtstring_stf = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                       '  in simulation ", I1, " vs the others")' 
+
+       do isim = 1, this%nsim_bwd
+          if (source_shift_agreed_bwd.ne.this%bwd(isim)%source_shift_t) then
+             write(*,fmtstring) 'source time shift', isim, source_shift_agreed_bwd, &
+                                this%bwd(isim)%source_shift_t
+             call pabort
+          end if
+          if (any(abs(stf_agreed_bwd - this%bwd(isim)%stf).gt.1e-10)) then
+              write(*,fmtstring) 'stf', isim
+              call pabort
+          end if
+       end do
+       this%timeshift_bwd = real(source_shift_agreed_bwd, kind=dp)
+       allocate(this%stf_bwd(ndumps_agreed))
+       this%stf_bwd = real(stf_agreed_bwd, kind=dp)
+    endif
+
 
     this%dt = dt_agreed
     this%decimate_factor = nseis_agreed / ndumps_agreed
@@ -936,6 +938,19 @@ function load_fw_points_rdbm(this, coordinates, source_params)
         
         pointid(ipoint) = nextpoint(1)%idx
 
+        !print *, '======================================================================'
+        !print *, 'Original coordinates: ', coordinates(:,ipoint)
+        !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
+        !print *, 'CO of SEM point:', this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint))
+        !print *, ''
+        !print *, 'Distance'
+        !print *, (   (this%fwdmesh%s(pointid(ipoint)) - rotmesh_s(ipoint))**2 &
+        !           + (this%fwdmesh%z(pointid(ipoint)) - rotmesh_z(ipoint))**2)**.5 
+
+        write(6,*) nextpoint(1)%dis**.5, nextpoint(1)%idx, &
+                    (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
+                    (this%fwdmesh%s(pointid(ipoint))**2  + this%fwdmesh%z(pointid(ipoint))**2)**.5 
+
     end do
 
     load_fw_points_rdbm(:,:,:) = 0.0
@@ -947,7 +962,7 @@ function load_fw_points_rdbm(this, coordinates, source_params)
                                       pointid(ipoint),     &
                                       this%model_param)
 
-            iclockold = tick()
+            !iclockold = tick()
             select case(trim(this%model_param))
             !if (this%model_param.eq.'vs') then
             case('vp')
@@ -960,7 +975,7 @@ function load_fw_points_rdbm(this, coordinates, source_params)
                                                                    rotmesh_phi(ipoint),     &
                                                                    source_params%mij, isim) 
             end select
-            iclockold = tick(id=id_rotate, since=iclockold)
+            !iclockold = tick(id=id_rotate, since=iclockold)
         end do !isim
 
     end do !ipoint
@@ -985,28 +1000,28 @@ function load_strain_point(sem_obj, pointid, model_param)
         allocate(load_strain_point(sem_obj%ndumps, 1))
         load_strain_point = 0.0
 
-        iclockold = tick()
+        !iclockold = tick()
         status = sem_obj%buffer(1)%get(pointid, utemp)
-        iclockold = tick(id=id_buffer, since=iclockold)
+        !iclockold = tick(id=id_buffer, since=iclockold)
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
 
            ! Only read to last point, not further
            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-           iclockold = tick()
+           !iclockold = tick()
            call nc_getvar( ncid   = sem_obj%snap,           & 
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
                            values = utemp_chunk(1:gll_to_read, :)) 
 
-           iclockold = tick(id=id_netcdf, since=iclockold)
+           !iclockold = tick(id=id_netcdf, since=iclockold)
 
            do iread = 0, sem_obj%chunk_gll - 1
                status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
-           iclockold = tick(id=id_buffer, since=iclockold)
+           !iclockold = tick(id=id_buffer, since=iclockold)
            load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
         else
            load_strain_point(:,1) = real(utemp, kind=dp)

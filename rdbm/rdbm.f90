@@ -6,59 +6,102 @@ program rdbm
   use global_parameters
   use source_class
   use resampling
+  use type_parameter
 
   implicit none
 
   type(semdata_type)                  :: sem_data
-  type(src_param_type)                :: source
-  character(len=512)                  :: fwd_dir, bwd_dir
+  type(src_param_type)                :: fake_source
+  type(parameter_type)                :: parameters
+
+  character(len=512)                  :: bwd_dir
   character(len=4)                    :: model_param
-  real(kind=dp)                       :: coordinates(3,3)
+  real(kind=dp), allocatable          :: coordinates(:,:)
+  real(kind=dp)                       :: x, y, r, th
   real(kind=dp),    allocatable       :: fw_field(:,:,:)
   integer                             :: i
 
   type(resampling_type)               :: resamp
   real(kind=dp),    allocatable       :: fw_field_res(:,:)
-  integer                             :: nsamp
+  integer                             :: ntraces
 
-  verbose = 1
-  nsamp = 3000
+  real(kind=dp), dimension(:), allocatable      :: T
+  real(kind=dp)                                 :: dt_out
+
+  call parameters%read_parameters('inparam_basic')
+
+  !verbose = parameters%verbose
+
+  ntraces = 20
 
   write(*,*) '***************************************************************'
   write(*,*) ' Initialize and open AxiSEM wavefield files'
   write(*,*) '***************************************************************'
 
-  fwd_dir = '/home/ex/local/src/axisem/SOLVER/50s_kernel_output'
   bwd_dir = ''
 
   model_param = 'vp'
-  call sem_data%set_params(fwd_dir, bwd_dir, 100, model_param)
+  call sem_data%set_params(parameters%sim_dir, bwd_dir, parameters%buffer_size, model_param)
   call sem_data%open_files()
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
-  call source%init(90d0, 0d0, (/1d10, 1d10, 1d10, 0d0, 0d0, 0d0 /))
+  call fake_source%init(90d0, 0d0, (/1d10, 1d10, 1d10, 0d0, 0d0, 0d0 /))
 
 
-  allocate(fw_field(sem_data%ndumps, 1, 3))
-  allocate(fw_field_res(nsamp, 3))
+  allocate(fw_field(sem_data%ndumps, 1, ntraces))
+  allocate(fw_field_res(parameters%nsamp, ntraces))
+  allocate(coordinates(3, ntraces))
 
-  coordinates(:,1) = (/0d0, 0d0, 6d3/)
-  coordinates(:,2) = (/0d0, 0d0, 5.95d3/)
-  coordinates(:,3) = (/0d0, 0d0, 5.90d3/)
+  !x = sin(7.5 / 180 * pi) * 6000
+  !y = cos(7.5 / 180 * pi) * 6000
 
-  fw_field = sem_data%load_fw_points_rdbm(coordinates, source)
+  !write(6,*) x
+  !write(6,*) y
 
-  call resamp%init(sem_data%ndumps, nsamp, 3)
+  !coordinates(:,1)  = (/0d0, x, y/)
+  !coordinates(:,1)  = (/0d0, 7d0, 6000d0/) !6371d0/)
+  !coordinates(:,2)  = (/0d0, 7d0, 5990d0/) !6361d0/)
+  !coordinates(:,3)  = (/0d0, 7d0, 5980d0/) !6351d0/)
+  !coordinates(:,4)  = (/0d0, 7d0, 5970d0/) !6341d0/)
+  !coordinates(:,5)  = (/0d0, 7d0, 5960d0/) !6331d0/)
+  !coordinates(:,6)  = (/0d0, 7d0, 5950d0/) !6321d0/)
+  !coordinates(:,7)  = (/0d0, 7d0, 5940d0/) !6311d0/)
+  !coordinates(:,8)  = (/0d0, 7d0, 5930d0/) !6301d0/)
+  !coordinates(:,9)  = (/0d0, 7d0, 5920d0/) !6291d0/)
+  !coordinates(:,10) = (/0d0, 7d0, 5910d0/) !6281d0/)
+
+  r = 6050. !6370.
+  th = 45
+
+  do i = 1, ntraces
+     r = r - 5
+     x = sin(th / 180 * pi) * r
+     y = cos(th / 180 * pi) * r
+     coordinates(:,i)  = (/0d0, x, y/)
+  enddo
+
+  fw_field = sem_data%load_fw_points_rdbm(coordinates, fake_source)
+
+  call resamp%init(sem_data%ndumps, parameters%nsamp, ntraces)
 
   call resamp%resample(fw_field(:,1,:), fw_field_res)
+
+  allocate(T(1:parameters%nsamp))
+
+  dt_out = sem_data%dt * sem_data%ndumps / parameters%nsamp
+
+  do i = 1, parameters%nsamp
+     T(i) = dt_out * (i - 1)
+  end do
 
   do i = 1, sem_data%ndumps
      write(111,*) real(i-1) / (sem_data%ndumps -1), fw_field(i,1,:)
   enddo
 
-  do i = 1, nsamp
-     write(112,*) real(i-1) / (nsamp -1), fw_field_res(i,:)
+  do i = 1, parameters%nsamp
+     !write(112,*) real(i-1) / (parameters%nsamp -1), fw_field_res(i,:)
+     write(112,*) T(i), fw_field_res(i,:)
   enddo
 
 contains
