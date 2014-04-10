@@ -46,6 +46,7 @@ subroutine test_all
   ! test_resampling
   write(6,'(/,a)') 'TEST RESAMPLING MODULE'
   call test(test_resampling_const, 'RESAMPLING_const')
+  call test(test_resampling_triangle, 'RESAMPLING_triangle')
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
