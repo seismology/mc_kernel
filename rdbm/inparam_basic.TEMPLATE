@@ -1,8 +1,24 @@
 # directory of the single force forward run
-SIM_DIR                 '/home/ex/local/src/axisem/SOLVER/20s_kernel_output'
+SIM_DIR                 '../../axisem/SOLVER/20s_kernel_output'
+
+# mode: 
+# tomography        one seismogram per source receiver pair
+# finitesource      one seismogram per receiver, summed over all sources
+MODE                    tomo
+
+# Receiver file type, allowed options:
+# colatlon          Colatitude and Longitude for each station.
+# stations          SPECFEM-style stations file with latitude, longitude and station name
+#                     (default)
+RECFILE_TYPE            stations 
+
+# Source file type, allowed options:
+# cmtsolution       standard cmtsolution file as available form globalcmt.org (allows only
+#                     one source per run)
+SRCFILE_TYPE            cmtsolution
 
 # number of samples in the seismograms, resampling is done in the frequency domain, 
-# length of the traces depends on the forward run
+# length of the traces in seconds depends on the forward run
 NSAMP                   3600
 
 # Size of reading buffer. 1000 is a good value, unless you run into memory problems.

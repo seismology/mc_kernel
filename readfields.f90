@@ -964,9 +964,6 @@ function load_fw_points_rdbm(this, coordinates, source_params)
             !iclockold = tick()
             select case(trim(this%model_param))
             case('vp')
-                write(6,*) 'azimfac', azim_factor(rotmesh_phi(ipoint), &
-                                      source_params%mij, isim, 1) 
- 
                 load_fw_points_rdbm(:, :, ipoint) &
                         = load_fw_points_rdbm(:,:,ipoint) &
                           + utemp * azim_factor(rotmesh_phi(ipoint), &
