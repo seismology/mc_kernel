@@ -86,7 +86,7 @@ subroutine read_parameters(this, input_file_in)
   end do
   close(lu_inparam_basic)
 
-
+  verbose = this%verbose
 
   this%parameters_read = .true.
 

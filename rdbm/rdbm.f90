@@ -12,7 +12,7 @@ program rdbm
   implicit none
 
   type(semdata_type)                  :: sem_data
-  type(src_param_type)                :: reci_source
+  !type(src_param_type)                :: reci_source
   type(parameter_type)                :: parameters
   type(receivers_rdbm_type)           :: receivers
 
@@ -20,26 +20,21 @@ program rdbm
   character(len=4)                    :: model_param
   real(kind=dp), allocatable          :: source_coordinates(:,:)
   real(kind=dp)                       :: x, y, r, th
-  real(kind=dp),    allocatable       :: fw_field(:,:,:)
-  integer                             :: i
+  real(kind=dp), allocatable          :: fw_field(:,:,:)
+  integer                             :: i, j
 
   type(resampling_type)               :: resamp
-  real(kind=dp),    allocatable       :: fw_field_res(:,:)
+  real(kind=dp), allocatable          :: fw_field_res(:,:)
   integer                             :: ntraces
 
   real(kind=dp), dimension(:), allocatable      :: T
   real(kind=dp)                                 :: dt_out
 
   call parameters%read_parameters('inparam_basic')
-  stop
-
-  verbose = parameters%verbose
 
   call receivers%read_stations_file()
 
-
-
-  ntraces = 20
+  ntraces = 1
 
   write(*,*) '***************************************************************'
   write(*,*) ' Initialize and open AxiSEM wavefield files'
@@ -53,7 +48,7 @@ program rdbm
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
-  call reci_source%init(90d0, 0d0, (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
+  !call reci_source%init(90d0, 0d0, (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
 
 
   allocate(fw_field(sem_data%ndumps, 1, ntraces))
@@ -61,8 +56,7 @@ program rdbm
   allocate(source_coordinates(3, ntraces))
 
   r = 5000.
-  !r = 6371.
-  th = 90.
+  th = 0.
 
   do i = 1, ntraces
      x = sin(th / 180 * pi) * r
@@ -70,12 +64,6 @@ program rdbm
      source_coordinates(:,i)  = (/0d0, x, y/)
      r = r - 5
   enddo
-
-  fw_field = sem_data%load_fw_points_rdbm(source_coordinates, reci_source)
-
-  call resamp%init(sem_data%ndumps, parameters%nsamp, ntraces)
-
-  call resamp%resample(fw_field(:,1,:), fw_field_res)
 
   allocate(T(1:parameters%nsamp))
 
@@ -85,13 +73,20 @@ program rdbm
      T(i) = dt_out * (i - 1)
   end do
 
-  do i = 1, sem_data%ndumps
-     write(111,*) real(i-1) / (sem_data%ndumps -1), fw_field(i,1,:)
-  enddo
+  call resamp%init(sem_data%ndumps, parameters%nsamp, ntraces)
 
-  do i = 1, parameters%nsamp
-     !write(112,*) real(i-1) / (parameters%nsamp -1), fw_field_res(i,:)
-     write(112,*) T(i), fw_field_res(i,:)
+  do i=1, receivers%num_rec
+     fw_field = sem_data%load_fw_points_rdbm(source_coordinates, receivers%reci_sources(i))
+
+     call resamp%resample(fw_field(:,1,:), fw_field_res)
+
+     !do i = 1, sem_data%ndumps
+     !   write(111,*) real(i-1) / (sem_data%ndumps -1), fw_field(i,1,:)
+     !enddo
+
+     do j = 1, parameters%nsamp
+        write(110+i,*) T(j), fw_field_res(j,:)
+     enddo
   enddo
 
 contains
