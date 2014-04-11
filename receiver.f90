@@ -1,6 +1,5 @@
-!==============================================================================
+!=========================================================================================
 module receiver_class
-!==============================================================================
     
     use global_parameters,  only : sp, dp, pi, deg2rad, rad2deg
     use kernel,             only : kernelspec_type
@@ -10,9 +9,11 @@ module receiver_class
         character(len=1)               :: component
         character(len=16)              :: name
         real(kind=dp)                  :: colat,  lat,  lon  !< receiver coordinates
-                                                             !! in the earth system (radians)
+                                                             !! in the earth system
+                                                             !! (radians)
         real(kind=dp)                  :: colatd, latd, lond !< receiver coordinates
-                                                             !! in the earth system (degrees)
+                                                             !! in the earth system
+                                                             !! (degrees)
         real(kind=dp)                  :: theta, phi         !< receiver coordinates 
                                                              !! in the source system
         real(kind=dp), dimension(3,3)  :: rot_mat, trans_rot_mat
@@ -26,7 +27,7 @@ module receiver_class
 
 contains
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkernel)
    class(rec_param_type)         :: this
    character(len=16), intent(in) :: name
@@ -52,9 +53,9 @@ subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkerne
    allocate(this%kernel(this%nkernel))
 
 end subroutine
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine rotate_receiver(this, trans_rot_mat)
    implicit none
    class(rec_param_type)      :: this
@@ -87,7 +88,7 @@ subroutine rotate_receiver(this, trans_rot_mat)
    end if
 
 end subroutine
-!------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 
 end module
-!==============================================================================
+!=========================================================================================
