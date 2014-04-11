@@ -94,16 +94,8 @@ subroutine resample(this, data_in, data_out)
 
   dataf_out(1:nomega_min,:) = dataf_in(1:nomega_min,:)
 
-  do i = 1, this%fft_in%get_nomega()
-     write(445,*) dataf_in(i,:)
-  enddo
-
   if (nomega_min < this%fft_out%get_nomega()) &
      dataf_out(nomega_min+1:,:) = 0
-
-  do i = 1, this%fft_out%get_nomega()
-     write(444,*) dataf_out(i,:)
-  enddo
 
   call this%fft_out%irfft(dataf_out, this%data_out_buf)
 
