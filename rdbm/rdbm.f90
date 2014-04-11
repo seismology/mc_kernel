@@ -12,7 +12,6 @@ program rdbm
   implicit none
 
   type(semdata_type)                  :: sem_data
-  !type(src_param_type)                :: reci_source
   type(parameter_type)                :: parameters
   type(receivers_rdbm_type)           :: receivers
 
@@ -22,6 +21,8 @@ program rdbm
   real(kind=dp)                       :: x, y, r, th
   real(kind=dp), allocatable          :: fw_field(:,:,:)
   integer                             :: i, j
+  integer                             :: lu_seis
+  character(len=8)                    :: fname
 
   type(resampling_type)               :: resamp
   real(kind=dp), allocatable          :: fw_field_res(:,:)
@@ -32,7 +33,8 @@ program rdbm
 
   call parameters%read_parameters('inparam_basic')
 
-  call receivers%read_stations_file()
+  !call receivers%read_stations_file()
+  call receivers%read_receiver_dat()
 
   ntraces = 1
 
@@ -80,13 +82,13 @@ program rdbm
 
      call resamp%resample(fw_field(:,1,:), fw_field_res)
 
-     !do i = 1, sem_data%ndumps
-     !   write(111,*) real(i-1) / (sem_data%ndumps -1), fw_field(i,1,:)
-     !enddo
-
+     write(fname,'("seis_",I0.3)') i
+     write(6,*) fname
+     open(newunit=lu_seis, file=fname)
      do j = 1, parameters%nsamp
-        write(110+i,*) T(j), fw_field_res(j,:)
+        write(lu_seis,*) T(j), fw_field_res(j,:)
      enddo
+     close(lu_seis)
   enddo
 
 contains

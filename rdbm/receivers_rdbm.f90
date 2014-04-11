@@ -3,14 +3,17 @@ module receivers_rdbm
 
   use global_parameters
   use source_class
+  use commpi,               only : pabort
 
   implicit none
 
   type receivers_rdbm_type
      type(src_param_type), allocatable      :: reci_sources(:)
      integer                                :: num_rec
+     logical                                :: initialized = .false.
      contains
      procedure, pass                        :: read_stations_file
+     procedure, pass                        :: read_receiver_dat
   end type
 
 contains
@@ -25,8 +28,13 @@ subroutine read_stations_file(this)
   character(len=2)              :: network_name
   real(kind=dp)                 :: reclat, reclon, recelevation, recbury
 
+  if (this%initialized) then
+     write(6,*) 'ERROR: trying to initialize aleady initalized rdbm receiver object'
+     call pabort
+  endif
+
   if (verbose > 1) &
-     write(6,*)'  reading receiver latitudes and longitudes from STATIONS...'
+     write(6,*) '  reading receiver latitudes and longitudes from STATIONS...'
 
   ! count number of receivers first
   open(newunit=lu_stations, file='STATIONS', iostat=ierror, status='old', &
@@ -60,6 +68,43 @@ subroutine read_stations_file(this)
   enddo
 
   close(lu_stations)
+
+  this%initialized = .true.
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine read_receiver_dat(this)
+  class(receivers_rdbm_type)    :: this
+  integer                       :: ierror, lu_stations
+  integer                       :: i
+  real(kind=dp)                 :: reccolat, reclon
+
+  if (this%initialized) then
+     write(6,*) 'ERROR: trying to initialize aleady initalized rdbm receiver object'
+     call pabort
+  endif
+
+  if (verbose > 1) &
+     write(6,*) '  reading receiver latitudes and longitudes from receivers.dat...'
+
+  ! count number of receivers first
+  open(newunit=lu_stations, file='receivers.dat', iostat=ierror, status='old', &
+       action='read', position='rewind')
+
+  read(lu_stations, *, iostat=ierror) this%num_rec
+
+  allocate(this%reci_sources(this%num_rec))
+
+  do i=1, this%num_rec
+     read(lu_stations,*) reccolat, reclon
+     call this%reci_sources(i)%init(90 - reccolat, reclon, (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
+  enddo
+
+  close(lu_stations)
+
+  this%initialized = .true.
 
 end subroutine
 !-----------------------------------------------------------------------------------------
