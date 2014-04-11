@@ -8,6 +8,7 @@ program rdbm
   use resampling
   use type_parameter
   use receivers_rdbm
+  use fft, only : taperandzeropad
 
   implicit none
 
@@ -60,7 +61,7 @@ program rdbm
 
 
   allocate(fw_field(sem_data%ndumps, 1, ntraces))
-  allocate(fw_field_res(parameters%nsamp, ntraces))
+  allocate(fw_field_res(parameters%nsamp * 2, ntraces))
   allocate(source_coordinates(3, ntraces))
 
   r = 5000.
@@ -81,12 +82,12 @@ program rdbm
      T(i) = dt_out * (i - 1)
   end do
 
-  call resamp%init(sem_data%ndumps, parameters%nsamp, ntraces)
+  call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, ntraces)
 
   do i=1, receivers%num_rec
      fw_field = sem_data%load_fw_points_rdbm(source_coordinates, receivers%reci_sources(i))
 
-     call resamp%resample(fw_field(:,1,:), fw_field_res)
+     call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=10, ntimes=sem_data%ndumps * 2), fw_field_res)
 
      write(fname,'("seis_",I0.3)') i
      write(6,*) fname
