@@ -33,8 +33,14 @@ program rdbm
 
   call parameters%read_parameters('inparam_basic')
 
-  !call receivers%read_stations_file()
-  call receivers%read_receiver_dat()
+  if (parameters%receiver_file_type == 'stations') then
+     call receivers%read_stations_file()
+  else if (parameters%receiver_file_type == 'colatlon') then
+     call receivers%read_receiver_dat()
+  else
+     write(6,*) 'ERROR: unknown receiver file type'
+     call pabort
+  endif
 
   ntraces = 1
 

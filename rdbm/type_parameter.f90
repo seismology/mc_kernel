@@ -16,6 +16,7 @@ module type_parameter
       character(len=512)                    :: sim_dir
       character(len=512)                    :: source_file
       character(len=512)                    :: receiver_file
+      character(len=8)                      :: receiver_file_type
       integer                               :: nsim_fwd
       integer                               :: nsamp
       integer                               :: buffer_size
@@ -74,6 +75,9 @@ subroutine read_parameters(this, input_file_in)
 
      !case('SOURCE_FILE')
      !   this%source_file = keyvalue
+
+     case('RECFILE_TYPE')
+         this%receiver_file_type = keyvalue
 
      case('NETCDF_BUFFER_SIZE')
         read(keyvalue, *) this%buffer_size
