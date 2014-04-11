@@ -11,12 +11,12 @@ program rdbm
   implicit none
 
   type(semdata_type)                  :: sem_data
-  type(src_param_type)                :: fake_source
+  type(src_param_type)                :: reci_source
   type(parameter_type)                :: parameters
 
   character(len=512)                  :: bwd_dir
   character(len=4)                    :: model_param
-  real(kind=dp), allocatable          :: coordinates(:,:)
+  real(kind=dp), allocatable          :: source_coordinates(:,:)
   real(kind=dp)                       :: x, y, r, th
   real(kind=dp),    allocatable       :: fw_field(:,:,:)
   integer                             :: i
@@ -46,12 +46,12 @@ program rdbm
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
-  call fake_source%init(90d0, 0d0, (/1d10, 1d10, 1d10, 0d0, 0d0, 0d0 /))
+  call reci_source%init(90d0, 0d0, (/1d10, 1d10, 1d10, 0d0, 0d0, 0d0 /))
 
 
   allocate(fw_field(sem_data%ndumps, 1, ntraces))
   allocate(fw_field_res(parameters%nsamp, ntraces))
-  allocate(coordinates(3, ntraces))
+  allocate(source_coordinates(3, ntraces))
 
   !x = sin(7.5 / 180 * pi) * 6000
   !y = cos(7.5 / 180 * pi) * 6000
@@ -59,17 +59,17 @@ program rdbm
   !write(6,*) x
   !write(6,*) y
 
-  !coordinates(:,1)  = (/0d0, x, y/)
-  !coordinates(:,1)  = (/0d0, 7d0, 6000d0/) !6371d0/)
-  !coordinates(:,2)  = (/0d0, 7d0, 5990d0/) !6361d0/)
-  !coordinates(:,3)  = (/0d0, 7d0, 5980d0/) !6351d0/)
-  !coordinates(:,4)  = (/0d0, 7d0, 5970d0/) !6341d0/)
-  !coordinates(:,5)  = (/0d0, 7d0, 5960d0/) !6331d0/)
-  !coordinates(:,6)  = (/0d0, 7d0, 5950d0/) !6321d0/)
-  !coordinates(:,7)  = (/0d0, 7d0, 5940d0/) !6311d0/)
-  !coordinates(:,8)  = (/0d0, 7d0, 5930d0/) !6301d0/)
-  !coordinates(:,9)  = (/0d0, 7d0, 5920d0/) !6291d0/)
-  !coordinates(:,10) = (/0d0, 7d0, 5910d0/) !6281d0/)
+  !source_coordinates(:,1)  = (/0d0, x, y/)
+  !source_coordinates(:,1)  = (/0d0, 7d0, 6000d0/) !6371d0/)
+  !source_coordinates(:,2)  = (/0d0, 7d0, 5990d0/) !6361d0/)
+  !source_coordinates(:,3)  = (/0d0, 7d0, 5980d0/) !6351d0/)
+  !source_coordinates(:,4)  = (/0d0, 7d0, 5970d0/) !6341d0/)
+  !source_coordinates(:,5)  = (/0d0, 7d0, 5960d0/) !6331d0/)
+  !source_coordinates(:,6)  = (/0d0, 7d0, 5950d0/) !6321d0/)
+  !source_coordinates(:,7)  = (/0d0, 7d0, 5940d0/) !6311d0/)
+  !source_coordinates(:,8)  = (/0d0, 7d0, 5930d0/) !6301d0/)
+  !source_coordinates(:,9)  = (/0d0, 7d0, 5920d0/) !6291d0/)
+  !source_coordinates(:,10) = (/0d0, 7d0, 5910d0/) !6281d0/)
 
   r = 6050. !6370.
   th = 45
@@ -78,10 +78,10 @@ program rdbm
      r = r - 5
      x = sin(th / 180 * pi) * r
      y = cos(th / 180 * pi) * r
-     coordinates(:,i)  = (/0d0, x, y/)
+     source_coordinates(:,i)  = (/0d0, x, y/)
   enddo
 
-  fw_field = sem_data%load_fw_points_rdbm(coordinates, fake_source)
+  fw_field = sem_data%load_fw_points_rdbm(source_coordinates, reci_source)
 
   call resamp%init(sem_data%ndumps, parameters%nsamp, ntraces)
 

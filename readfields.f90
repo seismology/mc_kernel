@@ -925,15 +925,14 @@ function load_fw_points_rdbm(this, coordinates, source_params)
 
     
     ! Rotate points to FWD coordinate system
-    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
-                          coordinates*1d3,                              &
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates*1d3, &
                           source_params%lon, source_params%colat)
 
     allocate(nextpoint(1))
     do ipoint = 1, npoints
-        call kdtree2_n_nearest( this%fwdtree,                           &
+        call kdtree2_n_nearest( this%fwdtree, &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                nn = 1,                                 &
+                                nn = 1, &
                                 results = nextpoint )
         
         pointid(ipoint) = nextpoint(1)%idx
@@ -964,16 +963,19 @@ function load_fw_points_rdbm(this, coordinates, source_params)
 
             !iclockold = tick()
             select case(trim(this%model_param))
-            !if (this%model_param.eq.'vs') then
             case('vp')
-                load_fw_points_rdbm(:, :, ipoint) = load_fw_points_rdbm(:,:,ipoint)                   &
-                                             + utemp * azim_factor(rotmesh_phi(ipoint),     &
-                                                                   source_params%mij, isim, 1) 
+                write(6,*) 'azimfac', azim_factor(rotmesh_phi(ipoint), &
+                                      source_params%mij, isim, 1) 
+ 
+                load_fw_points_rdbm(:, :, ipoint) &
+                        = load_fw_points_rdbm(:,:,ipoint) &
+                          + utemp * azim_factor(rotmesh_phi(ipoint), &
+                                                source_params%mij, isim, 1) 
             case('vs')
-                load_fw_points_rdbm(:, :, ipoint) = load_fw_points_rdbm(:, :, ipoint)                 &
-                                             + rotate_straintensor(utemp,                   &
-                                                                   rotmesh_phi(ipoint),     &
-                                                                   source_params%mij, isim) 
+                load_fw_points_rdbm(:, :, ipoint) &
+                        = load_fw_points_rdbm(:, :, ipoint) &
+                          + rotate_straintensor(utemp, rotmesh_phi(ipoint), &
+                                                source_params%mij, isim) 
             end select
             !iclockold = tick(id=id_rotate, since=iclockold)
         end do !isim
@@ -985,6 +987,7 @@ end function load_fw_points_rdbm
 
 !-----------------------------------------------------------------------------------------
 function load_strain_point(sem_obj, pointid, model_param)
+
     type(ncparamtype), intent(in)   :: sem_obj
     integer, intent(in)             :: pointid
     character(len=*), intent(in)    :: model_param
@@ -1074,11 +1077,14 @@ end function load_strain_point
 
 !-----------------------------------------------------------------------------------------
 function azim_factor(phi, mij, isim, ikind)
+
     real(kind=dp), intent(in)    :: phi
     real(kind=dp), intent(in)    :: mij(6)
     integer, intent(in)          :: isim, ikind
     real(kind=dp)                :: azim_factor
 
+    !@TODO: is isim a robust indicator for the souretype? what about a single
+    !       simulation that is not Mzz? (MvD)
     select case(isim)
     case(1) ! Mzz
        if (ikind==1) then 
@@ -1089,23 +1095,25 @@ function azim_factor(phi, mij, isim, ikind)
        
     case(2) ! Mxx+Myy
        if (ikind==1) then 
-           azim_factor = 0.5*(Mij(2)+Mij(3))
+           azim_factor = 0.5d0 * (Mij(2) + Mij(3))
        else
            azim_factor = 0
        end if
        
     case(3) ! dipole
        if (ikind==1) then
-           azim_factor =   Mij(4)*dcos(phi) + Mij(5)*dsin(phi)
+           azim_factor =   Mij(4) * dcos(phi) + Mij(5) * dsin(phi)
        else
-           azim_factor = - Mij(4)*dsin(phi) + Mij(5)*dcos(phi) 
+           azim_factor = - Mij(4) * dsin(phi) + Mij(5) * dcos(phi) 
        end if
        
     case(4) ! quadrupole
        if (ikind==1) then
-           azim_factor =   0.5*( Mij(2)-Mij(3) ) * dcos(2.d0*phi) + Mij(6)*dsin(2.d0*phi)
+           azim_factor =   0.5d0 * (Mij(2) - Mij(3)) * dcos(2.d0 * phi) &
+                            + Mij(6) * dsin(2.d0 * phi)
        else
-           azim_factor = - 0.5*( Mij(2)-Mij(3) ) * dsin(2.d0*phi) + Mij(6)*dcos(2.d0*phi)  
+           azim_factor = - 0.5d0 * (Mij(2) - Mij(3)) * dsin(2.d0 * phi) &
+                            + Mij(6) * dcos(2.d0 * phi)  
        end if
 
     case default
