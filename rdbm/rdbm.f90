@@ -27,7 +27,7 @@ program rdbm
 
   type(resampling_type)               :: resamp
   real(kind=dp), allocatable          :: fw_field_res(:,:)
-  integer                             :: ntraces
+  integer                             :: nsources
 
   real(kind=dp), dimension(:), allocatable      :: T
   real(kind=dp)                                 :: dt_out
@@ -43,7 +43,7 @@ program rdbm
      call pabort
   endif
 
-  ntraces = 1
+  nsources = 1
 
   write(*,*) '***************************************************************'
   write(*,*) ' Initialize and open AxiSEM wavefield files'
@@ -57,20 +57,17 @@ program rdbm
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
-  !call reci_source%init(90d0, 0d0, (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
-
-
-  allocate(fw_field(sem_data%ndumps, 1, ntraces))
-  allocate(fw_field_res(parameters%nsamp * 2, ntraces))
-  allocate(source_coordinates(3, ntraces))
+  allocate(fw_field(sem_data%ndumps, 1, nsources))
+  allocate(fw_field_res(parameters%nsamp * 2, nsources))
+  allocate(source_coordinates(3, nsources))
 
   r = 5000.
-  th = 0.
+  th = -15
 
-  do i = 1, ntraces
+  do i = 1, nsources
      x = sin(th / 180 * pi) * r
      y = cos(th / 180 * pi) * r
-     source_coordinates(:,i)  = (/0d0, x, y/)
+     source_coordinates(:,i)  = (/x, 0d0, y/)
      r = r - 5
   enddo
 
@@ -82,15 +79,17 @@ program rdbm
      T(i) = dt_out * (i - 1)
   end do
 
-  call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, ntraces)
+  call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
 
   do i=1, receivers%num_rec
-     fw_field = sem_data%load_fw_points_rdbm(source_coordinates, receivers%reci_sources(i))
+     fw_field = sem_data%load_fw_points_rdbm(source_coordinates, &
+                                             receivers%reci_sources(i))
 
-     call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=10, ntimes=sem_data%ndumps * 2), fw_field_res)
+     call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
+                                          ntimes=sem_data%ndumps * 2), &
+                          fw_field_res)
 
      write(fname,'("seis_",I0.3)') i
-     write(6,*) fname
      open(newunit=lu_seis, file=fname)
      do j = 1, parameters%nsamp
         write(lu_seis,*) T(j), fw_field_res(j,:)

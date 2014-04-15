@@ -162,6 +162,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
        write(lu_out,*) 'This is not implemented yet!'
+       call pabort
     elseif (single) then
        this%nsim_bwd = 1
        write(lu_out,*) 'Backword simulation was ''single'' source'
@@ -889,8 +890,8 @@ function load_bw_points(this, coordinates, receiver)
         if (this%model_param.eq.'vs') then
             load_bw_points(:,:,ipoint) &
                 = rotate_straintensor(load_bw_points(:,:,ipoint), &
-                                                             rotmesh_phi(ipoint),        &
-                                                             real([1, 1, 1, 0, 0, 0], kind=dp), 1)
+                                      rotmesh_phi(ipoint),        &
+                                      real([1, 1, 1, 0, 0, 0], kind=dp), 1)
         end if
     end do !ipoint
 
@@ -1382,7 +1383,8 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
     azim_factor_1 = azim_factor(phi, mij, isim, 1)
     azim_factor_2 = azim_factor(phi, mij, isim, 2)
 
-
+    ! seems to be a bit inefficient to do the transform using standard matrix
+    ! product, could implement a version for symmetric matrices. (MvD)
     do idump = 1, size(tensor_vector, 1)
         tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
         tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
