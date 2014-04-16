@@ -15,10 +15,10 @@ program rdbm
   type(semdata_type)                  :: sem_data
   type(parameter_type)                :: parameters
   type(receivers_rdbm_type)           :: receivers
+  type(src_param_type), allocatable   :: sources(:)
 
   character(len=512)                  :: bwd_dir
   character(len=4)                    :: model_param
-  real(kind=dp), allocatable          :: source_coordinates(:,:)
   real(kind=dp)                       :: x, y, r, th
   real(kind=dp), allocatable          :: fw_field(:,:,:)
   integer                             :: i, j
@@ -59,17 +59,9 @@ program rdbm
 
   allocate(fw_field(sem_data%ndumps, 1, nsources))
   allocate(fw_field_res(parameters%nsamp * 2, nsources))
-  allocate(source_coordinates(3, nsources))
+  allocate(sources(nsources))
 
-  r = 5000.
-  th = -15
-
-  do i = 1, nsources
-     x = sin(th / 180 * pi) * r
-     y = cos(th / 180 * pi) * r
-     source_coordinates(:,i)  = (/x, 0d0, y/)
-     r = r - 5
-  enddo
+  call sources(1)%read_cmtsolution()
 
   allocate(T(1:parameters%nsamp))
 
@@ -82,8 +74,7 @@ program rdbm
   call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
 
   do i=1, receivers%num_rec
-     fw_field = sem_data%load_fw_points_rdbm(source_coordinates, &
-                                             receivers%reci_sources(i))
+     fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i))
 
      call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
                                           ntimes=sem_data%ndumps * 2), &

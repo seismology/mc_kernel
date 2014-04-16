@@ -899,35 +899,36 @@ end function load_bw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points_rdbm(this, coordinates, source_params)
+function load_fw_points_rdbm(this, source_params, reci_source_params)
     use simple_routines, only          : mult2d_1d
 
     class(semdata_type)               :: this
-    real(kind=dp), intent(in)         :: coordinates(:,:)
-    type(src_param_type), intent(in)  :: source_params
+    type(src_param_type), intent(in)  :: source_params(:)
+    type(src_param_type), intent(in)  :: reci_source_params
     real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
-                                                             size(coordinates,2))
+                                                             size(source_params))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints
-    integer                           :: pointid(size(coordinates,2))
+    integer                           :: pointid(size(source_params))
     integer                           :: ipoint, isim, iclockold
-    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
-    real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
-    real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_s(size(source_params))
+    real(kind=dp)                     :: rotmesh_phi(size(source_params))
+    real(kind=dp)                     :: rotmesh_z(size(source_params))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
+    real(kind=dp)                     :: coordinates(size(source_params),3)
     
-    if (size(coordinates,1).ne.3) then
-       write(*,*) ' Error in load_fw_points_rdbm: input variable coordinates has to be a '
-       write(*,*) ' 3 x npoints array'
-       call pabort 
-    end if
-    npoints = size(coordinates,2)
+    npoints = size(source_params)
 
+    do ipoint = 1, npoints
+        coordinates(ipoint,1) = source_params(ipoint)%x
+        coordinates(ipoint,2) = source_params(ipoint)%y
+        coordinates(ipoint,3) = source_params(ipoint)%z
+    enddo
     
     ! Rotate points to FWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates*1d3, &
-                          source_params%lon, source_params%colat)
+                          reci_source_params%lon, reci_source_params%colat)
 
     allocate(nextpoint(1))
     do ipoint = 1, npoints
@@ -968,12 +969,12 @@ function load_fw_points_rdbm(this, coordinates, source_params)
                 load_fw_points_rdbm(:, :, ipoint) &
                         = load_fw_points_rdbm(:,:,ipoint) &
                           + utemp * azim_factor(rotmesh_phi(ipoint), &
-                                                source_params%mij, isim, 1) 
+                                                reci_source_params%mij, isim, 1) 
             case('vs')
                 load_fw_points_rdbm(:, :, ipoint) &
                         = load_fw_points_rdbm(:, :, ipoint) &
                           + rotate_straintensor(utemp, rotmesh_phi(ipoint), &
-                                                source_params%mij, isim) 
+                                                reci_source_params%mij, isim) 
             end select
             !iclockold = tick(id=id_rotate, since=iclockold)
         end do !isim

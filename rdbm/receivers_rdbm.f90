@@ -64,7 +64,9 @@ subroutine read_stations_file(this)
         write(6,*) 'WARNING: receivers are assumed to be at the earth surface, '//&
                    'but elevation or bury is nonzero in STATIONS file for station '//&
                    station_name
-     call this%reci_sources(i)%init(reclat, reclon, (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
+     ! TODO: hardcoded receiver depth to 0 for now
+     call this%reci_sources(i)%init(reclat, reclon, &
+                                    (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /), 0d0)
   enddo
 
   close(lu_stations)
@@ -99,7 +101,8 @@ subroutine read_receiver_dat(this)
 
   do i=1, this%num_rec
      read(lu_stations,*) reccolat, reclon
-     call this%reci_sources(i)%init(90 - reccolat, reclon, (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
+     ! TODO: hardcoded receiver depth to 0 for now
+     call this%reci_sources(i)%init(90 - reccolat, reclon, (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /), 0d0)
   enddo
 
   close(lu_stations)

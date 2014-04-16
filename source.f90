@@ -7,9 +7,11 @@ module source_class
 
     type src_param_type
         real(kind=dp)                        :: mij(6)
-        real(kind=dp)                        :: colat, lat, lon
-        real(kind=dp)                        :: colatd, latd, lond
-        real(kind=dp)                        :: depth
+        real(kind=dp)                        :: colat, lat, lon     ! in radians
+        real(kind=dp)                        :: colatd, latd, lond  ! in degrees
+        real(kind=dp)                        :: x, y, z             ! cartesian 
+                                                                    ! coordinates in km
+        real(kind=dp)                        :: depth, radius       ! in km
         real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
         contains
            procedure, pass                   :: init
@@ -20,10 +22,10 @@ contains
 
 !-----------------------------------------------------------------------------------------
 !> This routine initializes the source object
-subroutine init(this, lat, lon, mij)
+subroutine init(this, lat, lon, mij, depth)
    class(src_param_type)      :: this
 
-   real(kind=dp), intent(in)  :: lat, lon, mij(6)
+   real(kind=dp), intent(in)  :: lat, lon, mij(6), depth
 
    this%latd   = lat
    this%lond   = lon
@@ -32,6 +34,13 @@ subroutine init(this, lat, lon, mij)
    this%colat  = this%colatd * deg2rad
    this%lon    = this%lond   * deg2rad
    this%lat    = this%latd   * deg2rad
+
+   !TODO hardcoded radius for now until I know where to get earth's radius from (MvD)
+   this%radius = 6371 - depth
+
+   this%x = dcos(this%lat) * dcos(this%lon) * this%radius
+   this%y = dcos(this%lat) * dsin(this%lon) * this%radius
+   this%z = dsin(this%lat) * this%radius
 
    this%mij    = mij
    call this%def_rot_matrix()
@@ -58,13 +67,13 @@ subroutine read_cmtsolution(this)
       call pabort
    end if
 
-   read(lu_cmtsolution) junk ! first crap line
-   read(lu_cmtsolution) junk ! event name
-   read(lu_cmtsolution) junk ! time shift
-   read(lu_cmtsolution) junk ! half duration
-   read(lu_cmtsolution) junk, this%latd
-   read(lu_cmtsolution) junk, this%lond
-   read(lu_cmtsolution) junk, this%depth
+   read(lu_cmtsolution,*) junk ! first crap line
+   read(lu_cmtsolution,*) junk ! event name
+   read(lu_cmtsolution,*) junk ! time shift
+   read(lu_cmtsolution,*) junk ! half duration
+   read(lu_cmtsolution,*) junk, this%latd
+   read(lu_cmtsolution,*) junk, this%lond
+   read(lu_cmtsolution,*) junk, this%depth
 
    this%colatd = 90 - this%latd
 
@@ -72,12 +81,19 @@ subroutine read_cmtsolution(this)
    this%lon    = this%lond   * deg2rad
    this%lat    = this%latd   * deg2rad
 
-   read(lu_cmtsolution) junk, this%mij(1)
-   read(lu_cmtsolution) junk, this%mij(2)
-   read(lu_cmtsolution) junk, this%mij(3)
-   read(lu_cmtsolution) junk, this%mij(4)
-   read(lu_cmtsolution) junk, this%mij(5)
-   read(lu_cmtsolution) junk, this%mij(6)
+   !TODO hardcoded radius for now until I know where to get earth's radius from (MvD)
+   this%radius = 6371 - this%depth
+
+   this%x = dcos(this%lat) * dcos(this%lon) * this%radius
+   this%y = dcos(this%lat) * dsin(this%lon) * this%radius
+   this%z = dsin(this%lat) * this%radius
+
+   read(lu_cmtsolution,*) junk, this%mij(1)
+   read(lu_cmtsolution,*) junk, this%mij(2)
+   read(lu_cmtsolution,*) junk, this%mij(3)
+   read(lu_cmtsolution,*) junk, this%mij(4)
+   read(lu_cmtsolution,*) junk, this%mij(5)
+   read(lu_cmtsolution,*) junk, this%mij(6)
 
    this%mij = this%mij / 1e7 ! dyn cm -> Nm
 

@@ -200,7 +200,7 @@ subroutine read_source(this)
    call pbroadcast_dble_arr(Mij_dyncm, 0)
    
 
-   call this%source%init(lat = latd, lon = lond, mij = Mij_dyncm*1.E-7)
+   call this%source%init(lat=latd, lon=lond, mij=Mij_dyncm*1.E-7, depth=depth)
 
    write(lu_out,*)
    call flush(lu_out)
