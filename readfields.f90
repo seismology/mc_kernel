@@ -928,7 +928,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     enddo
     
     ! Rotate points to FWD coordinate system
-    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates*1d3, &
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates * 1d3, &
                           reci_source_params%lon, reci_source_params%colat)
 
 
@@ -979,6 +979,24 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
        case('T')
             load_fw_points_rdbm(:, :, ipoint) = 0
+
+       case('N')
+            isim = 2
+            utemp = load_strain_point(this%fwd(isim),      &
+                                      pointid(ipoint),     &
+                                      this%model_param)
+
+            load_fw_points_rdbm(:, :, ipoint) = &
+                    - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+
+       case('E')
+            isim = 2
+            utemp = load_strain_point(this%fwd(isim),      &
+                                      pointid(ipoint),     &
+                                      this%model_param)
+
+            load_fw_points_rdbm(:, :, ipoint) = &
+                    utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
 
        end select
 
@@ -1081,7 +1099,7 @@ end function load_strain_point
 function azim_factor(phi, mij, isim, ikind)
 
     real(kind=dp), intent(in)    :: phi
-    real(kind=dp), intent(in)    :: mij(6)
+    real(kind=dp), intent(in)    :: mij(6)  ! rr, tt, pp, rt, rp, tp
     integer, intent(in)          :: isim, ikind
     real(kind=dp)                :: azim_factor
 
@@ -1118,6 +1136,38 @@ function azim_factor(phi, mij, isim, ikind)
                             + Mij(6) * dcos(2.d0 * phi)  
        end if
 
+    case default
+       write(6,*) myrank,': unknown number of simulations',isim
+    end select
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function azim_factor_bw(phi, fi, isim, ikind)
+
+    real(kind=dp), intent(in)    :: phi
+    real(kind=dp), intent(in)    :: fi(3) ! r, t, p
+    integer, intent(in)          :: isim, ikind
+    real(kind=dp)                :: azim_factor_bw
+
+    !@TODO: is isim a robust indicator for the souretype? what about a single
+    !       simulation that is not Mzz? (MvD)
+    select case(isim)
+    case(1) ! vertforce
+       if (ikind==1) then 
+           azim_factor_bw = fi(1)
+       else
+           azim_factor_bw = 0
+       end if
+       
+    case(2) ! horizontal force
+       if (ikind==1) then
+           azim_factor_bw =   fi(2) * dcos(phi) + fi(3) * dsin(phi)
+       else
+           azim_factor_bw = - fi(2) * dsin(phi) + fi(3) * dcos(phi) 
+       end if
+       
     case default
        write(6,*) myrank,': unknown number of simulations',isim
     end select
