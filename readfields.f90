@@ -899,12 +899,13 @@ end function load_bw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points_rdbm(this, source_params, reci_source_params)
+function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     use simple_routines, only          : mult2d_1d
 
     class(semdata_type)               :: this
     type(src_param_type), intent(in)  :: source_params(:)
     type(src_param_type), intent(in)  :: reci_source_params
+    character(len=1), intent(in)      :: component
     real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
                                                              size(source_params))
 
@@ -958,26 +959,35 @@ function load_fw_points_rdbm(this, source_params, reci_source_params)
     
     do ipoint = 1, npoints
     
-       do isim = 1, this%nsim_fwd
+       select case(component)
+       case('Z')
+            isim = 1
             utemp = load_strain_point(this%fwd(isim),      &
                                       pointid(ipoint),     &
                                       this%model_param)
 
-            !iclockold = tick()
-            select case(trim(this%model_param))
-            case('vp')
-                load_fw_points_rdbm(:, :, ipoint) &
-                        = load_fw_points_rdbm(:,:,ipoint) &
-                          + utemp * azim_factor(rotmesh_phi(ipoint), &
-                                                reci_source_params%mij, isim, 1) 
-            case('vs')
-                load_fw_points_rdbm(:, :, ipoint) &
-                        = load_fw_points_rdbm(:, :, ipoint) &
-                          + rotate_straintensor(utemp, rotmesh_phi(ipoint), &
-                                                reci_source_params%mij, isim) 
-            end select
-            !iclockold = tick(id=id_rotate, since=iclockold)
-        end do !isim
+            load_fw_points_rdbm(:, :, ipoint) &
+                        = utemp * azim_factor(rotmesh_phi(ipoint), &
+                                              reci_source_params%mij, isim, 1) 
+       case('R')
+            isim = 2
+            utemp = load_strain_point(this%fwd(isim),      &
+                                      pointid(ipoint),     &
+                                      this%model_param)
+
+            load_fw_points_rdbm(:, :, ipoint) &
+                        = utemp * azim_factor(rotmesh_phi(ipoint), &
+                                              reci_source_params%mij, isim, 1) 
+       case('T')
+            isim = 2
+            utemp = load_strain_point(this%fwd(isim),      &
+                                      pointid(ipoint),     &
+                                      this%model_param)
+
+            load_fw_points_rdbm(:, :, ipoint) &
+                        = utemp * azim_factor(rotmesh_phi(ipoint), &
+                                              reci_source_params%mij, isim, 2) 
+        end select
 
     end do !ipoint
 
