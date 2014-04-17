@@ -931,6 +931,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates*1d3, &
                           reci_source_params%lon, reci_source_params%colat)
 
+
     allocate(nextpoint(1))
     do ipoint = 1, npoints
         call kdtree2_n_nearest( this%fwdtree, &
@@ -966,28 +967,20 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                       pointid(ipoint),     &
                                       this%model_param)
 
-            load_fw_points_rdbm(:, :, ipoint) &
-                        = utemp * azim_factor(rotmesh_phi(ipoint), &
-                                              reci_source_params%mij, isim, 1) 
+            load_fw_points_rdbm(:, :, ipoint) = utemp
+
        case('R')
             isim = 2
             utemp = load_strain_point(this%fwd(isim),      &
                                       pointid(ipoint),     &
                                       this%model_param)
 
-            load_fw_points_rdbm(:, :, ipoint) &
-                        = utemp * azim_factor(rotmesh_phi(ipoint), &
-                                              reci_source_params%mij, isim, 1) 
-       case('T')
-            isim = 2
-            utemp = load_strain_point(this%fwd(isim),      &
-                                      pointid(ipoint),     &
-                                      this%model_param)
+            load_fw_points_rdbm(:, :, ipoint) = utemp 
 
-            load_fw_points_rdbm(:, :, ipoint) &
-                        = utemp * azim_factor(rotmesh_phi(ipoint), &
-                                              reci_source_params%mij, isim, 2) 
-        end select
+       case('T')
+            load_fw_points_rdbm(:, :, ipoint) = 0
+
+       end select
 
     end do !ipoint
 
@@ -1473,7 +1466,7 @@ subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
     zrd = zp
     do ipt = 1, npts
        phi_cp = datan2(yp(ipt), xp(ipt))
-       if (phi_cp<0.d0) then
+       if (phi_cp < 0.d0) then
           phird(ipt) = 2.d0 * pi + phi_cp
        else
           phird(ipt) = phi_cp
