@@ -680,6 +680,9 @@ function load_fw_points(this, coordinates, source_params)
                                              + utemp * azim_factor(rotmesh_phi(ipoint),     &
                                                                    source_params%mij, isim, 1) 
             case('vs')
+                !@TODO: utemp needs to be summed with azimfactors first before
+                !       beeing rotated. I'd suggest summation first, because
+                !       rotation is not for free.
                 load_fw_points(:, :, ipoint) = load_fw_points(:, :, ipoint)                 &
                                              + rotate_straintensor(utemp,                   &
                                                                    rotmesh_phi(ipoint),     &
