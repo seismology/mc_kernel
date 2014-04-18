@@ -1199,7 +1199,6 @@ subroutine build_kdtree(this)
     write(lu_out,*) ' Building forward KD-Tree'
     call flush(lu_out)
     ! KDtree in forward field
-    ! Gfortran gives a segfault somewhere around here. Not traceable, no idea, why
     this%fwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
                                    sort = .true.,     &
@@ -1439,6 +1438,27 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
 
     ! seems to be a bit inefficient to do the transform using standard matrix
     ! product, could implement a version for symmetric matrices. (MvD)
+    ! if I remember correctly, the rotation matrices for voigt notation are
+    ! quoted in Chapmans Book.
+
+    ! did this with mathematica:
+    ! define the matrix to be rotated as 
+    ! A = {{a1, a6, a5}, {a6, a2, a4}, {a5, a4, a3}}; 
+    ! rotation matrix
+    ! R = {{Cos[p], Sin[p], 0}, {-Sin[p] , Cos[p], 0}, {0, 0, 1}};
+    ! Rt.A.R in fortran form:
+    ! a1*Cos(p)**2 - 2*a6*Cos(p)*Sin(p) + a2*Sin(p)**2,  (2*a6*Cos(2*p) + (a1 - a2)*Sin(2*p))/2.,    a5*Cos(p) - a4*Sin(p)
+    ! (2*a6*Cos(2*p) + (a1 - a2)*Sin(2*p))/2.,           a2*Cos(p)**2 + a1*Sin(p)**2 + a6*Sin(2*p),  a4*Cos(p) + a5*Sin(p)
+    ! a5*Cos(p) - a4*Sin(p),                             a4*Cos(p) + a5*Sin(p),                      a3
+
+    ! about coordinate systems: 
+    !   1,2,3 in axisem is s, phi, z which is right handed!
+    !   storing symmetric matrices in 6-dim vectors is usually done this way:
+    !        a1 a5 a6
+    !   A =  a5 a2 a4
+    !        a6 a4 a3
+    !   which is easy to remember using the circular Voigt mapping 4 -> 23, 5 -> 31, 6 -> 12
+
     do idump = 1, size(tensor_vector, 1)
         tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
         tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
@@ -1463,6 +1483,8 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
         tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
                                                  tensor_matrix(:,:,idump)), &
                                           conv_mat)
+        ! seriously? can this happen? just 20 lines earlier, this tensor is
+        ! hardcoded symmetric (MvD)
         if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
             abs(tensor_matrix(1,3,idump))>1e-5) then
             print *, 'nonsymmetric strain components (1,3) at dump', idump
@@ -1477,6 +1499,10 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
     tensor_return(:,4) = tensor_matrix(1,2,:) !xy
     tensor_return(:,5) = tensor_matrix(1,3,:) !xz
     tensor_return(:,6) = tensor_matrix(2,3,:) !yz
+
+    ! OK, now we have the tensor in a cartesian system where the z-axis is aligned with
+    ! the source. Needs to be further rotated to cartesian system with z aligned
+    ! to north pole.
 
 end function rotate_straintensor
 !-----------------------------------------------------------------------------------------
