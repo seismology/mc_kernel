@@ -1439,29 +1439,6 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
     azim_factor_1 = azim_factor(phi, mij, isim, 1)
     azim_factor_2 = azim_factor(phi, mij, isim, 2)
 
-    ! seems to be a bit inefficient to do the transform using standard matrix
-    ! product, could implement a version for symmetric matrices. (MvD)
-    ! if I remember correctly, the rotation matrices for voigt notation are
-    ! quoted in Chapmans Book.
-
-    ! did this with mathematica:
-    ! define the matrix to be rotated as 
-    ! A = {{a1, a6, a5}, {a6, a2, a4}, {a5, a4, a3}}; 
-    ! rotation matrix
-    ! R = {{Cos[p], Sin[p], 0}, {-Sin[p] , Cos[p], 0}, {0, 0, 1}};
-    ! Rt.A.R in fortran form:
-    ! a1*Cos(p)**2 - 2*a6*Cos(p)*Sin(p) + a2*Sin(p)**2,  (2*a6*Cos(2*p) + (a1 - a2)*Sin(2*p))/2.,    a5*Cos(p) - a4*Sin(p)
-    ! (2*a6*Cos(2*p) + (a1 - a2)*Sin(2*p))/2.,           a2*Cos(p)**2 + a1*Sin(p)**2 + a6*Sin(2*p),  a4*Cos(p) + a5*Sin(p)
-    ! a5*Cos(p) - a4*Sin(p),                             a4*Cos(p) + a5*Sin(p),                      a3
-
-    ! about coordinate systems: 
-    !   1,2,3 in axisem is s, phi, z which is right handed!
-    !   storing symmetric matrices in 6-dim vectors is usually done this way:
-    !        a1 a5 a6
-    !   A =  a5 a2 a4
-    !        a6 a4 a3
-    !   which is easy to remember using the circular Voigt mapping 4 -> 23, 5 -> 31, 6 -> 12
-
     do idump = 1, size(tensor_vector, 1)
         tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
         tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
@@ -1517,6 +1494,12 @@ function rotate_symm_tensor_voigt_src_to_xyz(tensor_voigt, phi) result(tensor_re
     !
     ! input symmetric tensor in voigt notation:
     ! A = {{a1, a6, a5}, {a6, a2, a4}, {a5, a4, a3}}; 
+    !
+    !        a1 a5 a6
+    !   A =  a5 a2 a4
+    !        a6 a4 a3
+    !   which is easy to remember using the circular Voigt mapping 4 -> 23, 5 -> 31, 6 -> 12
+    !
     ! rotation matrix
     ! R = {{Cos[phi], Sin[phi], 0}, {-Sin[phi] , Cos[phi], 0}, {0, 0, 1}};
     !
