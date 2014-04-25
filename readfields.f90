@@ -1511,6 +1511,36 @@ end function rotate_straintensor
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function rotate_symm_tensor_voigt_src_to_xyz(tensor_voigt, phi) result(tensor_return)
+    ! input symmetric tensor in voigt notation:
+    ! A = {{a1, a6, a5}, {a6, a2, a4}, {a5, a4, a3}}; 
+    ! rotation matrix
+    ! R = {{Cos[phi], Sin[phi], 0}, {-Sin[phi] , Cos[phi], 0}, {0, 0, 1}};
+    !
+    ! compute and ouput in voigt notation:
+    ! Rt.A.R
+    !
+    real(kind=dp), intent(in)    :: tensor_voigt(6)
+    real(kind=dp), intent(in)    :: phi
+    real(kind=dp)                :: tensor_return(6)
+    real(kind=dp)                :: sp, cp
+
+    sp = dsin(phi)
+    cp = dcos(phi)
+
+    tensor_return(1) = tensor_voigt(1) * cp ** 2 &
+                        + sp * (-2 * tensor_voigt(6) * cp + tensor_voigt(2) * sp)
+    tensor_return(2) = (tensor_voigt(1) + tensor_voigt(2) + 2 * tensor_voigt(6)) * sp ** 2
+    tensor_return(3) = tensor_voigt(3)
+    tensor_return(4) = (tensor_voigt(4) + tensor_voigt(5)) * sp
+    tensor_return(5) = tensor_voigt(5) * cp - tensor_voigt(4) * sp
+    tensor_return(6) = sp * (tensor_voigt(1) * cp &
+                                + tensor_voigt(6) * (cp - sp) - tensor_voigt(2) * sp)
+
+end function rotate_symm_tensor_voigt_src_to_xyz
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
 
     implicit none
