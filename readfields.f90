@@ -1683,6 +1683,11 @@ end function rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
 
 !-----------------------------------------------------------------------------------------
 subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
+    ! transforms coordinates from a global cartesian coordinate system (rgd) with
+    ! northpole on the z axis to a cartesian system with source / receiver at phigr,
+    ! thetagr on the z axis and then computes cylindrical coordinates s,phi,z
+    !
+    ! this is a passive transformation, i.e. change of coordinate system.
 
     implicit none
     integer, intent(in)                            :: npts
