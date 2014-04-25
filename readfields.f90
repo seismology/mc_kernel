@@ -1512,6 +1512,9 @@ end function rotate_straintensor
 
 !-----------------------------------------------------------------------------------------
 function rotate_symm_tensor_voigt_src_to_xyz(tensor_voigt, phi) result(tensor_return)
+    ! rotates a tensor from AxiSEM s, phi, z system aligned with the source to a
+    ! cartesian system x,y,z where z is aligned with the source and x with phi = 0
+    !
     ! input symmetric tensor in voigt notation:
     ! A = {{a1, a6, a5}, {a6, a2, a4}, {a5, a4, a3}}; 
     ! rotation matrix
@@ -1538,6 +1541,96 @@ function rotate_symm_tensor_voigt_src_to_xyz(tensor_voigt, phi) result(tensor_re
                                 + tensor_voigt(6) * (cp - sp) - tensor_voigt(2) * sp)
 
 end function rotate_symm_tensor_voigt_src_to_xyz
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function rotate_symm_tensor_voigt_xyz_to_src(tensor_voigt, phi) result(tensor_return)
+    ! rotates a tensor from a cartesian system x,y,z where z is aligned with the source 
+    ! and x with phi = 0 to the AxiSEM s, phi, z system aligned with the source on the
+    ! s = 0 axis
+    !
+    ! input symmetric tensor in voigt notation:
+    ! A = {{a1, a6, a5}, {a6, a2, a4}, {a5, a4, a3}}; 
+    ! rotation matrix
+    ! R = {{Cos[phi], Sin[phi], 0}, {-Sin[phi] , Cos[phi], 0}, {0, 0, 1}};
+    !
+    ! compute and ouput in voigt notation:
+    ! R.A.Rt
+    !
+    real(kind=dp), intent(in)    :: tensor_voigt(6)
+    real(kind=dp), intent(in)    :: phi
+    real(kind=dp)                :: tensor_return(6)
+    real(kind=dp)                :: sp, cp
+
+    sp = dsin(phi)
+    cp = dcos(phi)
+
+    tensor_return(1) = tensor_voigt(1) * cp ** 2 &
+                        + sp * (2 * tensor_voigt(6) * cp + tensor_voigt(2) * sp)
+    tensor_return(2) = (tensor_voigt(1) + tensor_voigt(2) - 2 * tensor_voigt(6)) * sp ** 2
+    tensor_return(3) = tensor_voigt(3)
+    tensor_return(4) = (tensor_voigt(4) - tensor_voigt(5)) * sp
+    tensor_return(5) = tensor_voigt(5) * cp + tensor_voigt(4) * sp
+    tensor_return(6) = sp * (-(tensor_voigt(1) * cp) + tensor_voigt(6) * (cp - sp) &
+                                + tensor_voigt(2) * sp)
+
+end function rotate_symm_tensor_voigt_xyz_to_src
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(tensor_voigt, phi, theta) result(tensor_return)
+    ! rotates a tensor from a cartesian system xyz with z axis aligned with the source to a
+    ! cartesian system x,y,z where z is aligned with the north pole
+    !
+    ! input symmetric tensor in voigt notation:
+    ! A = {{a1, a6, a5}, {a6, a2, a4}, {a5, a4, a3}}; 
+    ! rotation matrix from TNM 2007 eq 14
+    ! R = {{ct*cp, -sp, st*cp}, {ct*sp , cp, st*sp}, {-st, 0, ct}}
+    !
+    ! compute and ouput in voigt notation:
+    ! Rt.A.R
+    !
+    real(kind=dp), intent(in)    :: tensor_voigt(6)
+    real(kind=dp), intent(in)    :: phi, theta
+    real(kind=dp)                :: tensor_return(6)
+    real(kind=dp)                :: sp, cp, st, ct
+
+    sp = dsin(phi)
+    cp = dcos(phi)
+    st = dsin(theta)
+    ct = dcos(theta)
+
+    tensor_return(1) = tensor_voigt(1) * cp ** 2 * ct ** 2 &
+                        + 2 * tensor_voigt(6) * cp * ct ** 2 * sp &
+                        + tensor_voigt(2) * ct ** 2 * sp ** 2 &
+                        - 2 * tensor_voigt(5) * cp * ct * st &
+                        - 2 * tensor_voigt(4) * ct * sp * st &
+                        + tensor_voigt(3) * st ** 2
+    tensor_return(2) = tensor_voigt(2) * cp ** 2 &
+                        + sp * (-2 * tensor_voigt(6) * cp + tensor_voigt(1) * sp)
+    tensor_return(3) = tensor_voigt(3) * ct ** 2 &
+                        + st * (2 * tensor_voigt(5) * cp * ct &
+                                + 2 * tensor_voigt(4) * ct * sp &
+                                + tensor_voigt(1) * cp ** 2 * st &
+                                + 2 * tensor_voigt(6) * cp * sp * st &
+                                + tensor_voigt(2) * sp ** 2 * st)
+    tensor_return(4) = cp * (tensor_voigt(4) * ct + tensor_voigt(6) * cp * st &
+                            + tensor_voigt(2) * sp * st) &
+                        - sp * (tensor_voigt(5) * ct + tensor_voigt(1) * cp * st &
+                                + tensor_voigt(6) * sp * st)
+    tensor_return(5) = ct * sp * (tensor_voigt(4) * ct + tensor_voigt(6) * cp * st &
+                                + tensor_voigt(2) * sp * st) &
+                        - st * (tensor_voigt(3) * ct + tensor_voigt(5) * cp * st &
+                                + tensor_voigt(4) * sp * st) &
+                        + cp * ct * (tensor_voigt(5) * ct + tensor_voigt(1) * cp * st &
+                                    + tensor_voigt(6) * sp * st)
+    tensor_return(6) = cp * (tensor_voigt(6) * cp * ct + tensor_voigt(2) * ct * sp &
+                            - tensor_voigt(4) * st) &
+                        - sp * (tensor_voigt(1) * cp * ct + tensor_voigt(6) * ct * sp &
+                                - tensor_voigt(5) * st)
+                     
+
+end function rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
