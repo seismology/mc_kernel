@@ -968,15 +968,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
         
         pointid(ipoint) = nextpoint(1)%idx
 
-        !print *, '======================================================================'
-        !print *, 'Original coordinates: ', coordinates(:,ipoint)
-        !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
-        !print *, 'CO of SEM point:', this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint))
-        !print *, ''
-        !print *, 'Distance'
-        !print *, (   (this%fwdmesh%s(pointid(ipoint)) - rotmesh_s(ipoint))**2 &
-        !           + (this%fwdmesh%z(pointid(ipoint)) - rotmesh_z(ipoint))**2)**.5 
-
         write(6,*) nextpoint(1)%dis**.5, nextpoint(1)%idx, &
                     (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
                     (this%fwdmesh%s(pointid(ipoint))**2  + this%fwdmesh%z(pointid(ipoint))**2)**.5 
@@ -1039,6 +1030,7 @@ function load_strain_point(sem_obj, pointid, model_param)
     integer, intent(in)             :: pointid
     character(len=*), intent(in)    :: model_param
     real(kind=dp), allocatable      :: load_strain_point(:,:)
+    real(kind=dp), allocatable      :: strain_buff(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
     integer                         :: iclockold, status, istrainvar
@@ -1048,7 +1040,6 @@ function load_strain_point(sem_obj, pointid, model_param)
     select case(model_param)
     case('vp')
         allocate(load_strain_point(sem_obj%ndumps, 1))
-        load_strain_point = 0.0
 
         !iclockold = tick()
         status = sem_obj%buffer(1)%get(pointid, utemp)
@@ -1078,8 +1069,7 @@ function load_strain_point(sem_obj, pointid, model_param)
         end if
 
     case('vs')
-        allocate(load_strain_point(sem_obj%ndumps, 6))
-        load_strain_point = 0.0
+        allocate(strain_buff(sem_obj%ndumps, 6))
 
         do istrainvar = 1, 6
 
@@ -1109,14 +1099,24 @@ function load_strain_point(sem_obj, pointid, model_param)
                                                            utemp_chunk(iread+1,:))
                end do
                iclockold = tick(id=id_buffer, since=iclockold)
-               load_strain_point(:,istrainvar) &
+               strain_buff(:,istrainvar) &
                     = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
             else
-               load_strain_point(:,istrainvar) = real(utemp, kind=dp)
+               strain_buff(:,istrainvar) = real(utemp, kind=dp)
             end if
 
         end do
 
+        allocate(load_strain_point(sem_obj%ndumps, 6))
+        ! transform strain to voigt mapping
+        ! ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
+        !  'strain_dsup', 'strain_dzup', 'straintrace']
+        load_strain_point(:,1) = strain_buff(:,1)
+        load_strain_point(:,2) = strain_buff(:,3)
+        load_strain_point(:,3) = strain_buff(:,6) - strain_buff(:,1) - strain_buff(:,3)
+        load_strain_point(:,4) = strain_buff(:,5)
+        load_strain_point(:,5) = strain_buff(:,2)
+        load_strain_point(:,6) = strain_buff(:,4)
     end select
 
 end function load_strain_point
@@ -1437,76 +1437,114 @@ end subroutine read_meshes
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
+!function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
+!    !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
+!    !! 'strain_dsup', 'strain_dzup', 'straintrace']
+!    real(kind=dp), intent(in)    :: tensor_vector(:,:)
+!    real(kind=dp), intent(in)    :: phi, mij(6)
+!    integer      , intent(in)    :: isim
+!
+!    real(kind=dp), allocatable   :: tensor_return(:,:)
+!
+!    real(kind=dp), allocatable   :: tensor_matrix(:,:,:)
+!    real(kind=dp)                :: conv_mat(3,3)     !from s,z,phi to x,y,z
+!    real(kind=dp)                :: azim_factor_1, azim_factor_2
+!    integer                      :: idump
+!
+!    print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
+!    if (size(tensor_vector,2).ne.6) then
+!        print *, 'ERROR in rotate_straintensor: size of second dimension of tensor_vector:'
+!        print *, 'should be: 6, is: ', size(tensor_vector, 2)
+!    end if
+!
+!    allocate(tensor_return(size(tensor_vector, 1), 6))
+!    allocate(tensor_matrix(3, 3, size(tensor_vector, 1)))
+!
+!    azim_factor_1 = azim_factor(phi, mij, isim, 1)
+!    azim_factor_2 = azim_factor(phi, mij, isim, 2)
+!
+!    do idump = 1, size(tensor_vector, 1)
+!        tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
+!        tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
+!        tensor_matrix(1,3,idump) =  tensor_vector(idump,4) * azim_factor_1  !sp
+!        tensor_matrix(2,1,idump) =  tensor_matrix(1,2,idump)                !zs
+!        tensor_matrix(2,2,idump) = (tensor_vector(idump,6) - &
+!                                    tensor_vector(idump,1) - &
+!                                    tensor_vector(idump,3)) * azim_factor_1 !zz
+!        tensor_matrix(2,3,idump) =  tensor_vector(idump,5) * azim_factor_2  !zp
+!        tensor_matrix(3,1,idump) =  tensor_matrix(1,3,idump)                !ps
+!        tensor_matrix(3,2,idump) =  tensor_matrix(2,3,idump)                !pz
+!        tensor_matrix(3,3,idump) =  tensor_vector(idump,3) * azim_factor_1  !pp
+!    end do
+!
+!
+!    ! Conversion to cartesian coordinates, from s,z,phi to x,y,z
+!    conv_mat(1,:) = [ dcos(phi), dsin(phi),       0.0d0]
+!    conv_mat(2,:) = [     0.0d0,     0.0d0,       1.0d0]
+!    conv_mat(3,:) = [-dsin(phi), dcos(phi),       0.0d0]
+!    
+!    do idump = 1, size(tensor_vector, 1)
+!        tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
+!                                                 tensor_matrix(:,:,idump)), &
+!                                          conv_mat)
+!        ! seriously? can this happen? just 20 lines earlier, this tensor is
+!        ! hardcoded symmetric (MvD)
+!        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
+!            abs(tensor_matrix(1,3,idump))>1e-5) then
+!            print *, 'nonsymmetric strain components (1,3) at dump', idump
+!            print *, '(1,3),(3,1):',tensor_matrix(1,3,idump),tensor_matrix(3,1,idump)
+!        end if
+!    end do
+!
+!
+!    tensor_return(:,1) = tensor_matrix(1,1,:) !xx
+!    tensor_return(:,2) = tensor_matrix(2,2,:) !yy
+!    tensor_return(:,3) = tensor_matrix(3,3,:) !zz
+!    tensor_return(:,4) = tensor_matrix(1,2,:) !xy
+!    tensor_return(:,5) = tensor_matrix(1,3,:) !xz
+!    tensor_return(:,6) = tensor_matrix(2,3,:) !yz
+!
+!    ! OK, now we have the tensor in a cartesian system where the z-axis is aligned with
+!    ! the source. Needs to be further rotated to cartesian system with z aligned
+!    ! to north pole.
+!
+!end function rotate_straintensor
+!!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
-    !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
-    !! 'strain_dsup', 'strain_dzup', 'straintrace']
-    real(kind=dp), intent(in)    :: tensor_vector(:,:)
+    real(kind=dp), intent(in)    :: tensor_vector(:,:) ! in voigt mapping
     real(kind=dp), intent(in)    :: phi, mij(6)
     integer      , intent(in)    :: isim
 
     real(kind=dp), allocatable   :: tensor_return(:,:)
 
-    real(kind=dp), allocatable   :: tensor_matrix(:,:,:)
-    real(kind=dp)                :: conv_mat(3,3)     !from s,z,phi to x,y,z
     real(kind=dp)                :: azim_factor_1, azim_factor_2
     integer                      :: idump
 
     print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
     if (size(tensor_vector,2).ne.6) then
-        print *, 'ERROR in rotate_straintensor: size of first dimension of tensor_vector:'
+        print *, 'ERROR in rotate_straintensor: size of second dimension of tensor_vector:'
         print *, 'should be: 6, is: ', size(tensor_vector, 2)
     end if
 
     allocate(tensor_return(size(tensor_vector, 1), 6))
-    allocate(tensor_matrix(3, 3, size(tensor_vector, 1)))
 
     azim_factor_1 = azim_factor(phi, mij, isim, 1)
     azim_factor_2 = azim_factor(phi, mij, isim, 2)
 
-    do idump = 1, size(tensor_vector, 1)
-        tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
-        tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
-        tensor_matrix(1,3,idump) =  tensor_vector(idump,4) * azim_factor_1  !sp
-        tensor_matrix(2,1,idump) =  tensor_matrix(1,2,idump)                !zs
-        tensor_matrix(2,2,idump) = (tensor_vector(idump,6) - &
-                                    tensor_vector(idump,1) - &
-                                    tensor_vector(idump,3)) * azim_factor_1 !zz
-        tensor_matrix(2,3,idump) =  tensor_vector(idump,5) * azim_factor_2  !zp
-        tensor_matrix(3,1,idump) =  tensor_matrix(1,3,idump)                !ps
-        tensor_matrix(3,2,idump) =  tensor_matrix(2,3,idump)                !pz
-        tensor_matrix(3,3,idump) =  tensor_vector(idump,3) * azim_factor_1  !pp
-    end do
+    tensor_return(:,1) = azim_factor_1 * tensor_vector(:,1)
+    tensor_return(:,2) = azim_factor_1 * tensor_vector(:,2)
+    tensor_return(:,3) = azim_factor_1 * tensor_vector(:,3)
+    tensor_return(:,4) = azim_factor_2 * tensor_vector(:,4)
+    tensor_return(:,5) = azim_factor_1 * tensor_vector(:,5)
+    tensor_return(:,6) = azim_factor_2 * tensor_vector(:,6)
 
-
-    ! Conversion to cartesian coordinates, from s,z,phi to x,y,z
-    conv_mat(1,:) = [ dcos(phi), dsin(phi),       0.0d0]
-    conv_mat(2,:) = [     0.0d0,     0.0d0,       1.0d0]
-    conv_mat(3,:) = [-dsin(phi), dcos(phi),       0.0d0]
-    
-    do idump = 1, size(tensor_vector, 1)
-        tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
-                                                 tensor_matrix(:,:,idump)), &
-                                          conv_mat)
-        ! seriously? can this happen? just 20 lines earlier, this tensor is
-        ! hardcoded symmetric (MvD)
-        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
-            abs(tensor_matrix(1,3,idump))>1e-5) then
-            print *, 'nonsymmetric strain components (1,3) at dump', idump
-            print *, '(1,3),(3,1):',tensor_matrix(1,3,idump),tensor_matrix(3,1,idump)
-        end if
-    end do
-
-
-    tensor_return(:,1) = tensor_matrix(1,1,:) !xx
-    tensor_return(:,2) = tensor_matrix(2,2,:) !yy
-    tensor_return(:,3) = tensor_matrix(3,3,:) !zz
-    tensor_return(:,4) = tensor_matrix(1,2,:) !xy
-    tensor_return(:,5) = tensor_matrix(1,3,:) !xz
-    tensor_return(:,6) = tensor_matrix(2,3,:) !yz
-
-    ! OK, now we have the tensor in a cartesian system where the z-axis is aligned with
-    ! the source. Needs to be further rotated to cartesian system with z aligned
-    ! to north pole.
+    !do idump = 1, size(tensor_vector, 1)
+    !    tensor_return(idump,:) = rotate_symm_tensor_voigt_src_to_xyz_1d(tensor_return(idump,:), phi) 
+    !enddo
+    tensor_return(:,:) = rotate_symm_tensor_voigt_src_to_xyz_2d(tensor_return(:,:), phi, &
+                                                                size(tensor_vector, 1)) 
 
 end function rotate_straintensor
 !-----------------------------------------------------------------------------------------
@@ -1569,23 +1607,23 @@ function rotate_symm_tensor_voigt_src_to_xyz_2d(tensor_voigt, phi, npoint) resul
     ! compute and ouput in voigt notation:
     ! Rt.A.R
     !
-    real(kind=dp), intent(in)    :: tensor_voigt(6,npoint)
+    real(kind=dp), intent(in)    :: tensor_voigt(npoint,6)
     real(kind=dp), intent(in)    :: phi
     integer, intent(in)          :: npoint
-    real(kind=dp)                :: tensor_return(6,npoint)
+    real(kind=dp)                :: tensor_return(npoint,6)
     real(kind=dp)                :: sp, cp
 
     sp = dsin(phi)
     cp = dcos(phi)
 
-    tensor_return(1,:) = tensor_voigt(1,:) * cp ** 2 &
-                        + sp * (-2 * tensor_voigt(6,:) * cp + tensor_voigt(2,:) * sp)
-    tensor_return(2,:) = (tensor_voigt(1,:) + tensor_voigt(2,:) + 2 * tensor_voigt(6,:)) * sp ** 2
-    tensor_return(3,:) = tensor_voigt(3,:)
-    tensor_return(4,:) = (tensor_voigt(4,:) + tensor_voigt(5,:)) * sp
-    tensor_return(5,:) = tensor_voigt(5,:) * cp - tensor_voigt(4,:) * sp
-    tensor_return(6,:) = sp * (tensor_voigt(1,:) * cp &
-                                + tensor_voigt(6,:) * (cp - sp) - tensor_voigt(2,:) * sp)
+    tensor_return(:,1) = tensor_voigt(:,1) * cp ** 2 &
+                        + sp * (-2 * tensor_voigt(:,6) * cp + tensor_voigt(:,2) * sp)
+    tensor_return(:,2) = (tensor_voigt(:,1) + tensor_voigt(:,2) + 2 * tensor_voigt(:,6)) * sp ** 2
+    tensor_return(:,3) = tensor_voigt(:,3)
+    tensor_return(:,4) = (tensor_voigt(:,4) + tensor_voigt(:,5)) * sp
+    tensor_return(:,5) = tensor_voigt(:,5) * cp - tensor_voigt(:,4) * sp
+    tensor_return(:,6) = sp * (tensor_voigt(:,1) * cp &
+                                + tensor_voigt(:,6) * (cp - sp) - tensor_voigt(:,2) * sp)
 
 end function rotate_symm_tensor_voigt_src_to_xyz_2d
 !-----------------------------------------------------------------------------------------
@@ -1638,23 +1676,23 @@ function rotate_symm_tensor_voigt_xyz_to_src_2d(tensor_voigt, phi, npoint) resul
     ! compute and ouput in voigt notation:
     ! R.A.Rt
     !
-    real(kind=dp), intent(in)    :: tensor_voigt(6,npoint)
+    real(kind=dp), intent(in)    :: tensor_voigt(npoint,6)
     real(kind=dp), intent(in)    :: phi
     integer, intent(in)          :: npoint
-    real(kind=dp)                :: tensor_return(6,npoint)
+    real(kind=dp)                :: tensor_return(npoint,6)
     real(kind=dp)                :: sp, cp
 
     sp = dsin(phi)
     cp = dcos(phi)
 
-    tensor_return(1,:) = tensor_voigt(1,:) * cp ** 2 &
-                        + sp * (2 * tensor_voigt(6,:) * cp + tensor_voigt(2,:) * sp)
-    tensor_return(2,:) = (tensor_voigt(1,:) + tensor_voigt(2,:) - 2 * tensor_voigt(6,:)) * sp ** 2
-    tensor_return(3,:) = tensor_voigt(3,:)
-    tensor_return(4,:) = (tensor_voigt(4,:) - tensor_voigt(5,:)) * sp
-    tensor_return(5,:) = tensor_voigt(5,:) * cp + tensor_voigt(4,:) * sp
-    tensor_return(6,:) = sp * (-(tensor_voigt(1,:) * cp) + tensor_voigt(6,:) * (cp - sp) &
-                                + tensor_voigt(2,:) * sp)
+    tensor_return(:,1) = tensor_voigt(:,1) * cp ** 2 &
+                        + sp * (2 * tensor_voigt(:,6) * cp + tensor_voigt(:,2) * sp)
+    tensor_return(:,2) = (tensor_voigt(:,1) + tensor_voigt(:,2) - 2 * tensor_voigt(:,6)) * sp ** 2
+    tensor_return(:,3) = tensor_voigt(:,3)
+    tensor_return(:,4) = (tensor_voigt(:,4) - tensor_voigt(:,5)) * sp
+    tensor_return(:,5) = tensor_voigt(:,5) * cp + tensor_voigt(:,4) * sp
+    tensor_return(:,6) = sp * (-(tensor_voigt(:,1) * cp) + tensor_voigt(:,6) * (cp - sp) &
+                                + tensor_voigt(:,2) * sp)
 
 end function rotate_symm_tensor_voigt_xyz_to_src_2d
 !-----------------------------------------------------------------------------------------
@@ -1733,10 +1771,10 @@ function rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_2d(tensor_voigt, phi, the
     ! compute and ouput in voigt notation:
     ! Rt.A.R
     !
-    real(kind=dp), intent(in)    :: tensor_voigt(6,npoint)
+    real(kind=dp), intent(in)    :: tensor_voigt(npoint,6)
     real(kind=dp), intent(in)    :: phi, theta
     integer, intent(in)          :: npoint
-    real(kind=dp)                :: tensor_return(6,npoint)
+    real(kind=dp)                :: tensor_return(npoint,6)
     real(kind=dp)                :: sp, cp, st, ct
 
     sp = dsin(phi)
@@ -1744,39 +1782,39 @@ function rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_2d(tensor_voigt, phi, the
     st = dsin(theta)
     ct = dcos(theta)
 
-    tensor_return(1,:) = tensor_voigt(1,:) * cp ** 2 * ct ** 2 &
-                        + 2 * tensor_voigt(6,:) * cp * ct ** 2 * sp &
-                        + tensor_voigt(2,:) * ct ** 2 * sp ** 2 &
-                        - 2 * tensor_voigt(5,:) * cp * ct * st &
-                        - 2 * tensor_voigt(4,:) * ct * sp * st &
-                        + tensor_voigt(3,:) * st ** 2
+    tensor_return(:,1) = tensor_voigt(:,1) * cp ** 2 * ct ** 2 &
+                        + 2 * tensor_voigt(:,6) * cp * ct ** 2 * sp &
+                        + tensor_voigt(:,2) * ct ** 2 * sp ** 2 &
+                        - 2 * tensor_voigt(:,5) * cp * ct * st &
+                        - 2 * tensor_voigt(:,4) * ct * sp * st &
+                        + tensor_voigt(:,3) * st ** 2
 
-    tensor_return(2,:) = tensor_voigt(2,:) * cp ** 2 &
-                        + sp * (-2 * tensor_voigt(6,:) * cp + tensor_voigt(1,:) * sp)
+    tensor_return(:,2) = tensor_voigt(:,2) * cp ** 2 &
+                        + sp * (-2 * tensor_voigt(:,6) * cp + tensor_voigt(:,1) * sp)
 
-    tensor_return(3,:) = tensor_voigt(3,:) * ct ** 2 &
-                        + st * (2 * tensor_voigt(5,:) * cp * ct &
-                                + 2 * tensor_voigt(4,:) * ct * sp &
-                                + tensor_voigt(1,:) * cp ** 2 * st &
-                                + 2 * tensor_voigt(6,:) * cp * sp * st &
-                                + tensor_voigt(2,:) * sp ** 2 * st)
+    tensor_return(:,3) = tensor_voigt(:,3) * ct ** 2 &
+                        + st * (2 * tensor_voigt(:,5) * cp * ct &
+                                + 2 * tensor_voigt(:,4) * ct * sp &
+                                + tensor_voigt(:,1) * cp ** 2 * st &
+                                + 2 * tensor_voigt(:,6) * cp * sp * st &
+                                + tensor_voigt(:,2) * sp ** 2 * st)
 
-    tensor_return(4,:) = cp * (tensor_voigt(4,:) * ct + tensor_voigt(6,:) * cp * st &
-                            + tensor_voigt(2,:) * sp * st) &
-                        - sp * (tensor_voigt(5,:) * ct + tensor_voigt(1,:) * cp * st &
-                                + tensor_voigt(6,:) * sp * st)
+    tensor_return(:,4) = cp * (tensor_voigt(:,4) * ct + tensor_voigt(:,6) * cp * st &
+                            + tensor_voigt(:,2) * sp * st) &
+                        - sp * (tensor_voigt(:,5) * ct + tensor_voigt(:,1) * cp * st &
+                                + tensor_voigt(:,6) * sp * st)
 
-    tensor_return(5,:) = ct * sp * (tensor_voigt(4,:) * ct + tensor_voigt(6,:) * cp * st &
-                                + tensor_voigt(2,:) * sp * st) &
-                        - st * (tensor_voigt(3,:) * ct + tensor_voigt(5,:) * cp * st &
-                                + tensor_voigt(4,:) * sp * st) &
-                        + cp * ct * (tensor_voigt(5,:) * ct + tensor_voigt(1,:) * cp * st &
-                                    + tensor_voigt(6,:) * sp * st)
+    tensor_return(:,5) = ct * sp * (tensor_voigt(:,4) * ct + tensor_voigt(:,6) * cp * st &
+                                + tensor_voigt(:,2) * sp * st) &
+                        - st * (tensor_voigt(:,3) * ct + tensor_voigt(:,5) * cp * st &
+                                + tensor_voigt(:,4) * sp * st) &
+                        + cp * ct * (tensor_voigt(:,5) * ct + tensor_voigt(:,1) * cp * st &
+                                    + tensor_voigt(:,6) * sp * st)
 
-    tensor_return(6,:) = cp * (tensor_voigt(6,:) * cp * ct + tensor_voigt(2,:) * ct * sp &
-                            - tensor_voigt(4,:) * st) &
-                        - sp * (tensor_voigt(1,:) * cp * ct + tensor_voigt(6,:) * ct * sp &
-                                - tensor_voigt(5,:) * st)
+    tensor_return(:,6) = cp * (tensor_voigt(:,6) * cp * ct + tensor_voigt(:,2) * ct * sp &
+                            - tensor_voigt(:,4) * st) &
+                        - sp * (tensor_voigt(:,1) * cp * ct + tensor_voigt(:,6) * ct * sp &
+                                - tensor_voigt(:,5) * st)
                      
 
 end function rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_2d
@@ -1855,10 +1893,10 @@ function rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d(tensor_voigt, phi, the
     ! compute and ouput in voigt notation:
     ! R.A.Rt
     !
-    real(kind=dp), intent(in)    :: tensor_voigt(6,npoint)
+    real(kind=dp), intent(in)    :: tensor_voigt(npoint,6)
     real(kind=dp), intent(in)    :: phi, theta
     integer, intent(in)          :: npoint
-    real(kind=dp)                :: tensor_return(6,npoint)
+    real(kind=dp)                :: tensor_return(npoint,6)
     real(kind=dp)                :: sp, cp, st, ct
 
     sp = dsin(phi)
@@ -1866,39 +1904,39 @@ function rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d(tensor_voigt, phi, the
     st = dsin(theta)
     ct = dcos(theta)
 
-    tensor_return(1,:) = tensor_voigt(1,:) * cp ** 2 * ct ** 2 &
-                        - 2 * tensor_voigt(6,:) * cp * ct * sp &
-                        + tensor_voigt(2,:) * sp ** 2 &
-                        + 2 * tensor_voigt(5,:) * cp ** 2 * ct * st &
-                        - 2 * tensor_voigt(4,:) * cp * sp * st &
-                        + tensor_voigt(3,:) * cp ** 2 * st ** 2
+    tensor_return(:,1) = tensor_voigt(:,1) * cp ** 2 * ct ** 2 &
+                        - 2 * tensor_voigt(:,6) * cp * ct * sp &
+                        + tensor_voigt(:,2) * sp ** 2 &
+                        + 2 * tensor_voigt(:,5) * cp ** 2 * ct * st &
+                        - 2 * tensor_voigt(:,4) * cp * sp * st &
+                        + tensor_voigt(:,3) * cp ** 2 * st ** 2
 
-    tensor_return(2,:) = tensor_voigt(2,:) * cp ** 2 &
-                        + sp * (2 * tensor_voigt(6,:) * cp * ct &
-                                + tensor_voigt(1,:) * ct ** 2 * sp &
-                                + st * (2 * tensor_voigt(4,:) * cp &
-                                        + 2 * tensor_voigt(5,:) * ct * sp &
-                                        + tensor_voigt(3,:) * sp * st))
+    tensor_return(:,2) = tensor_voigt(:,2) * cp ** 2 &
+                        + sp * (2 * tensor_voigt(:,6) * cp * ct &
+                                + tensor_voigt(:,1) * ct ** 2 * sp &
+                                + st * (2 * tensor_voigt(:,4) * cp &
+                                        + 2 * tensor_voigt(:,5) * ct * sp &
+                                        + tensor_voigt(:,3) * sp * st))
 
-    tensor_return(3,:) = tensor_voigt(3,:) * ct ** 2 &
-                        + st * (-2 * tensor_voigt(5,:) * ct + tensor_voigt(1,:) * st)
+    tensor_return(:,3) = tensor_voigt(:,3) * ct ** 2 &
+                        + st * (-2 * tensor_voigt(:,5) * ct + tensor_voigt(:,1) * st)
 
-    tensor_return(4,:) = ct * (tensor_voigt(4,:) * cp + tensor_voigt(5,:) * ct * sp &
-                                + tensor_voigt(3,:) * sp * st) &
-                        - st * (tensor_voigt(6,:) * cp + tensor_voigt(1,:) * ct * sp &
-                                + tensor_voigt(5,:) * sp * st)
+    tensor_return(:,4) = ct * (tensor_voigt(:,4) * cp + tensor_voigt(:,5) * ct * sp &
+                                + tensor_voigt(:,3) * sp * st) &
+                        - st * (tensor_voigt(:,6) * cp + tensor_voigt(:,1) * ct * sp &
+                                + tensor_voigt(:,5) * sp * st)
 
-    tensor_return(5,:) = ct * (tensor_voigt(5,:) * cp * ct - tensor_voigt(4,:) * sp &
-                                + tensor_voigt(3,:) * cp * st) &
-                        - st * (tensor_voigt(1,:) * cp * ct - tensor_voigt(6,:) * sp &
-                                + tensor_voigt(5,:) * cp * st)
+    tensor_return(:,5) = ct * (tensor_voigt(:,5) * cp * ct - tensor_voigt(:,4) * sp &
+                                + tensor_voigt(:,3) * cp * st) &
+                        - st * (tensor_voigt(:,1) * cp * ct - tensor_voigt(:,6) * sp &
+                                + tensor_voigt(:,5) * cp * st)
 
-    tensor_return(6,:) = cp * st * (tensor_voigt(4,:) * cp + tensor_voigt(5,:) * ct * sp &
-                                    + tensor_voigt(3,:) * sp * st) &
-                        - sp * (tensor_voigt(2,:) * cp + tensor_voigt(6,:) * ct * sp &
-                                    + tensor_voigt(4,:) * sp * st) &
-                        + cp * ct * (tensor_voigt(6,:) * cp + tensor_voigt(1,:) * ct * sp &
-                                    + tensor_voigt(5,:) * sp * st)
+    tensor_return(:,6) = cp * st * (tensor_voigt(:,4) * cp + tensor_voigt(:,5) * ct * sp &
+                                    + tensor_voigt(:,3) * sp * st) &
+                        - sp * (tensor_voigt(:,2) * cp + tensor_voigt(:,6) * ct * sp &
+                                    + tensor_voigt(:,4) * sp * st) &
+                        + cp * ct * (tensor_voigt(:,6) * cp + tensor_voigt(:,1) * ct * sp &
+                                    + tensor_voigt(:,5) * sp * st)
                      
 end function rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d
 !-----------------------------------------------------------------------------------------
