@@ -1051,16 +1051,17 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
                mij_buff = mij_buff / this%fwd(isim)%amplitude
 
+               write(6,*) mij_buff
+
                load_fw_points_rdbm(:, :, ipoint) = 0
                
-               !do i = 1, 6
-               !   load_fw_points_rdbm(:, 1, ipoint) = &
-               !         load_fw_points_rdbm(:, 1, ipoint) &
-               !             + mij_buff(i) * utemp(:,i)
-               !   !@TODO I have the impression I am missing a factor of two for the
-               !   !      components 4-6 here
-               !enddo 
-               load_fw_points_rdbm(:, 1, ipoint) = utemp(:,1) + utemp(:,2) + utemp(:,3)
+               do i = 1, 6
+                  load_fw_points_rdbm(:, 1, ipoint) = &
+                        load_fw_points_rdbm(:, 1, ipoint) &
+                            + mij_buff(i) * utemp(:,i)
+                  !@TODO I have the impression I am missing a factor of two for the
+                  !      components 4-6 here
+               enddo 
           case default
                stop
           end select
@@ -1123,8 +1124,10 @@ function load_strain_point(sem_obj, pointid, model_param)
 
         do istrainvar = 1, 6
 
-            if (sem_obj%strainvarid(istrainvar).eq.-1) cycle ! For monopole source which does
-                                                             ! not have this component.
+            if (sem_obj%strainvarid(istrainvar).eq.-1) then
+                strain_buff(:, istrainvar) = 0
+                cycle ! For monopole source which does not have this component.
+            endif
 
             !iclockold = tick()
             status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
