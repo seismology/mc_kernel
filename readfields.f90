@@ -1029,30 +1029,38 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                          pointid(ipoint),     &
                                          this%model_param)
 
+               write(6,*) source_params(ipoint)%mij_voigt
                ! rotate source mt to global cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_1d( &
                                 source_params(ipoint)%mij_voigt, &
                                 source_params(ipoint)%lon, &
                                 source_params(ipoint)%colat)
 
+               write(6,*) mij_buff
                ! rotate source mt to receiver cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d( &
                                 mij_buff, &
                                 reci_source_params%lon, &
                                 reci_source_params%colat)
 
+               write(6,*) mij_buff
                ! rotate source mt to receiver s,phi,z system
                mij_buff = rotate_symm_tensor_voigt_xyz_to_src_1d(mij_buff, rotmesh_phi(ipoint))
 
+               write(6,*) mij_buff
+
+               mij_buff = mij_buff / this%fwd(isim)%amplitude
+
                load_fw_points_rdbm(:, :, ipoint) = 0
                
-               do i = 1, 6
-                  load_fw_points_rdbm(:, 1, ipoint) = &
-                        load_fw_points_rdbm(:, 1, ipoint) &
-                            + mij_buff(i) * utemp(:,i)
-                  !@TODO I have the impression I am missing a factor of two for the
-                  !      components 4-6 here
-               enddo 
+               !do i = 1, 6
+               !   load_fw_points_rdbm(:, 1, ipoint) = &
+               !         load_fw_points_rdbm(:, 1, ipoint) &
+               !             + mij_buff(i) * utemp(:,i)
+               !   !@TODO I have the impression I am missing a factor of two for the
+               !   !      components 4-6 here
+               !enddo 
+               load_fw_points_rdbm(:, 1, ipoint) = utemp(:,1) + utemp(:,2) + utemp(:,3)
           case default
                stop
           end select
@@ -1118,9 +1126,9 @@ function load_strain_point(sem_obj, pointid, model_param)
             if (sem_obj%strainvarid(istrainvar).eq.-1) cycle ! For monopole source which does
                                                              ! not have this component.
 
-            iclockold = tick()
+            !iclockold = tick()
             status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
-            iclockold = tick(id=id_buffer, since=iclockold)
+            !iclockold = tick(id=id_buffer, since=iclockold)
             
             if (status.ne.0) then
                start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
@@ -1128,19 +1136,19 @@ function load_strain_point(sem_obj, pointid, model_param)
                ! Only read to last point, not further
                gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
 
-               iclockold = tick()
+               !iclockold = tick()
                call nc_getvar( ncid   = sem_obj%snap,           & 
                                varid  = sem_obj%strainvarid(istrainvar), &
                                start  = [start_chunk, 1],       &
                                count  = [gll_to_read, sem_obj%ndumps], &
                                values = utemp_chunk(1:gll_to_read, :)) 
 
-               iclockold = tick(id=id_netcdf, since=iclockold)
+               !iclockold = tick(id=id_netcdf, since=iclockold)
                do iread = 0, gll_to_read - 1
                    status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
                                                            utemp_chunk(iread+1,:))
                end do
-               iclockold = tick(id=id_buffer, since=iclockold)
+               !iclockold = tick(id=id_buffer, since=iclockold)
                strain_buff(:,istrainvar) &
                     = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
             else
@@ -1620,12 +1628,13 @@ function rotate_symm_tensor_voigt_src_to_xyz_1d(tensor_voigt, phi) result(tensor
 
     tensor_return(1) = tensor_voigt(1) * cp ** 2 &
                         + sp * (-2 * tensor_voigt(6) * cp + tensor_voigt(2) * sp)
-    tensor_return(2) = (tensor_voigt(1) + tensor_voigt(2) + 2 * tensor_voigt(6)) * sp ** 2
+    tensor_return(2) = tensor_voigt(2) * cp ** 2 &
+                        + sp * (2 * tensor_voigt(6) * cp + tensor_voigt(1) * sp)
     tensor_return(3) = tensor_voigt(3)
-    tensor_return(4) = (tensor_voigt(4) + tensor_voigt(5)) * sp
+    tensor_return(4) = tensor_voigt(4) * cp + tensor_voigt(5) * sp
     tensor_return(5) = tensor_voigt(5) * cp - tensor_voigt(4) * sp
-    tensor_return(6) = sp * (tensor_voigt(1) * cp &
-                                + tensor_voigt(6) * (cp - sp) - tensor_voigt(2) * sp)
+    tensor_return(6) = (tensor_voigt(1) - tensor_voigt(2)) * cp * sp &
+                        + tensor_voigt(6) * (cp ** 2 - sp ** 2)
 
 end function rotate_symm_tensor_voigt_src_to_xyz_1d
 !-----------------------------------------------------------------------------------------
@@ -1660,12 +1669,13 @@ function rotate_symm_tensor_voigt_src_to_xyz_2d(tensor_voigt, phi, npoint) resul
 
     tensor_return(:,1) = tensor_voigt(:,1) * cp ** 2 &
                         + sp * (-2 * tensor_voigt(:,6) * cp + tensor_voigt(:,2) * sp)
-    tensor_return(:,2) = (tensor_voigt(:,1) + tensor_voigt(:,2) + 2 * tensor_voigt(:,6)) * sp ** 2
+    tensor_return(:,2) = tensor_voigt(:,2) * cp ** 2 &
+                        + sp * (2 * tensor_voigt(:,6) * cp + tensor_voigt(:,1) * sp)
     tensor_return(:,3) = tensor_voigt(:,3)
-    tensor_return(:,4) = (tensor_voigt(:,4) + tensor_voigt(:,5)) * sp
+    tensor_return(:,4) = tensor_voigt(:,4) * cp + tensor_voigt(:,5) * sp
     tensor_return(:,5) = tensor_voigt(:,5) * cp - tensor_voigt(:,4) * sp
-    tensor_return(:,6) = sp * (tensor_voigt(:,1) * cp &
-                                + tensor_voigt(:,6) * (cp - sp) - tensor_voigt(:,2) * sp)
+    tensor_return(:,6) = (tensor_voigt(:,1) - tensor_voigt(:,2)) * cp * sp &
+                        + tensor_voigt(:,6) * (cp ** 2 - sp ** 2)
 
 end function rotate_symm_tensor_voigt_src_to_xyz_2d
 !-----------------------------------------------------------------------------------------
@@ -1693,13 +1703,15 @@ function rotate_symm_tensor_voigt_xyz_to_src_1d(tensor_voigt, phi) result(tensor
     cp = dcos(phi)
 
     tensor_return(1) = tensor_voigt(1) * cp ** 2 &
-                        + sp * (2 * tensor_voigt(6) * cp + tensor_voigt(2) * sp)
-    tensor_return(2) = (tensor_voigt(1) + tensor_voigt(2) - 2 * tensor_voigt(6)) * sp ** 2
+                            + sp * (2 * tensor_voigt(6) * cp + tensor_voigt(2) * sp)
+    tensor_return(2) = tensor_voigt(2) * cp ** 2 &
+                            + sp * (-2 * tensor_voigt(6) * cp + tensor_voigt(1) * sp)
     tensor_return(3) = tensor_voigt(3)
-    tensor_return(4) = (tensor_voigt(4) - tensor_voigt(5)) * sp
+    tensor_return(4) = tensor_voigt(4) * cp - tensor_voigt(5) * sp
     tensor_return(5) = tensor_voigt(5) * cp + tensor_voigt(4) * sp
-    tensor_return(6) = sp * (-(tensor_voigt(1) * cp) + tensor_voigt(6) * (cp - sp) &
-                                + tensor_voigt(2) * sp)
+    tensor_return(6) = cp * (tensor_voigt(6) * cp + tensor_voigt(2) * sp) &
+                            - sp * (tensor_voigt(1) * cp + tensor_voigt(6) * sp)
+                       
 
 end function rotate_symm_tensor_voigt_xyz_to_src_1d
 !-----------------------------------------------------------------------------------------
@@ -1728,13 +1740,14 @@ function rotate_symm_tensor_voigt_xyz_to_src_2d(tensor_voigt, phi, npoint) resul
     cp = dcos(phi)
 
     tensor_return(:,1) = tensor_voigt(:,1) * cp ** 2 &
-                        + sp * (2 * tensor_voigt(:,6) * cp + tensor_voigt(:,2) * sp)
-    tensor_return(:,2) = (tensor_voigt(:,1) + tensor_voigt(:,2) - 2 * tensor_voigt(:,6)) * sp ** 2
+                            + sp * (2 * tensor_voigt(:,6) * cp + tensor_voigt(:,2) * sp)
+    tensor_return(:,2) = tensor_voigt(:,2) * cp ** 2 &
+                            + sp * (-2 * tensor_voigt(:,6) * cp + tensor_voigt(:,1) * sp)
     tensor_return(:,3) = tensor_voigt(:,3)
-    tensor_return(:,4) = (tensor_voigt(:,4) - tensor_voigt(:,5)) * sp
+    tensor_return(:,4) = tensor_voigt(:,4) * cp - tensor_voigt(:,5) * sp
     tensor_return(:,5) = tensor_voigt(:,5) * cp + tensor_voigt(:,4) * sp
-    tensor_return(:,6) = sp * (-(tensor_voigt(:,1) * cp) + tensor_voigt(:,6) * (cp - sp) &
-                                + tensor_voigt(:,2) * sp)
+    tensor_return(:,6) = cp * (tensor_voigt(:,6) * cp + tensor_voigt(:,2) * sp) &
+                            - sp * (tensor_voigt(:,1) * cp + tensor_voigt(:,6) * sp)
 
 end function rotate_symm_tensor_voigt_xyz_to_src_2d
 !-----------------------------------------------------------------------------------------

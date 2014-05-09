@@ -51,7 +51,7 @@ program rdbm
 
   bwd_dir = ''
 
-  model_param = 'vp'
+  model_param = 'vs'
   call sem_data%set_params(parameters%sim_dir, bwd_dir, parameters%buffer_size, model_param)
   call sem_data%open_files()
   call sem_data%read_meshes()
@@ -74,7 +74,7 @@ program rdbm
   call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
 
   do i=1, receivers%num_rec
-     fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), 'T')
+     fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), 'Z')
 
      call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
                                           ntimes=sem_data%ndumps * 2), &
