@@ -6,7 +6,8 @@ module source_class
     implicit none
 
     type src_param_type
-        real(kind=dp)                        :: mij(6)
+        real(kind=dp)                        :: mij(6)              ! Mrr Mtt Mpp Mrt Mrp Mtp
+        real(kind=dp)                        :: mij_voigt(6)        ! Mtt Mpp Mrr Mrp Mrt Mtp
         real(kind=dp)                        :: colat, lat, lon     ! in radians
         real(kind=dp)                        :: colatd, latd, lond  ! in degrees
         real(kind=dp)                        :: x, y, z             ! cartesian 
@@ -96,6 +97,15 @@ subroutine read_cmtsolution(this)
    read(lu_cmtsolution,*) junk, this%mij(6)
 
    this%mij = this%mij / 1e7 ! dyn cm -> Nm
+
+   ! CMTSOLUTION : Mrr Mtt Mpp Mrt Mrp Mtp
+   ! voigt in tpr: Mtt Mpp Mrr Mrp Mrt Mtp
+   this%mij_voigt(1) = this%mij(2)
+   this%mij_voigt(2) = this%mij(3)
+   this%mij_voigt(3) = this%mij(1)
+   this%mij_voigt(4) = this%mij(5)
+   this%mij_voigt(5) = this%mij(4)
+   this%mij_voigt(6) = this%mij(6)
 
    call this%def_rot_matrix()
 

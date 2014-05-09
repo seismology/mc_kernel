@@ -933,18 +933,21 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     type(src_param_type), intent(in)  :: source_params(:)
     type(src_param_type), intent(in)  :: reci_source_params
     character(len=1), intent(in)      :: component
-    real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
+    !real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
+    !                                                         size(source_params))
+    real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, 1, &
                                                              size(source_params))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints
     integer                           :: pointid(size(source_params))
-    integer                           :: ipoint, isim, iclockold
+    integer                           :: ipoint, isim, iclockold, i
     real(kind=dp)                     :: rotmesh_s(size(source_params))
     real(kind=dp)                     :: rotmesh_phi(size(source_params))
     real(kind=dp)                     :: rotmesh_z(size(source_params))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
     real(kind=dp)                     :: coordinates(size(source_params),3)
+    real(kind=dp)                     :: mij_buff(6)
     
     npoints = size(source_params)
 
@@ -978,45 +981,84 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     
     do ipoint = 1, npoints
     
-       select case(component)
-       case('Z')
-            isim = 1
-            utemp = load_strain_point(this%fwd(isim),      &
-                                      pointid(ipoint),     &
-                                      this%model_param)
+       if (this%model_param == 'vp') then
+          select case(component)
+          case('Z')
+               isim = 1
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
 
-            load_fw_points_rdbm(:, :, ipoint) = utemp
+               load_fw_points_rdbm(:, :, ipoint) = utemp
 
-       case('R')
-            isim = 2
-            utemp = load_strain_point(this%fwd(isim),      &
-                                      pointid(ipoint),     &
-                                      this%model_param)
+          case('R')
+               isim = 2
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
 
-            load_fw_points_rdbm(:, :, ipoint) = utemp 
+               load_fw_points_rdbm(:, :, ipoint) = utemp 
 
-       case('T')
-            load_fw_points_rdbm(:, :, ipoint) = 0
+          case('T')
+               load_fw_points_rdbm(:, :, ipoint) = 0
 
-       case('N')
-            isim = 2
-            utemp = load_strain_point(this%fwd(isim),      &
-                                      pointid(ipoint),     &
-                                      this%model_param)
+          case('N')
+               isim = 2
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
 
-            load_fw_points_rdbm(:, :, ipoint) = &
-                    - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, :, ipoint) = &
+                       - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
 
-       case('E')
-            isim = 2
-            utemp = load_strain_point(this%fwd(isim),      &
-                                      pointid(ipoint),     &
-                                      this%model_param)
+          case('E')
+               isim = 2
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
 
-            load_fw_points_rdbm(:, :, ipoint) = &
-                    utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, :, ipoint) = &
+                       utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
 
-       end select
+          end select
+       elseif (this%model_param == 'vs') then
+          select case(component)
+          case('Z')
+               isim = 1
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
+
+               ! rotate source mt to global cartesian system
+               mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_1d( &
+                                source_params(ipoint)%mij_voigt, &
+                                source_params(ipoint)%lon, &
+                                source_params(ipoint)%colat)
+
+               ! rotate source mt to receiver cartesian system
+               mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d( &
+                                mij_buff, &
+                                reci_source_params%lon, &
+                                reci_source_params%colat)
+
+               ! rotate source mt to receiver s,phi,z system
+               mij_buff = rotate_symm_tensor_voigt_xyz_to_src_1d(mij_buff, rotmesh_phi(ipoint))
+
+               load_fw_points_rdbm(:, :, ipoint) = 0
+               
+               do i = 1, 6
+                  load_fw_points_rdbm(:, 1, ipoint) = &
+                        load_fw_points_rdbm(:, 1, ipoint) &
+                            + mij_buff(i) * utemp(:,i)
+                  !@TODO I have the impression I am missing a factor of two for the
+                  !      components 4-6 here
+               enddo 
+          case default
+               stop
+          end select
+       else
+          stop
+       endif
 
     end do !ipoint
 
