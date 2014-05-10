@@ -250,5 +250,129 @@ subroutine test_readfields_rotate_straintensor_voigt()
 end subroutine test_readfields_rotate_straintensor_voigt
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_rotate_symm_tensor_voigt_src_to_xyz
+   real(kind=dp)        :: symm_tensor(6)
+   real(kind=sp)        :: symm_tensor_rot(6)
+   real(kind=sp)        :: symm_tensor_rot_ref(6)
+   real(kind=dp)        :: phi
+
+   ! Explosion source, pure diagonal symm_
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
+
+   ! Azimuth zero
+   phi = 0
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = 0')
+
+   ! Arbitrary azimuth
+   call random_number(phi)
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = random')
+
+
+end subroutine test_rotate_symm_tensor_voigt_src_to_xyz
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_rotate_symm_tensor_voigt_xyz_to_src
+   real(kind=dp)        :: symm_tensor(6)
+   real(kind=sp)        :: symm_tensor_rot(6)
+   real(kind=sp)        :: symm_tensor_rot_ref(6)
+   real(kind=dp)        :: phi
+
+   ! Explosion source, pure diagonal symm_
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
+
+   ! Azimuth zero
+   phi = 0
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_to_src(symm_tensor, phi)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = 0')
+
+   ! Arbitrary azimuth
+   call random_number(phi)
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_to_src(symm_tensor, phi)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = random')
+
+
+end subroutine test_rotate_symm_tensor_voigt_xyz_to_src
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
+   real(kind=dp)        :: symm_tensor(6)
+   real(kind=sp)        :: symm_tensor_rot(6)
+   real(kind=sp)        :: symm_tensor_rot_ref(6)
+   real(kind=dp)        :: phi, theta
+
+   ! Explosion source, pure diagonal symm_
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
+
+   ! Azimuth zero
+   phi = 0
+   theta = 0
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = 0')
+
+   ! Arbitrary azimuth
+   call random_number(phi)
+   call random_number(theta)
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = random')
+
+
+end subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
+   real(kind=dp)        :: symm_tensor(6)
+   real(kind=sp)        :: symm_tensor_rot(6)
+   real(kind=sp)        :: symm_tensor_rot_ref(6)
+   real(kind=dp)        :: phi, theta
+
+   ! Explosion source, pure diagonal symm_
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
+
+   ! Azimuth zero
+   phi = 0
+   theta = 0
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = 0')
+
+   ! Arbitrary azimuth
+   call random_number(phi)
+   call random_number(theta)
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = random')
+
+
+end subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
+!-----------------------------------------------------------------------------------------
+
 end module
 !=========================================================================================

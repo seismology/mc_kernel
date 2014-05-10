@@ -18,6 +18,10 @@ module readfields
     public                                :: rotate_straintensor        ! only public for tests
     public                                :: rotate_straintensor_voigt  ! only public for tests
     public                                :: rotate_frame_rd            ! only public for tests
+    public                                :: rotate_symm_tensor_voigt_src_to_xyz
+    public                                :: rotate_symm_tensor_voigt_xyz_to_src
+    public                                :: rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
+    public                                :: rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
 
     interface rotate_symm_tensor_voigt_src_to_xyz
       module procedure  :: rotate_symm_tensor_voigt_src_to_xyz_1d
@@ -34,7 +38,7 @@ module readfields
       module procedure  :: rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_2d
     end interface
 
-    interface rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d
+    interface rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
       module procedure  :: rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d
       module procedure  :: rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d
     end interface
