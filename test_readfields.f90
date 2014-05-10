@@ -313,6 +313,15 @@ subroutine test_rotate_symm_tensor_voigt_src_to_xyz
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'DC, phi = 45')
 
+   ! 180
+   phi = 180 * deg2rad
+   symm_tensor(:) = [1, 2, 3, 4, 5, 6]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi)
+   symm_tensor_rot_ref(:) = [1, 2, 3, -4, -5, 6]
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, '180')
+
 end subroutine test_rotate_symm_tensor_voigt_src_to_xyz
 !-----------------------------------------------------------------------------------------
 
@@ -378,6 +387,15 @@ subroutine test_rotate_symm_tensor_voigt_xyz_to_src
 
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'DC, phi = 45')
+
+   ! 180
+   phi = 180 * deg2rad
+   symm_tensor(:) = [1, 2, 3, 4, 5, 6]
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_to_src(symm_tensor, phi)
+   symm_tensor_rot_ref(:) = [1, 2, 3, -4, -5, 6]
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, '180')
 
 end subroutine test_rotate_symm_tensor_voigt_xyz_to_src
 !-----------------------------------------------------------------------------------------
