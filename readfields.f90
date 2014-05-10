@@ -15,8 +15,9 @@ module readfields
     implicit none
     private
     public                                :: semdata_type
-    public                                :: rotate_straintensor ! only public for tests
-    public                                :: rotate_frame_rd     ! only public for tests
+    public                                :: rotate_straintensor        ! only public for tests
+    public                                :: rotate_straintensor_voigt  ! only public for tests
+    public                                :: rotate_frame_rd            ! only public for tests
 
     interface rotate_symm_tensor_voigt_src_to_xyz
       module procedure  :: rotate_symm_tensor_voigt_src_to_xyz_1d
@@ -1029,28 +1030,27 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                          pointid(ipoint),     &
                                          this%model_param)
 
+               write(6,*) '=================================================='
                write(6,*) source_params(ipoint)%mij_voigt
                ! rotate source mt to global cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_1d( &
                                 source_params(ipoint)%mij_voigt, &
                                 source_params(ipoint)%lon, &
                                 source_params(ipoint)%colat)
-
                write(6,*) mij_buff
+
                ! rotate source mt to receiver cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d( &
                                 mij_buff, &
                                 reci_source_params%lon, &
                                 reci_source_params%colat)
-
                write(6,*) mij_buff
+
                ! rotate source mt to receiver s,phi,z system
                mij_buff = rotate_symm_tensor_voigt_xyz_to_src_1d(mij_buff, rotmesh_phi(ipoint))
-
                write(6,*) mij_buff
 
                mij_buff = mij_buff / this%fwd(isim)%amplitude
-
                write(6,*) mij_buff
 
                load_fw_points_rdbm(:, :, ipoint) = 0
@@ -1062,6 +1062,29 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                   !@TODO I have the impression I am missing a factor of two for the
                   !      components 4-6 here
                enddo 
+
+               write(6,*) '--------------------------------------------------'
+               ! for testing rotate back:
+               !mij_buff = mij_buff * this%fwd(isim)%amplitude
+               !mij_buff = (/1, 0, 0, 0, 0, 0 /) * this%fwd(isim)%amplitude
+               !write(6,*) mij_buff
+
+               !mij_buff = rotate_symm_tensor_voigt_src_to_xyz_1d(mij_buff, rotmesh_phi(ipoint))
+               !write(6,*) mij_buff
+
+               !mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_1d( &
+               !                 mij_buff, &
+               !                 reci_source_params%lon, &
+               !                 reci_source_params%colat)
+               !write(6,*) mij_buff
+
+               !mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_1d( &
+               !                 mij_buff, &
+               !                 source_params(ipoint)%lon, &
+               !                 source_params(ipoint)%colat)
+               !write(6,*) mij_buff
+               write(6,*) '=================================================='
+
           case default
                stop
           end select
@@ -1490,82 +1513,82 @@ end subroutine read_meshes
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
-!function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
-!    !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
-!    !! 'strain_dsup', 'strain_dzup', 'straintrace']
-!    real(kind=dp), intent(in)    :: tensor_vector(:,:)
-!    real(kind=dp), intent(in)    :: phi, mij(6)
-!    integer      , intent(in)    :: isim
-!
-!    real(kind=dp), allocatable   :: tensor_return(:,:)
-!
-!    real(kind=dp), allocatable   :: tensor_matrix(:,:,:)
-!    real(kind=dp)                :: conv_mat(3,3)     !from s,z,phi to x,y,z
-!    real(kind=dp)                :: azim_factor_1, azim_factor_2
-!    integer                      :: idump
-!
-!    print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
-!    if (size(tensor_vector,2).ne.6) then
-!        print *, 'ERROR in rotate_straintensor: size of second dimension of tensor_vector:'
-!        print *, 'should be: 6, is: ', size(tensor_vector, 2)
-!    end if
-!
-!    allocate(tensor_return(size(tensor_vector, 1), 6))
-!    allocate(tensor_matrix(3, 3, size(tensor_vector, 1)))
-!
-!    azim_factor_1 = azim_factor(phi, mij, isim, 1)
-!    azim_factor_2 = azim_factor(phi, mij, isim, 2)
-!
-!    do idump = 1, size(tensor_vector, 1)
-!        tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
-!        tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
-!        tensor_matrix(1,3,idump) =  tensor_vector(idump,4) * azim_factor_1  !sp
-!        tensor_matrix(2,1,idump) =  tensor_matrix(1,2,idump)                !zs
-!        tensor_matrix(2,2,idump) = (tensor_vector(idump,6) - &
-!                                    tensor_vector(idump,1) - &
-!                                    tensor_vector(idump,3)) * azim_factor_1 !zz
-!        tensor_matrix(2,3,idump) =  tensor_vector(idump,5) * azim_factor_2  !zp
-!        tensor_matrix(3,1,idump) =  tensor_matrix(1,3,idump)                !ps
-!        tensor_matrix(3,2,idump) =  tensor_matrix(2,3,idump)                !pz
-!        tensor_matrix(3,3,idump) =  tensor_vector(idump,3) * azim_factor_1  !pp
-!    end do
-!
-!
-!    ! Conversion to cartesian coordinates, from s,z,phi to x,y,z
-!    conv_mat(1,:) = [ dcos(phi), dsin(phi),       0.0d0]
-!    conv_mat(2,:) = [     0.0d0,     0.0d0,       1.0d0]
-!    conv_mat(3,:) = [-dsin(phi), dcos(phi),       0.0d0]
-!    
-!    do idump = 1, size(tensor_vector, 1)
-!        tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
-!                                                 tensor_matrix(:,:,idump)), &
-!                                          conv_mat)
-!        ! seriously? can this happen? just 20 lines earlier, this tensor is
-!        ! hardcoded symmetric (MvD)
-!        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
-!            abs(tensor_matrix(1,3,idump))>1e-5) then
-!            print *, 'nonsymmetric strain components (1,3) at dump', idump
-!            print *, '(1,3),(3,1):',tensor_matrix(1,3,idump),tensor_matrix(3,1,idump)
-!        end if
-!    end do
-!
-!
-!    tensor_return(:,1) = tensor_matrix(1,1,:) !xx
-!    tensor_return(:,2) = tensor_matrix(2,2,:) !yy
-!    tensor_return(:,3) = tensor_matrix(3,3,:) !zz
-!    tensor_return(:,4) = tensor_matrix(1,2,:) !xy
-!    tensor_return(:,5) = tensor_matrix(1,3,:) !xz
-!    tensor_return(:,6) = tensor_matrix(2,3,:) !yz
-!
-!    ! OK, now we have the tensor in a cartesian system where the z-axis is aligned with
-!    ! the source. Needs to be further rotated to cartesian system with z aligned
-!    ! to north pole.
-!
-!end function rotate_straintensor
-!!-----------------------------------------------------------------------------------------
+function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
+    !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
+    !! 'strain_dsup', 'strain_dzup', 'straintrace']
+    real(kind=dp), intent(in)    :: tensor_vector(:,:)
+    real(kind=dp), intent(in)    :: phi, mij(6)
+    integer      , intent(in)    :: isim
+
+    real(kind=dp), allocatable   :: tensor_return(:,:)
+
+    real(kind=dp), allocatable   :: tensor_matrix(:,:,:)
+    real(kind=dp)                :: conv_mat(3,3)     !from s,z,phi to x,y,z
+    real(kind=dp)                :: azim_factor_1, azim_factor_2
+    integer                      :: idump
+
+    print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
+    if (size(tensor_vector,2).ne.6) then
+        print *, 'ERROR in rotate_straintensor: size of second dimension of tensor_vector:'
+        print *, 'should be: 6, is: ', size(tensor_vector, 2)
+    end if
+
+    allocate(tensor_return(size(tensor_vector, 1), 6))
+    allocate(tensor_matrix(3, 3, size(tensor_vector, 1)))
+
+    azim_factor_1 = azim_factor(phi, mij, isim, 1)
+    azim_factor_2 = azim_factor(phi, mij, isim, 2)
+
+    do idump = 1, size(tensor_vector, 1)
+        tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
+        tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
+        tensor_matrix(1,3,idump) =  tensor_vector(idump,4) * azim_factor_1  !sp
+        tensor_matrix(2,1,idump) =  tensor_matrix(1,2,idump)                !zs
+        tensor_matrix(2,2,idump) = (tensor_vector(idump,6) - &
+                                    tensor_vector(idump,1) - &
+                                    tensor_vector(idump,3)) * azim_factor_1 !zz
+        tensor_matrix(2,3,idump) =  tensor_vector(idump,5) * azim_factor_2  !zp
+        tensor_matrix(3,1,idump) =  tensor_matrix(1,3,idump)                !ps
+        tensor_matrix(3,2,idump) =  tensor_matrix(2,3,idump)                !pz
+        tensor_matrix(3,3,idump) =  tensor_vector(idump,3) * azim_factor_1  !pp
+    end do
+
+
+    ! Conversion to cartesian coordinates, from s,z,phi to x,y,z
+    conv_mat(1,:) = [ dcos(phi), dsin(phi),       0.0d0]
+    conv_mat(2,:) = [     0.0d0,     0.0d0,       1.0d0]
+    conv_mat(3,:) = [-dsin(phi), dcos(phi),       0.0d0]
+    
+    do idump = 1, size(tensor_vector, 1)
+        tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
+                                                 tensor_matrix(:,:,idump)), &
+                                          conv_mat)
+        ! seriously? can this happen? just 20 lines earlier, this tensor is
+        ! hardcoded symmetric (MvD)
+        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
+            abs(tensor_matrix(1,3,idump))>1e-5) then
+            print *, 'nonsymmetric strain components (1,3) at dump', idump
+            print *, '(1,3),(3,1):',tensor_matrix(1,3,idump),tensor_matrix(3,1,idump)
+        end if
+    end do
+
+
+    tensor_return(:,1) = tensor_matrix(1,1,:) !xx
+    tensor_return(:,2) = tensor_matrix(2,2,:) !yy
+    tensor_return(:,3) = tensor_matrix(3,3,:) !zz
+    tensor_return(:,4) = tensor_matrix(1,2,:) !xy
+    tensor_return(:,5) = tensor_matrix(1,3,:) !xz
+    tensor_return(:,6) = tensor_matrix(2,3,:) !yz
+
+    ! OK, now we have the tensor in a cartesian system where the z-axis is aligned with
+    ! the source. Needs to be further rotated to cartesian system with z aligned
+    ! to north pole.
+
+end function rotate_straintensor
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
+function rotate_straintensor_voigt(tensor_vector, phi, mij, isim) result(tensor_return)
     real(kind=dp), intent(in)    :: tensor_vector(:,:) ! in voigt mapping
     real(kind=dp), intent(in)    :: phi, mij(6)
     integer      , intent(in)    :: isim
@@ -1599,7 +1622,7 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
     tensor_return(:,:) = rotate_symm_tensor_voigt_src_to_xyz_2d(tensor_return(:,:), phi, &
                                                                 size(tensor_vector, 1)) 
 
-end function rotate_straintensor
+end function rotate_straintensor_voigt
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
