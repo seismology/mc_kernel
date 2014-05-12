@@ -313,6 +313,15 @@ subroutine test_rotate_symm_tensor_voigt_src_to_xyz
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'DC, phi = 45')
 
+   ! Mxx 45
+   phi = 45 * deg2rad
+   symm_tensor(:) = [1, 0, 0, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi)
+   symm_tensor_rot_ref(:) = [.5, .5, 0., 0., 0., .5]
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Mxx, phi = 45')
+
    ! 180
    phi = 180 * deg2rad
    symm_tensor(:) = [1, 2, 3, 4, 5, 6]
@@ -388,6 +397,15 @@ subroutine test_rotate_symm_tensor_voigt_xyz_to_src
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'DC, phi = 45')
 
+   ! Mxx 45
+   phi = 45 * deg2rad
+   symm_tensor(:) = [1, 0, 0, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_to_src(symm_tensor, phi)
+   symm_tensor_rot_ref(:) = [.5, .5, 0., 0., 0., -.5]
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Mxx, phi = 45')
+
    ! 180
    phi = 180 * deg2rad
    symm_tensor(:) = [1, 2, 3, 4, 5, 6]
@@ -449,7 +467,7 @@ subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'inverse test, phi = random')
 
-   ! theta = 90: z > -x, x > z, y > y
+   ! theta = 90: x > z, y > y, z > -x
    phi = 0
    theta = 90 * deg2rad
    symm_tensor(:) = [1, 2, 3, 4, 5, 6]
@@ -522,7 +540,7 @@ subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'inverse test, phi = random')
 
-   ! theta = 90: z > x, x > -z, y > y
+   ! theta = 90: x > -z, y > y, z > x
    phi = 0
    theta = 90 * deg2rad
    symm_tensor(:) = [1, 2, 3, 4, 5, 6]
