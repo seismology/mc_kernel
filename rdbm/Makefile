@@ -2,12 +2,12 @@ PROG = rdbm
 
 SRCS =	commpi.F90 buffer.f90 clocks.f90 fft_type.f90 filtering.f90 \
 	global_parameters.f90 kdtree2.f90 kernel.f90 nc_routines.f90 rdbm.f90 \
-	readfields.f90 resampling_type.f90 simple_routines.f90 \
-	sourceandreceiver.f90 type_parameter.f90
+	readfields.f90 receiver.f90 receivers_rdbm.f90 resampling_type.f90 \
+	simple_routines.f90 source.f90 type_parameter.f90
 
 OBJS =	commpi.o buffer.o clocks.o fft_type.o filtering.o global_parameters.o \
-	kdtree2.o kernel.o nc_routines.o rdbm.o readfields.o \
-	resampling_type.o simple_routines.o sourceandreceiver.o \
+	kdtree2.o kernel.o nc_routines.o rdbm.o readfields.o receiver.o \
+	receivers_rdbm.o resampling_type.o simple_routines.o source.o \
 	type_parameter.o
 
 #Example to include specific netcdf libraries: 
@@ -52,12 +52,14 @@ global_parameters.o:  Makefile
 kdtree2.o: kdtree2.o Makefile 
 kernel.o: commpi.o fft_type.o filtering.o global_parameters.o Makefile 
 nc_routines.o: commpi.o global_parameters.o Makefile 
-rdbm.o: clocks.o commpi.o global_parameters.o readfields.o resampling_type.o \
-	sourceandreceiver.o type_parameter.o Makefile 
+rdbm.o: clocks.o commpi.o fft_type.o global_parameters.o readfields.o \
+	receivers_rdbm.o resampling_type.o source.o type_parameter.o Makefile 
 readfields.o: buffer.o clocks.o commpi.o global_parameters.o kdtree2.o \
-	nc_routines.o simple_routines.o sourceandreceiver.o Makefile 
+	nc_routines.o receiver.o simple_routines.o source.o Makefile 
+receiver.o: global_parameters.o kernel.o Makefile 
+receivers_rdbm.o: commpi.o global_parameters.o source.o Makefile 
 resampling_type.o: commpi.o fft_type.o global_parameters.o Makefile 
 simple_routines.o: global_parameters.o Makefile 
-sourceandreceiver.o: global_parameters.o kernel.o Makefile 
-type_parameter.o: commpi.o global_parameters.o sourceandreceiver.o Makefile 
+source.o: commpi.o global_parameters.o Makefile 
+type_parameter.o: commpi.o global_parameters.o receiver.o source.o Makefile 
 commpi.F90: global_parameters.o Makefile 
