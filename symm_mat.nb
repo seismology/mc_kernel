@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       157,          7]
-NotebookDataLength[     35116,       1034]
-NotebookOptionsPosition[     33314,        969]
-NotebookOutlinePosition[     33649,        984]
-CellTagsIndexPosition[     33606,        981]
+NotebookDataLength[     35217,       1036]
+NotebookOptionsPosition[     33414,        971]
+NotebookOutlinePosition[     33750,        986]
+CellTagsIndexPosition[     33707,        983]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -464,9 +464,10 @@ Cell[" ", "Text",
 Cell[CellGroupData[{
 
 Cell["\<\
-(x,y,z)_source to (x,y,z)_earth\
+(x,y,z)_earth to (x,y,z)_source\
 \>", "Subtitle",
- CellChangeTimes->{{3.6073501067296753`*^9, 3.607350130954874*^9}}],
+ CellChangeTimes->{{3.6073501067296753`*^9, 3.607350130954874*^9}, {
+  3.6089952249768467`*^9, 3.608995228352234*^9}}],
 
 Cell["\<\
 This is the matrix from TNM(2007) eq.(14)\
@@ -714,9 +715,10 @@ a4*sp*st) + cp*ct*(a5*ct + a1*cp*st + a6*sp*st),
 Cell[CellGroupData[{
 
 Cell["\<\
-(x,y,z)_earth to (x,y,z)_source\
+(x,y,z)_source to (x,y,z)_earth\
 \>", "Subtitle",
- CellChangeTimes->{{3.607350667051427*^9, 3.60735067646353*^9}}],
+ CellChangeTimes->{{3.607350667051427*^9, 3.60735067646353*^9}, {
+  3.608995218992834*^9, 3.608995220008918*^9}}],
 
 Cell[CellGroupData[{
 
@@ -967,7 +969,7 @@ Cell[" ", "Text",
 }, Open  ]]
 }, Open  ]]
 },
-WindowSize->{1317, 744},
+WindowSize->{1871, 1176},
 WindowMargins->{{0, Automatic}, {Automatic, 0}},
 FrontEndVersion->"9.0 for Linux x86 (64-bit) (February 7, 2013)",
 StyleDefinitions->"Default.nb"
@@ -1002,38 +1004,38 @@ Cell[6041, 175, 979, 16, 68, "Output"]
 Cell[7035, 194, 205, 4, 31, "Text"],
 Cell[CellGroupData[{
 Cell[7265, 202, 1185, 33, 121, "Input"],
-Cell[8453, 237, 1794, 59, 62, "Output"],
-Cell[10250, 298, 368, 8, 82, "Output"]
+Cell[8453, 237, 1794, 59, 37, "Output"],
+Cell[10250, 298, 368, 8, 68, "Output"]
 }, Open  ]],
 Cell[CellGroupData[{
 Cell[10655, 311, 140, 1, 51, "Subtitle"],
 Cell[CellGroupData[{
 Cell[10820, 316, 1303, 34, 143, "Input"],
-Cell[12126, 352, 857, 22, 77, "Output"],
-Cell[12986, 376, 1945, 61, 62, "Output"],
-Cell[14934, 439, 495, 9, 82, "Output"]
+Cell[12126, 352, 857, 22, 63, "Output"],
+Cell[12986, 376, 1945, 61, 37, "Output"],
+Cell[14934, 439, 495, 9, 68, "Output"]
 }, Open  ]],
 Cell[15444, 451, 271, 9, 8, "Text"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[15752, 465, 127, 3, 51, "Subtitle"],
-Cell[15882, 470, 133, 3, 31, "Text"],
+Cell[15752, 465, 178, 4, 52, "Subtitle"],
+Cell[15933, 471, 133, 3, 31, "Text"],
 Cell[CellGroupData[{
-Cell[16040, 477, 1570, 42, 143, "Input"],
-Cell[17613, 521, 963, 27, 63, "Output"],
-Cell[18579, 550, 4979, 140, 161, "Output"],
-Cell[23561, 692, 1005, 17, 158, "Output"]
+Cell[16091, 478, 1570, 42, 143, "Input"],
+Cell[17664, 522, 963, 27, 63, "Output"],
+Cell[18630, 551, 4979, 140, 136, "Output"],
+Cell[23612, 693, 1005, 17, 158, "Output"]
 }, Open  ]]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[24615, 715, 124, 3, 51, "Subtitle"],
+Cell[24666, 716, 173, 4, 52, "Subtitle"],
 Cell[CellGroupData[{
-Cell[24764, 722, 1385, 39, 143, "Input"],
-Cell[26152, 763, 893, 26, 63, "Output"],
-Cell[27048, 791, 4997, 141, 182, "Output"],
-Cell[32048, 934, 952, 19, 158, "Output"]
+Cell[24864, 724, 1385, 39, 143, "Input"],
+Cell[26252, 765, 893, 26, 63, "Output"],
+Cell[27148, 793, 4997, 141, 111, "Output"],
+Cell[32148, 936, 952, 19, 158, "Output"]
 }, Open  ]],
-Cell[33015, 956, 271, 9, 8, "Text"]
+Cell[33115, 958, 271, 9, 8, "Text"]
 }, Open  ]]
 }, Open  ]]
 }

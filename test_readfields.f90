@@ -257,19 +257,18 @@ subroutine test_rotate_symm_tensor_voigt_src_to_xyz
    real(kind=sp)        :: symm_tensor_rot_ref(6)
    real(kind=dp)        :: phi
 
-   ! Explosion source, pure diagonal symm_
-   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
-
-   ! Azimuth zero
+   ! explosion - Azimuth zero
    phi = 0
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi)
    symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
 
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'Rotation of isotropic tensor, phi = 0')
 
-   ! Arbitrary azimuth
+   ! explosion - Arbitrary azimuth
    call random_number(phi)
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi)
    symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
 
@@ -341,19 +340,18 @@ subroutine test_rotate_symm_tensor_voigt_xyz_to_src
    real(kind=sp)        :: symm_tensor_rot_ref(6)
    real(kind=dp)        :: phi
 
-   ! Explosion source, pure diagonal symm_
-   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
-
-   ! Azimuth zero
+   ! explosion Azimuth zero
    phi = 0
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_xyz_to_src(symm_tensor, phi)
    symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
 
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'Rotation of isotropic tensor, phi = 0')
 
-   ! Arbitrary azimuth
+   ! explosion Arbitrary azimuth
    call random_number(phi)
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_xyz_to_src(symm_tensor, phi)
    symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
 
@@ -425,21 +423,20 @@ subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
    real(kind=sp)        :: symm_tensor_rot_ref(6)
    real(kind=dp)        :: phi, theta
 
-   ! Explosion source, pure diagonal symm_
-   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
-
-   ! Azimuth zero
+   ! explosion Azimuth zero
    phi = 0
    theta = 0
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
    symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
 
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'Rotation of isotropic tensor, phi = 0')
 
-   ! Arbitrary azimuth
+   ! explosion Arbitrary azimuth
    call random_number(phi)
    call random_number(theta)
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
    symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
 
@@ -467,37 +464,46 @@ subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'swap 1 and 2, phi = 90')
 
-   ! Mxx 45
+   ! DC
+   phi = 90 * deg2rad
+   theta = 0
+   symm_tensor(:) = [0, 0, 0, 1, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
+   symm_tensor_rot_ref(:) = [0, 0, 0, 0, -1, 0] 
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'DC, phi = 90, theta = 0')
+   
+   ! dipole
    phi = 45 * deg2rad
    theta = 0
    symm_tensor(:) = [1, 0, 0, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
+   symm_tensor_rot_ref(:) = [1, 1, 0, 0, 0, 1] / 2d0
+
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Dipole, phi = 45, theta = 0')
+
+
+   !! theta = 90: x > z, y > y, z > -x
+   !phi = 0
+   !theta = 90 * deg2rad
+   !symm_tensor(:) = [1, 2, 3, 4, 5, 6]
    !symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
-   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
-   write(6,*) symm_tensor_rot
-   symm_tensor_rot_ref(:) = [.5, .5, 0., 0., 0., .5]
+   !symm_tensor_rot_ref(:) = [3, 2, 1, 6, -5, -4] 
 
-   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
-                                 1e-7, 'Mxx, phi = 45')
+   !call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+   !                              1e-7, 'Rotation of isotropic tensor, phi = 0')
 
-   ! theta = 90: x > z, y > y, z > -x
-   phi = 0
-   theta = 90 * deg2rad
-   symm_tensor(:) = [1, 2, 3, 4, 5, 6]
-   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
-   symm_tensor_rot_ref(:) = [3, 2, 1, 6, -5, -4] 
+   !! theta = 90, phi = 90: z > -x, x > -y, y > z
+   !phi = 90 * deg2rad
+   !theta = 90 * deg2rad
+   !symm_tensor(:) = [1, 2, 3, 4, 5, 6]
+   !symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
+   !symm_tensor_rot_ref(:) = [3, 1, 2, -6, -4, 5] 
 
-   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
-                                 1e-7, 'Rotation of isotropic tensor, phi = 0')
-
-   ! theta = 90, phi = 90: z > -x, x > -y, y > z
-   phi = 90 * deg2rad
-   theta = 90 * deg2rad
-   symm_tensor(:) = [1, 2, 3, 4, 5, 6]
-   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
-   symm_tensor_rot_ref(:) = [3, 1, 2, -6, -4, 5] 
-
-   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
-                                 1e-7, 'Rotation of isotropic tensor, phi = 0')
+   !call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+   !                              1e-7, 'Rotation of isotropic tensor, phi = 0')
 
 
 end subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
@@ -510,21 +516,20 @@ subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
    real(kind=sp)        :: symm_tensor_rot_ref(6)
    real(kind=dp)        :: phi, theta
 
-   ! Explosion source, pure diagonal symm_
-   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
-
-   ! Azimuth zero
+   ! explosion Azimuth zero
    phi = 0
    theta = 0
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
    symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
 
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'Rotation of isotropic tensor, phi = 0')
 
-   ! Arbitrary azimuth
+   ! explosion Arbitrary azimuth
    call random_number(phi)
    call random_number(theta)
+   symm_tensor(:) = [1, 1, 1, 0, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
    symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
 
@@ -552,40 +557,45 @@ subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, 'swap 1 and 2, phi = 90')
 
-   ! theta = 90: x > -z, y > y, z > x
-   phi = 0
-   theta = 90 * deg2rad
-   symm_tensor(:) = [1, 2, 3, 4, 5, 6]
-   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
-   symm_tensor_rot_ref(:) = [3, 2, 1, -6, -5, 4] 
-
-   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
-                                 1e-7, '123456, phi = 0, theta = 90')
-
-   ! theta = 90, phi = 90: x > -z, y > -x, z > y
+   ! DC
    phi = 90 * deg2rad
-   theta = 90 * deg2rad
-   symm_tensor(:) = [1, 2, 3, 4, 5, 6]
+   theta = 0
+   symm_tensor(:) = [0, 0, 0, 1, 0, 0]
    symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
-   symm_tensor_rot_ref(:) = [2, 3, 1, -5, 6, -4] 
+   symm_tensor_rot_ref(:) = [0, 0, 0, 0, 1, 0] 
 
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
-                                 1e-7, '123456, phi = 90, theta = 90')
+                                 1e-7, 'DC, phi = 90, theta = 0')
+   
+   ! dipole
+   phi = 45 * deg2rad
+   theta = 0
+   symm_tensor(:) = [1, 0, 0, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
+   symm_tensor_rot_ref(:) = [1, 1, 0, 0, 0, -1] / 2d0
 
-   !! DC 45
+   call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Dipole, phi = 45, theta = 0')
+
+   !! theta = 90: x > -z, y > y, z > x
    !phi = 0
-   !theta = 45 * deg2rad
-   !!symm_tensor(:) = [0, 0, 0, 0, 1, 0]
-   !symm_tensor(:) = [-1, 0, 1, 0, 0, 0]
-   !!symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
-   !symm_tensor_rot = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(symm_tensor, phi, theta)
-   !write(6,*) symm_tensor_rot
-   !!symm_tensor_rot_ref(:) = [-1, 0, 1, 0, 0, 0] 
-   !symm_tensor_rot_ref(:) = [0, 0, 0, 0, 1, 0] 
+   !theta = 90 * deg2rad
+   !symm_tensor(:) = [1, 2, 3, 4, 5, 6]
+   !symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
+   !symm_tensor_rot_ref(:) = [3, 2, 1, -6, -5, 4] 
 
    !call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
-   !                              1e-7, 'DC, phi = 0, theta = 45')
+   !                              1e-7, '123456, phi = 0, theta = 90')
 
+   !! theta = 90, phi = 90: x > -z, y > -x, z > y
+   !phi = 90 * deg2rad
+   !theta = 90 * deg2rad
+   !symm_tensor(:) = [1, 2, 3, 4, 5, 6]
+   !symm_tensor_rot = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src(symm_tensor, phi, theta)
+   !symm_tensor_rot_ref(:) = [2, 3, 1, -5, 6, -4] 
+
+   !call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
+   !                              1e-7, '123456, phi = 90, theta = 90')
 
 end subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
 !-----------------------------------------------------------------------------------------
