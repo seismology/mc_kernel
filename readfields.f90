@@ -1,6 +1,6 @@
 !=========================================================================================
 module readfields
-    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, &
+    use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
     use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
@@ -1035,36 +1035,49 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                          this%model_param)
 
                write(6,*) '=================================================='
-               write(6,*) source_params(ipoint)%mij_voigt
+               write(6,*) reci_source_params%colat * rad2deg
+               write(6,*) rotmesh_phi(ipoint) * rad2deg
+
+               write(6,'(A,6E12.2)') 'input                ', source_params(ipoint)%mij_voigt
                ! rotate source mt to global cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_1d( &
                                 source_params(ipoint)%mij_voigt, &
                                 source_params(ipoint)%lon, &
                                 source_params(ipoint)%colat)
-               write(6,*) mij_buff
+               write(6,'(A,6E12.2)') 'xyz_src_to_xyz_earth ', mij_buff
 
                ! rotate source mt to receiver cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d( &
                                 mij_buff, &
                                 reci_source_params%lon, &
                                 reci_source_params%colat)
-               write(6,*) mij_buff
+               write(6,'(A,6E12.2)') 'xyz_earth_to_xyz_src ', mij_buff
 
                ! rotate source mt to receiver s,phi,z system
                mij_buff = rotate_symm_tensor_voigt_xyz_to_src_1d(mij_buff, rotmesh_phi(ipoint))
-               write(6,*) mij_buff
+               !mij_buff = rotate_symm_tensor_voigt_src_to_xyz_1d(mij_buff, rotmesh_phi(ipoint))
+
+               write(6,'(A,6E12.2)') 'xyz_to_src           ', mij_buff
 
                mij_buff = mij_buff / this%fwd(isim)%amplitude
-               write(6,*) mij_buff
+               write(6,*)
+               write(6,'(A,6E12.2)') 'scaled               ', mij_buff
 
                load_fw_points_rdbm(:, :, ipoint) = 0
                
-               do i = 1, 6
+               do i = 1, 3
                   load_fw_points_rdbm(:, 1, ipoint) = &
                         load_fw_points_rdbm(:, 1, ipoint) &
                             + mij_buff(i) * utemp(:,i)
                   !@TODO I have the impression I am missing a factor of two for the
                   !      components 4-6 here
+               enddo 
+
+               do i = 4, 6
+                  load_fw_points_rdbm(:, 1, ipoint) = &
+                        load_fw_points_rdbm(:, 1, ipoint) &
+                            + 2 * mij_buff(i) * utemp(:,i)
+                            !- 2* mij_buff(i) * utemp(:,i)
                enddo 
 
                write(6,*) '--------------------------------------------------'
@@ -1189,13 +1202,16 @@ function load_strain_point(sem_obj, pointid, model_param)
 
         allocate(load_strain_point(sem_obj%ndumps, 6))
         ! transform strain to voigt mapping
+        ! from:
         ! ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
-        !  'strain_dsup', 'strain_dzup', 'straintrace']
+        !  'stroain_dsup', 'strain_dzup', 'straintrace']
+        ! to:
+        ! dsus, dpup, dzuz, dzup, dsuz, dsup
         load_strain_point(:,1) = strain_buff(:,1)
         load_strain_point(:,2) = strain_buff(:,3)
         load_strain_point(:,3) = strain_buff(:,6) - strain_buff(:,1) - strain_buff(:,3)
         load_strain_point(:,4) = strain_buff(:,5)
-        load_strain_point(:,5) = strain_buff(:,2)
+        load_strain_point(:,5) = - strain_buff(:,2) !@TODO sign error in SOLVER?
         load_strain_point(:,6) = strain_buff(:,4)
     end select
 
