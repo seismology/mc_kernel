@@ -1077,7 +1077,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                   load_fw_points_rdbm(:, 1, ipoint) = &
                         load_fw_points_rdbm(:, 1, ipoint) &
                             + 2 * mij_buff(i) * utemp(:,i)
-                            !- 2* mij_buff(i) * utemp(:,i)
                enddo 
 
                write(6,*) '--------------------------------------------------'
@@ -1211,7 +1210,7 @@ function load_strain_point(sem_obj, pointid, model_param)
         load_strain_point(:,2) = strain_buff(:,3)
         load_strain_point(:,3) = strain_buff(:,6) - strain_buff(:,1) - strain_buff(:,3)
         load_strain_point(:,4) = strain_buff(:,5)
-        load_strain_point(:,5) = - strain_buff(:,2) !@TODO sign error in SOLVER?
+        load_strain_point(:,5) = strain_buff(:,2)
         load_strain_point(:,6) = strain_buff(:,4)
     end select
 
