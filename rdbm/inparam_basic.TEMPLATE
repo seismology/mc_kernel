@@ -17,6 +17,9 @@ RECFILE_TYPE            stations
 #                     one source per run)
 SRCFILE_TYPE            cmtsolution
 
+# Component of the seismogram, should be one of [Z,N,E,R,T]
+COMPONENT               N
+
 # number of samples in the seismograms, resampling is done in the frequency domain, 
 # length of the traces in seconds depends on the forward run
 NSAMP                   3600

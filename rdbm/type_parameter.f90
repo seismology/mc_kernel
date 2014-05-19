@@ -17,6 +17,7 @@ module type_parameter
       character(len=512)                    :: source_file
       character(len=512)                    :: receiver_file
       character(len=8)                      :: receiver_file_type
+      character(len=1)                      :: component
       integer                               :: nsim_fwd
       integer                               :: nsamp
       integer                               :: buffer_size
@@ -81,6 +82,9 @@ subroutine read_parameters(this, input_file_in)
 
      case('NETCDF_BUFFER_SIZE')
         read(keyvalue, *) this%buffer_size
+     
+     case('COMPONENT')
+        read(keyvalue, *) this%component
 
      case('VERBOSITY')
         read(keyvalue, *) this%verbose

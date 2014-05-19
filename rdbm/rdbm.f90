@@ -74,7 +74,8 @@ program rdbm
   call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
 
   do i=1, receivers%num_rec
-     fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), 'Z')
+     fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
+                                             parameters%component)
 
      call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
                                           ntimes=sem_data%ndumps * 2), &
