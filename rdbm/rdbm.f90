@@ -51,7 +51,12 @@ program rdbm
 
   bwd_dir = ''
 
-  model_param = 'vs'
+  if (trim(parameters%source_type) == 'explosion') then
+     model_param = 'vp'
+  else
+     model_param = 'vs'
+  endif
+
   call sem_data%set_params(parameters%sim_dir, bwd_dir, parameters%buffer_size, model_param)
   call sem_data%open_files()
   call sem_data%read_meshes()

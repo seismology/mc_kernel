@@ -15,6 +15,7 @@ module type_parameter
 
       character(len=512)                    :: sim_dir
       character(len=512)                    :: source_file
+      character(len=10)                     :: source_type
       character(len=512)                    :: receiver_file
       character(len=8)                      :: receiver_file_type
       character(len=1)                      :: component
@@ -74,9 +75,12 @@ subroutine read_parameters(this, input_file_in)
      case('NSAMP')
         read(keyvalue, *) this%nsamp
 
-     !case('SOURCE_FILE')
-     !   this%source_file = keyvalue
+     case('SRCFILE_TYPE')
+        this%source_file = keyvalue
 
+     case('SRC_TYPE')
+        this%source_type = keyvalue
+     
      case('RECFILE_TYPE')
          this%receiver_file_type = keyvalue
 

@@ -17,6 +17,11 @@ RECFILE_TYPE            stations
 #                     one source per run)
 SRCFILE_TYPE            cmtsolution
 
+# source type, should be one of [moment, explosion]
+# in case of exlosion, only the straintrace needs to be read from file instead of the
+# whole strain tensor
+SRC_TYPE                moment
+
 # Component of the seismogram, should be one of [Z,N,E,R,T]
 COMPONENT               N
 
