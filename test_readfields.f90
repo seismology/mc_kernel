@@ -251,7 +251,7 @@ end subroutine test_readfields_rotate_straintensor_voigt
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_rotate_symm_tensor_voigt_src_to_xyz
+subroutine test_rotate_symm_tensor_voigt_src_to_xyz_1d
    real(kind=dp)        :: symm_tensor(6)
    real(kind=sp)        :: symm_tensor_rot(6)
    real(kind=sp)        :: symm_tensor_rot_ref(6)
@@ -330,11 +330,118 @@ subroutine test_rotate_symm_tensor_voigt_src_to_xyz
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, '180')
 
-end subroutine test_rotate_symm_tensor_voigt_src_to_xyz
+end subroutine test_rotate_symm_tensor_voigt_src_to_xyz_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_rotate_symm_tensor_voigt_xyz_to_src
+subroutine test_rotate_symm_tensor_voigt_src_to_xyz_2d
+   real(kind=dp)        :: symm_tensor(2,6)
+   real(kind=sp)        :: symm_tensor_rot(2,6)
+   real(kind=sp)        :: symm_tensor_rot_ref(6)
+   real(kind=dp)        :: phi
+
+   ! explosion - Azimuth zero
+   phi = 0
+   symm_tensor(1,:) = [1, 1, 1, 0, 0, 0]
+   symm_tensor(2,:) = [1, 1, 1, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi, 2)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0] 
+
+   call assert_comparable_real1d(symm_tensor_rot(1,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = 0')
+   call assert_comparable_real1d(symm_tensor_rot(2,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = 0')
+
+   ! explosion - Arbitrary azimuth
+   call random_number(phi)
+   symm_tensor(1,:) = [1, 1, 1, 0, 0, 0]
+   symm_tensor(2,:) = [1, 1, 1, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi, 2)
+   symm_tensor_rot_ref(:) = [1, 1, 1, 0, 0, 0]
+
+   call assert_comparable_real1d(symm_tensor_rot(1,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = random')
+   call assert_comparable_real1d(symm_tensor_rot(2,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Rotation of isotropic tensor, phi = random')
+
+   ! swap component 1 and 2
+   phi = 90 * deg2rad
+   symm_tensor(1,:) = [1, 0, 1, 0, 0, 0]
+   symm_tensor(2,:) = [1, 0, 1, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi, 2)
+   symm_tensor_rot_ref(:) = [0, 1, 1, 0, 0, 0]
+
+   call assert_comparable_real1d(symm_tensor_rot(1,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'swap 1 and 2, phi = 90')
+   call assert_comparable_real1d(symm_tensor_rot(2,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'swap 1 and 2, phi = 90')
+
+   ! swap component 4 and 5
+   phi = 90 * deg2rad
+   symm_tensor(1,:) = [0, 0, 0, 1, 0, 0]
+   symm_tensor(2,:) = [0, 0, 0, 1, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi, 2)
+   symm_tensor_rot_ref(:) = [0, 0, 0, 0, -1, 0]
+
+   call assert_comparable_real1d(symm_tensor_rot(1,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'swap 4 and 5, phi = 90')
+   call assert_comparable_real1d(symm_tensor_rot(2,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'swap 4 and 5, phi = 90')
+
+   ! Arbitrary azimuth - inverse test
+   call random_number(phi)
+   symm_tensor(1,:) = [1, 2, 3, 4, 5, 6]
+   symm_tensor(2,:) = [1, 2, 3, 4, 5, 6]
+   symm_tensor = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi, 2)
+   symm_tensor_rot = rotate_symm_tensor_voigt_xyz_to_src(symm_tensor, phi, 2)
+   symm_tensor_rot_ref(:) = [1, 2, 3, 4, 5, 6]
+
+   call assert_comparable_real1d(symm_tensor_rot(1,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'inverse test, phi = random')
+   call assert_comparable_real1d(symm_tensor_rot(2,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'inverse test, phi = random')
+
+   ! DC 45
+   phi = 45 * deg2rad
+   symm_tensor(1,:) = [1, -1, 0, 0, 0, 0]
+   symm_tensor(2,:) = [1, -1, 0, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi, 2)
+   symm_tensor_rot_ref(:) = [0, 0, 0, 0, 0, 1]
+
+   call assert_comparable_real1d(symm_tensor_rot(1,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'DC, phi = 45')
+   call assert_comparable_real1d(symm_tensor_rot(2,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'DC, phi = 45')
+
+   ! Mxx 45
+   phi = 45 * deg2rad
+   symm_tensor(1,:) = [1, 0, 0, 0, 0, 0]
+   symm_tensor(2,:) = [1, 0, 0, 0, 0, 0]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi, 2)
+   symm_tensor_rot_ref(:) = [.5, .5, 0., 0., 0., .5]
+
+   call assert_comparable_real1d(symm_tensor_rot(1,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Mxx, phi = 45')
+   call assert_comparable_real1d(symm_tensor_rot(2,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, 'Mxx, phi = 45')
+
+   ! 180
+   phi = 180 * deg2rad
+   symm_tensor(1,:) = [1, 2, 3, 4, 5, 6]
+   symm_tensor(2,:) = [1, 2, 3, 4, 5, 6]
+   symm_tensor_rot = rotate_symm_tensor_voigt_src_to_xyz(symm_tensor, phi,2)
+   symm_tensor_rot_ref(:) = [1, 2, 3, -4, -5, 6]
+
+   call assert_comparable_real1d(symm_tensor_rot(1,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, '180')
+   call assert_comparable_real1d(symm_tensor_rot(2,:) + 1, symm_tensor_rot_ref(:) + 1, &
+                                 1e-7, '180')
+
+end subroutine test_rotate_symm_tensor_voigt_src_to_xyz_2d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_rotate_symm_tensor_voigt_xyz_to_src_1d
    real(kind=dp)        :: symm_tensor(6)
    real(kind=sp)        :: symm_tensor_rot(6)
    real(kind=sp)        :: symm_tensor_rot_ref(6)
@@ -413,11 +520,11 @@ subroutine test_rotate_symm_tensor_voigt_xyz_to_src
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, '180')
 
-end subroutine test_rotate_symm_tensor_voigt_xyz_to_src
+end subroutine test_rotate_symm_tensor_voigt_xyz_to_src_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
+subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_1d
    real(kind=dp)        :: symm_tensor(6)
    real(kind=sp)        :: symm_tensor_rot(6)
    real(kind=sp)        :: symm_tensor_rot_ref(6)
@@ -537,11 +644,11 @@ subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
                                  1e-7, 'Rotation of isotropic tensor, phi = 0')
 
 
-end subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth
+end subroutine test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
+subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d
    real(kind=dp)        :: symm_tensor(6)
    real(kind=sp)        :: symm_tensor_rot(6)
    real(kind=sp)        :: symm_tensor_rot_ref(6)
@@ -660,7 +767,7 @@ subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
    call assert_comparable_real1d(symm_tensor_rot(:) + 1, symm_tensor_rot_ref(:) + 1, &
                                  1e-7, '123456, phi = 90, theta = 90')
 
-end subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
+end subroutine test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d
 !-----------------------------------------------------------------------------------------
 
 end module
