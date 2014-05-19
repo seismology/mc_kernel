@@ -976,9 +976,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
         
         pointid(ipoint) = nextpoint(1)%idx
 
-        write(6,*) nextpoint(1)%dis**.5, nextpoint(1)%idx, &
-                    (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
-                    (this%fwdmesh%s(pointid(ipoint))**2  + this%fwdmesh%z(pointid(ipoint))**2)**.5 
+        if (verbose>0) &
+            write(6,*) nextpoint(1)%dis**.5, nextpoint(1)%idx, &
+                       (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
+                       (this%fwdmesh%s(pointid(ipoint))**2  &
+                            + this%fwdmesh%z(pointid(ipoint))**2)**.5 
 
     end do
 
@@ -1092,18 +1094,24 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
                load_fw_points_rdbm(:, :, ipoint) = 0
 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
-                            * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
-                            * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
-                            * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
-                            * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
-                            * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
-                            * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
                
                !@TODO not sure why we need the - sign here. Might be because N
                !      is in negative theta direction
@@ -1134,20 +1142,27 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
                load_fw_points_rdbm(:, :, ipoint) = 0
                
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
-                            * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
-                            * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
-                            * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
-                            * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
-                            * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
-                            * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
 
           case default
+               write(6,*) 'component ', component, 'unknown or not yet implemented'
                stop
           end select
          
