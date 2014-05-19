@@ -1063,11 +1063,10 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
                ! components 4-6 need a factor of two because of voigt mapping
                ! without factor of two in the strain
-               do i = 4, 6
-                  load_fw_points_rdbm(:, 1, ipoint) = &
-                        load_fw_points_rdbm(:, 1, ipoint) &
-                            + 2 * mij_buff(i) * utemp(:,i)
-               enddo 
+               i = 5
+               load_fw_points_rdbm(:, 1, ipoint) = &
+                     load_fw_points_rdbm(:, 1, ipoint) &
+                         + 2 * mij_buff(i) * utemp(:,i)
 
           case('N')
                isim = 2
@@ -1162,7 +1161,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                         * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
 
           case default
-               write(6,*) 'component ', component, 'unknown or not yet implemented'
+               write(6,*) 'component "', component, '" unknown or not yet implemented'
                stop
           end select
          
