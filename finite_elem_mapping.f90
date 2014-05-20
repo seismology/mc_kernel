@@ -4,6 +4,8 @@ module finite_elem_mapping
 
     implicit none
     private
+
+    public  :: mapping_subpar
 contains
 
 !-----------------------------------------------------------------------------------------

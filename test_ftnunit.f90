@@ -22,6 +22,10 @@ subroutine test_all
 
   call init_output()
 
+  ! test_finite_elem_mapping
+  write(6,'(/,a)') 'TEST FINITE ELEMENT MODULE'
+  call test(test_mapping_xieta_to_sz, 'mapping (xi,eta) to (s,z)')
+
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
   call test(test_readfields_rotate, 'Field rotation')
