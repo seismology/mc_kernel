@@ -7,6 +7,7 @@ module finite_elem_mapping
 
     public  :: mapping_subpar
     public  :: jacobian_subpar
+    public  :: inv_jacobian_subpar
 contains
 
 !-----------------------------------------------------------------------------------------

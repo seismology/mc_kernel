@@ -102,16 +102,10 @@ subroutine test_jacobian_subpar()
    real(kind=dp)    :: xi, eta, jacobian(2,2), jacobian_ref(2,2)
    real(kind=dp)    :: nodes(4,2)
 
-! 4 - - - - - - - 3
-! |       ^       |
-! |   eta |       |
-! |       |       |
-! |        --->   |
-! |        xi     |
-! |               |
-! |               |
-! 1 - - - - - - - 2
-    
+!            | ds / dxi  ds / deta |
+! jacobian = |                     |
+!            | dz / dxi  dz / deta |
+
    nodes(1,:) = [-1,-1]
    nodes(2,:) = [ 1,-1]
    nodes(3,:) = [ 1, 1]
@@ -173,6 +167,79 @@ subroutine test_jacobian_subpar()
                                  1e-7, 'continuous stretching, jacobian is constant')
 
 end subroutine test_jacobian_subpar
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_inv_jacobian_subpar()
+
+!                | dxi  / ds  dxi  / dz |
+! inv_jacobian = |                      |
+!                | deta / ds  deta / dz |
+
+   real(kind=dp)    :: xi, eta, inv_jacobian(2,2), inv_jacobian_ref(2,2)
+   real(kind=dp)    :: nodes(4,2)
+
+   nodes(1,:) = [-1,-1]
+   nodes(2,:) = [ 1,-1]
+   nodes(3,:) = [ 1, 1]
+   nodes(4,:) = [-1, 1]
+
+   call random_number(xi)
+   call random_number(eta)
+   inv_jacobian_ref(1,:) = [1,0]
+   inv_jacobian_ref(2,:) = [0,1]
+   inv_jacobian = inv_jacobian_subpar(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
+                                 1 + real(reshape(inv_jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, inv_jacobian is identity')
+
+   nodes(2,:) = [-1,-1]
+   nodes(3,:) = [ 1,-1]
+   nodes(4,:) = [ 1, 1]
+   nodes(1,:) = [-1, 1]
+
+   call random_number(xi)
+   call random_number(eta)
+   inv_jacobian_ref(1,:) = [0,-1]
+   inv_jacobian_ref(2,:) = [1, 0]
+   inv_jacobian = inv_jacobian_subpar(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
+                                 1 + real(reshape(inv_jacobian_ref, [4])), &
+                                 1e-7, 'pure rotation')
+   
+   nodes(1,:) = [0,0]
+   nodes(2,:) = [2,0]
+   nodes(3,:) = [2,2]
+   nodes(4,:) = [0,2]
+
+   call random_number(xi)
+   call random_number(eta)
+   inv_jacobian_ref(1,:) = [1,0]
+   inv_jacobian_ref(2,:) = [0,1]
+   inv_jacobian = inv_jacobian_subpar(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
+                                 1 + real(reshape(inv_jacobian_ref, [4])), &
+                                 1e-7, 'pure translation, inv_jacobian is identity')
+
+   nodes(1,:) = [ 0, 0]
+   nodes(2,:) = [10, 0]
+   nodes(3,:) = [10,20]
+   nodes(4,:) = [ 0,20]
+
+   call random_number(xi)
+   call random_number(eta)
+   inv_jacobian_ref(1,:) = [0.2d0, 0.0d0]
+   inv_jacobian_ref(2,:) = [0.0d0, 0.1d0]
+   inv_jacobian = inv_jacobian_subpar(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
+                                 1 + real(reshape(inv_jacobian_ref, [4])), &
+                                 1e-7, 'continuous stretching, inv_jacobian is constant')
+
+end subroutine test_inv_jacobian_subpar
 !-----------------------------------------------------------------------------------------
 
 end module
