@@ -12,6 +12,7 @@ module unit_tests
   use test_kernel
   use test_readfields
   use test_resampling
+  use test_finite_elem_mapping
 
   implicit none
 
