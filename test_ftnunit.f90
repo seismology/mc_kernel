@@ -25,8 +25,10 @@ subroutine test_all
   ! test_finite_elem_mapping
   write(6,'(/,a)') 'TEST FINITE ELEMENT MODULE'
   call test(test_mapping_subpar_xieta_to_sz, 'subpar mapping (xi,eta) to (s,z)')
+  call test(test_inv_mapping_subpar_sz_to_xieta, 'inv subpar mapping (s,z) to (xi,eta)')
   call test(test_jacobian_subpar, 'jacobian subpar')
   call test(test_inv_jacobian_subpar, 'inverse jacobian subpar')
+
 
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'

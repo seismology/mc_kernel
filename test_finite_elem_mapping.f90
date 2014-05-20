@@ -97,6 +97,62 @@ end subroutine test_mapping_subpar_xieta_to_sz
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_inv_mapping_subpar_sz_to_xieta
+   real(kind=dp)    :: s, z, xieta(2), xieta_ref(2)
+   real(kind=dp)    :: nodes(4,2)
+    
+   nodes(1,:) = [-1,-1]
+   nodes(2,:) = [ 1,-1]
+   nodes(3,:) = [ 1, 1]
+   nodes(4,:) = [-1, 1]
+
+   s = 1
+   z = -1
+   xieta_ref = [s, z]
+   xieta = inv_mapping_subpar(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'ref to ref is identity, [0 ,0]')
+
+   call random_number(s)
+   call random_number(z)
+   xieta_ref = [s, z]
+   xieta = inv_mapping_subpar(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'ref to ref is identity, random')
+
+   
+   nodes(1,:) = [0,0]
+   nodes(2,:) = [2,0]
+   nodes(3,:) = [2,2]
+   nodes(4,:) = [0,2]
+
+   call random_number(s)
+   call random_number(z)
+   xieta_ref = [s-1, z-1]
+   xieta = inv_mapping_subpar(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'pure translation, random')
+
+   nodes(1,:) = [ 0, 0]
+   nodes(2,:) = [10, 0]
+   nodes(3,:) = [10,20]
+   nodes(4,:) = [ 0,20]
+
+   call random_number(s)
+   call random_number(z)
+   xieta_ref = [(s-5) / 5.d0, (z-10) / 10d0]
+   xieta = inv_mapping_subpar(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'stretching + translation, random')
+
+end subroutine test_inv_mapping_subpar_sz_to_xieta
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_jacobian_subpar()
 
    real(kind=dp)    :: xi, eta, jacobian(2,2), jacobian_ref(2,2)
