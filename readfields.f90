@@ -1377,7 +1377,7 @@ subroutine build_kdtree(this)
 
     print *, this%fwdmesh%npoints
 
-    write(1000,*) mesh
+    !write(1000,*) mesh
 
     write(lu_out,*) ' Building forward KD-Tree'
     call flush(lu_out)
