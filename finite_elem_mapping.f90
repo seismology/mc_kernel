@@ -6,6 +6,7 @@ module finite_elem_mapping
     private
 
     public  :: mapping_spheroid
+    public  :: jacobian_spheroid
 
     public  :: mapping_subpar
     public  :: inv_mapping_subpar
@@ -22,23 +23,51 @@ pure function mapping_spheroid(xi, eta, nodes)
   real(kind=dp), intent(in)   :: xi, eta
   real(kind=dp), intent(in)   :: nodes(4,2)
   real(kind=dp)               :: mapping_spheroid(2)
-  real(kind=dp), dimension(4) :: theta_ser, r_ser
+  real(kind=dp)               :: theta(4), r(4)
 
-  call compute_theta_r(theta_ser, r_ser, nodes)
+  call compute_theta_r(theta, r, nodes)
 
   mapping_spheroid(1) &
-    = (1 + eta) * r_ser(4) / 2 &
-        * dsin(((1 - xi) * theta_ser(4) + (1 + xi) * theta_ser(3)) / 2) &
-      + (1 - eta) * r_ser(1) / 2 &
-        * dsin(((1 - xi) * theta_ser(1) + (1 + xi) * theta_ser(2)) / 2 )
+    = (1 + eta) * r(4) / 2 * dsin(((1 - xi) * theta(4) + (1 + xi) * theta(3)) / 2) &
+    + (1 - eta) * r(1) / 2 * dsin(((1 - xi) * theta(1) + (1 + xi) * theta(2)) / 2)
   
   mapping_spheroid(2) &
-    = (1 + eta) * r_ser(4) / 2 &
-        * dcos(((1 - xi) * theta_ser(4) + (1 + xi) * theta_ser(3)) / 2) &
-      + (1 - eta) * r_ser(1) / 2 &
-        * dcos(((1 - xi) * theta_ser(1) + (1 + xi) * theta_ser(2)) / 2 )
+    = (1 + eta) * r(4) / 2 * dcos(((1 - xi) * theta(4) + (1 + xi) * theta(3)) / 2) &
+    + (1 - eta) * r(1) / 2 * dcos(((1 - xi) * theta(1) + (1 + xi) * theta(2)) / 2)
 
 end function mapping_spheroid
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function jacobian_spheroid(xi, eta, nodes)
+
+  real(kind=dp), intent(in)  :: xi, eta, nodes(4,2)
+  real(kind=dp)              :: jacobian_spheroid(2,2)
+  real(kind=dp)              :: theta(4), r(4)
+
+  call compute_theta_r(theta, r, nodes)
+
+  jacobian_spheroid(1,1) &
+    = (1 + eta) * r(4) * (theta(3) - theta(4)) / 4  &
+         * dcos(((1 - xi) * theta(4) + (1 + xi) * theta(3)) / 2) &
+    + (1 - eta) * r(1) * (theta(2) - theta(1)) / 4  &
+         * dcos(((1 - xi) * theta(1) + (1 + xi) * theta(2)) / 2) 
+
+  jacobian_spheroid(1,2) &
+    = 0.5d0 * ( r(4) * dsin(((1 - xi) * theta(4) + (1 + xi) * theta(3)) / 2) &
+              - r(1) * dsin(((1 - xi) * theta(1) + (1 + xi) * theta(2)) / 2)) 
+
+  jacobian_spheroid(2,1) &
+    = - (1 + eta) * r(4) * (theta(3) - theta(4)) / 4 &
+       * dsin(((1 - xi) * theta(4) + (1 + xi) * theta(3)) / 2) &
+      - (1 - eta) * r(1) * (theta(2) - theta(1)) / 4  &
+       * dsin(((1 - xi) * theta(1) + (1 + xi) * theta(3)) / 2)
+
+  jacobian_spheroid(2,2) &
+    = 0.5d0 * ( r(4) * dcos(((1 - xi) * theta(4) + (1 + xi) * theta(3)) / 2) &
+              - r(1) * dcos(((1 - xi) * theta(1) + (1 + xi) * theta(2)) / 2)) 
+  
+end function jacobian_spheroid
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

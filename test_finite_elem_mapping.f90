@@ -60,6 +60,65 @@ subroutine test_mapping_speroidal_xieta_to_sz()
 end subroutine test_mapping_speroidal_xieta_to_sz
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_jacobian_spheroidal()
+
+   real(kind=dp)    :: xi, eta, jacobian(2,2), jacobian_ref(2,2)
+   real(kind=dp)    :: nodes(4,2)
+
+!            | ds / dxi  ds / deta |
+! jacobian = |                     |
+!            | dz / dxi  dz / deta |
+
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+
+   xi = -1
+   eta = -1
+   jacobian_ref(1,:) = [datan(1d0),0d0] ! pi / 4
+   jacobian_ref(2,:) = [       0d0,1d0]
+   jacobian = jacobian_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(jacobian, [4])), &
+                                 1 + real(reshape(jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, jacobian is identity')
+
+   xi = -1
+   eta = 1
+   jacobian_ref(1,:) = [datan(1d0) * 3.d0,0d0] ! pi / 4 * 3
+   jacobian_ref(2,:) = [              0d0,1d0]
+   jacobian = jacobian_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(jacobian, [4])), &
+                                 1 + real(reshape(jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, jacobian is identity')
+
+   xi = 1
+   eta = -1
+   jacobian_ref(1,:) = [0d0        ,1d0]
+   jacobian_ref(2,:) = [-datan(1d0),0d0] ! -pi / 4
+   jacobian = jacobian_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(jacobian, [4])), &
+                                 1 + real(reshape(jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, jacobian is identity')
+
+   xi = 1
+   eta = 1
+   jacobian_ref(1,:) = [0d0            ,1d0]
+   jacobian_ref(2,:) = [-datan(1d0) * 3,0d0] ! -pi / 4 * 3
+   jacobian = jacobian_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(jacobian, [4])), &
+                                 1 + real(reshape(jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, jacobian is identity')
+
+end subroutine test_jacobian_spheroidal
+!-----------------------------------------------------------------------------------------
+
+
 !!!!!!! SUBPAR MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !-----------------------------------------------------------------------------------------
