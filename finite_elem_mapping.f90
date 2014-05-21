@@ -5,6 +5,8 @@ module finite_elem_mapping
     implicit none
     private
 
+    public  :: mapping_semiso
+
     public  :: mapping_semino
 
     public  :: mapping_spheroid
@@ -56,6 +58,40 @@ end function mapping_semino
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+pure function mapping_semiso(xi, eta, nodes)
+! We are working in polar coordinates here: theta is the latitude. 
+! semiso: linear at tp[, curved at bottom
+ 
+  real(kind=dp), intent(in) :: xi, eta
+  real(kind=dp), intent(in) :: nodes(4,2)
+  real(kind=dp)             :: mapping_semiso(2)
+  
+  real(kind=dp)             :: a_bot, b_bot
+  real(kind=dp)             :: thetabarbot, dthetabot
+  real(kind=dp)             :: s_bot, z_bot, s_top, z_top
+  real(kind=dp)             :: sbar, ds, slope, intersect
+ 
+  call compute_parameters_semiso(nodes, a_bot, b_bot, thetabarbot, dthetabot)
+  
+  call compute_sz_xi_sline_so(s_top, z_top, xi, nodes)
+  call compute_sz_xi(s_bot, z_bot, xi, a_bot, b_bot, thetabarbot, dthetabot)
+  
+  sbar = (s_bot + s_top) / 2
+  ds = s_top - s_bot
+  
+  mapping_semiso(1) = sbar + ds * eta / 2
+  if (abs(ds) > 1.d-10) then
+     intersect = (z_bot * s_top - z_top * s_bot) / ds
+     slope = (z_top - z_bot) / ds
+     mapping_semiso(2) = slope * (sbar + ds * eta / 2) + intersect
+  else
+     mapping_semiso(2) = (z_bot + z_top) / 2 + eta * (z_top - z_bot) / 2
+  end if
+
+end function mapping_semiso
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 pure subroutine compute_sz_xi_sline_no(s, z, xi, nodes)
 
   real(kind=dp), intent(out) :: s,z
@@ -65,6 +101,18 @@ pure subroutine compute_sz_xi_sline_no(s, z, xi, nodes)
   z = ((1 + xi) * nodes(2,2) + (1 - xi) * nodes(1,2)) / 2
 
 end subroutine compute_sz_xi_sline_no
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_sz_xi_sline_so(s, z, xi, nodes)
+
+  real(kind=dp), intent(out) :: s, z
+  real(kind=dp), intent(in)  :: xi, nodes(4,2)
+
+  s = ((1 + xi) * nodes(3,1) + (1 - xi) * nodes(4,1)) / 2
+  z = ((1 + xi) * nodes(3,2) + (1 - xi) * nodes(4,2)) / 2
+
+end subroutine compute_sz_xi_sline_so
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

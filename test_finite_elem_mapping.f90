@@ -89,6 +89,84 @@ subroutine test_mapping_semino_xieta_to_sz()
 end subroutine test_mapping_semino_xieta_to_sz
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_mapping_semiso_xieta_to_sz()
+! semiso: linear at top, curved at bottom
+
+   real(kind=dp)    :: xi, eta, sz(2), sz_ref(2)
+   real(kind=dp)    :: nodes(4,2)
+
+! 4 - - - - - - - 3
+! |       ^       |
+! |   eta |       |
+! |       |       |
+! |        --->   |
+! |        xi     |
+! |               |
+! |               |
+! 1 - - - - - - - 2
+    
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+   
+   xi = 0
+   eta = 1
+   sz_ref = [1.5, 1.5]
+   sz = mapping_semiso(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semiso element 1, [0,1]')
+   
+   xi = 0
+   eta = -1
+   sz_ref = [.5**.5, .5**.5]
+   sz = mapping_semiso(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semiso element 1, [0,-1]')
+   
+
+   xi = -1
+   eta = -1
+   sz_ref = [0, 1]
+   sz = mapping_semiso(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semiso element 1, [-1,-1]')
+   
+
+   xi = 1
+   eta = -1
+   sz_ref = [1, 0]
+   sz = mapping_semiso(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semiso element 1, [1,-1]')
+   
+
+   xi = 1
+   eta = 1
+   sz_ref = [3, 0]
+   sz = mapping_semiso(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semiso element 1, [1,1]')
+   
+
+   xi = -1
+   eta = 1
+   sz_ref = [0, 3]
+   sz = mapping_semiso(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semiso element 1, [-1,1]')
+   
+
+end subroutine test_mapping_semiso_xieta_to_sz
+!-----------------------------------------------------------------------------------------
+
 !!!!!!! SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !-----------------------------------------------------------------------------------------
