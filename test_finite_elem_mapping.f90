@@ -9,6 +9,59 @@ module test_finite_elem_mapping
 
 contains
 
+!!!!!!! SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!-----------------------------------------------------------------------------------------
+subroutine test_mapping_speroidal_xieta_to_sz()
+
+   real(kind=dp)    :: xi, eta, sz(2), sz_ref(2)
+   real(kind=dp)    :: nodes(4,2)
+
+! 4 - - - - - - - 3
+! |       ^       |
+! |   eta |       |
+! |       |       |
+! |        --->   |
+! |        xi     |
+! |               |
+! |               |
+! 1 - - - - - - - 2
+    
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+
+   xi = 0
+   eta = 0
+   sz_ref = [2**.5, 2**.5]
+   sz = mapping_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'spheroidal element 1, [0 ,0]')
+
+   xi = 1
+   eta = 1
+   sz_ref = [3, 0]
+   sz = mapping_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'spheroidal element 1, [1 ,1]')
+
+   xi = -1
+   eta = -1
+   sz_ref = [0, 1]
+   sz = mapping_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'spheroidal element 1, [0 ,0]')
+
+
+end subroutine test_mapping_speroidal_xieta_to_sz
+!-----------------------------------------------------------------------------------------
+
+!!!!!!! SUBPAR MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !-----------------------------------------------------------------------------------------
 subroutine test_mapping_subpar_xieta_to_sz()
 

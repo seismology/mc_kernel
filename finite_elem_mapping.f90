@@ -5,11 +5,64 @@ module finite_elem_mapping
     implicit none
     private
 
+    public  :: mapping_spheroid
+
     public  :: mapping_subpar
     public  :: inv_mapping_subpar
     public  :: jacobian_subpar
     public  :: inv_jacobian_subpar
 contains
+
+!!!!!!! SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!-----------------------------------------------------------------------------------------
+pure function mapping_spheroid(xi, eta, nodes)
+!< The mapping for type (A) in paper 2.
+
+  real(kind=dp), intent(in)   :: xi, eta
+  real(kind=dp), intent(in)   :: nodes(4,2)
+  real(kind=dp)               :: mapping_spheroid(2)
+  real(kind=dp), dimension(4) :: theta_ser, r_ser
+
+  call compute_theta_r(theta_ser, r_ser, nodes)
+
+  mapping_spheroid(1) &
+    = (1 + eta) * r_ser(4) / 2 &
+        * dsin(((1 - xi) * theta_ser(4) + (1 + xi) * theta_ser(3)) / 2) &
+      + (1 - eta) * r_ser(1) / 2 &
+        * dsin(((1 - xi) * theta_ser(1) + (1 + xi) * theta_ser(2)) / 2 )
+  
+  mapping_spheroid(2) &
+    = (1 + eta) * r_ser(4) / 2 &
+        * dcos(((1 - xi) * theta_ser(4) + (1 + xi) * theta_ser(3)) / 2) &
+      + (1 - eta) * r_ser(1) / 2 &
+        * dcos(((1 - xi) * theta_ser(1) + (1 + xi) * theta_ser(2)) / 2 )
+
+end function mapping_spheroid
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_theta_r(theta, r, nodes)
+  
+  real(kind=dp), dimension(4,2), intent(in) :: nodes
+  real(kind=dp), dimension(4), intent(out)  :: theta, r
+  integer                                   :: i
+  
+  do i=1,4
+    r(i) = sqrt(nodes(i,1)**2 + nodes(i,2)**2)
+  
+    if (r(i) /= 0) then
+       theta(i) = dacos(nodes(i,2) / r(i))  
+    else
+       theta(i) = 0
+    end if
+  enddo
+
+end subroutine compute_theta_r
+!-----------------------------------------------------------------------------------------
+
+
+!!!!!!! SUBPAR MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !-----------------------------------------------------------------------------------------
 pure function inv_mapping_subpar(s, z, nodes)
