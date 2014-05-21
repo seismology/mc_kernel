@@ -9,6 +9,86 @@ module test_finite_elem_mapping
 
 contains
 
+!!!!!!! SEMI SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!-----------------------------------------------------------------------------------------
+subroutine test_mapping_semino_xieta_to_sz()
+! semino: linear at bottom, curved at top
+
+   real(kind=dp)    :: xi, eta, sz(2), sz_ref(2)
+   real(kind=dp)    :: nodes(4,2)
+
+! 4 - - - - - - - 3
+! |       ^       |
+! |   eta |       |
+! |       |       |
+! |        --->   |
+! |        xi     |
+! |               |
+! |               |
+! 1 - - - - - - - 2
+    
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+   
+   xi = 0
+   eta = 1
+   sz_ref = [3 / 2**.5, 3 / 2**.5]
+   sz = mapping_semino(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semino element 1, [0,1]')
+   
+   xi = 0
+   eta = -1
+   sz_ref = [.5, .5]
+   sz = mapping_semino(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semino element 1, [0,-1]')
+   
+
+   xi = -1
+   eta = -1
+   sz_ref = [0, 1]
+   sz = mapping_semino(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semino element 1, [-1,-1]')
+   
+
+   xi = 1
+   eta = -1
+   sz_ref = [1, 0]
+   sz = mapping_semino(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semino element 1, [1,-1]')
+   
+
+   xi = 1
+   eta = 1
+   sz_ref = [3, 0]
+   sz = mapping_semino(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semino element 1, [1,1]')
+   
+
+   xi = -1
+   eta = 1
+   sz_ref = [0, 3]
+   sz = mapping_semino(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
+                                 1e-7, 'semino element 1, [-1,1]')
+   
+
+end subroutine test_mapping_semino_xieta_to_sz
+!-----------------------------------------------------------------------------------------
+
 !!!!!!! SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !-----------------------------------------------------------------------------------------
@@ -54,7 +134,7 @@ subroutine test_mapping_spheroidal_xieta_to_sz()
    sz = mapping_spheroid(xi, eta, nodes)
 
    call assert_comparable_real1d(1 + real(sz), 1 + real(sz_ref), &
-                                 1e-7, 'spheroidal element 1, [0 ,0]')
+                                 1e-7, 'spheroidal element 1, [-1,-1]')
 
 
 end subroutine test_mapping_spheroidal_xieta_to_sz
@@ -76,7 +156,7 @@ subroutine test_inv_mapping_spheroidal_sz_to_xieta
    xieta = inv_mapping_spheroid(s, z, nodes)
 
    call assert_comparable_real1d(real(xieta), real(xieta_ref), &
-                                 1e-7, 'ref to ref is identity, [0 ,0]')
+                                 1e-7, 'inv spheroidal element1, [-1,-1]')
    
    s = 0 
    z = 3
@@ -84,7 +164,7 @@ subroutine test_inv_mapping_spheroidal_sz_to_xieta
    xieta = inv_mapping_spheroid(s, z, nodes)
 
    call assert_comparable_real1d(real(xieta), real(xieta_ref), &
-                                 1e-7, 'ref to ref is identity, [0 ,0]')
+                                 1e-7, 'inv spheroidal element1, [-1,1]')
    
    s = 1
    z = 0
@@ -92,7 +172,7 @@ subroutine test_inv_mapping_spheroidal_sz_to_xieta
    xieta = inv_mapping_spheroid(s, z, nodes)
 
    call assert_comparable_real1d(real(xieta), real(xieta_ref), &
-                                 1e-7, 'ref to ref is identity, [0 ,0]')
+                                 1e-7, 'inv spheroidal element1, [1,-1]')
 
    s = 3
    z = 0
@@ -100,7 +180,7 @@ subroutine test_inv_mapping_spheroidal_sz_to_xieta
    xieta = inv_mapping_spheroid(s, z, nodes)
 
    call assert_comparable_real1d(real(xieta), real(xieta_ref), &
-                                 1e-7, 'ref to ref is identity, [0 ,0]')
+                                 1e-7, 'inv spheroidal element1, [1,1]')
    
    s = 2**.5
    z = 2**.5
@@ -108,7 +188,7 @@ subroutine test_inv_mapping_spheroidal_sz_to_xieta
    xieta = inv_mapping_spheroid(s, z, nodes)
 
    call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
-                                 1e-7, 'ref to ref is identity, [0 ,0]')
+                                 1e-7, 'inv spheroidal element1, [0,0]')
 
 end subroutine test_inv_mapping_spheroidal_sz_to_xieta
 !-----------------------------------------------------------------------------------------
@@ -136,7 +216,7 @@ subroutine test_jacobian_spheroidal()
 
    call assert_comparable_real1d(1 + real(reshape(jacobian, [4])), &
                                  1 + real(reshape(jacobian_ref, [4])), &
-                                 1e-7, 'ref to ref, jacobian is identity')
+                                 1e-7, 'spheroidal jacobian element 1, [-1,-1]')
 
    xi = -1
    eta = 1
@@ -146,7 +226,7 @@ subroutine test_jacobian_spheroidal()
 
    call assert_comparable_real1d(1 + real(reshape(jacobian, [4])), &
                                  1 + real(reshape(jacobian_ref, [4])), &
-                                 1e-7, 'ref to ref, jacobian is identity')
+                                 1e-7, 'spheroidal jacobian element 1, [-1,1]')
 
    xi = 1
    eta = -1
@@ -156,7 +236,7 @@ subroutine test_jacobian_spheroidal()
 
    call assert_comparable_real1d(1 + real(reshape(jacobian, [4])), &
                                  1 + real(reshape(jacobian_ref, [4])), &
-                                 1e-7, 'ref to ref, jacobian is identity')
+                                 1e-7, 'spheroidal jacobian element 1, [1,-1]')
 
    xi = 1
    eta = 1
@@ -166,7 +246,7 @@ subroutine test_jacobian_spheroidal()
 
    call assert_comparable_real1d(1 + real(reshape(jacobian, [4])), &
                                  1 + real(reshape(jacobian_ref, [4])), &
-                                 1e-7, 'ref to ref, jacobian is identity')
+                                 1e-7, 'spheroidal jacobian element 1, [1,1]')
 
 end subroutine test_jacobian_spheroidal
 !-----------------------------------------------------------------------------------------
@@ -194,7 +274,7 @@ subroutine test_inv_jacobian_spheroid()
 
    call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
                                  1 + real(reshape(inv_jacobian_ref, [4])), &
-                                 1e-7, 'ref to ref, inv_jacobian is identity')
+                                 1e-7, 'inv spheroidal jacobian element 1, [-1,-1]')
    
    xi = -1
    eta = 1
@@ -204,7 +284,7 @@ subroutine test_inv_jacobian_spheroid()
 
    call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
                                  1 + real(reshape(inv_jacobian_ref, [4])), &
-                                 1e-7, 'ref to ref, inv_jacobian is identity')
+                                 1e-7, 'inv spheroidal jacobian element 1, [-1,1]')
    
    xi = 1
    eta = -1
@@ -214,7 +294,7 @@ subroutine test_inv_jacobian_spheroid()
 
    call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
                                  1 + real(reshape(inv_jacobian_ref, [4])), &
-                                 1e-7, 'ref to ref, inv_jacobian is identity')
+                                 1e-7, 'inv spheroidal jacobian element 1, [1,-1]')
 
    xi = 1
    eta = 1
@@ -224,7 +304,7 @@ subroutine test_inv_jacobian_spheroid()
 
    call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
                                  1 + real(reshape(inv_jacobian_ref, [4])), &
-                                 1e-7, 'ref to ref, inv_jacobian is identity')
+                                 1e-7, 'inv spheroidal jacobian element 1, [1,1]')
 
 end subroutine test_inv_jacobian_spheroid
 !-----------------------------------------------------------------------------------------

@@ -5,6 +5,8 @@ module finite_elem_mapping
     implicit none
     private
 
+    public  :: mapping_semino
+
     public  :: mapping_spheroid
     public  :: inv_mapping_spheroid
     public  :: jacobian_spheroid
@@ -15,6 +17,132 @@ module finite_elem_mapping
     public  :: jacobian_subpar
     public  :: inv_jacobian_subpar
 contains
+
+!!!!!!! SEMI SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!-----------------------------------------------------------------------------------------
+pure function mapping_semino(xi, eta, nodes)
+! We are working in polar coordinates here: theta is the latitude. 
+! semino: linear at bottom, curved at top
+
+  real(kind=dp), intent(in) :: xi, eta
+  real(kind=dp), intent(in) :: nodes(4,2)
+  real(kind=dp)             :: mapping_semino(2)
+
+  real(kind=dp)             :: a_top, b_top
+  real(kind=dp)             :: thetabartop, dthetatop 
+  real(kind=dp)             :: s_bot, z_bot, s_top, z_top  
+  real(kind=dp)             :: sbar, ds, slope, intersect
+
+  call compute_parameters_semino(nodes, a_top, b_top, thetabartop, dthetatop)
+
+  call compute_sz_xi_sline_no(s_bot, z_bot, xi, nodes)
+  call compute_sz_xi(s_top, z_top, xi, a_top, b_top, thetabartop, dthetatop)
+
+  sbar = (s_bot + s_top) / 2
+  ds = s_top - s_bot
+
+  mapping_semino(1) = sbar + ds * eta / 2
+
+  if (abs(ds) > 1.d-10) then
+     intersect = (z_bot * s_top - z_top * s_bot) / ds   
+     slope = (z_top - z_bot) / ds
+     mapping_semino(2) = slope * (sbar + ds * eta / 2) + intersect 
+  else
+     mapping_semino(2) = (z_bot + z_top) / 2 + eta * (z_top - z_bot) / 2
+  end if
+
+end function mapping_semino
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_sz_xi_sline_no(s, z, xi, nodes)
+
+  real(kind=dp), intent(out) :: s,z
+  real(kind=dp), intent(in)  :: xi, nodes(4,2)
+
+  s = ((1 + xi) * nodes(2,1) + (1 - xi) * nodes(1,1)) / 2
+  z = ((1 + xi) * nodes(2,2) + (1 - xi) * nodes(1,2)) / 2
+
+end subroutine compute_sz_xi_sline_no
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_sz_xi(s, z, xi, a, b, thetabar, dtheta)
+
+  real(kind=dp), intent(out) :: s,z
+  real(kind=dp), intent(in)  :: xi, a, b, thetabar, dtheta
+  
+  s = a * dcos(thetabar + xi * dtheta / 2)
+  z = b * dsin(thetabar + xi * dtheta / 2)
+
+end subroutine compute_sz_xi
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_parameters_semino(nodes, atop, btop, thetabartop, dthetatop)
+
+  real(kind=dp), intent(in)  :: nodes(4,2)
+  real(kind=dp), intent(out) :: atop, btop
+  real(kind=dp), intent(out) :: thetabartop, dthetatop
+  real(kind=dp)              :: theta3, theta4
+  
+  call compute_ab(atop, btop, nodes(4,1), nodes(4,2), nodes(3,1), nodes(3,2))
+  theta3 = compute_theta(nodes(3,1), nodes(3,2), atop, btop)
+  theta4 = compute_theta(nodes(4,1), nodes(4,2), atop, btop)
+
+  thetabartop = (theta4 + theta3) / 2
+  dthetatop = theta3 - theta4
+
+end subroutine compute_parameters_semino
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_parameters_semiso(nodes, abot, bbot, thetabarbot, dthetabot)
+
+  real(kind=dp), intent(in)  :: nodes(4,2)
+  real(kind=dp), intent(out) :: abot, bbot
+  real(kind=dp), intent(out) :: thetabarbot, dthetabot
+  real(kind=dp)              :: theta1, theta2
+  
+  call compute_ab(abot, bbot, nodes(1,1), nodes(1,2), nodes(2,1), nodes(2,2))
+  theta2 = compute_theta(nodes(2,1), nodes(2,2), abot, bbot)
+  theta1 = compute_theta(nodes(1,1), nodes(1,2), abot, bbot)
+
+  thetabarbot = (theta1 + theta2) / 2
+  dthetabot = theta2 - theta1
+
+end subroutine compute_parameters_semiso
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_ab(a, b, s1, z1, s2, z2)
+
+  real(kind=dp), intent(out) :: a, b
+  real(kind=dp), intent(in)  :: s1, z1, s2, z2
+
+  a = dsqrt(dabs((s2**2 * z1**2 - z2**2 * s1**2) / (z1**2 - z2**2)))
+  b = dsqrt(dabs((z1**2 * s2**2 - z2**2 * s1**2) / (s2**2 - s1**2))) 
+
+end subroutine compute_ab
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function compute_theta(s, z, a, b)
+!	This routine returns the latitude theta, given s and z.
+
+  real(kind=dp), intent(in)  :: s, z, a, b
+  real(kind=dp)              :: compute_theta
+
+  if (s >= 0d0) then
+     compute_theta = datan2(z*a, s*b)  
+  else
+     if (z > 0) compute_theta =  pi / 2
+     if (z < 0) compute_theta = -pi / 2
+  end if
+
+end function compute_theta
+!-----------------------------------------------------------------------------------------
 
 !!!!!!! SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -28,8 +156,7 @@ pure function inv_mapping_spheroid(s, z, nodes)
   real(kind=dp)             :: inv_mapping_spheroid(2), inv_jacobian(2,2)
   real(kind=dp)             :: xi, eta, sz(2), ds, dz
   integer                   :: i
-  integer, parameter        :: numiter = 10 !@TODO: verify convergence within 10
-                                            !       iterations in nonlinear elements
+  integer, parameter        :: numiter = 10
 
   ! starting value (center of the element)
   xi  = 0
@@ -167,8 +294,7 @@ pure function inv_mapping_subpar(s, z, nodes)
   real(kind=dp)             :: inv_mapping_subpar(2), inv_jacobian(2,2)
   real(kind=dp)             :: xi, eta, sz(2), ds, dz
   integer                   :: i
-  integer, parameter        :: numiter = 10 !@TODO: verify convergence within 10
-                                            !       iterations in nonlinear elements
+  integer, parameter        :: numiter = 10
 
   ! starting value (center of the element)
   xi  = 0
