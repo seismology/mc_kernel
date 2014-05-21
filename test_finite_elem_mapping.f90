@@ -118,6 +118,64 @@ subroutine test_jacobian_spheroidal()
 end subroutine test_jacobian_spheroidal
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_inv_jacobian_spheroid()
+
+!                | dxi  / ds  dxi  / dz |
+! inv_jacobian = |                      |
+!                | deta / ds  deta / dz |
+
+   real(kind=dp)    :: xi, eta, inv_jacobian(2,2), inv_jacobian_ref(2,2)
+   real(kind=dp)    :: nodes(4,2)
+
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+
+   xi = -1
+   eta = -1
+   inv_jacobian_ref(1,:) = [1d0 / datan(1d0),0d0]
+   inv_jacobian_ref(2,:) = [0d0             ,1d0]
+   inv_jacobian = inv_jacobian_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
+                                 1 + real(reshape(inv_jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, inv_jacobian is identity')
+   
+   xi = -1
+   eta = 1
+   inv_jacobian_ref(1,:) = [1d0 / datan(1d0) / 3d0,0d0]
+   inv_jacobian_ref(2,:) = [0d0                   ,1d0]
+   inv_jacobian = inv_jacobian_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
+                                 1 + real(reshape(inv_jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, inv_jacobian is identity')
+   
+   xi = 1
+   eta = -1
+   inv_jacobian_ref(1,:) = [0d0,-1d0 / datan(1d0)]
+   inv_jacobian_ref(2,:) = [1d0,0d0]
+   inv_jacobian = inv_jacobian_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
+                                 1 + real(reshape(inv_jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, inv_jacobian is identity')
+
+   xi = 1
+   eta = 1
+   inv_jacobian_ref(1,:) = [0d0,-1d0 / datan(1d0) / 3d0]
+   inv_jacobian_ref(2,:) = [1d0,0d0]
+   inv_jacobian = inv_jacobian_spheroid(xi, eta, nodes)
+
+   call assert_comparable_real1d(1 + real(reshape(inv_jacobian, [4])), &
+                                 1 + real(reshape(inv_jacobian_ref, [4])), &
+                                 1e-7, 'ref to ref, inv_jacobian is identity')
+
+end subroutine test_inv_jacobian_spheroid
+!-----------------------------------------------------------------------------------------
+
 
 !!!!!!! SUBPAR MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
