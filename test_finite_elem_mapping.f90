@@ -149,6 +149,43 @@ subroutine test_inv_mapping_subpar_sz_to_xieta
    call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
                                  1e-7, 'stretching + translation, random')
 
+   nodes(1,:) = [1,1]
+   nodes(2,:) = [4,1]
+   nodes(3,:) = [7,3]
+   nodes(4,:) = [2,3]
+
+   s = 1
+   z = 1
+   xieta_ref = [-1,-1]
+   xieta = inv_mapping_subpar(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'nonlinear element, [-1 ,-1]')
+   
+   s = 3
+   z = 1.5
+   xieta_ref = [0.d0,-0.5d0]
+   xieta = inv_mapping_subpar(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'nonlinear element, [0, -.5]')
+
+   s = 4.5
+   z = 2
+   xieta_ref = [0.5d0,0.0d0]
+   xieta = inv_mapping_subpar(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'nonlinear element, [0.5, 0]')
+
+   s = 7
+   z = 3
+   xieta_ref = [1,1]
+   xieta = inv_mapping_subpar(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'nonlinear element, [1 ,1]')
+
 end subroutine test_inv_mapping_subpar_sz_to_xieta
 !-----------------------------------------------------------------------------------------
 

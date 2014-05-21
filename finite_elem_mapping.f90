@@ -21,8 +21,8 @@ pure function inv_mapping_subpar(s, z, nodes)
   real(kind=dp)             :: inv_mapping_subpar(2), inv_jacobian(2,2)
   real(kind=dp)             :: xi, eta, sz(2), ds, dz
   integer                   :: i
-  integer, parameter        :: numiter = 5 !@TODO: verify convergence within 5
-                                           !       iterations in nonlinear elements
+  integer, parameter        :: numiter = 10 !@TODO: verify convergence within 10
+                                            !       iterations in nonlinear elements
 
   ! starting value (center of the element)
   xi  = 0
@@ -34,6 +34,11 @@ pure function inv_mapping_subpar(s, z, nodes)
      ! distance in physical domain
      ds = s - sz(1)
      dz = z - sz(2)
+
+     ! check convergence
+     if ((ds**2 + dz**2) / (s**2 + z**2) < 1e-7**2) then
+        exit
+     endif
 
      inv_jacobian = inv_jacobian_subpar(xi, eta, nodes)
      !                | dxi  / ds  dxi  / dz |
