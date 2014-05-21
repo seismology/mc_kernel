@@ -6,6 +6,7 @@ module finite_elem_mapping
     private
 
     public  :: mapping_spheroid
+    public  :: inv_mapping_spheroid
     public  :: jacobian_spheroid
     public  :: inv_jacobian_spheroid
 
@@ -16,6 +17,50 @@ module finite_elem_mapping
 contains
 
 !!!!!!! SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!-----------------------------------------------------------------------------------------
+pure function inv_mapping_spheroid(s, z, nodes)
+!< This routines computes the coordinates in the reference coordinates xi, eta
+!! this is nonlinear, but as the forward mapping is smooth, the gradient search
+!! converges very quickly
+  
+  real(kind=dp), intent(in) :: s, z, nodes(4,2)
+  real(kind=dp)             :: inv_mapping_spheroid(2), inv_jacobian(2,2)
+  real(kind=dp)             :: xi, eta, sz(2), ds, dz
+  integer                   :: i
+  integer, parameter        :: numiter = 10 !@TODO: verify convergence within 10
+                                            !       iterations in nonlinear elements
+
+  ! starting value (center of the element)
+  xi  = 0
+  eta = 0
+
+  do i=1, numiter
+     sz = mapping_spheroid(xi, eta, nodes)
+
+     ! distance in physical domain
+     ds = s - sz(1)
+     dz = z - sz(2)
+
+     ! check convergence
+     if ((ds**2 + dz**2) / (s**2 + z**2) < 1e-7**2) then
+        exit
+     endif
+
+     inv_jacobian = inv_jacobian_spheroid(xi, eta, nodes)
+     !                | dxi  / ds  dxi  / dz |
+     ! inv_jacobian = |                      |
+     !                | deta / ds  deta / dz |
+
+     ! update
+     xi  =  xi + inv_jacobian(1,1) * ds + inv_jacobian(1,2) * dz
+     eta = eta + inv_jacobian(2,1) * ds + inv_jacobian(2,2) * dz
+  enddo
+
+  inv_mapping_spheroid = [xi, eta]
+
+end function inv_mapping_spheroid
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 pure function mapping_spheroid(xi, eta, nodes)

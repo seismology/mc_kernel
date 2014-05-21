@@ -12,7 +12,7 @@ contains
 !!!!!!! SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !-----------------------------------------------------------------------------------------
-subroutine test_mapping_speroidal_xieta_to_sz()
+subroutine test_mapping_spheroidal_xieta_to_sz()
 
    real(kind=dp)    :: xi, eta, sz(2), sz_ref(2)
    real(kind=dp)    :: nodes(4,2)
@@ -57,7 +57,60 @@ subroutine test_mapping_speroidal_xieta_to_sz()
                                  1e-7, 'spheroidal element 1, [0 ,0]')
 
 
-end subroutine test_mapping_speroidal_xieta_to_sz
+end subroutine test_mapping_spheroidal_xieta_to_sz
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_inv_mapping_spheroidal_sz_to_xieta
+   real(kind=dp)    :: s, z, xieta(2), xieta_ref(2)
+   real(kind=dp)    :: nodes(4,2)
+    
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+
+   s = 0 
+   z = 1
+   xieta_ref = [-1, -1]
+   xieta = inv_mapping_spheroid(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'ref to ref is identity, [0 ,0]')
+   
+   s = 0 
+   z = 3
+   xieta_ref = [-1, 1]
+   xieta = inv_mapping_spheroid(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'ref to ref is identity, [0 ,0]')
+   
+   s = 1
+   z = 0
+   xieta_ref = [1, -1]
+   xieta = inv_mapping_spheroid(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'ref to ref is identity, [0 ,0]')
+
+   s = 3
+   z = 0
+   xieta_ref = [1, 1]
+   xieta = inv_mapping_spheroid(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'ref to ref is identity, [0 ,0]')
+   
+   s = 2**.5
+   z = 2**.5
+   xieta_ref = [0, 0]
+   xieta = inv_mapping_spheroid(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'ref to ref is identity, [0 ,0]')
+
+end subroutine test_inv_mapping_spheroidal_sz_to_xieta
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

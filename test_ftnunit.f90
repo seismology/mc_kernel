@@ -24,7 +24,8 @@ subroutine test_all
 
   ! test_finite_elem_mapping
   write(6,'(/,a)') 'TEST FINITE ELEMENT MODULE'
-  call test(test_mapping_speroidal_xieta_to_sz, 'spheroidal mapping (xi,eta) to (s,z)')
+  call test(test_mapping_spheroidal_xieta_to_sz, 'spheroidal mapping (xi,eta) to (s,z)')
+  call test(test_inv_mapping_spheroidal_sz_to_xieta, 'inv spheroidal mapping (s,z) to (xi,eta)')
   call test(test_jacobian_spheroidal, 'jacobian spheroidal')
   call test(test_inv_jacobian_spheroid, 'inverse jacobian spheroid')
 
