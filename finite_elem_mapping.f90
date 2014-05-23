@@ -5,9 +5,10 @@ module finite_elem_mapping
     implicit none
     private
 
-    public  :: mapping_semiso
-
     public  :: mapping_semino
+    public  :: jacobian_semino
+
+    public  :: mapping_semiso
 
     public  :: mapping_spheroid
     public  :: inv_mapping_spheroid
@@ -34,25 +35,13 @@ pure function mapping_semino(xi, eta, nodes)
   real(kind=dp)             :: a_top, b_top
   real(kind=dp)             :: thetabartop, dthetatop 
   real(kind=dp)             :: s_bot, z_bot, s_top, z_top  
-  real(kind=dp)             :: sbar, ds, slope, intersect
 
   call compute_parameters_semino(nodes, a_top, b_top, thetabartop, dthetatop)
-
   call compute_sz_xi_sline_no(s_bot, z_bot, xi, nodes)
   call compute_sz_xi(s_top, z_top, xi, a_top, b_top, thetabartop, dthetatop)
 
-  sbar = (s_bot + s_top) / 2
-  ds = s_top - s_bot
-
-  mapping_semino(1) = sbar + ds * eta / 2
-
-  if (abs(ds) > 1.d-10) then
-     intersect = (z_bot * s_top - z_top * s_bot) / ds   
-     slope = (z_top - z_bot) / ds
-     mapping_semino(2) = slope * (sbar + ds * eta / 2) + intersect 
-  else
-     mapping_semino(2) = (z_bot + z_top) / 2 + eta * (z_top - z_bot) / 2
-  end if
+  mapping_semino(1) = (s_bot + s_top) / 2 + eta * (s_top - s_bot) / 2
+  mapping_semino(2) = (z_bot + z_top) / 2 + eta * (z_top - z_bot) / 2
 
 end function mapping_semino
 !-----------------------------------------------------------------------------------------
@@ -60,7 +49,7 @@ end function mapping_semino
 !-----------------------------------------------------------------------------------------
 pure function mapping_semiso(xi, eta, nodes)
 ! We are working in polar coordinates here: theta is the latitude. 
-! semiso: linear at tp[, curved at bottom
+! semiso: linear at top, curved at bottom
  
   real(kind=dp), intent(in) :: xi, eta
   real(kind=dp), intent(in) :: nodes(4,2)
@@ -69,26 +58,70 @@ pure function mapping_semiso(xi, eta, nodes)
   real(kind=dp)             :: a_bot, b_bot
   real(kind=dp)             :: thetabarbot, dthetabot
   real(kind=dp)             :: s_bot, z_bot, s_top, z_top
-  real(kind=dp)             :: sbar, ds, slope, intersect
  
   call compute_parameters_semiso(nodes, a_bot, b_bot, thetabarbot, dthetabot)
-  
   call compute_sz_xi_sline_so(s_top, z_top, xi, nodes)
   call compute_sz_xi(s_bot, z_bot, xi, a_bot, b_bot, thetabarbot, dthetabot)
   
-  sbar = (s_bot + s_top) / 2
-  ds = s_top - s_bot
-  
-  mapping_semiso(1) = sbar + ds * eta / 2
-  if (abs(ds) > 1.d-10) then
-     intersect = (z_bot * s_top - z_top * s_bot) / ds
-     slope = (z_top - z_bot) / ds
-     mapping_semiso(2) = slope * (sbar + ds * eta / 2) + intersect
-  else
-     mapping_semiso(2) = (z_bot + z_top) / 2 + eta * (z_top - z_bot) / 2
-  end if
+  mapping_semiso(1) = (s_bot + s_top) / 2 + eta * (s_top - s_bot) / 2
+  mapping_semiso(2) = (z_bot + z_top) / 2 + eta * (z_top - z_bot) / 2
 
 end function mapping_semiso
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function jacobian_semino(xi, eta, nodes)
+! semino: linear at bottom, curved at top
+
+  real(kind=dp), intent(in)  :: xi, eta, nodes(4,2)
+  real(kind=dp)              :: jacobian_semino(2,2)
+
+  real(kind=dp) :: a_top, b_top
+  real(kind=dp) :: thetabartop, dtheta_top
+  real(kind=dp) :: s_bot, z_bot, s_top, z_top
+  real(kind=dp) :: ds_botdxi, dz_botdxi
+  real(kind=dp) :: ds_topdxi, dz_topdxi
+
+  call compute_parameters_semino(nodes, a_top, b_top, thetabartop, dtheta_top)
+  
+  call compute_sz_xi_sline_no(s_bot, z_bot, xi, nodes)
+  call compute_sz_xi(s_top, z_top, xi, a_top, b_top, thetabartop, dtheta_top)
+
+  call compute_dsdxi_dzdxi_sline_no(ds_botdxi, dz_botdxi, nodes)
+  call compute_dsdxi_dzdxi(ds_topdxi, dz_topdxi, xi, a_top, b_top, &
+                           thetabartop, dtheta_top)
+
+  jacobian_semino(1,1) = (ds_botdxi + ds_topdxi) / 2 + eta * (ds_topdxi - ds_botdxi) / 2
+  jacobian_semino(1,2) = (s_top - s_bot) / 2
+
+  jacobian_semino(2,1) = (dz_botdxi + dz_topdxi) / 2 + eta * (dz_topdxi - dz_botdxi) / 2
+  jacobian_semino(2,2) = (z_top - z_bot) / 2
+  
+end function jacobian_semino
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_dsdxi_dzdxi(dsdxi, dzdxi, xi, a, b, thetabar, dtheta)
+  
+  real(kind=dp), intent(out) :: dsdxi, dzdxi
+  real(kind=dp), intent(in)  :: xi, a, b, thetabar, dtheta 
+
+  dsdxi = -a * dtheta * dsin(thetabar + xi * dtheta / 2) / 2
+  dzdxi =  b * dtheta * dcos(thetabar + xi * dtheta / 2) / 2
+ 
+end subroutine compute_dsdxi_dzdxi
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_dsdxi_dzdxi_sline_no(dsdxi, dzdxi, nodes)
+
+  real(kind=dp), intent(out) :: dsdxi, dzdxi
+  real(kind=dp), intent(in)  :: nodes(4,2)
+  
+  dsdxi = (nodes(2,1) - nodes(1,1)) / 2
+  dzdxi = (nodes(2,2) - nodes(1,2)) / 2
+
+end subroutine compute_dsdxi_dzdxi_sline_no
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

@@ -25,6 +25,7 @@ subroutine test_all
   ! test_finite_elem_mapping
   write(6,'(/,a)') 'TEST FINITE ELEMENT MODULE'
   call test(test_mapping_semino_xieta_to_sz, 'semino mapping (xi,eta) to (s,z)')
+  call test(test_jacobian_semino, 'jacobian semino')
   
   call test(test_mapping_semiso_xieta_to_sz, 'semiso mapping (xi,eta) to (s,z)')
 
