@@ -1,6 +1,6 @@
 !=========================================================================================
 module finite_elem_mapping
-    use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out
+    use global_parameters, only            : sp, dp, pi
 
     implicit none
     private
@@ -9,6 +9,7 @@ module finite_elem_mapping
     public  :: jacobian_semino
 
     public  :: mapping_semiso
+    public  :: jacobian_semiso
 
     public  :: mapping_spheroid
     public  :: inv_mapping_spheroid
@@ -77,19 +78,19 @@ pure function jacobian_semino(xi, eta, nodes)
   real(kind=dp)              :: jacobian_semino(2,2)
 
   real(kind=dp) :: a_top, b_top
-  real(kind=dp) :: thetabartop, dtheta_top
+  real(kind=dp) :: thetabar_top, dtheta_top
   real(kind=dp) :: s_bot, z_bot, s_top, z_top
   real(kind=dp) :: ds_botdxi, dz_botdxi
   real(kind=dp) :: ds_topdxi, dz_topdxi
 
-  call compute_parameters_semino(nodes, a_top, b_top, thetabartop, dtheta_top)
+  call compute_parameters_semino(nodes, a_top, b_top, thetabar_top, dtheta_top)
   
   call compute_sz_xi_sline_no(s_bot, z_bot, xi, nodes)
-  call compute_sz_xi(s_top, z_top, xi, a_top, b_top, thetabartop, dtheta_top)
+  call compute_sz_xi(s_top, z_top, xi, a_top, b_top, thetabar_top, dtheta_top)
 
   call compute_dsdxi_dzdxi_sline_no(ds_botdxi, dz_botdxi, nodes)
   call compute_dsdxi_dzdxi(ds_topdxi, dz_topdxi, xi, a_top, b_top, &
-                           thetabartop, dtheta_top)
+                           thetabar_top, dtheta_top)
 
   jacobian_semino(1,1) = (ds_botdxi + ds_topdxi) / 2 + eta * (ds_topdxi - ds_botdxi) / 2
   jacobian_semino(1,2) = (s_top - s_bot) / 2
@@ -98,6 +99,36 @@ pure function jacobian_semino(xi, eta, nodes)
   jacobian_semino(2,2) = (z_top - z_bot) / 2
   
 end function jacobian_semino
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function jacobian_semiso(xi, eta, nodes)
+! semino: linear at to,p curved at bottom
+
+  real(kind=dp), intent(in)  :: xi, eta, nodes(4,2)
+  real(kind=dp)              :: jacobian_semiso(2,2)
+
+  real(kind=dp) :: a_bot, b_bot
+  real(kind=dp) :: thetabar_bot, dtheta_bot
+  real(kind=dp) :: s_bot, z_bot, s_top, z_top
+  real(kind=dp) :: ds_topdxi, dz_topdxi
+  real(kind=dp) :: ds_botdxi, dz_botdxi
+
+  call compute_parameters_semiso(nodes, a_bot, b_bot, thetabar_bot, dtheta_bot)
+  call compute_sz_xi_sline_so(s_top, z_top, xi, nodes)
+  call compute_sz_xi(s_bot, z_bot, xi, a_bot, b_bot, thetabar_bot, dtheta_bot)
+
+  call compute_dsdxi_dzdxi(ds_botdxi, dz_botdxi, xi, a_bot, b_bot, &
+                           thetabar_bot, dtheta_bot)
+  call compute_dsdxi_dzdxi_sline_so(ds_topdxi, dz_topdxi, nodes)
+
+  jacobian_semiso(1,1) = (ds_botdxi + ds_topdxi) / 2 + eta * (ds_topdxi - ds_botdxi) / 2
+  jacobian_semiso(1,2) = (s_top - s_bot) / 2
+
+  jacobian_semiso(2,1) = (dz_botdxi + dz_topdxi) / 2 + eta * (dz_topdxi - dz_botdxi) / 2
+  jacobian_semiso(2,2) = (z_top - z_bot) / 2
+
+end function jacobian_semiso
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -122,6 +153,18 @@ pure subroutine compute_dsdxi_dzdxi_sline_no(dsdxi, dzdxi, nodes)
   dzdxi = (nodes(2,2) - nodes(1,2)) / 2
 
 end subroutine compute_dsdxi_dzdxi_sline_no
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure subroutine compute_dsdxi_dzdxi_sline_so(dsdxi, dzdxi, nodes)
+  
+  real(kind=dp), intent(out) :: dsdxi, dzdxi
+  real(kind=dp), intent(in)  :: nodes(4,2)
+  
+  dsdxi = (nodes(3,1) - nodes(4,1)) / 2
+  dzdxi = (nodes(3,2) - nodes(4,2)) / 2
+
+end subroutine compute_dsdxi_dzdxi_sline_so
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

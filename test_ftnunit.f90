@@ -28,6 +28,7 @@ subroutine test_all
   call test(test_jacobian_semino, 'jacobian semino')
   
   call test(test_mapping_semiso_xieta_to_sz, 'semiso mapping (xi,eta) to (s,z)')
+  call test(test_jacobian_semiso, 'jacobian semiso')
 
   call test(test_mapping_spheroidal_xieta_to_sz, 'spheroidal mapping (xi,eta) to (s,z)')
   call test(test_inv_mapping_spheroidal_sz_to_xieta, 'inv spheroidal mapping (s,z) to (xi,eta)')
