@@ -7,9 +7,11 @@ module finite_elem_mapping
 
     public  :: mapping_semino
     public  :: jacobian_semino
+    public  :: inv_jacobian_semino
 
     public  :: mapping_semiso
     public  :: jacobian_semiso
+    public  :: inv_jacobian_semiso
 
     public  :: mapping_spheroid
     public  :: inv_mapping_spheroid
@@ -129,6 +131,42 @@ pure function jacobian_semiso(xi, eta, nodes)
   jacobian_semiso(2,2) = (z_top - z_bot) / 2
 
 end function jacobian_semiso
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function inv_jacobian_semino(xi, eta, nodes)
+
+  real(kind=dp), intent(in)  :: xi, eta, nodes(4,2)
+  real(kind=dp)              :: inv_jacobian_semino(2,2)
+  real(kind=dp)              :: jacobian(2,2), jacobian_det
+
+  jacobian = jacobian_semino(xi, eta, nodes)
+  jacobian_det = jacobian(1,1) * jacobian(2,2) - jacobian(2,1) * jacobian(1,2)
+
+  inv_jacobian_semino(1,1) =   jacobian(2,2) / jacobian_det
+  inv_jacobian_semino(2,1) = - jacobian(2,1) / jacobian_det
+  inv_jacobian_semino(1,2) = - jacobian(1,2) / jacobian_det
+  inv_jacobian_semino(2,2) =   jacobian(1,1) / jacobian_det
+
+end function inv_jacobian_semino
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function inv_jacobian_semiso(xi, eta, nodes)
+
+  real(kind=dp), intent(in)  :: xi, eta, nodes(4,2)
+  real(kind=dp)              :: inv_jacobian_semiso(2,2)
+  real(kind=dp)              :: jacobian(2,2), jacobian_det
+
+  jacobian = jacobian_semiso(xi, eta, nodes)
+  jacobian_det = jacobian(1,1) * jacobian(2,2) - jacobian(2,1) * jacobian(1,2)
+
+  inv_jacobian_semiso(1,1) =   jacobian(2,2) / jacobian_det
+  inv_jacobian_semiso(2,1) = - jacobian(2,1) / jacobian_det
+  inv_jacobian_semiso(1,2) = - jacobian(1,2) / jacobian_det
+  inv_jacobian_semiso(2,2) =   jacobian(1,1) / jacobian_det
+
+end function inv_jacobian_semiso
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
