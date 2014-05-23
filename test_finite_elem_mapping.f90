@@ -90,6 +90,68 @@ end subroutine test_mapping_semino_xieta_to_sz
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_inv_mapping_semino_sz_to_xieta
+! semino: linear at bottom, curved at top
+   real(kind=dp)    :: s, z, xieta(2), xieta_ref(2)
+   real(kind=dp)    :: nodes(4,2)
+    
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+
+   s = 0 
+   z = 1
+   xieta_ref = [-1, -1]
+   xieta = inv_mapping_semino(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'inv seminoal element1, [-1,-1]')
+   
+   s = 0 
+   z = 3
+   xieta_ref = [-1, 1]
+   xieta = inv_mapping_semino(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'inv seminoal element1, [-1,1]')
+   
+   s = 1
+   z = 0
+   xieta_ref = [1, -1]
+   xieta = inv_mapping_semino(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'inv seminoal element1, [1,-1]')
+
+   s = 3
+   z = 0
+   xieta_ref = [1, 1]
+   xieta = inv_mapping_semino(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'inv seminoal element1, [1,1]')
+   
+   s = .5
+   z = .5
+   xieta_ref = [0, -1]
+   xieta = inv_mapping_semino(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'inv seminoal element1, [0,0]')
+
+   s = .5**.5 * 3.
+   z = .5**.5 * 3.
+   xieta_ref = [0, 1]
+   xieta = inv_mapping_semino(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'inv seminoal element1, [0,0]')
+
+end subroutine test_inv_mapping_semino_sz_to_xieta
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_jacobian_semino()
 ! semino: linear at bottom, curved at top
 
@@ -286,8 +348,70 @@ end subroutine test_mapping_semiso_xieta_to_sz
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_inv_mapping_semiso_sz_to_xieta
+! semiso: linear at top, curved at bottom
+   real(kind=dp)    :: s, z, xieta(2), xieta_ref(2)
+   real(kind=dp)    :: nodes(4,2)
+    
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+
+   s = 0 
+   z = 1
+   xieta_ref = [-1, -1]
+   xieta = inv_mapping_semiso(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'inv semisoal element1, [-1,-1]')
+   
+   s = 0 
+   z = 3
+   xieta_ref = [-1, 1]
+   xieta = inv_mapping_semiso(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'inv semisoal element1, [-1,1]')
+   
+   s = 1
+   z = 0
+   xieta_ref = [1, -1]
+   xieta = inv_mapping_semiso(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'inv semisoal element1, [1,-1]')
+
+   s = 3
+   z = 0
+   xieta_ref = [1, 1]
+   xieta = inv_mapping_semiso(s, z, nodes)
+
+   call assert_comparable_real1d(real(xieta), real(xieta_ref), &
+                                 1e-7, 'inv semisoal element1, [1,1]')
+   
+   s = 1.5
+   z = 1.5
+   xieta_ref = [0, 1]
+   xieta = inv_mapping_semiso(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'inv semisoal element1, [0,0]')
+
+   s = .5**.5
+   z = .5**.5
+   xieta_ref = [0, -1]
+   xieta = inv_mapping_semiso(s, z, nodes)
+
+   call assert_comparable_real1d(1 + real(xieta), 1 + real(xieta_ref), &
+                                 1e-7, 'inv semisoal element1, [0,0]')
+
+end subroutine test_inv_mapping_semiso_sz_to_xieta
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_jacobian_semiso()
-! semiso: linear at bottom, curved at top
+! semiso: linear at top, curved at bottom
 
    real(kind=dp)    :: xi, eta, jacobian(2,2), jacobian_ref(2,2)
    real(kind=dp)    :: nodes(4,2)
