@@ -5,6 +5,11 @@ module finite_elem_mapping
     implicit none
     private
 
+    public  :: mapping
+    public  :: inv_mapping
+    public  :: jacobian
+    public  :: inv_jacobian
+
     public  :: mapping_semino
     public  :: inv_mapping_semino
     public  :: jacobian_semino
@@ -25,6 +30,107 @@ module finite_elem_mapping
     public  :: jacobian_subpar
     public  :: inv_jacobian_subpar
 contains
+
+!!!!!!! WRAPPING ROUTINES FOR MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+function inv_mapping(s, z, nodes, element_type)
+!< This routines computes the coordinates in the reference coordinates xi, eta
+!! this is nonlinear, but as the forward mapping is smooth, the gradient search
+!! converges very quickly
+  
+  real(kind=dp), intent(in) :: s, z, nodes(4,2)
+  integer, intent(in)       :: element_type
+  real(kind=dp)             :: inv_mapping(2)
+
+  select case(element_type)
+     case(0)
+        inv_mapping = inv_mapping_spheroid(s, z, nodes)
+     case(1)
+        inv_mapping = inv_mapping_subpar(s, z, nodes)
+     case(2)
+        inv_mapping = inv_mapping_semino(s, z, nodes)
+     case(3)
+        inv_mapping = inv_mapping_semiso(s, z, nodes)
+     case default
+        write(6,*) 'ERROR: unknown element type: ', element_type
+        stop
+  end select
+
+end function inv_mapping
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function mapping(xi, eta, nodes, element_type)
+
+  real(kind=dp), intent(in) :: xi, eta, nodes(4,2)
+  integer, intent(in)       :: element_type
+  real(kind=dp)             :: mapping(2)
+
+  select case(element_type)
+     case(0)
+        mapping = mapping_spheroid(xi, eta, nodes)
+     case(1)
+        mapping = mapping_subpar(xi, eta, nodes)
+     case(2)
+        mapping = mapping_semino(xi, eta, nodes)
+     case(3)
+        mapping = mapping_semiso(xi, eta, nodes)
+     case default
+        write(6,*) 'ERROR: unknown element type: ', element_type
+        stop
+  end select
+
+end function mapping
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function jacobian(xi, eta, nodes, element_type)
+
+  real(kind=dp), intent(in) :: xi, eta, nodes(4,2)
+  integer, intent(in)       :: element_type
+  real(kind=dp)             :: jacobian(2,2)
+
+  select case(element_type)
+     case(0)
+        jacobian = jacobian_spheroid(xi, eta, nodes)
+     case(1)
+        jacobian = jacobian_subpar(xi, eta, nodes)
+     case(2)
+        jacobian = jacobian_semino(xi, eta, nodes)
+     case(3)
+        jacobian = jacobian_semiso(xi, eta, nodes)
+     case default
+        write(6,*) 'ERROR: unknown element type: ', element_type
+        stop
+  end select
+
+end function jacobian
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function inv_jacobian(xi, eta, nodes, element_type)
+
+  real(kind=dp), intent(in) :: xi, eta, nodes(4,2)
+  integer, intent(in)       :: element_type
+  real(kind=dp)             :: inv_jacobian(2,2)
+
+  select case(element_type)
+     case(0)
+        inv_jacobian = inv_jacobian_spheroid(xi, eta, nodes)
+     case(1)
+        inv_jacobian = inv_jacobian_subpar(xi, eta, nodes)
+     case(2)
+        inv_jacobian = inv_jacobian_semino(xi, eta, nodes)
+     case(3)
+        inv_jacobian = inv_jacobian_semiso(xi, eta, nodes)
+     case default
+        write(6,*) 'ERROR: unknown element type: ', element_type
+        stop
+  end select
+
+end function inv_jacobian
+!-----------------------------------------------------------------------------------------
+
 
 !!!!!!! SEMI SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
