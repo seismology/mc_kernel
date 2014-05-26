@@ -5,10 +5,42 @@ module spectral_basis
     implicit none
     private
 
+    public :: lagrange_interpol_1D
+
     public :: zelegl
     public :: zemngl2
 
 contains
+
+!-----------------------------------------------------------------------------------------
+!> computes the Lagrangian interpolation polynomial of a function defined by its values at 
+!  a set of collocation points
+pure function lagrange_interpol_1D(points, coefficients, x)
+
+  real(dp), intent(in)  :: points(0:)
+  real(dp), intent(in)  :: coefficients(0:size(points)-1)
+  real(dp), intent(in)  :: x
+  real(dp)              :: lagrange_interpol_1D
+  real(dp)              :: l_j
+
+  integer               :: j, m, n
+
+  n = size(points) - 1
+  lagrange_interpol_1D = 0
+
+  !compare: http://en.wikipedia.org/wiki/Lagrange_polynomial#Definition
+
+  do j=0, n
+     l_j = 1
+     do m=0, n
+        if (m == j) cycle
+        l_j = l_j * (x - points(m)) / (points(j) - points(m))
+     enddo
+     lagrange_interpol_1D = lagrange_interpol_1D + coefficients(j) * l_j
+  enddo
+
+end function
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> computes the nodes relative to the legendre gauss-lobatto formula

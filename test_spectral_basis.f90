@@ -10,6 +10,42 @@ module test_spectral_basis
 contains
 
 !-----------------------------------------------------------------------------------------
+subroutine test_lagrange_interpol_1D
+
+  real(dp), allocatable :: points(:), coefficients(:)
+  real(dp)              :: x, interpol, interpol_ref
+
+  ! automatic allocation
+  points = [-1, 1]
+  coefficients = [-1, 1]
+  x = 0
+  interpol = lagrange_interpol_1D(points, coefficients, x)
+  interpol_ref = 0
+  call assert_comparable(10 + real(interpol), 10 + real(interpol_ref), 1e-7, &
+                         'lagrange interpolation 1')
+
+  x = -1
+  interpol = lagrange_interpol_1D(points, coefficients, x)
+  interpol_ref = -1
+  call assert_comparable(10 + real(interpol), 10 + real(interpol_ref), 1e-7, &
+                         'lagrange interpolation 2')
+
+  x = 1
+  interpol = lagrange_interpol_1D(points, coefficients, x)
+  interpol_ref = 1
+  call assert_comparable(10 + real(interpol), 10 + real(interpol_ref), 1e-7, &
+                         'lagrange interpolation 3')
+
+  x = 2
+  interpol = lagrange_interpol_1D(points, coefficients, x)
+  interpol_ref = 2
+  call assert_comparable(10 + real(interpol), 10 + real(interpol_ref), 1e-7, &
+                         'lagrange interpolation 4')
+
+end subroutine test_lagrange_interpol_1D
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_gll_points()
 
   real(dp), allocatable :: eta(:), eta_ref(:)
