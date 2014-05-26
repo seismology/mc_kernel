@@ -6,6 +6,7 @@ module spectral_basis
     private
 
     public :: lagrange_interpol_1D
+    public :: lagrange_interpol_2D
 
     public :: zelegl
     public :: zemngl2
@@ -37,6 +38,50 @@ pure function lagrange_interpol_1D(points, coefficients, x)
         l_j = l_j * (x - points(m)) / (points(j) - points(m))
      enddo
      lagrange_interpol_1D = lagrange_interpol_1D + coefficients(j) * l_j
+  enddo
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> computes the Lagrangian interpolation polynomial of a function defined by its values at 
+!  a set of collocation points in 2D, where the points are a tensorproduct of two sets of
+!  points in 1D
+pure function lagrange_interpol_2D(points1, points2, coefficients, x1, x2)
+
+  real(dp), intent(in)  :: points1(0:), points2(0:)
+  real(dp), intent(in)  :: coefficients(0:size(points1)-1, 0:size(points2)-1)
+  real(dp), intent(in)  :: x1, x2
+  real(dp)              :: lagrange_interpol_2D
+  real(dp)              :: l_i(0:size(points1)-1), l_j(0:size(points2)-1)
+
+  integer               :: i, j, m, n1, n2
+
+  n1 = size(points1) - 1
+  n2 = size(points2) - 1
+
+  do i=0, n1
+     l_i(i) = 1
+     do m=0, n1
+        if (m == i) cycle
+        l_i(i) = l_i(i) * (x1 - points1(m)) / (points1(i) - points1(m))
+     enddo
+  enddo
+
+  do j=0, n2
+     l_j(j) = 1
+     do m=0, n2
+        if (m == j) cycle
+        l_j(j) = l_j(j) * (x2 - points2(m)) / (points2(j) - points2(m))
+     enddo
+  enddo
+
+  lagrange_interpol_2D = 0
+
+  do i=0, n1
+     do j=0, n2
+        lagrange_interpol_2D = lagrange_interpol_2D  + coefficients(i,j) * l_i(i) * l_j(j)
+     enddo
   enddo
 
 end function
