@@ -26,6 +26,7 @@ subroutine test_all
   ! test spectral basis functions
   write(6,'(/,a)') 'TEST SPECTRAL BASIS MODULE'
   call test(test_gll_points, 'gll points')
+  call test(test_glj_points, 'glj points')
 
   ! test_finite_elem_mapping
   write(6,'(/,a)') 'TEST FINITE ELEMENT MODULE'

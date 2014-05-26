@@ -6,6 +6,7 @@ module spectral_basis
     private
 
     public :: zelegl
+    public :: zemngl2
 
 contains
 
@@ -95,6 +96,163 @@ pure subroutine valepo(n, x, y, dy, d2y)
   enddo
 
 end subroutine valepo
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!>   Computes the nodes relative to the modified legendre gauss-lobatto
+!!   FORMULA along the s-axis
+!!   Relies on computing the eigenvalues of tridiagonal matrix. 
+!!   The nodes correspond to the second quadrature formula proposed
+!!   by Azaiez et al.  
+pure function zemngl2(n)
+  
+  integer, intent(in)                :: n            !< Order of the formula
+  real(dp)                           :: zemngl2(0:n) !< vector of the nodes, et(i), i=0,n.
+  real(dp), dimension(n-1)           :: d, e
+  integer                            :: i, n2
+  real(kind=dp)                      :: x
+
+  if (n  ==  0) return
+
+     n2 = (n-1)/2
+     zemngl2(0) = -1.d0
+     zemngl2(n) = 1.d0
+  if (n  ==  1) return
+
+     zemngl2(n2+1) = 2d-1
+     x = 2d-1
+  if(n  ==  2) return
+
+  ! Form the matrix diagonals and subdiagonals according to
+  ! formulae page 109 of Azaiez, Bernardi, Dauge and Maday.
+
+  do i = 1, n-1
+     d(i) = 3d0 / (4d0 * (i + 0.5d0) * (i + 3d0 * 2d0))
+  end do
+
+  do i = 1, n-2
+     e(i+1) = dsqrt(i**2 + 3d0) / (2 * (i + 3d0 / 2))
+  end do
+
+  ! Compute eigenvalues
+  call tqli(d, e, n-1)
+
+  ! Sort them in increasing order
+  call bubblesort(d, e, n-1)
+
+  zemngl2(1:n-1) = e(1:n-1)
+
+end function zemngl2
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> This routines returns the eigenvalues of the tridiagonal matrix 
+!! which diagonal and subdiagonal coefficients are contained in d(1:n) and
+!! e(2:n) respectively. e(1) is free. The eigenvalues are returned in array d
+pure subroutine tqli(d,e,n)
+
+  integer, intent(in)             :: n
+  real(kind=dp), intent(inout)    :: d(n)
+  real(kind=dp), intent(inout)    :: e(n)
+  integer                         :: i, iter, l, m
+  real(kind=dp)                   :: b, c, dd, f, g, p, r, s
+
+  do i = 2, n
+    e(i-1) = e(i)
+  end do
+
+  e(n) = 0
+  do l=1, n
+     iter = 0
+     iterate: do
+     do m = l, n-1
+       dd = abs(d(m)) + abs(d(m+1))
+       if (abs(e(m)) + dd .eq. dd) exit
+     end do
+
+     if( m == l ) exit iterate
+     !if( iter == 30 ) stop 'too many iterations in tqli'
+     iter = iter + 1
+     g = (d(l+1) - d(l)) / (2. * e(l))
+     r = pythag(g, 1d0)
+     g = d(m) - d(l) + e(l) / (g + sign(r,g))
+     s = 1
+     c = 1
+     p = 0
+     do i = m-1,l,-1
+        f      = s * e(i)
+        b      = c * e(i)
+        r      = pythag(f, g)
+        e(i+1) = r
+        if(r == 0)then
+           d(i+1) = d(i+1) - p
+           e(m)   = 0
+           cycle iterate
+        endif
+        s      = f / r
+        c      = g / r
+        g      = d(i+1) - p
+        r      = (d(i) - g) * s + 2. * c * b
+        p      = s * r
+        d(i+1) = g + p
+        g      = c * r - b
+     end do
+     d(l) = d(l) - p
+     e(l) = g
+     e(m) = 0
+     end do iterate
+  end do
+
+end subroutine tqli
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> This routine reorders array vin(n) in increasing order and outputs array vout(n).
+pure subroutine bubblesort(vin, vout, n)
+
+  integer, intent(in)            :: n
+  real(kind=dp), intent(in)      :: vin(n)
+  real(kind=dp), intent(out)     :: vout(n)
+  integer                        :: rankmax
+  integer                        :: rank(n)
+  integer                        :: i, j
+
+  rankmax = 1
+
+  do i = 1, n
+
+     rank(i) = 1
+
+     do j = 1, n
+        if((vin(i) > vin(j)) .and. (i /= j)) rank(i) = rank(i) + 1
+     end do
+
+     rankmax = max(rank(i), rankmax)
+     vout(rank(i)) = vin(i)
+
+  end do
+
+end subroutine bubblesort
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure real(kind=dp) function pythag(a,b)
+
+  real(kind=dp), intent(in) :: a, b
+  real(kind=dp)             :: absa, absb
+
+  absa = dabs(a)
+  absb = dabs(b)
+
+  if(absa > absb) then
+     pythag = absa * sqrt(1. + (absb / absa)**2)
+  elseif(absb == 0)then
+     pythag = 0
+  else
+     pythag = absb * sqrt(1. + (absa / absb)**2)
+  endif
+
+end function pythag
 !-----------------------------------------------------------------------------------------
 
 end module
