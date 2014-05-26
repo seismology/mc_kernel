@@ -13,6 +13,7 @@ module unit_tests
   use test_readfields
   use test_resampling
   use test_finite_elem_mapping
+  use test_spectral_basis
 
   implicit none
 
@@ -21,6 +22,10 @@ contains
 subroutine test_all
 
   call init_output()
+
+  ! test spectral basis functions
+  write(6,'(/,a)') 'TEST SPECTRAL BASIS MODULE'
+  call test(test_gll_points, 'gll points')
 
   ! test_finite_elem_mapping
   write(6,'(/,a)') 'TEST FINITE ELEMENT MODULE'
