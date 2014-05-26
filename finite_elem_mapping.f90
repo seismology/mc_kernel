@@ -5,6 +5,8 @@ module finite_elem_mapping
     implicit none
     private
 
+    public  :: inside_element
+
     public  :: mapping
     public  :: inv_mapping
     public  :: jacobian
@@ -31,8 +33,48 @@ module finite_elem_mapping
     public  :: inv_jacobian_subpar
 contains
 
+!-----------------------------------------------------------------------------------------
+function inside_element(s, z, nodes, element_type, tolerance)
+!< test whether a point described by global coordinates s,z is inside an element
+  
+  real(kind=dp), intent(in) :: s, z, nodes(4,2)
+  integer, intent(in)       :: element_type
+  real(kind=dp), intent(in), optional   :: tolerance
+  real(kind=dp)             :: tolerance_loc
+  logical                   :: inside_element
+  real(kind=dp)             :: inv_mapping(2)
+
+  if (present(tolerance)) then
+     tolerance_loc = tolerance
+  else
+     tolerance_loc = 1d-10
+  endif
+
+  select case(element_type)
+     case(0)
+        inv_mapping = inv_mapping_spheroid(s, z, nodes)
+     case(1)
+        inv_mapping = inv_mapping_subpar(s, z, nodes)
+     case(2)
+        inv_mapping = inv_mapping_semino(s, z, nodes)
+     case(3)
+        inv_mapping = inv_mapping_semiso(s, z, nodes)
+     case default
+        write(6,*) 'ERROR: unknown element type: ', element_type
+        stop
+  end select
+  
+  inside_element = (inv_mapping(1) >= -1 - tolerance_loc .and.  &
+                    inv_mapping(1) <=  1 + tolerance_loc .and. &
+                    inv_mapping(2) >= -1 - tolerance_loc .and. &
+                    inv_mapping(2) <=  1 + tolerance_loc)
+
+end function inside_element
+!-----------------------------------------------------------------------------------------
+
 !!!!!!! WRAPPING ROUTINES FOR MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!-----------------------------------------------------------------------------------------
 function inv_mapping(s, z, nodes, element_type)
 !< This routines computes the coordinates in the reference coordinates xi, eta
 !! this is nonlinear, but as the forward mapping is smooth, the gradient search

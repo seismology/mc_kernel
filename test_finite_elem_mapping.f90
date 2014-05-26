@@ -9,6 +9,115 @@ module test_finite_elem_mapping
 
 contains
 
+!-----------------------------------------------------------------------------------------
+subroutine test_inside_element()
+
+   real(kind=dp)    :: s, z
+   real(kind=dp)    :: nodes(4,2)
+   logical          :: inside
+   integer          :: element_type
+
+   nodes(1,:) = [0,1]
+   nodes(2,:) = [1,0]
+   nodes(3,:) = [3,0]
+   nodes(4,:) = [0,3]
+
+   ! spheroidal elements
+   element_type = 0
+
+   s = 1.5d0
+   z = 1.5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'spheroidal, [1.5, 1.5]')
+
+   s = .5d0
+   z = .5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_false(inside, 'spheroidal, [.5, .5]')
+
+   s = .5d0**.5d0
+   z = .5d0**.5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'spheroidal, [.5**2, .5**2]')
+
+   s = .5d0**.5d0 * 3
+   z = .5d0**.5d0 * 3
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'spheroidal, [.5**2, .5**2]')
+
+   ! subpar elements
+   element_type = 1
+
+   s = 1.5d0
+   z = 1.5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'subpar, [1.5, 1.5]')
+
+   s = .5d0
+   z = .5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'subpar, [.5, .5]')
+
+   s = .5d0**.5d0
+   z = .5d0**.5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'subpar, [.5**2, .5**2]')
+
+   s = .5d0**.5d0 * 3
+   z = .5d0**.5d0 * 3
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_false(inside, 'subpar, [.5**2, .5**2]')
+
+   ! semino elements
+   element_type = 2
+
+   s = 1.5d0
+   z = 1.5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'semino, [1.5, 1.5]')
+
+   s = .5d0
+   z = .5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'semino, [.5, .5]')
+
+   s = .5d0**.5d0
+   z = .5d0**.5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'semino, [.5**2, .5**2]')
+
+   s = .5d0**.5d0 * 3
+   z = .5d0**.5d0 * 3
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'semino, [.5**2, .5**2]')
+
+   ! semiso elements
+   element_type = 3
+
+   s = 1.5d0
+   z = 1.5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'semiso, [1.5, 1.5]')
+
+   s = .5d0
+   z = .5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_false(inside, 'semiso, [.5, .5]')
+
+   s = .5d0**.5d0
+   z = .5d0**.5d0
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_true(inside, 'semiso, [.5**2, .5**2]')
+
+   s = .5d0**.5d0 * 3
+   z = .5d0**.5d0 * 3
+   inside = inside_element(s, z, nodes, element_type)
+   call assert_false(inside, 'semiso, [.5**2, .5**2]')
+
+end subroutine test_inside_element
+!-----------------------------------------------------------------------------------------
+
+
 !!!!!!! SEMI SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !-----------------------------------------------------------------------------------------
