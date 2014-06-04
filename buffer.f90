@@ -1,7 +1,13 @@
+!=========================================================================================
 module buffer
+
    use global_parameters, only     : sp, dp, lu_out
    use commpi,            only     : pabort
+
    implicit none
+   private
+   public :: buffer_type
+
    type buffer_type
       private
       integer, allocatable        :: idx(:)
@@ -19,10 +25,10 @@ module buffer
    end type
 
 contains
-!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function init(this, nbuffer, nvalues)
+
     class(buffer_type)      :: this
     integer, intent(in)     :: nbuffer  !< How many elements should the buffer be 
                                         !! able to store? 
@@ -47,11 +53,13 @@ function init(this, nbuffer, nvalues)
 
     this%initialized = .true.
     init = 0
+
 end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function freeme(this)
+
     class(buffer_type)       :: this
     integer                  :: freeme    !< Return value, 0=Success
 
@@ -65,11 +73,13 @@ function freeme(this)
 
     this%initialized = .false.
     freeme = 0
+
 end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function get(this, iindex, values)
+
     class(buffer_type)          :: this
     integer, intent(in)         :: iindex   !< Index under which the value was stored.
                                             !! E.g. the index of the 
@@ -82,12 +92,15 @@ function get(this, iindex, values)
        write(*, '(A)') "ERROR: Buffer has not been initialized"
        call pabort 
     end if
+    
     if (iindex<0) then
        write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
        call pabort
     end if
+    
     this%naccess = this%naccess + 1
     get = -1
+
     do ibuffer = 1, this%nbuffer
        if (this%idx(ibuffer).ne.iindex) cycle
 
@@ -102,6 +115,7 @@ end function
 
 !-----------------------------------------------------------------------------------------
 function put(this, iindex, values)
+
     class(buffer_type)        :: this
     integer, intent(in)       :: iindex      !< Index under which the values can later
                                              !! be accessed
@@ -114,12 +128,13 @@ function put(this, iindex, values)
        write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
        call pabort
     end if
+
     if (any(this%idx==iindex)) then
        !print *, 'Buffer with this index', iindex, ' already exists'
        put = -1
     else
        call random_number(randtemp)
-       ibuffer = int(randtemp*this%nbuffer)+1
+       ibuffer = int(randtemp*this%nbuffer) + 1
        this%idx(ibuffer) = iindex
        this%val(:,ibuffer) = values
        put = 0
@@ -138,3 +153,4 @@ end function
 !-----------------------------------------------------------------------------------------
 
 end module buffer
+!=========================================================================================
