@@ -144,33 +144,39 @@ pure subroutine valepo(n, x, y, dy, d2y)
   real(kind=dp)         ::  c1, c2, c4, ym, yp, dym, dyp, d2ym, d2yp
   integer               ::  i
 
-  y   = 1.d0
-  dy  = 0.d0
-  d2y = 0.d0
-  if(n == 0) return
+  if (n == 0) then
+     y   = 1.d0
+     dy  = 0.d0
+     d2y = 0.d0
 
-  y   = x
-  dy  = 1.d0
-  d2y = 0.d0
-  if(n == 1) return
+  elseif (n == 1) then
+     y   = x
+     dy  = 1.d0
+     d2y = 0.d0
 
-  yp   = 1.d0
-  dyp  = 0.d0
-  d2yp = 0.d0
-  do i = 2, n
-     c1   = dfloat(i)
-     c2   = 2.d0*c1-1.d0
-     c4   = c1-1.d0
-     ym   = y
-     y    = (c2*x*y-c4*yp)/c1
-     yp   = ym
-     dym  = dy
-     dy   = (c2*x*dy-c4*dyp+c2*yp)/c1
-     dyp  = dym
-     d2ym = d2y
-     d2y  = (c2*x*d2y-c4*d2yp+2.d0*c2*dyp)/c1
-     d2yp = d2ym
-  enddo
+  else
+     y   = x
+     dy  = 1.d0
+     d2y = 0.d0
+
+     yp   = 1.d0
+     dyp  = 0.d0
+     d2yp = 0.d0
+     do i = 2, n
+        c1   = dfloat(i)
+        c2   = 2.d0*c1-1.d0
+        c4   = c1-1.d0
+        ym   = y
+        y    = (c2*x*y-c4*yp)/c1
+        yp   = ym
+        dym  = dy
+        dy   = (c2*x*dy-c4*dyp+c2*yp)/c1
+        dyp  = dym
+        d2ym = d2y
+        d2y  = (c2*x*d2y-c4*d2yp+2.d0*c2*dyp)/c1
+        d2yp = d2ym
+     enddo
+  endif
 
 end subroutine valepo
 !-----------------------------------------------------------------------------------------
@@ -193,12 +199,12 @@ pure function zemngl2(n)
   elseif (n == 1) then
      zemngl2(0) = -1.d0
      zemngl2(n) = 1.d0
-  elseif(n  ==  2) then
+  elseif (n  ==  2) then
      n2 = (n-1)/2
      zemngl2(0) = -1.d0
      zemngl2(n2+1) = 2d-1
      zemngl2(n) = 1.d0
-  elseif(n > 2) then
+  elseif (n > 2) then
      ! Form the matrix diagonals and subdiagonals according to
      ! formulae page 109 of Bernardi, Dauge and Maday (Spectral Methods for
      ! axisymmetric domains). MvD: it is page 113 in my copy of the book
