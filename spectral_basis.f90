@@ -187,37 +187,39 @@ pure function zemngl2(n)
   real(dp)                           :: zemngl2(0:n) !< vector of the nodes, et(i), i=0,n.
   real(dp), dimension(n-1)           :: d, e
   integer                            :: i, n2
-  real(kind=dp)                      :: x
 
-  if (n  ==  0) return
-
-     n2 = (n-1)/2
+  if (n == 0) then
+     zemngl2(0) = 0
+  elseif (n == 1) then
      zemngl2(0) = -1.d0
      zemngl2(n) = 1.d0
-  if (n  ==  1) return
-
+  elseif(n  ==  2) then
+     n2 = (n-1)/2
+     zemngl2(0) = -1.d0
      zemngl2(n2+1) = 2d-1
-     x = 2d-1
-  if(n  ==  2) return
+     zemngl2(n) = 1.d0
+  elseif(n > 2) then
+     ! Form the matrix diagonals and subdiagonals according to
+     ! formulae page 109 of Azaiez, Bernardi, Dauge and Maday.
+     zemngl2(0) = -1.d0
+     zemngl2(n) = 1.d0
 
-  ! Form the matrix diagonals and subdiagonals according to
-  ! formulae page 109 of Azaiez, Bernardi, Dauge and Maday.
+     do i = 1, n-1
+        d(i) = 3d0 / (4d0 * (i + 0.5d0) * (i + 1.5d0))
+     end do
 
-  do i = 1, n-1
-     d(i) = 3d0 / (4d0 * (i + 0.5d0) * (i + 3d0 * 2d0))
-  end do
+     do i = 1, n-2
+        e(i+1) = dsqrt(i * (i + 3d0)) / (2d0 * (i + 1.5d0))
+     end do
 
-  do i = 1, n-2
-     e(i+1) = dsqrt(i**2 + 3d0) / (2 * (i + 3d0 / 2))
-  end do
+     ! Compute eigenvalues
+     call tqli(d, e, n-1)
 
-  ! Compute eigenvalues
-  call tqli(d, e, n-1)
+     ! Sort them in increasing order
+     call bubblesort(d, e, n-1)
 
-  ! Sort them in increasing order
-  call bubblesort(d, e, n-1)
-
-  zemngl2(1:n-1) = e(1:n-1)
+     zemngl2(1:n-1) = e(1:n-1)
+  endif
 
 end function zemngl2
 !-----------------------------------------------------------------------------------------
