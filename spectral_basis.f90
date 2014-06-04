@@ -200,7 +200,8 @@ pure function zemngl2(n)
      zemngl2(n) = 1.d0
   elseif(n > 2) then
      ! Form the matrix diagonals and subdiagonals according to
-     ! formulae page 109 of Azaiez, Bernardi, Dauge and Maday.
+     ! formulae page 109 of Bernardi, Dauge and Maday (Spectral Methods for
+     ! axisymmetric domains). MvD: it is page 113 in my copy of the book
      zemngl2(0) = -1.d0
      zemngl2(n) = 1.d0
 
