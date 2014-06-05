@@ -11,6 +11,7 @@ module unit_tests
   use test_filter
   use test_kernel
   use test_readfields
+  use test_rotations
   use test_resampling
   use test_finite_elem_mapping
   use test_spectral_basis
