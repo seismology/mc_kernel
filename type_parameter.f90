@@ -218,7 +218,7 @@ subroutine read_receiver(this)
    integer                       :: irec, firstkernel, lastkernel
    integer                       :: ikernel, recnkernel
    real(kind=dp)                 :: timewindow(2), reclatd, reclond
-   character(len=16)             :: recname, kernelname, filtername
+   character(len=16)             :: recname
    character(len=80)             :: fmtstring
 
    if (.not.this%parameters_read) then
@@ -284,7 +284,7 @@ subroutine read_receiver(this)
       if (master) then
           do ikernel = 1, recnkernel
              ! Just to advance the receiver file
-             read(lu_receiver, *) !kernelname, filtername, timewindow
+             read(lu_receiver, *) 
           end do
       end if
 
@@ -313,14 +313,12 @@ subroutine read_kernel(this, sem_data, filter)
    class(parameter_type)          :: this
    type(semdata_type), intent(in), optional :: sem_data
    type(filter_type), target, intent(in), optional  :: filter(:)
-   integer                        :: lu_kernel
    integer                        :: irec, nfilter
    integer                        :: ikernel, ifilter
    integer                        :: lu_receiver
-   real(kind=dp)                  :: timewindow(2), junk
-   character(len=1)               :: component
+   real(kind=dp)                  :: timewindow(2)
    character(len=4)               :: misfit_type
-   character(len=32)              :: recname, kernelname, filtername, kernel_shortname
+   character(len=32)              :: kernelname, filtername, kernel_shortname
    character(len=80)              :: fmtstring
 
    if (.not.this%parameters_read) then
@@ -367,7 +365,7 @@ subroutine read_kernel(this, sem_data, filter)
 
    do irec = 1, this%nrec
       if (master) then
-          read(lu_receiver, *) ! recname, reclatd, reclond, recnkernel
+          read(lu_receiver, *)
       end if
 
       fmtstring = '("  Receiver ", A, ", has ", I3, " kernel, first and last:", 2(I5))'

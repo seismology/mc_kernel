@@ -19,23 +19,17 @@ subroutine plot_wavefields()
     type(semdata_type)                  :: sem_data
     type(rfft_type)                     :: fft_data
 
-    integer                             :: npoints, nelems, ntimes, nomega, nrec
-    integer                             :: idump, ipoint, ielement, ndumps, irec
-    integer                             :: nkernel, ikernel, ivertex, nvertices
-    real(kind=dp),    allocatable       :: element_points(:,:,:)
+    integer                             :: nelems, ntimes, nomega, nrec
+    integer                             :: idump, ndumps, irec
+    integer                             :: nvertices
     real(kind=dp),    allocatable       :: co_points(:,:)
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
     real(kind=dp),    allocatable       :: bw_field(:,:,:)
     complex(kind=dp), allocatable       :: fw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:,:)
-    complex(kind=dp), allocatable       :: conv_field_fd_filt(:,:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:,:)
-    real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:)
-    integer,          allocatable       :: connectivity(:,:), niterations(:,:)
-    real(kind=dp),    allocatable       :: volume(:)
     real(kind=dp)                       :: df
-    character(len=32)                   :: filtername
     character(len=64)                   :: fmtstring
 
     write(*,*) '***************************************************************'

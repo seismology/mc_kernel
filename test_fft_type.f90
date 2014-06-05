@@ -11,7 +11,7 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine test_fft_dirac
     integer     :: nomega, ntimes, ntraces
-    integer     :: i, j
+    integer     :: i
 
     type(rfft_type) :: fftt
 
@@ -65,7 +65,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_fft_sine
     integer     :: nomega, ntimes, ntraces
-    integer     :: i, j
+    integer     :: i
 
     type(rfft_type) :: fftt
 
@@ -154,7 +154,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_fft_inverse
     integer     :: nomega, ntimes, ntraces
-    integer     :: i, j
+    integer     :: i
 
     type(rfft_type) :: fftt
 
@@ -198,7 +198,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_fft_convolve
     integer     :: nomega, ntimes, ntraces, ntimes_fft
-    integer     :: i, j
+    integer     :: i
 
     type(rfft_type) :: fftt
 
@@ -250,7 +250,6 @@ end subroutine
 subroutine test_fft_taperandzeropad
     integer, parameter :: len_orig = 32, len_padded = 64
     real(kind=dp) :: data_orig(len_orig,1), data_padded(len_padded,1)
-    integer       :: i
 
     data_orig = 1
 

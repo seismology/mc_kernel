@@ -32,16 +32,14 @@ subroutine do_slave()
     type(rfft_type)                     :: fft_data
     type(slave_result_type)             :: slave_result
 
-    integer                             :: npoints, ndumps, nelems, ntimes, nomega
+    integer                             :: ndumps, ntimes, nomega
     integer                             :: ikernel, ierror, iclockold
     integer                             :: mpistatus(MPI_STATUS_SIZE)
     real(kind=dp)                       :: df
     real(kind=dp), allocatable          :: K_x(:,:)
-    integer                             :: iel, ielement, ivertex, itask
-    character(len=32)                   :: filtername
+    integer                             :: ielement, itask
     character(len=64)                   :: fmtstring, fnam
     integer                             :: nptperstep
-    real(kind=dp), allocatable          :: workresult(:,:,:)
 
     write(lu_out,'(A)') '***************************************************************'
     write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
@@ -227,14 +225,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     type(parameter_type),           intent(in)    :: parameters
     type(semdata_type),             intent(in)    :: sem_data
     type(rfft_type),                intent(in)    :: fft_data
-    !integer,                        intent(in)    :: elementlist(:)
     type(slave_result_type)                       :: slave_result
 
     type(integrated_type), allocatable  :: int_kernel(:)
 
-    real(kind=dp),    allocatable       :: results(:,:,:)
-    real(kind=dp),    allocatable       :: element_points(:,:,:)
-    real(kind=dp),    allocatable       :: co_points(:,:), K_x(:,:), veloseis(:)
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
     real(kind=dp),    allocatable       :: bw_field(:,:,:)
     complex(kind=dp), allocatable       :: fw_field_fd(:,:,:)
@@ -246,7 +240,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     real(kind=dp)                       :: volume
 
     character(len=64)                   :: fmtstring
-    integer                             :: idump, ipoint, ielement, irec, iel, ivertex, ikernel
+    integer                             :: ielement, irec, ivertex, ikernel
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nvertices_per_elem
     integer                             :: iclockold
@@ -410,7 +404,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
             call int_kernel(ivertex)%freeme()
         end do
 
-    end do ! iel
+    end do ! ielement
 
 end function slave_work
 !=========================================================================================

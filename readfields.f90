@@ -868,7 +868,7 @@ function load_bw_points(this, coordinates, receiver)
 
     integer                            :: pointid(size(coordinates,2))
     integer                            :: npoints
-    integer                            :: ipoint, start_chunk, iread
+    integer                            :: ipoint
     real(kind=dp)                      :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                      :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                      :: rotmesh_z(size(coordinates,2))
@@ -1362,7 +1362,6 @@ end function
 subroutine build_kdtree(this)
     class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
-    integer                    :: ipoint
 
     if (.not.this%meshes_read) then
         print *, 'ERROR in build_kdtree(): Meshes have not been read yet'
@@ -1413,7 +1412,7 @@ subroutine read_meshes(this)
     class(semdata_type)        :: this
     integer                    :: ncvarid_mesh_s, ncvarid_mesh_z
     integer                    :: surfdimid, ncvarid_theta
-    integer                    :: ielem, isim
+    integer                    :: isim
     logical                    :: mesherror
     real(kind=sp), allocatable :: theta(:)
    
@@ -1676,7 +1675,6 @@ function rotate_straintensor_voigt(tensor_vector, phi, mij, isim) result(tensor_
     real(kind=dp), allocatable   :: tensor_return(:,:)
 
     real(kind=dp)                :: azim_factor_1, azim_factor_2
-    integer                      :: idump
 
     print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
     if (size(tensor_vector,2).ne.6) then
@@ -1696,9 +1694,6 @@ function rotate_straintensor_voigt(tensor_vector, phi, mij, isim) result(tensor_
     tensor_return(:,5) = azim_factor_1 * tensor_vector(:,5)
     tensor_return(:,6) = azim_factor_2 * tensor_vector(:,6)
 
-    !do idump = 1, size(tensor_vector, 1)
-    !    tensor_return(idump,:) = rotate_symm_tensor_voigt_src_to_xyz_1d(tensor_return(idump,:), phi) 
-    !enddo
     tensor_return(:,:) = rotate_symm_tensor_voigt_src_to_xyz_2d(tensor_return(:,:), phi, &
                                                                 size(tensor_vector, 1)) 
 

@@ -402,7 +402,6 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
   integer                          :: ielem_type !1-tet, 2-quad, 3-tri, 4-hex
   real(kind=dp),    intent(in)     :: vertices(:,:)
   integer,          intent(in)     :: connectivity(:,:)
-  integer                          :: ielement
   character(len=255)               :: fmtstring
 
   if (this%initialized) then
@@ -465,7 +464,7 @@ subroutine read_abaqus_meshtype(this, filename)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput
-  integer                           :: i, ierr, ct
+  integer                           :: ierr, ct
   character(len=128)                :: line
   character(len=16)                 :: elem_type
 

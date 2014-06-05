@@ -18,10 +18,9 @@ program kerner
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
 
-    integer                             :: nelems, nvertices, nvertices_per_elem, ndimensions
+    integer                             :: nvertices_per_elem
     integer                             :: nvertices_per_task
-    integer                             :: ierror, ntasks, iclockold
-    character(len=64)                   :: fmtstring
+    integer                             :: ierror
     
 
     verbose = 0
