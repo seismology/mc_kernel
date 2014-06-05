@@ -71,8 +71,6 @@ subroutine test_readfields_rotate
    real(kind=dp)      :: r_in(3,npoints)
    real(kind=dp)      :: phi_rot, theta_rot
    real(kind=dp)      :: s_out(npoints), z_out(npoints), phi_out(npoints)
-   integer            :: itheta, iphi
-   character(len=16)  :: fmtstring
  
    r_in(:,1) = [1, 0, 0]
    r_in(:,2) = [0, 1, 0]

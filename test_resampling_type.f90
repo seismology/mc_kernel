@@ -17,7 +17,7 @@ subroutine test_resampling_const
   integer                                       :: i
   real(kind=dp), dimension(:,:), allocatable    :: data_in, data_out, data_ref
   real(kind=dp), dimension(:,:), allocatable    :: T_in, T_out
-  real(kind=dp)                                 :: dt_in, dt_out, f_ref
+  real(kind=dp)                                 :: dt_in, dt_out
   character(len=32)                             :: fnam
 
   ntimes_in = 100
@@ -86,7 +86,7 @@ subroutine test_resampling_const_ntraces
   integer                                       :: i
   real(kind=dp), dimension(:,:), allocatable    :: data_in, data_out, data_ref
   real(kind=dp), dimension(:,:), allocatable    :: T_in, T_out
-  real(kind=dp)                                 :: dt_in, dt_out, f_ref
+  real(kind=dp)                                 :: dt_in, dt_out
   character(len=64)                             :: fnam
 
   ntimes_in = 100
@@ -157,7 +157,7 @@ subroutine test_resampling_triangle
   integer                                       :: i
   real(kind=dp), dimension(:,:), allocatable    :: data_in, data_out, data_ref
   real(kind=dp), dimension(:,:), allocatable    :: T_in, T_out
-  real(kind=dp)                                 :: dt_in, dt_out, f_ref
+  real(kind=dp)                                 :: dt_in, dt_out
   character(len=32)                             :: fnam
 
   ntimes_in = 100

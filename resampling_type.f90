@@ -61,7 +61,6 @@ subroutine resample(this, data_in, data_out)
 
   complex(kind=dp), allocatable     :: dataf_in(:,:), dataf_out(:,:)
   integer                           :: nomega_min
-  integer                           :: i
 
   if (.not. this%initialized) then
      write(*,*) 'ERROR: accessing resampling type that is not initialized'
