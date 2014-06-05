@@ -12,7 +12,7 @@ module buffer
       private
       integer, allocatable        :: idx(:)
       real(kind=sp), allocatable  :: val(:,:)
-      integer                     :: nbuffer, nvalues
+      integer                     :: nbuffer, nvalues, nput
       logical                     :: initialized = .false.
       integer                     :: naccess, nhit
 
@@ -47,6 +47,7 @@ function init(this, nbuffer, nvalues)
 
     this%naccess = 0
     this%nhit    = 0
+    this%nput    = 0
 
     this%idx     = -1
     this%val     = 0.0
@@ -133,10 +134,15 @@ function put(this, iindex, values)
        !print *, 'Buffer with this index', iindex, ' already exists'
        put = -1
     else
-       call random_number(randtemp)
-       ibuffer = int(randtemp*this%nbuffer) + 1
+       if (this%nput < this%nbuffer) then
+          ibuffer = this%nput + 1
+       else
+          call random_number(randtemp)
+          ibuffer = int(randtemp*this%nbuffer) + 1
+       endif
        this%idx(ibuffer) = iindex
        this%val(:,ibuffer) = values
+       this%nput = this%nput + 1
        put = 0
     end if
 
