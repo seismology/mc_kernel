@@ -59,6 +59,12 @@ subroutine test_all
 
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
+  call test(test_readfields_set_params, 'Set SEM file params')
+  call test(test_readfields_open_files, 'Open SEM file')
+  call test(test_readfields_load_seismogram, 'Load seismogram')
+
+  ! test_rotations
+  write(6,'(/,a)') 'TEST ROTATIONS MODULE'
   call test(test_readfields_rotate, 'Field rotation')
   call test(test_readfields_rotate_straintensor, 'Strainfield rotation')
   call test(test_readfields_rotate_straintensor_voigt, 'Strainfield rotation voigt')
@@ -70,9 +76,6 @@ subroutine test_all
   call test(test_rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_2d, 'symm tensor rotation xyz src to earth - 2d')
   call test(test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d, 'symm tensor rotation xyz earth to src - 1d')
   call test(test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d, 'symm tensor rotation xyz earth to src - 2d')
-  call test(test_readfields_set_params, 'Set SEM file params')
-  call test(test_readfields_open_files, 'Open SEM file')
-  call test(test_readfields_load_seismogram, 'Load seismogram')
    
   ! test_montecarlo
   write(6,'(/,a)') 'TEST MONTECARLO MODULE'
