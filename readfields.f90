@@ -1371,6 +1371,7 @@ subroutine build_kdtree(this)
 
     write(lu_out,*) ' Reshaping mesh variables'
     call flush(lu_out)
+
     allocate(mesh(2, this%fwdmesh%npoints))
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
 
@@ -2155,7 +2156,7 @@ subroutine nc_read_att_int(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
@@ -2173,7 +2174,7 @@ subroutine nc_read_att_char(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort 
   end if
@@ -2191,7 +2192,7 @@ subroutine nc_read_att_real(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
@@ -2209,7 +2210,7 @@ subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
