@@ -23,11 +23,7 @@ subroutine test_readfields_load_seismogram()
    call sem_data%read_meshes()
    call sem_data%load_seismogram(parameters%receiver, parameters%source)
    
-   !print *, sem_data%veloseis
-   
-   
    call sem_data%close_files()
-
 
 end subroutine test_readfields_load_seismogram
 !-----------------------------------------------------------------------------------------

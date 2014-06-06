@@ -32,6 +32,9 @@ module readfields
         integer                           :: displvarid(3)           ! Variable IDs
         integer                           :: seis_disp, seis_velo    ! Variable IDs
         integer                           :: stf_varid               ! Variable IDs
+        integer                           :: fem_mesh_varid          ! Variable IDs
+        integer                           :: mesh_s_varid            ! Variable IDs
+        integer                           :: mesh_z_varid            ! Variable IDs
         integer                           :: chunk_gll
         character(len=200)                :: meshdir
         character(len=12)                 :: dump_type
@@ -374,6 +377,19 @@ subroutine open_files(this)
         call check(nf90_get_var(  ncid   = this%fwd(isim)%surf,   &
                                   varid  = this%fwd(isim)%stf_varid, &
                                   values = this%fwd(isim)%stf  ))
+        
+        if (trim(this%fwd(isim)%dump_type) == 'displ_only') then
+            call getvarid(ncid  = this%fwd(isim)%mesh,   &
+                          name  = "fem_mesh",            &
+                          varid = this%fwd(isim)%fem_mesh_varid)
+
+            call getvarid(ncid  = this%fwd(isim)%mesh,   &
+                          name  = "mesh_S",              &
+                          varid = this%fwd(isim)%mesh_s_varid)
+            call getvarid(ncid  = this%fwd(isim)%mesh,   &
+                          name  = "mesh_Z",              &
+                          varid = this%fwd(isim)%mesh_z_varid)
+        endif
     end do
         
     call flush(lu_out)
@@ -744,13 +760,6 @@ function load_fw_points(this, coordinates, source_params)
                                 results = nextpoint )
         
         pointid(ipoint) = nextpoint(1)%idx
-        !print *, 'Original coordinates: ', coordinates(:,ipoint)
-        !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
-        !print *, 'CO of SEM point:', this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint))
-
-        !write(1000, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
-        !                               this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint)), pointid(ipoint)
-
     end do
 
     load_fw_points(:,:,:) = 0.0
@@ -954,13 +963,6 @@ function load_bw_points(this, coordinates, receiver)
                                 results = nextpoint )
     
         pointid(ipoint) = nextpoint(1)%idx
-        !print *, 'Original coordinates: ', coordinates(:,ipoint)
-        !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
-        !print *, 'CO of SEM point:', this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint))
-
-        !write(1001, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
-        !                               this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint)), pointid(ipoint)
-
     end do
     
     load_bw_points(:,:,:) = 0.0
@@ -994,6 +996,7 @@ end function load_bw_points
 !-----------------------------------------------------------------------------------------
 function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     use simple_routines, only          : mult2d_1d
+    use finite_elem_mapping, only      : inside_element
 
     class(semdata_type)               :: this
     type(src_param_type), intent(in)  :: source_params(:)
@@ -1005,15 +1008,25 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                                              size(source_params))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
-    integer                           :: npoints
+    integer                           :: npoints, nnext_points
     integer                           :: pointid(size(source_params))
-    integer                           :: ipoint, isim, iclockold, i
+    integer                           :: ipoint, inext_point, isim, iclockold, i, icp
+    integer                           :: corner_point_ids(4)
+    real(kind=dp)                     :: corner_points(4,2)
+    real(kind=dp)                     :: cps(1), cpz(1)
     real(kind=dp)                     :: rotmesh_s(size(source_params))
     real(kind=dp)                     :: rotmesh_phi(size(source_params))
     real(kind=dp)                     :: rotmesh_z(size(source_params))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
     real(kind=dp)                     :: coordinates(size(source_params),3)
     real(kind=dp)                     :: mij_buff(6)
+    real(kind=dp)                     :: xi, eta
+
+    if (trim(this%dump_type) == 'displ_only') then
+        nnext_points = 8 ! 8, because this is the maximum valence in the mesh
+    else
+        nnext_points = 1
+    endif
     
     npoints = size(source_params)
 
@@ -1028,21 +1041,56 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                           reci_source_params%lon, reci_source_params%colat)
 
 
-    allocate(nextpoint(1))
+    allocate(nextpoint(nnext_points))
     do ipoint = 1, npoints
         call kdtree2_n_nearest( this%fwdtree, &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                nn = 1, &
+                                nn = nnext_points, &
                                 results = nextpoint )
         
         pointid(ipoint) = nextpoint(1)%idx
 
-        if (verbose>0) &
-            write(6,*) nextpoint(1)%dis**.5, nextpoint(1)%idx, &
+        if (verbose > 0) &
+            write(6,*) 'nearest point', nextpoint(1)%dis**.5, nextpoint(1)%idx, &
                        (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
                        (this%fwdmesh%s(pointid(ipoint))**2  &
                             + this%fwdmesh%z(pointid(ipoint))**2)**.5 
 
+        
+        if (trim(this%dump_type) == 'displ_only') then
+            do inext_point = 1, nnext_points
+                ! get cornerpoints of finite element
+                call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                        varid  = this%fwd(1)%fem_mesh_varid, &
+                                        start  = [1, nextpoint(inext_point)%idx], &
+                                        count  = [4, 1], &
+                                        values = corner_point_ids))
+                
+                do icp = 1, 4
+                    call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                            varid  = this%fwd(1)%mesh_s_varid, &
+                                            start  = [corner_point_ids(icp) + 1], &
+                                            count  = [1], &
+                                            values = cps))
+                    
+                    call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                            varid  = this%fwd(1)%mesh_z_varid, &
+                                            start  = [corner_point_ids(icp) + 1], &
+                                            count  = [1], &
+                                            values = cpz))
+
+                    corner_points(icp, 1) = cps(1)
+                    corner_points(icp, 2) = cpz(1)
+                enddo                        
+                ! test point to be inside, if so, exit
+                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), corner_points, 0, xi=xi, eta=eta)) then
+                    write(6,*) 'xi, eta    = ', xi, eta
+                    write(6,*) 'element id = ', nextpoint(inext_point)%idx
+                    stop
+                    exit
+                endif
+            enddo
+        endif
     end do
 
     load_fw_points_rdbm(:,:,:) = 0.0
