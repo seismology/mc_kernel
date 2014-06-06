@@ -1023,7 +1023,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     real(kind=dp)                     :: xi, eta
 
     if (trim(this%dump_type) == 'displ_only') then
-        nnext_points = 8 ! 8, because this is the maximum valence in the mesh
+        nnext_points = 6 ! 6, because this is the maximum valence in the mesh
     else
         nnext_points = 1
     endif
