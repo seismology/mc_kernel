@@ -34,12 +34,13 @@ module finite_elem_mapping
 contains
 
 !-----------------------------------------------------------------------------------------
-function inside_element(s, z, nodes, element_type, tolerance)
+function inside_element(s, z, nodes, element_type, tolerance, xi, eta)
 !< test whether a point described by global coordinates s,z is inside an element
   
   real(kind=dp), intent(in) :: s, z, nodes(4,2)
   integer, intent(in)       :: element_type
-  real(kind=dp), intent(in), optional   :: tolerance
+  real(kind=dp), intent(in), optional    :: tolerance
+  real(kind=dp), intent(out), optional   :: xi, eta
   real(kind=dp)             :: tolerance_loc
   logical                   :: inside_element
   real(kind=dp)             :: inv_mapping(2)
@@ -68,6 +69,9 @@ function inside_element(s, z, nodes, element_type, tolerance)
                     inv_mapping(1) <=  1 + tolerance_loc .and. &
                     inv_mapping(2) >= -1 - tolerance_loc .and. &
                     inv_mapping(2) <=  1 + tolerance_loc)
+
+  if (present(xi))   xi = inv_mapping(1)
+  if (present(eta)) eta = inv_mapping(2)
 
 end function inside_element
 !-----------------------------------------------------------------------------------------

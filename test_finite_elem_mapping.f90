@@ -12,7 +12,7 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine test_inside_element()
 
-   real(kind=dp)    :: s, z
+   real(kind=dp)    :: s, z, xi, eta, xi_ref, eta_ref
    real(kind=dp)    :: nodes(4,2)
    logical          :: inside
    integer          :: element_type
@@ -27,8 +27,15 @@ subroutine test_inside_element()
 
    s = 1.5d0
    z = 1.5d0
-   inside = inside_element(s, z, nodes, element_type)
+   xi_ref  = 0
+   eta_ref = 0
+   inside = inside_element(s, z, nodes, element_type, xi, eta)
    call assert_true(inside, 'spheroidal, [1.5, 1.5]')
+   
+   call assert_comparable_real(1 + real(xi), 1 + real(xi_ref), &
+                                 1e-7, 'speroidal, [1.5, 1.5], xi')
+   call assert_comparable_real(1 + real(eta), 1 + real(xi_ref), &
+                                 1e-7, 'speroidal, [1.5, 1.5], eta')
 
    s = .5d0
    z = .5d0
