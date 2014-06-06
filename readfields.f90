@@ -20,7 +20,7 @@ module readfields
 
     type meshtype
         real(kind=sp), allocatable        :: s(:), z(:)
-        integer                           :: npoints
+        integer                           :: npoints, nelem
         real(kind=dp), allocatable        :: theta(:)
         integer                           :: nsurfelem
     end type
@@ -1349,6 +1349,7 @@ end function load_strain_point
 subroutine build_kdtree(this)
     class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
+    integer                    :: npoints
 
     if (.not.this%meshes_read) then
         print *, 'ERROR in build_kdtree(): Meshes have not been read yet'
@@ -1359,12 +1360,16 @@ subroutine build_kdtree(this)
     write(lu_out,*) ' Reshaping mesh variables'
     call flush(lu_out)
 
-    allocate(mesh(2, this%fwdmesh%npoints))
-    mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
+    if (trim(this%dump_type) == 'displ_only') then
+        npoints = this%fwdmesh%nelem ! midpoints only
+    else
+        npoints = this%fwdmesh%npoints
+    endif
 
-    print *, this%fwdmesh%npoints
+    allocate(mesh(2, npoints))
+    mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [npoints, 2]))
 
-    !write(1000,*) mesh
+    print *, npoints
 
     write(lu_out,*) ' Building forward KD-Tree'
     call flush(lu_out)
@@ -1376,12 +1381,18 @@ subroutine build_kdtree(this)
     
     deallocate(mesh)                           
 
+    if (trim(this%dump_type) == 'displ_only') then
+        npoints = this%bwdmesh%nelem ! midpoints only
+    else
+        npoints = this%bwdmesh%npoints
+    endif
+
     ! KDtree in backward field
     if (this%nsim_bwd > 0) then
         write(lu_out,*) ' Building backward KD-Tree'
         call flush(lu_out)
-        allocate(mesh(2, this%bwdmesh%npoints))
-        mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
+        allocate(mesh(2, npoints))
+        mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [npoints, 2]))
         this%bwdtree => kdtree2_create(mesh,              &
                                        dim = 2,           &
                                        sort = .true.,     &
@@ -1413,68 +1424,118 @@ subroutine read_meshes(this)
     ! Forward SEM mesh
     write(lu_out,*) '  Read SEM mesh from first forward simulation'
     
-    call nc_read_att_int(this%fwdmesh%npoints, &
-                         'npoints', &
-                         this%fwd(1))
-
-    allocate(this%fwdmesh%s(this%fwdmesh%npoints))
-    allocate(this%fwdmesh%z(this%fwdmesh%npoints))
-
+    call nc_read_att_int(this%fwdmesh%npoints, 'npoints', this%fwd(1))
+    
     do isim = 1, this%nsim_fwd
        this%fwd(isim)%ngll = this%fwdmesh%npoints
     end do
-       
-    call  getvarid( ncid  = this%fwd(1)%mesh, &
-                    name  = "mesh_S", &
-                    varid = ncvarid_mesh_s) 
-    call  getvarid( ncid  = this%fwd(1)%mesh, &
-                    name  = "mesh_Z", &
-                    varid = ncvarid_mesh_z) 
 
-    call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                   varid  = ncvarid_mesh_s,         &
-                   start  = 1,                    &
-                   count  = this%fwdmesh%npoints, &
-                   values = this%fwdmesh%s ) 
-    call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                   varid  = ncvarid_mesh_z,         &
-                   start  = 1,                    &
-                   count  = this%fwdmesh%npoints, &
-                   values = this%fwdmesh%z ) 
+    if (trim(this%dump_type) == 'displ_only') then
+        call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
+        
+        allocate(this%fwdmesh%s(this%fwdmesh%nelem))
+        allocate(this%fwdmesh%z(this%fwdmesh%nelem))
+
+           
+        call  getvarid( ncid  = this%fwd(1)%mesh, &
+                        name  = "mp_mesh_S", &
+                        varid = ncvarid_mesh_s) 
+        call  getvarid( ncid  = this%fwd(1)%mesh, &
+                        name  = "mp_mesh_Z", &
+                        varid = ncvarid_mesh_z) 
+
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_s,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%nelem, &
+                       values = this%fwdmesh%s ) 
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_z,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%nelem, &
+                       values = this%fwdmesh%z ) 
+    
+    else
+        allocate(this%fwdmesh%s(this%fwdmesh%npoints))
+        allocate(this%fwdmesh%z(this%fwdmesh%npoints))
+           
+        call  getvarid( ncid  = this%fwd(1)%mesh, &
+                        name  = "mesh_S", &
+                        varid = ncvarid_mesh_s) 
+        call  getvarid( ncid  = this%fwd(1)%mesh, &
+                        name  = "mesh_Z", &
+                        varid = ncvarid_mesh_z) 
+
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_s,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%npoints, &
+                       values = this%fwdmesh%s ) 
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_z,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%npoints, &
+                       values = this%fwdmesh%z ) 
+    endif
+
    
    
     ! Backward SEM mesh                     
     if (this%nsim_bwd > 0) then
         write(lu_out,*) 'Read SEM mesh from first backward simulation'
         
-        call nc_read_att_int(this%bwdmesh%npoints, &
-                             'npoints', &
-                             this%bwd(1))
+        call nc_read_att_int(this%bwdmesh%npoints, 'npoints', this%bwd(1))
+        
+        do isim = 1, this%nsim_bwd
+           this%bwd(isim)%ngll = this%bwdmesh%npoints
+        end do
 
-    allocate(this%bwdmesh%s(this%bwdmesh%npoints))
-    allocate(this%bwdmesh%z(this%bwdmesh%npoints))
-    
-    do isim = 1, this%nsim_bwd
-       this%bwd(isim)%ngll = this%bwdmesh%npoints
-    end do
-       
-    call  getvarid( ncid  = this%bwd(1)%mesh, &
-                    name  = "mesh_S", &
-                    varid = ncvarid_mesh_s) 
-    call  getvarid( ncid  = this%bwd(1)%mesh, &
-                    name  = "mesh_Z", &
-                    varid = ncvarid_mesh_z) 
+        if (trim(this%dump_type) == 'displ_only') then
+            call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
+            
+            allocate(this%bwdmesh%s(this%fwdmesh%nelem))
+            allocate(this%bwdmesh%z(this%fwdmesh%nelem))
+            
+            call  getvarid( ncid  = this%bwd(1)%mesh, &
+                            name  = "mp_mesh_S", &
+                            varid = ncvarid_mesh_s) 
+            call  getvarid( ncid  = this%bwd(1)%mesh, &
+                            name  = "mp_mesh_Z", &
+                            varid = ncvarid_mesh_z) 
 
-    call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                   varid  = ncvarid_mesh_s,   &
-                   start  = 1,                    &
-                   count  = this%bwdmesh%npoints, &
-                   values = this%bwdmesh%s ) 
-    call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                   varid  = ncvarid_mesh_z,   &
-                   start  = 1,                    &
-                   count  = this%bwdmesh%npoints, &
-                   values = this%bwdmesh%z ) 
+            call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                           varid  = ncvarid_mesh_s,   &
+                           start  = 1,                &
+                           count  = this%bwdmesh%nelem, &
+                           values = this%bwdmesh%s ) 
+            call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                           varid  = ncvarid_mesh_z,   &
+                           start  = 1,                &
+                           count  = this%bwdmesh%nelem, &
+                           values = this%bwdmesh%z ) 
+        else
+
+            allocate(this%bwdmesh%s(this%bwdmesh%npoints))
+            allocate(this%bwdmesh%z(this%bwdmesh%npoints))
+            
+            call  getvarid( ncid  = this%bwd(1)%mesh, &
+                            name  = "mesh_S", &
+                            varid = ncvarid_mesh_s) 
+            call  getvarid( ncid  = this%bwd(1)%mesh, &
+                            name  = "mesh_Z", &
+                            varid = ncvarid_mesh_z) 
+
+            call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                           varid  = ncvarid_mesh_s,   &
+                           start  = 1,                &
+                           count  = this%bwdmesh%npoints, &
+                           values = this%bwdmesh%s ) 
+            call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                           varid  = ncvarid_mesh_z,   &
+                           start  = 1,                &
+                           count  = this%bwdmesh%npoints, &
+                           values = this%bwdmesh%z ) 
+        endif
     endif
 
     ! Read surface element theta
