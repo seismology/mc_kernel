@@ -29,10 +29,12 @@ module readfields
         integer                           :: ncid
         integer                           :: snap, surf, mesh, seis  ! Group IDs
         integer                           :: strainvarid(6)          ! Variable IDs
+        integer                           :: displvarid(3)           ! Variable IDs
         integer                           :: seis_disp, seis_velo    ! Variable IDs
         integer                           :: stf_varid               ! Variable IDs
         integer                           :: chunk_gll
         character(len=200)                :: meshdir
+        character(len=12)                 :: dump_type
         integer                           :: ndumps, nseis, ngll
         integer                           :: source_shift_samples    
         real(kind=dp)                     :: source_shift_t
@@ -69,6 +71,7 @@ module readfields
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
         real(kind=dp), public, allocatable :: stf_fwd(:), stf_bwd(:)
         integer                            :: buffer_size
+        character(len=12)                  :: dump_type
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
 
@@ -223,16 +226,16 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
 end subroutine
 !-----------------------------------------------------------------------------------------
 
-
 !-----------------------------------------------------------------------------------------
 subroutine open_files(this)
 
     class(semdata_type)              :: this
     integer                          :: status, isim, chunks(2), deflev
     character(len=200)               :: format20, format21, filename
-    character(len=11)                :: nc_varnamelist(6)
+    character(len=11)                :: nc_strain_varnamelist(6)
+    character(len=11)                :: nc_displ_varnamelist(3)
     real(kind=sp)                    :: temp
-    integer                          :: istrainvar
+    integer                          :: istrainvar, idisplvar
 
     if (.not.this%params_set) then
         print *, 'ERROR in open_files(): Parameters have to be set first'
@@ -240,8 +243,10 @@ subroutine open_files(this)
         call pabort
     end if
 
-    nc_varnamelist = ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
-                      'strain_dsup', 'strain_dzup', 'straintrace']
+    nc_strain_varnamelist = ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
+                             'strain_dsup', 'strain_dzup', 'straintrace']
+           
+    nc_displ_varnamelist  = ['disp_s     ', 'disp_p     ', 'disp_z     ']
 
     format20 = "('  Trying to open NetCDF file ', A, ' on CPU ', I5)"
     format21 = "('  Succeded,  has NCID ', I6, ', Snapshots group NCID: ', I6)"
@@ -254,34 +259,60 @@ subroutine open_files(this)
         call nc_open_for_read(    filename = filename,              &
                                   ncid     = this%fwd(isim)%ncid) 
 
+        call nc_read_att_char(this%fwd(isim)%dump_type, &
+                              'dump type (displ_only, displ_velo, fullfields)', &
+                               this%fwd(isim))
+
         call getgrpid(  ncid     = this%fwd(isim)%ncid,   &
                         name     = "Snapshots",           &
                         grp_ncid = this%fwd(isim)%snap)
 
         
-        do istrainvar = 1, 6            
-            !call getvarid(  ncid     = this%fwd(isim)%snap,   &
-            !                name     = "strainvarid(istrainvar)",         &
-            !                varid    = this%fwd(isim)%strainvarid(istrainvar)) 
-            status = nf90_inq_varid(ncid     = this%fwd(isim)%snap,                  &
-                                    name     = nc_varnamelist(istrainvar),           &
-                                    varid    = this%fwd(isim)%strainvarid(istrainvar)) 
-            if (status.ne.NF90_NOERR) then
-                this%fwd(isim)%strainvarid(istrainvar) = -1
-                if (istrainvar==6.) then
-                    print *, 'Did not find variable ''straintrace'' in NetCDF file'
-                    call pabort
+        if (trim(this%fwd(isim)%dump_type) == 'displ_only') then
+            do idisplvar = 1, 3
+                status = nf90_inq_varid(ncid  = this%fwd(isim)%snap,                  &
+                                        name  = nc_displ_varnamelist(idisplvar),      &
+                                        varid = this%fwd(isim)%displvarid(idisplvar)) 
+                
+                if (status.ne.NF90_NOERR) then
+                    this%fwd(isim)%displvarid(idisplvar) = -1
+                    if (idisplvar == 1) then
+                        print *, 'Did not find variable ''disp_s'' in NetCDF file'
+                        call pabort
+                    end if
                 end if
-            end if
-        end do
+            end do
+            call check(nf90_inquire_variable(ncid       = this%fwd(isim)%snap,   &
+                                             varid      = this%fwd(isim)%displvarid(1), &
+                                             chunksizes = chunks, &
+                                             deflate_level = deflev) )
 
-        call check(nf90_inquire_variable(ncid       = this%fwd(isim)%snap,   &
-                                         varid      = this%fwd(isim)%strainvarid(6), &
-                                         chunksizes = chunks, &
-                                         deflate_level = deflev) )
+        elseif (trim(this%fwd(isim)%dump_type) == 'fullfields') then
+            do istrainvar = 1, 6
+                status = nf90_inq_varid(ncid  = this%fwd(isim)%snap,                  &
+                                        name  = nc_strain_varnamelist(istrainvar),    &
+                                        varid = this%fwd(isim)%strainvarid(istrainvar)) 
+                
+                if (status.ne.NF90_NOERR) then
+                    this%fwd(isim)%strainvarid(istrainvar) = -1
+                    if (istrainvar == 6) then
+                        print *, 'Did not find variable ''straintrace'' in NetCDF file'
+                        call pabort
+                    end if
+                end if
+            end do
+            call check(nf90_inquire_variable(ncid       = this%fwd(isim)%snap,   &
+                                             varid      = this%fwd(isim)%strainvarid(6), &
+                                             chunksizes = chunks, &
+                                             deflate_level = deflev) )
+        else
+           print *, 'ERROR: dump_type ', this%fwd(isim)%dump_type, ' not implemented!'
+           call pabort
+        endif
 
         write(lu_out, "('  FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
+
         this%fwd(isim)%chunk_gll = chunks(1)
 
         if (verbose>0) write(lu_out,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
@@ -355,31 +386,61 @@ subroutine open_files(this)
         call nc_open_for_read(filename = filename,              &
                               ncid     = this%bwd(isim)%ncid) 
 
+        call nc_read_att_char(this%bwd(isim)%dump_type, &
+                              'dump type (displ_only, displ_velo, fullfields)', &
+                               this%bwd(isim))
+
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
                        name     = "Snapshots",           &
                        grp_ncid = this%bwd(isim)%snap)
 
-        do istrainvar = 1, 6            
-            status = nf90_inq_varid(ncid     = this%bwd(isim)%snap,                  &
-                                    name     = nc_varnamelist(istrainvar),           &
-                                    varid    = this%bwd(isim)%strainvarid(istrainvar)) 
-            if (status.ne.NF90_NOERR) then
-                this%bwd(isim)%strainvarid(istrainvar) = -1
-                if (istrainvar==6.) then
-                    print *, 'Did not find variable ''straintrace'' in NetCDF file'
-                    call pabort
+        if (trim(this%bwd(isim)%dump_type) == 'displ_only') then
+            do idisplvar = 1, 3
+                status = nf90_inq_varid(ncid  = this%bwd(isim)%snap,                  &
+                                        name  = nc_displ_varnamelist(idisplvar),      &
+                                        varid = this%bwd(isim)%displvarid(idisplvar)) 
+                
+                if (status.ne.NF90_NOERR) then
+                    this%bwd(isim)%displvarid(idisplvar) = -1
+                    if (idisplvar == 1) then
+                        print *, 'Did not find variable ''disp_s'' in NetCDF file'
+                        call pabort
+                    end if
                 end if
-            end if
-        end do
-
-        call check(nf90_inquire_variable(ncid       = this%bwd(isim)%snap,   &
-                                         varid      = this%bwd(isim)%strainvarid(6), &
-                                         chunksizes = chunks, &
-                                         deflate_level = deflev) )
+            end do
+            call check(nf90_inquire_variable(ncid       = this%bwd(isim)%snap,   &
+                                             varid      = this%bwd(isim)%displvarid(1), &
+                                             chunksizes = chunks, &
+                                             deflate_level = deflev) )
+        elseif (trim(this%bwd(isim)%dump_type) == 'fullfields') then
+            do istrainvar = 1, 6            
+                status = nf90_inq_varid(ncid  = this%bwd(isim)%snap,                  &
+                                        name  = nc_strain_varnamelist(istrainvar),    &
+                                        varid = this%bwd(isim)%strainvarid(istrainvar)) 
+    
+                if (status.ne.NF90_NOERR) then
+                    this%bwd(isim)%strainvarid(istrainvar) = -1
+                    if (istrainvar == 6.) then
+                        print *, 'Did not find variable ''straintrace'' in NetCDF file'
+                        call pabort
+                    end if
+                end if
+            end do
+    
+            call check(nf90_inquire_variable(ncid       = this%bwd(isim)%snap,   &
+                                             varid      = this%bwd(isim)%strainvarid(6), &
+                                             chunksizes = chunks, &
+                                             deflate_level = deflev) )
+        else
+           print *, 'ERROR: dump_type ', this%bwd(isim)%dump_type, ' not implemented!'
+           call pabort
+        endif
 
         write(lu_out, "('BWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
+
         this%bwd(isim)%chunk_gll = chunks(1)
+        
         if (verbose>0) write(lu_out,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
         
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
@@ -497,10 +558,35 @@ subroutine check_consistency(this)
     integer                :: isim
     real(kind=dp)          :: dt_agreed
     character(len=512)     :: fmtstring, fmtstring_stf
+    character(len=12)      :: dump_type_agreed
     integer                :: ndumps_agreed, nseis_agreed
     real(kind=dp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
     real(kind=dp)          :: stf_agreed_fwd(this%fwd(1)%ndumps)
     real(kind=dp)          :: stf_agreed_bwd(this%bwd(1)%ndumps)
+
+    ! Check whether the dump_type is the same in all files
+    dump_type_agreed = this%fwd(1)%dump_type
+    
+    fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
+                '  in simulation ", I1)' 
+    do isim = 1, this%nsim_fwd
+       if (dump_type_agreed /= this%fwd(isim)%dump_type) then
+          write(*,fmtstring) 'dump_type', isim
+          call pabort
+       end if
+    end do
+
+    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                '  in simulation ", I1)' 
+
+    do isim = 1, this%nsim_bwd
+       if (dump_type_agreed /= this%bwd(isim)%dump_type) then
+          write(*,fmtstring) 'dump_type', isim
+          call pabort
+       end if
+    end do
+
+    this%dump_type = dump_type_agreed
 
     ! Check whether the sampling period is the same in all files
     dt_agreed = this%fwd(1)%dt
@@ -1162,6 +1248,12 @@ function load_strain_point(sem_obj, pointid, model_param)
     integer                         :: iclockold, status, istrainvar
     real(kind=sp)                   :: utemp(sem_obj%ndumps)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+
+    if (trim(sem_obj%dump_type) /= 'fullfields') then
+        write(6,*) 'ERROR: trying to read strain from a file that was not'
+        write(6,*) '       written with dump_type "fullfields"'
+        stop
+    endif
 
     select case(model_param)
     case('vp')

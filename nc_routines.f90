@@ -236,7 +236,7 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
                print *, trim(nf90_strerror(status))
-               stop
+               stop 2
            end if
 
            ! Otherwise just dump as much information as possible and stop
