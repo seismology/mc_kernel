@@ -36,6 +36,7 @@ contains
 !-----------------------------------------------------------------------------------------
 function inside_element(s, z, nodes, element_type, tolerance, xi, eta)
 !< test whether a point described by global coordinates s,z is inside an element
+!< optionally return reference coordinates
   
   real(kind=dp), intent(in) :: s, z, nodes(4,2)
   integer, intent(in)       :: element_type
