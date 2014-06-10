@@ -378,23 +378,6 @@ subroutine open_files(this)
                                   varid  = this%fwd(isim)%stf_varid, &
                                   values = this%fwd(isim)%stf  ))
         
-        if (trim(this%fwd(isim)%dump_type) == 'displ_only') then
-            call getvarid(ncid  = this%fwd(isim)%mesh,   &
-                          name  = "fem_mesh",            &
-                          varid = this%fwd(isim)%fem_mesh_varid)
-
-            call getvarid(ncid  = this%fwd(isim)%mesh,   &
-                          name  = "eltype",              &
-                          varid = this%fwd(isim)%eltype_varid)
-
-            call getvarid(ncid  = this%fwd(isim)%mesh,   &
-                          name  = "mesh_S",              &
-                          varid = this%fwd(isim)%mesh_s_varid)
-
-            call getvarid(ncid  = this%fwd(isim)%mesh,   &
-                          name  = "mesh_Z",              &
-                          varid = this%fwd(isim)%mesh_z_varid)
-        endif
     end do
         
     call flush(lu_out)
@@ -1501,6 +1484,21 @@ subroutine read_meshes(this)
         allocate(this%fwdmesh%s(this%fwdmesh%nelem))
         allocate(this%fwdmesh%z(this%fwdmesh%nelem))
 
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "fem_mesh",            &
+                      varid = this%fwd(1)%fem_mesh_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "eltype",              &
+                      varid = this%fwd(1)%eltype_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_S",              &
+                      varid = this%fwd(1)%mesh_s_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_Z",              &
+                      varid = this%fwd(1)%mesh_z_varid)
            
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mp_mesh_S", &
@@ -1560,6 +1558,23 @@ subroutine read_meshes(this)
             
             allocate(this%bwdmesh%s(this%fwdmesh%nelem))
             allocate(this%bwdmesh%z(this%fwdmesh%nelem))
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "fem_mesh",            &
+                          varid = this%bwd(1)%fem_mesh_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "eltype",              &
+                          varid = this%bwd(1)%eltype_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_S",              &
+                          varid = this%bwd(1)%mesh_s_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_Z",              &
+                          varid = this%bwd(1)%mesh_z_varid)
+           
             
             call  getvarid( ncid  = this%bwd(1)%mesh, &
                             name  = "mp_mesh_S", &
