@@ -28,6 +28,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST SPECTRAL BASIS MODULE'
   call test(test_lagrange_interpol_1D, 'lagrangian interpolation in 1D')
   call test(test_lagrange_interpol_2D, 'lagrangian interpolation in 2D')
+  call test(test_lagrange_interpol_2D_td, 'lagrangian interpolation in 2D time dep')
 
   call test(test_gll_points, 'gll points')
   call test(test_glj_points, 'glj points')
