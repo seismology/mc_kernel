@@ -33,6 +33,7 @@ module readfields
         integer                           :: seis_disp, seis_velo    ! Variable IDs
         integer                           :: stf_varid               ! Variable IDs
         integer                           :: fem_mesh_varid          ! Variable IDs
+        integer                           :: eltype_varid            ! Variable IDs
         integer                           :: mesh_s_varid            ! Variable IDs
         integer                           :: mesh_z_varid            ! Variable IDs
         integer                           :: chunk_gll
@@ -106,7 +107,6 @@ function get_ndim(this)
     get_ndim = this%ndim
 end function
 !-----------------------------------------------------------------------------------------
-
 
 !-----------------------------------------------------------------------------------------
 subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
@@ -384,8 +384,13 @@ subroutine open_files(this)
                           varid = this%fwd(isim)%fem_mesh_varid)
 
             call getvarid(ncid  = this%fwd(isim)%mesh,   &
+                          name  = "eltype",              &
+                          varid = this%fwd(isim)%eltype_varid)
+
+            call getvarid(ncid  = this%fwd(isim)%mesh,   &
                           name  = "mesh_S",              &
                           varid = this%fwd(isim)%mesh_s_varid)
+
             call getvarid(ncid  = this%fwd(isim)%mesh,   &
                           name  = "mesh_Z",              &
                           varid = this%fwd(isim)%mesh_z_varid)
@@ -1011,7 +1016,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     integer                           :: npoints, nnext_points
     integer                           :: pointid(size(source_params))
     integer                           :: ipoint, inext_point, isim, iclockold, i, icp
-    integer                           :: corner_point_ids(4)
+    integer                           :: corner_point_ids(4), eltype(1)
     real(kind=dp)                     :: corner_points(4,2)
     real(kind=dp)                     :: cps(1), cpz(1)
     real(kind=dp)                     :: rotmesh_s(size(source_params))
@@ -1066,6 +1071,12 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                         count  = [4, 1], &
                                         values = corner_point_ids))
                 
+                call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                        varid  = this%fwd(1)%eltype_varid, &
+                                        start  = [ nextpoint(inext_point)%idx], &
+                                        count  = [1], &
+                                        values = eltype))
+                
                 do icp = 1, 4
                     call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
                                             varid  = this%fwd(1)%mesh_s_varid, &
@@ -1083,13 +1094,19 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                     corner_points(icp, 2) = cpz(1)
                 enddo                        
                 ! test point to be inside, if so, exit
-                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), corner_points, 0, xi=xi, eta=eta)) then
+                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
+                                   corner_points, eltype(1), xi=xi, eta=eta)) then
+                    write(6,*) 'eltype     = ', eltype
                     write(6,*) 'xi, eta    = ', xi, eta
                     write(6,*) 'element id = ', nextpoint(inext_point)%idx
-                    stop
                     exit
                 endif
             enddo
+
+            if (inext_point > nnext_points) then
+               write(6,*) 'ERROR: element not found'
+               stop
+            endif
         endif
     end do
 
