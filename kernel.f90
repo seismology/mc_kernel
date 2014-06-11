@@ -228,52 +228,90 @@ end function
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-subroutine cut_timewindow(t, x, timewindow, cut_tw)
-   real(kind=dp), intent(in)  :: t(:), x(:)
-   real(kind=dp), intent(in)  :: timewindow(2)
-   real(kind=dp), allocatable :: cut_tw(:)
-   real(kind=dp), allocatable :: cut_timewindow_temp(:)
-   integer                    :: ntimes, i, iintimewindow
-   real(kind=dp)              :: dt
-   
+subroutine cut_timewindow(t, x, timewindow, cut_tw, ierror)
+   real(kind=dp), intent(in)        :: t(:), x(:)
+   real(kind=dp), intent(in)        :: timewindow(2)
+   integer, intent(out), optional   :: ierror
+   real(kind=dp), allocatable       :: cut_tw(:)
+   real(kind=dp), allocatable       :: cut_timewindow_temp(:)
+   integer                          :: ntimes, i, iintimewindow
+   real(kind=dp)                    :: dt, tlast
+  
+
+   tlast = -1d308
+   do i=1, size(t)
+      if (t(i)<=tlast) then
+         write(*,*) 'Error in cut_timewindow:'
+         write(*,*) 'times t(:) must be monotonously increasing'
+         if (present(ierror)) then
+            ierror = -1
+            return
+         else
+            call pabort
+         end if
+      else
+         tlast = t(i)
+      end if
+   end do
+
+   if (present(ierror)) ierror = 0
+
    ntimes = size(t)
    dt = t(2) - t(1)
-   if(timewindow(1).lt.t(1)) then
+   if (timewindow(1).lt.t(1)) then
       write(*,*) 'Time window starts before beginning of time series'
       write(*,*) 'time window:', timewindow, '; t(1):', t(1)
-      call pabort
+      if (present(ierror)) then
+         ierror = -1
+         return
+      else
+         call pabort
+      end if
    end if
-   if(timewindow(2).gt.t(ntimes)) then
-      write(*,*) 'Time window ends after beginning of time series'
+   if (timewindow(2).gt.t(ntimes)) then
+      write(*,*) 'Time window ends after end of time series'
       write(*,*) 'time window:', timewindow, '; t(ntimes):', t(ntimes)
-      call pabort
+      if (present(ierror)) then
+         ierror = -1
+         return
+      else
+         call pabort
+      end if
    end if
 
    if ((timewindow(2) - timewindow(1)).le.0) then
       write(*,*) 'length of time window is negative'
       write(*,*) 'Beginning: ', timewindow(1), '; end: ', timewindow(2)
-      call pabort
+      if (present(ierror)) then
+         ierror = -1
+         return 
+      else
+         call pabort
+      end if
    end if
 
    allocate(cut_timewindow_temp(ntimes))
    iintimewindow = 0
    do i = 1, ntimes
-      if (t(i).le.timewindow(2).and.t(i).ge.timewindow(1)) then
-         iintimewindow = iintimewindow + 1
-         cut_timewindow_temp(iintimewindow) = x(i)
-      end if
-      if (t(i).gt.timewindow(2)) exit
+       if (t(i).le.timewindow(2).and.t(i).ge.timewindow(1)) then
+          iintimewindow = iintimewindow + 1
+          cut_timewindow_temp(iintimewindow) = x(i)
+       end if
+       if (t(i).gt.timewindow(2)) exit
    end do
 
    if (iintimewindow.eq.0) then
        print *, 'Time window: ', timewindow, ', t(1):', t(1), ', t(ntimes):', t(ntimes)
        write(*,*) 'Time window length was zero'
-       call pabort 
+       if (present(ierror)) then
+          ierror = -1
+          return
+       else
+          call pabort
+       end if
    end if
 
-   !if (allocated(cut_timewindow)) then
    if (allocated(cut_tw)) then
-       !print *, 'Warning: Time window was already allocated'
        deallocate(cut_tw)
    end if
    allocate(cut_tw(iintimewindow))
