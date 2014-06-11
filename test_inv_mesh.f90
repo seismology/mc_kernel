@@ -505,33 +505,33 @@ end subroutine
 subroutine test_initialize_mesh
   type(inversion_mesh_type)  :: inv_mesh
   real(kind=dp)              :: vertices(3,3)
-  integer                    :: connectivity(1,3)
+  integer                    :: connectivity(3,1)
 
   integer                    :: nelements_out, connectivity_out(1,3), valence_out
-  real(kind=dp)              :: vertex_out(1,3), volume_out
+  real(kind=sp)              :: vertex_out(3,3), volume_out
 
   vertices(:,1) = [0, 0, 0]
   vertices(:,2) = [1, 0, 0]
   vertices(:,3) = [0, 0, 1]
 
-  connectivity(1,:) = [1, 2, 3]
+  connectivity(:,1) = [1, 2, 3]
 
   call inv_mesh%initialize_mesh(1, vertices, connectivity)
 
-  !nelements_out = inv_mesh%get_nelements()
-  !call assert_equal(nelements_out,          1,       'get nelements')
+  nelements_out = inv_mesh%get_nelements()
+  call assert_equal(nelements_out,          1,       'get nelements')
 
-  !connectivity_out = inv_mesh%get_element(1)
-  !call assert_equal(connectivity_out,       [1, 2, 3], 'get connectivity')
+  connectivity_out = transpose(inv_mesh%get_connectivity())
+  call assert_equal_int1d(connectivity_out(1,:),       [1, 2, 3], 'get connectivity')
 
-  !vertex_out = inv_mesh%get_vertices(2)
-  !call assert_comparable_real1d(vertex_out, [1, 0, 0], 1e-8, 'get vertex 2')
+  vertex_out = real(inv_mesh%get_vertices(), kind=sp)
+  call assert_comparable_real1d(vertex_out(:,2), [1., 0., 0.], 1e-8, 'get vertex 2')
 
-  !valence_out = inv_mesh%get_valence(1)
-  !call assert_equal(valence_out,            [1],       'get valence')
+  valence_out = inv_mesh%get_valence(1)
+  call assert_equal(valence_out,            1,       'get valence')
 
-  !volume_out = inv_mesh%get_volume(1)
-  !call assert_comparable_real1d(volume_out, [0.5],     1e-8, 'get volume')
+  volume_out = real(inv_mesh%get_volume(1), kind=sp)
+  call assert_comparable_real(volume_out, 0.5,     1e-8, 'get volume')
 
   call inv_mesh%freeme()
 
