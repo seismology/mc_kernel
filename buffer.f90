@@ -136,6 +136,11 @@ function get_1d(this, iindex, values)
        write(*, '(A)') "ERROR: Buffer has not been initialized"
        call pabort 
     end if
+
+    if (this%ndim /= 1) then
+       write(*,*) 'ERROR: wrong rank of argument "values", buffer was initialized with ndim = ', this%ndim
+       call pabort
+    end if
     
     if (iindex<0) then
        write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
@@ -171,6 +176,11 @@ function get_2d(this, iindex, values)
     if (.not.this%initialized) then
        write(*, '(A)') "ERROR: Buffer has not been initialized"
        call pabort 
+    end if
+    
+    if (this%ndim /= 2) then
+       write(*,*) 'ERROR: wrong rank of argument "values", buffer was initialized with ndim = ', this%ndim
+       call pabort
     end if
     
     if (iindex<0) then
@@ -210,6 +220,11 @@ function get_3d(this, iindex, values)
        call pabort 
     end if
     
+    if (this%ndim /= 3) then
+       write(*,*) 'ERROR: wrong rank of argument "values", buffer was initialized with ndim = ', this%ndim
+       call pabort
+    end if
+    
     if (iindex<0) then
        write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
        call pabort
@@ -243,6 +258,11 @@ function put_1d(this, iindex, values)
 
     if (iindex<0) then
        write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
+       call pabort
+    end if
+
+    if (this%ndim /= 1) then
+       write(*,*) 'ERROR: wrong rank of argument "values", buffer was initialized with ndim = ', this%ndim
        call pabort
     end if
 
@@ -280,6 +300,11 @@ function put_2d(this, iindex, values)
        call pabort
     end if
 
+    if (this%ndim /= 2) then
+       write(*,*) 'ERROR: wrong rank of argument "values", buffer was initialized with ndim = ', this%ndim
+       call pabort
+    end if
+
     if (any(this%idx==iindex)) then
        put_2d = -1
     else
@@ -312,6 +337,11 @@ function put_3d(this, iindex, values)
 
     if (iindex<0) then
        write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
+       call pabort
+    end if
+
+    if (this%ndim /= 3) then
+       write(*,*) 'ERROR: wrong rank of argument "values", buffer was initialized with ndim = ', this%ndim
        call pabort
     end if
 
