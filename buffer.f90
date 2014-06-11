@@ -145,7 +145,7 @@ function get_1d(this, iindex, values)
     this%naccess = this%naccess + 1
     get_1d = -1
 
-    do ibuffer = 1, this%nbuffer
+    do ibuffer = 1, min(this%nput, this%nbuffer)
        if (this%idx(ibuffer).ne.iindex) cycle
 
        values = this%val_1d(:,ibuffer) 
@@ -181,7 +181,7 @@ function get_2d(this, iindex, values)
     this%naccess = this%naccess + 1
     get_2d = -1
 
-    do ibuffer = 1, this%nbuffer
+    do ibuffer = 1, min(this%nput, this%nbuffer)
        if (this%idx(ibuffer).ne.iindex) cycle
 
        values = this%val_2d(:,:,ibuffer) 
@@ -218,7 +218,7 @@ function get_3d(this, iindex, values)
     this%naccess = this%naccess + 1
     get_3d = -1
 
-    do ibuffer = 1, this%nbuffer
+    do ibuffer = 1, min(this%nput, this%nbuffer)
        if (this%idx(ibuffer).ne.iindex) cycle
 
        values = this%val_3d(:,:,:,ibuffer) 
