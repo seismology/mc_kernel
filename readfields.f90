@@ -167,12 +167,10 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%nsim_bwd = 4
        write(lu_out,*) 'Backword simulation was ''moment'' source'
        write(lu_out,*) 'This is not implemented yet!'
-       call pabort
     elseif (force) then
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
        write(lu_out,*) 'This is not implemented yet!'
-       call pabort
     elseif (single) then
        this%nsim_bwd = 1
        write(lu_out,*) 'Backword simulation was ''single'' source'
@@ -186,25 +184,35 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     allocate( this%bwd(this%nsim_bwd) )
 
     select case(this%nsim_fwd)
-    case(1)
+    case(1)    ! Single
         this%fwd(1)%meshdir = fwd_dir//'/'
 
-    case(2) 
+    case(2)    ! Forces
         this%fwd(1)%meshdir = trim(fwd_dir)//'/PZ/'
         this%fwd(2)%meshdir = trim(fwd_dir)//'/PX/'
 
-    case(4)
+    case(4)    ! Moment
         this%fwd(1)%meshdir = trim(fwd_dir)//'/MZZ/'
         this%fwd(2)%meshdir = trim(fwd_dir)//'/MXX_P_MYY/'
         this%fwd(3)%meshdir = trim(fwd_dir)//'/MXZ_MYZ/'
         this%fwd(4)%meshdir = trim(fwd_dir)//'/MXY_MXX_M_MYY/'
     end select
     
-    ! MvD: why is bwd always single?
-    do isim = 1, this%nsim_bwd
-        this%bwd(isim)%meshdir = trim(bwd_dir)//'/'
-    end do
+    select case(this%nsim_bwd)
+    case(1)    ! Single
+        this%bwd(1)%meshdir = bwd_dir//'/'
 
+    case(2)    ! Forces
+        this%bwd(1)%meshdir = trim(bwd_dir)//'/PZ/'
+        this%bwd(2)%meshdir = trim(bwd_dir)//'/PX/'
+
+    case(4)    ! Moment
+        this%bwd(1)%meshdir = trim(bwd_dir)//'/MZZ/'
+        this%bwd(2)%meshdir = trim(bwd_dir)//'/MXX_P_MYY/'
+        this%bwd(3)%meshdir = trim(bwd_dir)//'/MXZ_MYZ/'
+        this%bwd(4)%meshdir = trim(bwd_dir)//'/MXY_MXX_M_MYY/'
+    end select
+    
     if (present(model_param)) then
        this%model_param = model_param
     else
@@ -256,7 +264,7 @@ subroutine open_files(this)
 
     do isim = 1, this%nsim_fwd
         ! Forward wavefield
-        filename=trim(this%fwd(isim)%meshdir)//'/ordered_output.nc4'
+        filename=trim(this%fwd(isim)%meshdir)//'/Data/ordered_output.nc4'
         
         if (verbose>0) write(lu_out,format20) trim(filename), myrank
         call nc_open_for_read(    filename = filename,              &
@@ -345,8 +353,7 @@ subroutine open_files(this)
         call nc_read_att_dble(   this%fwd(isim)%dt,               &
                                  'strain dump sampling rate in sec', &
                                  this%fwd(isim))
-        ! Was a hack because dt was written out wrong in earlier AxiSEM versions
-        !this%fwd(isim)%dt = 1.7064171433448792
+
         call nc_read_att_int(    this%fwd(isim)%nseis,             &
                                  'length of seismogram  in time samples', &
                                  this%fwd(isim))
@@ -396,7 +403,7 @@ subroutine open_files(this)
 
     do isim = 1, this%nsim_bwd
         ! Backward wavefield
-        filename=trim(this%bwd(isim)%meshdir)//'/ordered_output.nc4'
+        filename=trim(this%bwd(isim)%meshdir)//'/Data/ordered_output.nc4'
         
         if (verbose>0) write(lu_out,format20) trim(filename), myrank
         call nc_open_for_read(filename = filename,              &
@@ -1699,7 +1706,7 @@ subroutine nc_read_att_int(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
@@ -1717,7 +1724,7 @@ subroutine nc_read_att_char(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort 
   end if
@@ -1735,7 +1742,7 @@ subroutine nc_read_att_real(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
@@ -1753,7 +1760,7 @@ subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
