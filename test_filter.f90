@@ -56,7 +56,7 @@ subroutine test_filter_gabor_response
    ! Test filter with 5s period
    filterclass = 'Gabor'
    filtername  = 'Gabor test'
-   call gabor%create(filtername, df, nomega, filtername, [5.0d0, 0.5d0, 0.d0, 0.d0])
+   call gabor%create(filtername, df, nomega, filterclass, [5.0d0, 0.5d0, 0.d0, 0.d0])
 
    call assert_true(gabor%isinitialized(), 'filter is initialized after creation')
 
