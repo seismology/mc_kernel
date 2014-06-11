@@ -167,6 +167,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%nsim_bwd = 4
        write(lu_out,*) 'Backword simulation was ''moment'' source'
        write(lu_out,*) 'This is not implemented yet!'
+       call pabort()
     elseif (force) then
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
@@ -211,6 +212,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
         this%bwd(2)%meshdir = trim(bwd_dir)//'/MXX_P_MYY/'
         this%bwd(3)%meshdir = trim(bwd_dir)//'/MXZ_MYZ/'
         this%bwd(4)%meshdir = trim(bwd_dir)//'/MXY_MXX_M_MYY/'
+
     end select
     
     if (present(model_param)) then
@@ -975,18 +977,20 @@ function load_bw_points(this, coordinates, receiver)
     load_bw_points(:,:,:) = 0.0
     
     do ipoint = 1, npoints
-        utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%model_param)
         
         select case(receiver%component)
         case('Z')
+            utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%model_param)
             load_bw_points(:,:,ipoint) &
                 =                               utemp / this%bwd(1)%amplitude
         case('R')
+            utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%model_param)
             load_bw_points(:,:,ipoint) &
-                =   dcos(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude
+                =   dcos(rotmesh_phi(ipoint)) * utemp / this%bwd(2)%amplitude
         case('T')
+            utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%model_param)
             load_bw_points(:,:,ipoint) &
-                = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude 
+                = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(2)%amplitude 
         end select
 
         if (this%model_param.eq.'vs') then
