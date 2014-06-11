@@ -134,7 +134,7 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
     real(kind=dp)                :: azim_factor_1, azim_factor_2
     integer                      :: idump
 
-    print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
+    !print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
     if (size(tensor_vector,2).ne.6) then
         print *, 'ERROR in rotate_straintensor: size of second dimension of tensor_vector:'
         print *, 'should be: 6, is: ', size(tensor_vector, 2)
@@ -204,7 +204,7 @@ function rotate_straintensor_voigt(tensor_vector, phi, mij, isim) result(tensor_
 
     real(kind=dp)                :: azim_factor_1, azim_factor_2
 
-    print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
+    !print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
     if (size(tensor_vector,2).ne.6) then
         print *, 'ERROR in rotate_straintensor: size of second dimension of tensor_vector:'
         print *, 'should be: 6, is: ', size(tensor_vector, 2)
