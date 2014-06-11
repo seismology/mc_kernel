@@ -18,11 +18,10 @@ subroutine test_filter_gabor_response
    type(filter_type)             :: gabor
    type(rfft_type)               :: fft_data
    integer, parameter            :: ntimes = 1000, npoints = 1
-   integer                       :: ntimes_ft, nomega, i 
+   integer                       :: ntimes_ft, nomega
    real(kind=dp)                 :: data_in(ntimes,1)
    real(kind=dp), allocatable    :: data_filtered_ref(:,:), data_filtered(:,:), tf(:,:), tf_ref(:,:)
    complex(kind=dp), allocatable :: data_fd(:,:)
-   real(kind=dp)                 :: windowlength
    real(kind=dp)                 :: df
    real(kind=dp), parameter      :: dt = 0.1d0
    character(len=32)             :: filtername, filterclass
@@ -117,7 +116,7 @@ subroutine test_filter_timeshift()
 
    type(rfft_type)                  :: fft_data
    integer, parameter               :: ntimes=32, npoints=1
-   integer                          :: ntimes_ft, nomega, i
+   integer                          :: ntimes_ft, nomega
    real(kind=dp)                    :: dt
    real(kind=dp)                    :: data_in(ntimes, npoints)
    real(kind=dp)                    :: data_out(ntimes*2, npoints), data_ref(ntimes*2)

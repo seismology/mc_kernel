@@ -5,45 +5,93 @@ program rdbm
   use commpi
   use global_parameters
   use source_class
+  use resampling
+  use type_parameter
+  use receivers_rdbm
+  use fft, only : taperandzeropad
 
   implicit none
 
   type(semdata_type)                  :: sem_data
-  type(src_param_type)                :: source
-  character(len=512)                  :: fwd_dir, bwd_dir
-  character(len=4)                    :: model_param
-  real(kind=dp)                       :: coordinates(3,3)
-  real(kind=dp),    allocatable       :: fw_field(:,:,:)
-  integer                             :: i
+  type(parameter_type)                :: parameters
+  type(receivers_rdbm_type)           :: receivers
+  type(src_param_type), allocatable   :: sources(:)
 
-  verbose = 1
+  character(len=512)                  :: bwd_dir
+  character(len=4)                    :: model_param
+  real(kind=dp)                       :: x, y, r, th
+  real(kind=dp), allocatable          :: fw_field(:,:,:)
+  integer                             :: i, j
+  integer                             :: lu_seis
+  character(len=8)                    :: fname
+
+  type(resampling_type)               :: resamp
+  real(kind=dp), allocatable          :: fw_field_res(:,:)
+  integer                             :: nsources
+
+  real(kind=dp), dimension(:), allocatable      :: T
+  real(kind=dp)                                 :: dt_out
+
+  call parameters%read_parameters('inparam_basic')
+
+  if (parameters%receiver_file_type == 'stations') then
+     call receivers%read_stations_file()
+  else if (parameters%receiver_file_type == 'colatlon') then
+     call receivers%read_receiver_dat()
+  else
+     write(6,*) 'ERROR: unknown receiver file type'
+     call pabort
+  endif
+
+  nsources = 1
 
   write(*,*) '***************************************************************'
   write(*,*) ' Initialize and open AxiSEM wavefield files'
   write(*,*) '***************************************************************'
 
-  fwd_dir = '/home/ex/local/src/axisem/SOLVER/50s_kernel_output'
   bwd_dir = ''
 
-  model_param = 'vp'
-  call sem_data%set_params(fwd_dir, bwd_dir, 100, model_param)
+  if (trim(parameters%source_type) == 'explosion') then
+     model_param = 'vp'
+  else
+     model_param = 'vs'
+  endif
+
+  call sem_data%set_params(parameters%sim_dir, bwd_dir, parameters%buffer_size, model_param)
   call sem_data%open_files()
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
-  call source%init(90d0, 0d0, (/1d10, 1d10, 1d10, 0d0, 0d0, 0d0 /))
+  allocate(fw_field(sem_data%ndumps, 1, nsources))
+  allocate(fw_field_res(parameters%nsamp * 2, nsources))
+  allocate(sources(nsources))
 
+  call sources(1)%read_cmtsolution()
 
-  allocate(fw_field(sem_data%ndumps, 1, 3))
+  allocate(T(1:parameters%nsamp))
 
-  coordinates(:,1) = (/0d0, 0d0, 6d3/)
-  coordinates(:,2) = (/0d0, 0d0, 5.9d3/)
-  coordinates(:,3) = (/0d0, 0d0, 5.8d3/)
+  dt_out = sem_data%dt * sem_data%ndumps / parameters%nsamp
 
-  fw_field = sem_data%load_fw_points_rdbm(coordinates, source)
+  do i = 1, parameters%nsamp
+     T(i) = dt_out * (i - 1)
+  end do
 
-  do i = 1, sem_data%ndumps
-     write(111,*) fw_field(i,1,:)
+  call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
+
+  do i=1, receivers%num_rec
+     fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
+                                             parameters%component)
+
+     call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
+                                          ntimes=sem_data%ndumps * 2), &
+                          fw_field_res)
+
+     write(fname,'("seis_",I0.3)') i
+     open(newunit=lu_seis, file=fname)
+     do j = 1, parameters%nsamp
+        write(lu_seis,*) T(j), fw_field_res(j,:)
+     enddo
+     close(lu_seis)
   enddo
 
 contains

@@ -62,8 +62,8 @@ end subroutine test_mc_meanandvariance
 
 !-----------------------------------------------------------------------------------------
 subroutine test_mc_unit_hexagon
-    type(integrated_type)                    :: mc_integral 
-    integer                                   :: ipoint, iiter
+    type(integrated_type)                      :: mc_integral 
+    integer                                    :: iiter
     real(kind=dp), dimension(100,3)            :: coords
     real(kind=dp), dimension(100,1)            :: values
     real(kind=sp), dimension(1)                :: integral
@@ -99,7 +99,7 @@ end subroutine test_mc_unit_hexagon
 subroutine test_mc_sphere_in_tetrahedron
     use tetrahedra, only                        : generate_random_points_tet
     type(integrated_type)                      :: mc_integral 
-    integer                                    :: ipoint, iiter
+    integer                                    :: iiter
     real(kind=dp), dimension(100,3)            :: coords
     real(kind=dp), dimension(100,1)            :: values
     real(kind=sp), dimension(1)                :: integral

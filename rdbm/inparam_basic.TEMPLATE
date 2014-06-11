@@ -1,0 +1,36 @@
+# directory of the single force forward run
+SIM_DIR                 '../../axisem/SOLVER/20s_kernel_output'
+
+# mode: 
+# tomography        one seismogram per source receiver pair
+# finitesource      one seismogram per receiver, summed over all sources
+MODE                    tomo
+
+# Receiver file type, allowed options:
+# colatlon          Colatitude and Longitude for each station.
+# stations          SPECFEM-style stations file with latitude, longitude and station name
+#                     (default)
+RECFILE_TYPE            stations 
+
+# Source file type, allowed options:
+# cmtsolution       standard cmtsolution file as available form globalcmt.org (allows only
+#                     one source per run)
+SRCFILE_TYPE            cmtsolution
+
+# source type, should be one of [moment, explosion]
+# in case of exlosion, only the straintrace needs to be read from file instead of the
+# whole strain tensor
+SRC_TYPE                moment
+
+# Component of the seismogram, should be one of [Z,N,E,R,T]
+COMPONENT               N
+
+# number of samples in the seismograms, resampling is done in the frequency domain, 
+# length of the traces in seconds depends on the forward run
+NSAMP                   3600
+
+# Size of reading buffer. 1000 is a good value, unless you run into memory problems.
+# Higher values avoid repeated reading of the same point.
+NETCDF_BUFFER_SIZE      100
+
+VERBOSITY               1

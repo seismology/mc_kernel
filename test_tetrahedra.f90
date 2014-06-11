@@ -117,7 +117,6 @@ subroutine test_generate_random_point_triangle_space
   logical                             :: isintriangle(npoints)
   real(kind=dp), dimension(3,npoints) :: points
   real(kind=dp), dimension(2,npoints) :: points_2d
-  real(kind=dp), dimension(2,3)       :: vertices, new_vertices
   real(kind=dp)                       :: p_2d(2,3), v_2d(3,0:2), p_ref(3,3)
   integer                             :: nvec, ipoint
   real(kind=sp)                       :: ratio_region(3)

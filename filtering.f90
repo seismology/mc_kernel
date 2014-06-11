@@ -258,7 +258,6 @@ function apply_3d(this, freq_series)
    complex(kind=dp), intent(in)    :: freq_series(:,:,:)
    complex(kind=dp)                :: apply_3d(size(freq_series,1), size(freq_series,2), &
                                                size(freq_series,3))
-   integer                         :: itrace
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
@@ -314,7 +313,6 @@ subroutine timeshift_md(field, freq, dtshift)
                                                    !! Dimension: nfreq
    real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
    
-   integer                          :: ipoint
    complex(kind=dp), allocatable    :: shift_fd(:)
 
    allocate( shift_fd(size(field,1)) )
@@ -337,7 +335,6 @@ subroutine timeshift_1d(field, freq, dtshift)
                                                    !! Dimension: nfreq
    real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
    
-   integer                          :: ipoint
    complex(kind=dp), allocatable    :: shift_fd(:)
 
    allocate( shift_fd(size(field,1)) )

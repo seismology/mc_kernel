@@ -1,22 +1,26 @@
 !=========================================================================================
 module readfields
-    use global_parameters, only            : sp, dp, pi, deg2rad, verbose, lu_out, &
+    use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
-    use source_class,      only             : src_param_type
+    use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
     use clocks_mod,        only            : tick
     use commpi,            only            : pabort
     use nc_routines,       only            : getgrpid, getvarid, nc_open_for_read, nc_getvar, &
                                              check
+
+    use rotations
     use netcdf
     use kdtree2_module                     
 
     implicit none
+    private
+    public                                :: semdata_type
 
     type meshtype
         real(kind=sp), allocatable        :: s(:), z(:)
-        integer                           :: npoints
+        integer                           :: npoints, nelem
         real(kind=dp), allocatable        :: theta(:)
         integer                           :: nsurfelem
     end type
@@ -25,11 +29,18 @@ module readfields
         integer                           :: ncid
         integer                           :: snap, surf, mesh, seis  ! Group IDs
         integer                           :: strainvarid(6)          ! Variable IDs
+        integer                           :: displvarid(3)           ! Variable IDs
         integer                           :: seis_disp, seis_velo    ! Variable IDs
         integer                           :: stf_varid               ! Variable IDs
+        integer                           :: fem_mesh_varid          ! Variable IDs
+        integer                           :: sem_mesh_varid          ! Variable IDs
+        integer                           :: eltype_varid            ! Variable IDs
+        integer                           :: mesh_s_varid            ! Variable IDs
+        integer                           :: mesh_z_varid            ! Variable IDs
         integer                           :: chunk_gll
         character(len=200)                :: meshdir
-        integer                           :: ndumps, nseis, ngll
+        character(len=12)                 :: dump_type
+        integer                           :: ndumps, nseis, ngll, npol
         integer                           :: source_shift_samples    
         real(kind=dp)                     :: source_shift_t
         real(kind=sp), allocatable        :: stf(:)
@@ -60,11 +71,13 @@ module readfields
         real(kind=dp), public              :: dt
         integer,       public              :: ndumps, decimate_factor
         integer,       public              :: nseis 
+        integer,       public              :: npol
         real(kind=dp), public              :: windowlength
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
         real(kind=dp), public, allocatable :: stf_fwd(:), stf_bwd(:)
         integer                            :: buffer_size
+        character(len=12)                  :: dump_type
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
 
@@ -97,7 +110,6 @@ function get_ndim(this)
 end function
 !-----------------------------------------------------------------------------------------
 
-
 !-----------------------------------------------------------------------------------------
 subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     class(semdata_type)            :: this
@@ -117,9 +129,11 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     dirnam = trim(fwd_dir)//'/PZ/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = force)
+
     dirnam = trim(fwd_dir)//'/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = single)
+
     if (moment) then
        this%nsim_fwd = 4
        write(lu_out,*) 'Forward simulation was ''moment'' source'
@@ -160,6 +174,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
        write(lu_out,*) 'This is not implemented yet!'
+       call pabort
     elseif (single) then
        this%nsim_bwd = 1
        write(lu_out,*) 'Backword simulation was ''single'' source'
@@ -168,7 +183,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
        write(lu_out,*) 'continuing anyway, as this is default in db mode'
     end if
-    
+
     allocate( this%fwd(this%nsim_fwd) )
     allocate( this%bwd(this%nsim_bwd) )
 
@@ -198,7 +213,6 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%model_param = 'vp'
     end if
 
-    print *, this%model_param
     select case(trim(this%model_param))
     case('vp')
        this%ndim = 1
@@ -217,16 +231,16 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
 end subroutine
 !-----------------------------------------------------------------------------------------
 
-
 !-----------------------------------------------------------------------------------------
 subroutine open_files(this)
 
     class(semdata_type)              :: this
     integer                          :: status, isim, chunks(2), deflev
     character(len=200)               :: format20, format21, filename
-    character(len=11)                :: nc_varnamelist(6)
+    character(len=11)                :: nc_strain_varnamelist(6)
+    character(len=11)                :: nc_displ_varnamelist(3)
     real(kind=sp)                    :: temp
-    integer                          :: istrainvar
+    integer                          :: istrainvar, idisplvar
 
     if (.not.this%params_set) then
         print *, 'ERROR in open_files(): Parameters have to be set first'
@@ -234,8 +248,10 @@ subroutine open_files(this)
         call pabort
     end if
 
-    nc_varnamelist = ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
-                      'strain_dsup', 'strain_dzup', 'straintrace']
+    nc_strain_varnamelist = ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
+                             'strain_dsup', 'strain_dzup', 'straintrace']
+           
+    nc_displ_varnamelist  = ['disp_s     ', 'disp_p     ', 'disp_z     ']
 
     format20 = "('  Trying to open NetCDF file ', A, ' on CPU ', I5)"
     format21 = "('  Succeded,  has NCID ', I6, ', Snapshots group NCID: ', I6)"
@@ -248,34 +264,63 @@ subroutine open_files(this)
         call nc_open_for_read(    filename = filename,              &
                                   ncid     = this%fwd(isim)%ncid) 
 
+        call nc_read_att_char(this%fwd(isim)%dump_type, &
+                              'dump type (displ_only, displ_velo, fullfields)', &
+                               this%fwd(isim))
+
         call getgrpid(  ncid     = this%fwd(isim)%ncid,   &
                         name     = "Snapshots",           &
                         grp_ncid = this%fwd(isim)%snap)
 
         
-        do istrainvar = 1, 6            
-            !call getvarid(  ncid     = this%fwd(isim)%snap,   &
-            !                name     = "strainvarid(istrainvar)",         &
-            !                varid    = this%fwd(isim)%strainvarid(istrainvar)) 
-            status = nf90_inq_varid(ncid     = this%fwd(isim)%snap,                  &
-                                    name     = nc_varnamelist(istrainvar),           &
-                                    varid    = this%fwd(isim)%strainvarid(istrainvar)) 
-            if (status.ne.NF90_NOERR) then
-                this%fwd(isim)%strainvarid(istrainvar) = -1
-                if (istrainvar==6.) then
-                    print *, 'Did not find variable ''straintrace'' in NetCDF file'
-                    call pabort
+        if (trim(this%fwd(isim)%dump_type) == 'displ_only') then
+            do idisplvar = 1, 3
+                status = nf90_inq_varid(ncid  = this%fwd(isim)%snap,                  &
+                                        name  = nc_displ_varnamelist(idisplvar),      &
+                                        varid = this%fwd(isim)%displvarid(idisplvar)) 
+                
+                if (status.ne.NF90_NOERR) then
+                    this%fwd(isim)%displvarid(idisplvar) = -1
+                    if (idisplvar == 1) then
+                        print *, 'Did not find variable ''disp_s'' in NetCDF file'
+                        call pabort
+                    end if
                 end if
-            end if
-        end do
+            end do
+            call check(nf90_inquire_variable(ncid       = this%fwd(isim)%snap,   &
+                                             varid      = this%fwd(isim)%displvarid(1), &
+                                             chunksizes = chunks, &
+                                             deflate_level = deflev) )
 
-        call check(nf90_inquire_variable(ncid       = this%fwd(isim)%snap,   &
-                                         varid      = this%fwd(isim)%strainvarid(6), &
-                                         chunksizes = chunks, &
-                                         deflate_level = deflev) )
+            call nc_read_att_int(this%fwd(isim)%npol, 'npol', this%fwd(isim))
 
-        write(lu_out, "('FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
+
+        elseif (trim(this%fwd(isim)%dump_type) == 'fullfields') then
+            do istrainvar = 1, 6
+                status = nf90_inq_varid(ncid  = this%fwd(isim)%snap,                  &
+                                        name  = nc_strain_varnamelist(istrainvar),    &
+                                        varid = this%fwd(isim)%strainvarid(istrainvar)) 
+                
+                if (status.ne.NF90_NOERR) then
+                    this%fwd(isim)%strainvarid(istrainvar) = -1
+                    if (istrainvar == 6) then
+                        print *, 'Did not find variable ''straintrace'' in NetCDF file'
+                        call pabort
+                    end if
+                end if
+            end do
+            call check(nf90_inquire_variable(ncid       = this%fwd(isim)%snap,   &
+                                             varid      = this%fwd(isim)%strainvarid(6), &
+                                             chunksizes = chunks, &
+                                             deflate_level = deflev) )
+        else
+           print *, 'ERROR: dump_type ', this%fwd(isim)%dump_type, ' not implemented!'
+           call pabort
+        endif
+
+        write(lu_out, "('  FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
+
         this%fwd(isim)%chunk_gll = chunks(1)
 
         if (verbose>0) write(lu_out,format21) this%fwd(isim)%ncid, this%fwd(isim)%snap 
@@ -337,6 +382,7 @@ subroutine open_files(this)
         call check(nf90_get_var(  ncid   = this%fwd(isim)%surf,   &
                                   varid  = this%fwd(isim)%stf_varid, &
                                   values = this%fwd(isim)%stf  ))
+        
     end do
         
     call flush(lu_out)
@@ -349,31 +395,64 @@ subroutine open_files(this)
         call nc_open_for_read(filename = filename,              &
                               ncid     = this%bwd(isim)%ncid) 
 
+        call nc_read_att_char(this%bwd(isim)%dump_type, &
+                              'dump type (displ_only, displ_velo, fullfields)', &
+                               this%bwd(isim))
+
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
                        name     = "Snapshots",           &
                        grp_ncid = this%bwd(isim)%snap)
 
-        do istrainvar = 1, 6            
-            status = nf90_inq_varid(ncid     = this%bwd(isim)%snap,                  &
-                                    name     = nc_varnamelist(istrainvar),           &
-                                    varid    = this%bwd(isim)%strainvarid(istrainvar)) 
-            if (status.ne.NF90_NOERR) then
-                this%bwd(isim)%strainvarid(istrainvar) = -1
-                if (istrainvar==6.) then
-                    print *, 'Did not find variable ''straintrace'' in NetCDF file'
-                    call pabort
+        if (trim(this%bwd(isim)%dump_type) == 'displ_only') then
+            do idisplvar = 1, 3
+                status = nf90_inq_varid(ncid  = this%bwd(isim)%snap,                  &
+                                        name  = nc_displ_varnamelist(idisplvar),      &
+                                        varid = this%bwd(isim)%displvarid(idisplvar)) 
+                
+                if (status.ne.NF90_NOERR) then
+                    this%bwd(isim)%displvarid(idisplvar) = -1
+                    if (idisplvar == 1) then
+                        print *, 'Did not find variable ''disp_s'' in NetCDF file'
+                        call pabort
+                    end if
                 end if
-            end if
-        end do
+            end do
+            call check(nf90_inquire_variable(ncid       = this%bwd(isim)%snap,   &
+                                             varid      = this%bwd(isim)%displvarid(1), &
+                                             chunksizes = chunks, &
+                                             deflate_level = deflev) )
 
-        call check(nf90_inquire_variable(ncid       = this%bwd(isim)%snap,   &
-                                         varid      = this%bwd(isim)%strainvarid(6), &
-                                         chunksizes = chunks, &
-                                         deflate_level = deflev) )
+            call nc_read_att_int(this%bwd(isim)%npol, 'npol', this%bwd(isim))
+
+        elseif (trim(this%bwd(isim)%dump_type) == 'fullfields') then
+            do istrainvar = 1, 6            
+                status = nf90_inq_varid(ncid  = this%bwd(isim)%snap,                  &
+                                        name  = nc_strain_varnamelist(istrainvar),    &
+                                        varid = this%bwd(isim)%strainvarid(istrainvar)) 
+    
+                if (status.ne.NF90_NOERR) then
+                    this%bwd(isim)%strainvarid(istrainvar) = -1
+                    if (istrainvar == 6.) then
+                        print *, 'Did not find variable ''straintrace'' in NetCDF file'
+                        call pabort
+                    end if
+                end if
+            end do
+    
+            call check(nf90_inquire_variable(ncid       = this%bwd(isim)%snap,   &
+                                             varid      = this%bwd(isim)%strainvarid(6), &
+                                             chunksizes = chunks, &
+                                             deflate_level = deflev) )
+        else
+           print *, 'ERROR: dump_type ', this%bwd(isim)%dump_type, ' not implemented!'
+           call pabort
+        endif
 
         write(lu_out, "('BWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
+
         this%bwd(isim)%chunk_gll = chunks(1)
+        
         if (verbose>0) write(lu_out,format21) this%bwd(isim)%ncid, this%bwd(isim)%snap 
         
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
@@ -491,10 +570,35 @@ subroutine check_consistency(this)
     integer                :: isim
     real(kind=dp)          :: dt_agreed
     character(len=512)     :: fmtstring, fmtstring_stf
-    integer                :: ndumps_agreed, nseis_agreed
+    character(len=12)      :: dump_type_agreed
+    integer                :: ndumps_agreed, nseis_agreed, npol_agreed
     real(kind=dp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
     real(kind=dp)          :: stf_agreed_fwd(this%fwd(1)%ndumps)
     real(kind=dp)          :: stf_agreed_bwd(this%bwd(1)%ndumps)
+
+    ! Check whether the dump_type is the same in all files
+    dump_type_agreed = this%fwd(1)%dump_type
+    
+    fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
+                '  in simulation ", I1)' 
+    do isim = 1, this%nsim_fwd
+       if (dump_type_agreed /= this%fwd(isim)%dump_type) then
+          write(*,fmtstring) 'dump_type', isim
+          call pabort
+       end if
+    end do
+
+    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                '  in simulation ", I1)' 
+
+    do isim = 1, this%nsim_bwd
+       if (dump_type_agreed /= this%bwd(isim)%dump_type) then
+          write(*,fmtstring) 'dump_type', isim
+          call pabort
+       end if
+    end do
+
+    this%dump_type = dump_type_agreed
 
     ! Check whether the sampling period is the same in all files
     dt_agreed = this%fwd(1)%dt
@@ -518,6 +622,30 @@ subroutine check_consistency(this)
     end do
 
     this%dt = dt_agreed
+
+    ! Check whether npol is the same in all files
+    npol_agreed = this%fwd(1)%npol
+
+    fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",I7,") vs ", I7, " in the others")' 
+    do isim = 1, this%nsim_fwd
+       if (npol_agreed.ne.this%fwd(isim)%npol) then
+          write(*,fmtstring) 'npol', isim, npol_agreed, this%fwd(isim)%npol
+          call pabort
+       end if
+    end do
+
+    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",I7,"s) vs ", I7, " in the forward case")' 
+
+    do isim = 1, this%nsim_bwd
+       if (npol_agreed.ne.this%bwd(isim)%npol) then
+          write(*,fmtstring) 'npol', isim, npol_agreed, this%bwd(isim)%npol
+          call pabort
+       end if
+    end do
+
+    this%npol = npol_agreed
 
     ! Check whether the number of dumps (time samples) is the same in all files
     ndumps_agreed = this%fwd(1)%ndumps
@@ -574,32 +702,34 @@ subroutine check_consistency(this)
        end if
     end do
 
-    source_shift_agreed_bwd = this%bwd(1)%source_shift_t
-    stf_agreed_bwd = this%bwd(1)%stf
-    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
-                '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
-    fmtstring_stf = '("Inconsistency in backward simulations: ", A, " is different \'// &
-                    '  in simulation ", I1, " vs the others")' 
-
-    do isim = 1, this%nsim_bwd
-       if (source_shift_agreed_bwd.ne.this%bwd(isim)%source_shift_t) then
-          write(*,fmtstring) 'source time shift', isim, source_shift_agreed_bwd, &
-                             this%bwd(isim)%source_shift_t
-          call pabort
-       end if
-       if (any(abs(stf_agreed_bwd - this%bwd(isim)%stf).gt.1e-10)) then
-           write(*,fmtstring) 'stf', isim
-           call pabort
-       end if
-    end do
-
     this%timeshift_fwd = real(source_shift_agreed_fwd, kind=dp)
-    this%timeshift_bwd = real(source_shift_agreed_bwd, kind=dp)
-
     allocate(this%stf_fwd(ndumps_agreed))
-    allocate(this%stf_bwd(ndumps_agreed))
     this%stf_fwd = real(stf_agreed_fwd, kind=dp)
-    this%stf_bwd = real(stf_agreed_bwd, kind=dp)
+    
+    if (this%nsim_bwd > 0) then
+       source_shift_agreed_bwd = this%bwd(1)%source_shift_t
+       stf_agreed_bwd = this%bwd(1)%stf
+       fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                   '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
+       fmtstring_stf = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                       '  in simulation ", I1, " vs the others")' 
+
+       do isim = 1, this%nsim_bwd
+          if (source_shift_agreed_bwd.ne.this%bwd(isim)%source_shift_t) then
+             write(*,fmtstring) 'source time shift', isim, source_shift_agreed_bwd, &
+                                this%bwd(isim)%source_shift_t
+             call pabort
+          end if
+          if (any(abs(stf_agreed_bwd - this%bwd(isim)%stf).gt.1e-10)) then
+              write(*,fmtstring) 'stf', isim
+              call pabort
+          end if
+       end do
+       this%timeshift_bwd = real(source_shift_agreed_bwd, kind=dp)
+       allocate(this%stf_bwd(ndumps_agreed))
+       this%stf_bwd = real(stf_agreed_bwd, kind=dp)
+    endif
+
 
     this%dt = dt_agreed
     this%decimate_factor = nseis_agreed / ndumps_agreed
@@ -613,13 +743,14 @@ end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params)
     use simple_routines, only          : mult2d_1d
+
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
     type(src_param_type), intent(in)  :: source_params
+    type(kdtree2_result), allocatable :: nextpoint(:)
     real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
                                                         size(coordinates,2))
 
-    type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints
     integer                           :: pointid(size(coordinates,2))
     integer                           :: ipoint, isim, iclockold
@@ -649,13 +780,6 @@ function load_fw_points(this, coordinates, source_params)
                                 results = nextpoint )
         
         pointid(ipoint) = nextpoint(1)%idx
-        !print *, 'Original coordinates: ', coordinates(:,ipoint)
-        !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
-        !print *, 'CO of SEM point:', this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint))
-
-        !write(1000, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
-        !                               this%fwdmesh%s(pointid(ipoint)), this%fwdmesh%z(pointid(ipoint)), pointid(ipoint)
-
     end do
 
     load_fw_points(:,:,:) = 0.0
@@ -675,6 +799,9 @@ function load_fw_points(this, coordinates, source_params)
                                              + utemp * azim_factor(rotmesh_phi(ipoint),     &
                                                                    source_params%mij, isim, 1) 
             case('vs')
+                !@TODO: utemp needs to be summed with azimfactors first before
+                !       beeing rotated. I'd suggest summation first, because
+                !       rotation is not for free.
                 load_fw_points(:, :, ipoint) = load_fw_points(:, :, ipoint)                 &
                                              + rotate_straintensor(utemp,                   &
                                                                    rotmesh_phi(ipoint),     &
@@ -786,9 +913,9 @@ subroutine load_seismogram(this, receivers, src)
          !                          values = utemp) )
       
          call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-                                   varid  = this%fwd(isim)%seis_disp,   &
-                                   start  = [1, reccomp, isurfelem],    &
-                                   count  = [this%ndumps, 1, 1],        &
+                         varid  = this%fwd(isim)%seis_disp,   &
+                         start  = [1, reccomp, isurfelem],    &
+                         count  = [this%ndumps, 1, 1],        &
                          values = utemp) 
       
          seismogram_disp = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_disp
@@ -801,9 +928,9 @@ subroutine load_seismogram(this, receivers, src)
          !                          values = utemp) )
       
          call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-                                   varid  = this%fwd(isim)%seis_velo,   &
-                                   start  = [1, reccomp, isurfelem],    &
-                                   count  = [this%ndumps, 1, 1],        &
+                         varid  = this%fwd(isim)%seis_velo,   &
+                         start  = [1, reccomp, isurfelem],    &
+                         count  = [this%ndumps, 1, 1],        &
                          values = utemp) 
       
          seismogram_velo = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_velo
@@ -831,7 +958,7 @@ function load_bw_points(this, coordinates, receiver)
 
     integer                            :: pointid(size(coordinates,2))
     integer                            :: npoints
-    integer                            :: ipoint, start_chunk, iread
+    integer                            :: ipoint
     real(kind=dp)                      :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                      :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                      :: rotmesh_z(size(coordinates,2))
@@ -856,13 +983,6 @@ function load_bw_points(this, coordinates, receiver)
                                 results = nextpoint )
     
         pointid(ipoint) = nextpoint(1)%idx
-        !print *, 'Original coordinates: ', coordinates(:,ipoint)
-        !print *, 'Coordinates:    ', rotmesh_s(ipoint), rotmesh_z(ipoint), ', next pointid: ', pointid(ipoint)
-        !print *, 'CO of SEM point:', this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint))
-
-        !write(1001, '(7(ES15.6), I8)') coordinates(:, ipoint), rotmesh_s(ipoint), rotmesh_z(ipoint), &
-        !                               this%bwdmesh%s(pointid(ipoint)), this%bwdmesh%z(pointid(ipoint)), pointid(ipoint)
-
     end do
     
     load_bw_points(:,:,:) = 0.0
@@ -885,8 +1005,8 @@ function load_bw_points(this, coordinates, receiver)
         if (this%model_param.eq.'vs') then
             load_bw_points(:,:,ipoint) &
                 = rotate_straintensor(load_bw_points(:,:,ipoint), &
-                                                             rotmesh_phi(ipoint),        &
-                                                             real([1, 1, 1, 0, 0, 0], kind=dp), 1)
+                                      rotmesh_phi(ipoint),        &
+                                      real([1, 1, 1, 0, 0, 0], kind=dp), 1)
         end if
     end do !ipoint
 
@@ -894,72 +1014,318 @@ end function load_bw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points_rdbm(this, coordinates, source_params)
+function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     use simple_routines, only          : mult2d_1d
+    use finite_elem_mapping, only      : inside_element
 
     class(semdata_type)               :: this
-    real(kind=dp), intent(in)         :: coordinates(:,:)
-    type(src_param_type), intent(in)  :: source_params
-    real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
-                                                             size(coordinates,2))
+    type(src_param_type), intent(in)  :: source_params(:)
+    type(src_param_type), intent(in)  :: reci_source_params
+    character(len=1), intent(in)      :: component
+    !real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
+    !                                                         size(source_params))
+    real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, 1, &
+                                                             size(source_params))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
-    integer                           :: npoints
-    integer                           :: pointid(size(coordinates,2))
-    integer                           :: ipoint, isim, iclockold
-    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
-    real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
-    real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
+    integer                           :: npoints, nnext_points
+    integer                           :: pointid(size(source_params))
+    integer                           :: ipoint, inext_point, isim, iclockold, i, icp
+    integer                           :: corner_point_ids(4), eltype(1)
+    integer, allocatable              :: gll_point_ids(:,:)
+    real(kind=dp)                     :: corner_points(4,2)
+    real(kind=dp)                     :: cps(1), cpz(1)
+    real(kind=dp)                     :: rotmesh_s(size(source_params))
+    real(kind=dp)                     :: rotmesh_phi(size(source_params))
+    real(kind=dp)                     :: rotmesh_z(size(source_params))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
-    
-    if (size(coordinates,1).ne.3) then
-       write(*,*) ' Error in load_fw_points_rdbm: input variable coordinates has to be a '
-       write(*,*) ' 3 x npoints array'
-       call pabort 
-    end if
-    npoints = size(coordinates,2)
+    real(kind=dp)                     :: coordinates(size(source_params),3)
+    real(kind=dp)                     :: mij_buff(6)
+    real(kind=dp)                     :: xi, eta
 
+    if (trim(this%dump_type) == 'displ_only') then
+        nnext_points = 6 ! 6, because this is the maximum valence in the mesh
+        allocate(gll_point_ids(0:this%npol, 0:this%npol))
+    else
+        nnext_points = 1
+    endif
+    
+    npoints = size(source_params)
+
+    do ipoint = 1, npoints
+        coordinates(ipoint,1) = source_params(ipoint)%x
+        coordinates(ipoint,2) = source_params(ipoint)%y
+        coordinates(ipoint,3) = source_params(ipoint)%z
+    enddo
     
     ! Rotate points to FWD coordinate system
-    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
-                          coordinates*1d3,                              &
-                          source_params%lon, source_params%colat)
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates * 1d3, &
+                          reci_source_params%lon, reci_source_params%colat)
 
-    allocate(nextpoint(1))
+
+    allocate(nextpoint(nnext_points))
     do ipoint = 1, npoints
-        call kdtree2_n_nearest( this%fwdtree,                           &
+        call kdtree2_n_nearest( this%fwdtree, &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                nn = 1,                                 &
+                                nn = nnext_points, &
                                 results = nextpoint )
         
         pointid(ipoint) = nextpoint(1)%idx
 
+        if (verbose > 0) &
+            write(6,*) 'nearest point', nextpoint(1)%dis**.5, nextpoint(1)%idx, &
+                       (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
+                       (this%fwdmesh%s(pointid(ipoint))**2  &
+                            + this%fwdmesh%z(pointid(ipoint))**2)**.5 
+
+        
+        if (trim(this%dump_type) == 'displ_only') then
+            do inext_point = 1, nnext_points
+                ! get cornerpoints of finite element
+                call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                        varid  = this%fwd(1)%fem_mesh_varid, &
+                                        start  = [1, nextpoint(inext_point)%idx], &
+                                        count  = [4, 1], &
+                                        values = corner_point_ids))
+                
+                call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                        varid  = this%fwd(1)%eltype_varid, &
+                                        start  = [nextpoint(inext_point)%idx], &
+                                        count  = [1], &
+                                        values = eltype))
+                
+                do icp = 1, 4
+                    call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                            varid  = this%fwd(1)%mesh_s_varid, &
+                                            start  = [corner_point_ids(icp) + 1], &
+                                            count  = [1], &
+                                            values = cps))
+                    
+                    call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                            varid  = this%fwd(1)%mesh_z_varid, &
+                                            start  = [corner_point_ids(icp) + 1], &
+                                            count  = [1], &
+                                            values = cpz))
+
+                    corner_points(icp, 1) = cps(1)
+                    corner_points(icp, 2) = cpz(1)
+                enddo                        
+                ! test point to be inside, if so, exit
+                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
+                                   corner_points, eltype(1), xi=xi, eta=eta)) then
+                    write(6,*) 'eltype     = ', eltype
+                    write(6,*) 'xi, eta    = ', xi, eta
+                    write(6,*) 'element id = ', nextpoint(inext_point)%idx
+                    exit
+                endif
+            enddo
+
+            if (inext_point >= nnext_points) then
+               write(6,*) 'ERROR: element not found. '
+               write(6,*) '       Try increasing nnext_points in case this problem persists'
+               call pabort
+            endif
+
+            ! get gll points of spectral element
+            gll_point_ids = -1
+            write(6,*) 'npol = ', this%npol
+            write(6,*) 'element id = ', nextpoint(inext_point)%idx
+            call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                    varid  = this%fwd(1)%sem_mesh_varid, &
+                                    start  = [1, 1, nextpoint(inext_point)%idx], &
+                                    count  = [this%npol+1, this%npol+1, 1], &
+                                    values = gll_point_ids))
+            write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
+        endif
     end do
 
     load_fw_points_rdbm(:,:,:) = 0.0
     
     do ipoint = 1, npoints
     
-       do isim = 1, this%nsim_fwd
-            utemp = load_strain_point(this%fwd(isim),      &
-                                      pointid(ipoint),     &
-                                      this%model_param)
+       if (this%model_param == 'vp') then
+          select case(component)
+          case('Z')
+               isim = 1
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
 
-            iclockold = tick()
-            select case(trim(this%model_param))
-            !if (this%model_param.eq.'vs') then
-            case('vp')
-                load_fw_points_rdbm(:, :, ipoint) = load_fw_points_rdbm(:,:,ipoint)                   &
-                                             + utemp * azim_factor(rotmesh_phi(ipoint),     &
-                                                                   source_params%mij, isim, 1) 
-            case('vs')
-                load_fw_points_rdbm(:, :, ipoint) = load_fw_points_rdbm(:, :, ipoint)                 &
-                                             + rotate_straintensor(utemp,                   &
-                                                                   rotmesh_phi(ipoint),     &
-                                                                   source_params%mij, isim) 
-            end select
-            iclockold = tick(id=id_rotate, since=iclockold)
-        end do !isim
+               load_fw_points_rdbm(:, :, ipoint) = utemp
+
+          case('R')
+               isim = 2
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
+
+               load_fw_points_rdbm(:, :, ipoint) = utemp 
+
+          case('T')
+               load_fw_points_rdbm(:, :, ipoint) = 0
+
+          case('N')
+               isim = 2
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
+
+               load_fw_points_rdbm(:, :, ipoint) = &
+                       - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+
+          case('E')
+               isim = 2
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
+
+               load_fw_points_rdbm(:, :, ipoint) = &
+                       utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+
+          case default
+               write(6,*) 'component "', component, '" unknown or not yet implemented'
+               call pabort
+          end select
+       elseif (this%model_param == 'vs') then
+          select case(component)
+          case('Z')
+               isim = 1
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
+
+               ! rotate source mt to global cartesian system
+               mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                                source_params(ipoint)%mij_voigt, &
+                                source_params(ipoint)%lon, &
+                                source_params(ipoint)%colat)
+
+               ! rotate source mt to receiver cartesian system
+               mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                                mij_buff, &
+                                reci_source_params%lon, &
+                                reci_source_params%colat)
+
+               ! rotate source mt to receiver s,phi,z system
+               mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+
+               mij_buff = mij_buff / this%fwd(isim)%amplitude
+
+               load_fw_points_rdbm(:, :, ipoint) = 0
+               
+               do i = 1, 3
+                  load_fw_points_rdbm(:, 1, ipoint) = &
+                        load_fw_points_rdbm(:, 1, ipoint) &
+                            + mij_buff(i) * utemp(:,i)
+               enddo 
+
+               ! components 4-6 need a factor of two because of voigt mapping
+               ! without factor of two in the strain
+               i = 5
+               load_fw_points_rdbm(:, 1, ipoint) = &
+                     load_fw_points_rdbm(:, 1, ipoint) &
+                         + 2 * mij_buff(i) * utemp(:,i)
+
+          case('N')
+               isim = 2
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
+
+               ! rotate source mt to global cartesian system
+               mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                                source_params(ipoint)%mij_voigt, &
+                                source_params(ipoint)%lon, &
+                                source_params(ipoint)%colat)
+
+               ! rotate source mt to receiver cartesian system
+               mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                                mij_buff, &
+                                reci_source_params%lon, &
+                                reci_source_params%colat)
+
+               ! rotate source mt to receiver s,phi,z system
+               mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+
+               mij_buff = mij_buff / this%fwd(isim)%amplitude
+
+               load_fw_points_rdbm(:, :, ipoint) = 0
+
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+               
+               !@TODO not sure why we need the - sign here. Might be because N
+               !      is in negative theta direction
+               load_fw_points_rdbm(:, 1, ipoint) = - load_fw_points_rdbm(:, 1, ipoint)
+
+          case('E')
+               isim = 2
+               utemp = load_strain_point(this%fwd(isim),      &
+                                         pointid(ipoint),     &
+                                         this%model_param)
+
+               ! rotate source mt to global cartesian system
+               mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                                source_params(ipoint)%mij_voigt, &
+                                source_params(ipoint)%lon, &
+                                source_params(ipoint)%colat)
+
+               ! rotate source mt to receiver cartesian system
+               mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                                mij_buff, &
+                                reci_source_params%lon, &
+                                reci_source_params%colat)
+
+               ! rotate source mt to receiver s,phi,z system
+               mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+
+               mij_buff = mij_buff / this%fwd(isim)%amplitude
+
+               load_fw_points_rdbm(:, :, ipoint) = 0
+               
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
+                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+               load_fw_points_rdbm(:, 1, ipoint) &
+                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
+                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+
+          case default
+               write(6,*) 'component "', component, '" unknown or not yet implemented'
+               call pabort
+          end select
+         
+       else
+          call pabort
+       endif
 
     end do !ipoint
 
@@ -968,135 +1334,119 @@ end function load_fw_points_rdbm
 
 !-----------------------------------------------------------------------------------------
 function load_strain_point(sem_obj, pointid, model_param)
+
     type(ncparamtype), intent(in)   :: sem_obj
     integer, intent(in)             :: pointid
     character(len=*), intent(in)    :: model_param
     real(kind=dp), allocatable      :: load_strain_point(:,:)
+    real(kind=dp), allocatable      :: strain_buff(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
     integer                         :: iclockold, status, istrainvar
     real(kind=sp)                   :: utemp(sem_obj%ndumps)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
 
+    if (trim(sem_obj%dump_type) /= 'fullfields') then
+        write(6,*) 'ERROR: trying to read strain from a file that was not'
+        write(6,*) '       written with dump_type "fullfields"'
+        call pabort
+    endif
+
     select case(model_param)
     case('vp')
         allocate(load_strain_point(sem_obj%ndumps, 1))
-        load_strain_point = 0.0
 
-        iclockold = tick()
+        !iclockold = tick()
         status = sem_obj%buffer(1)%get(pointid, utemp)
-        iclockold = tick(id=id_buffer, since=iclockold)
+        !iclockold = tick(id=id_buffer, since=iclockold)
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+
            ! Only read to last point, not further
            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-           iclockold = tick()
+           !iclockold = tick()
            call nc_getvar( ncid   = sem_obj%snap,           & 
-                                     varid  = sem_obj%strainvarid(6), &
-                                     start  = [start_chunk, 1],       &
+                           varid  = sem_obj%strainvarid(6), &
+                           start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
                            values = utemp_chunk(1:gll_to_read, :)) 
-           iclockold = tick(id=id_netcdf, since=iclockold)
+
+           !iclockold = tick(id=id_netcdf, since=iclockold)
+
            do iread = 0, sem_obj%chunk_gll - 1
                status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
-           iclockold = tick(id=id_buffer, since=iclockold)
+           !iclockold = tick(id=id_buffer, since=iclockold)
            load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
         else
            load_strain_point(:,1) = real(utemp, kind=dp)
         end if
 
     case('vs')
-        allocate(load_strain_point(sem_obj%ndumps, 6))
-        load_strain_point = 0.0
+        allocate(strain_buff(sem_obj%ndumps, 6))
 
         do istrainvar = 1, 6
 
-            if (sem_obj%strainvarid(istrainvar).eq.-1) cycle ! For monopole source which does
-                                                             ! not have this component.
+            if (sem_obj%strainvarid(istrainvar).eq.-1) then
+                strain_buff(:, istrainvar) = 0
+                cycle ! For monopole source which does not have this component.
+            endif
 
-            iclockold = tick()
+            !iclockold = tick()
             status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
-            iclockold = tick(id=id_buffer, since=iclockold)
+            !iclockold = tick(id=id_buffer, since=iclockold)
             
             if (status.ne.0) then
                start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+               
                ! Only read to last point, not further
                gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-               iclockold = tick()
+
+               !iclockold = tick()
                call nc_getvar( ncid   = sem_obj%snap,           & 
-                                         varid  = sem_obj%strainvarid(istrainvar), &
-                                         start  = [start_chunk, 1],    &
+                               varid  = sem_obj%strainvarid(istrainvar), &
+                               start  = [start_chunk, 1],       &
                                count  = [gll_to_read, sem_obj%ndumps], &
                                values = utemp_chunk(1:gll_to_read, :)) 
-               iclockold = tick(id=id_netcdf, since=iclockold)
+
+               !iclockold = tick(id=id_netcdf, since=iclockold)
                do iread = 0, gll_to_read - 1
                    status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
                                                            utemp_chunk(iread+1,:))
                end do
-               iclockold = tick(id=id_buffer, since=iclockold)
-               load_strain_point(:,istrainvar) &
+               !iclockold = tick(id=id_buffer, since=iclockold)
+               strain_buff(:,istrainvar) &
                     = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
             else
-               load_strain_point(:,istrainvar) = real(utemp, kind=dp)
+               strain_buff(:,istrainvar) = real(utemp, kind=dp)
             end if
 
         end do
 
+        allocate(load_strain_point(sem_obj%ndumps, 6))
+        ! transform strain to voigt mapping
+        ! from:
+        ! ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
+        !  'strain_dsup', 'strain_dzup', 'straintrace']
+        ! to:
+        ! dsus, dpup, dzuz, dzup, dsuz, dsup
+        load_strain_point(:,1) = strain_buff(:,1)
+        load_strain_point(:,2) = strain_buff(:,3)
+        load_strain_point(:,3) = strain_buff(:,6) - strain_buff(:,1) - strain_buff(:,3)
+        load_strain_point(:,4) = -strain_buff(:,5)
+        load_strain_point(:,5) = strain_buff(:,2)
+        load_strain_point(:,6) = -strain_buff(:,4)
     end select
 
 end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function azim_factor(phi, mij, isim, ikind)
-    real(kind=dp), intent(in)    :: phi
-    real(kind=dp), intent(in)    :: mij(6)
-    integer, intent(in)          :: isim, ikind
-    real(kind=dp)                :: azim_factor
-
-    select case(isim)
-    case(1) ! Mzz
-       if (ikind==1) then 
-           azim_factor = Mij(1)
-       else
-           azim_factor = 0
-       end if
-       
-    case(2) ! Mxx+Myy
-       if (ikind==1) then 
-           azim_factor = 0.5*(Mij(2)+Mij(3))
-       else
-           azim_factor = 0
-       end if
-       
-    case(3) ! dipole
-       if (ikind==1) then
-           azim_factor =   Mij(4)*dcos(phi) + Mij(5)*dsin(phi)
-       else
-           azim_factor = - Mij(4)*dsin(phi) + Mij(5)*dcos(phi) 
-       end if
-       
-    case(4) ! quadrupole
-       if (ikind==1) then
-           azim_factor =   0.5*( Mij(2)-Mij(3) ) * dcos(2.d0*phi) + Mij(6)*dsin(2.d0*phi)
-       else
-           azim_factor = - 0.5*( Mij(2)-Mij(3) ) * dsin(2.d0*phi) + Mij(6)*dcos(2.d0*phi)  
-       end if
-
-    case default
-       write(6,*) myrank,': unknown number of simulations',isim
-    end select
-
-end function
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
 subroutine build_kdtree(this)
     class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
-    integer                    :: ipoint
+    integer                    :: npoints
 
     if (.not.this%meshes_read) then
         print *, 'ERROR in build_kdtree(): Meshes have not been read yet'
@@ -1106,17 +1456,21 @@ subroutine build_kdtree(this)
 
     write(lu_out,*) ' Reshaping mesh variables'
     call flush(lu_out)
-    allocate(mesh(2, this%fwdmesh%npoints))
-    mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [this%fwdmesh%npoints, 2]))
 
-    print *, this%fwdmesh%npoints
+    if (trim(this%dump_type) == 'displ_only') then
+        npoints = this%fwdmesh%nelem ! midpoints only
+    else
+        npoints = this%fwdmesh%npoints
+    endif
 
-    write(1000,*) mesh
+    allocate(mesh(2, npoints))
+    mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [npoints, 2]))
+
+    print *, npoints
 
     write(lu_out,*) ' Building forward KD-Tree'
     call flush(lu_out)
     ! KDtree in forward field
-    ! Gfortran gives a segfault somewhere around here. Not traceable, no idea, why
     this%fwdtree => kdtree2_create(mesh,              &
                                    dim = 2,           &
                                    sort = .true.,     &
@@ -1124,16 +1478,24 @@ subroutine build_kdtree(this)
     
     deallocate(mesh)                           
 
+    if (trim(this%dump_type) == 'displ_only') then
+        npoints = this%bwdmesh%nelem ! midpoints only
+    else
+        npoints = this%bwdmesh%npoints
+    endif
+
     ! KDtree in backward field
-    write(lu_out,*) ' Building backward KD-Tree'
-    call flush(lu_out)
-    allocate(mesh(2, this%bwdmesh%npoints))
-    mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [this%bwdmesh%npoints, 2]))
-    this%bwdtree => kdtree2_create(mesh,              &
-                                   dim = 2,           &
-                                   sort = .true.,     &
-                                   rearrange = .true.)
-    deallocate(mesh)                           
+    if (this%nsim_bwd > 0) then
+        write(lu_out,*) ' Building backward KD-Tree'
+        call flush(lu_out)
+        allocate(mesh(2, npoints))
+        mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [npoints, 2]))
+        this%bwdtree => kdtree2_create(mesh,              &
+                                       dim = 2,           &
+                                       sort = .true.,     &
+                                       rearrange = .true.)
+        deallocate(mesh)                           
+    endif
 
     call flush(lu_out)
 
@@ -1143,11 +1505,11 @@ end subroutine build_kdtree
 !-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
-    class(semdata_type)    :: this
-    integer                :: ncvarid_mesh_s, ncvarid_mesh_z
-    integer                :: surfdimid, ncvarid_theta
-    integer                    :: ielem, isim
-    logical                :: mesherror
+    class(semdata_type)        :: this
+    integer                    :: ncvarid_mesh_s, ncvarid_mesh_z
+    integer                    :: surfdimid, ncvarid_theta
+    integer                    :: isim
+    logical                    :: mesherror
     real(kind=sp), allocatable :: theta(:)
    
     if (.not.this%files_open) then
@@ -1159,75 +1521,165 @@ subroutine read_meshes(this)
     ! Forward SEM mesh
     write(lu_out,*) '  Read SEM mesh from first forward simulation'
     
-    call nc_read_att_int(this%fwdmesh%npoints, &
-                         'npoints', &
-                         this%fwd(1))
-
-    allocate(this%fwdmesh%s(this%fwdmesh%npoints))
-    allocate(this%fwdmesh%z(this%fwdmesh%npoints))
+    call nc_read_att_int(this%fwdmesh%npoints, 'npoints', this%fwd(1))
     
     do isim = 1, this%nsim_fwd
        this%fwd(isim)%ngll = this%fwdmesh%npoints
     end do
-    call  getvarid( ncid  = this%fwd(1)%mesh, &
-                    name  = "mesh_S", &
-                    varid = ncvarid_mesh_s) 
-    call  getvarid( ncid  = this%fwd(1)%mesh, &
-                    name  = "mesh_Z", &
-                    varid = ncvarid_mesh_z) 
 
-    call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                             varid  = ncvarid_mesh_s,         &
-                   start  = 1,                    &
-                   count  = this%fwdmesh%npoints, &
-                   values = this%fwdmesh%s ) 
-    call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                             varid  = ncvarid_mesh_z,         &
-                   start  = 1,                    &
-                   count  = this%fwdmesh%npoints, &
-                   values = this%fwdmesh%z ) 
+    if (trim(this%dump_type) == 'displ_only') then
+        call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
+        
+        allocate(this%fwdmesh%s(this%fwdmesh%nelem))
+        allocate(this%fwdmesh%z(this%fwdmesh%nelem))
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "fem_mesh",            &
+                      varid = this%fwd(1)%fem_mesh_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "sem_mesh",            &
+                      varid = this%fwd(1)%sem_mesh_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "eltype",              &
+                      varid = this%fwd(1)%eltype_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_S",              &
+                      varid = this%fwd(1)%mesh_s_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_Z",              &
+                      varid = this%fwd(1)%mesh_z_varid)
+           
+        call  getvarid( ncid  = this%fwd(1)%mesh, &
+                        name  = "mp_mesh_S", &
+                        varid = ncvarid_mesh_s) 
+        call  getvarid( ncid  = this%fwd(1)%mesh, &
+                        name  = "mp_mesh_Z", &
+                        varid = ncvarid_mesh_z) 
+
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_s,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%nelem, &
+                       values = this%fwdmesh%s ) 
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_z,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%nelem, &
+                       values = this%fwdmesh%z ) 
+    
+    else
+        allocate(this%fwdmesh%s(this%fwdmesh%npoints))
+        allocate(this%fwdmesh%z(this%fwdmesh%npoints))
+           
+        call  getvarid( ncid  = this%fwd(1)%mesh, &
+                        name  = "mesh_S", &
+                        varid = ncvarid_mesh_s) 
+        call  getvarid( ncid  = this%fwd(1)%mesh, &
+                        name  = "mesh_Z", &
+                        varid = ncvarid_mesh_z) 
+
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_s,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%npoints, &
+                       values = this%fwdmesh%s ) 
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_z,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%npoints, &
+                       values = this%fwdmesh%z ) 
+    endif
+
    
    
     ! Backward SEM mesh                     
     if (this%nsim_bwd > 0) then
-    write(lu_out,*) 'Read SEM mesh from first backward simulation'
-    
-    call nc_read_att_int(this%bwdmesh%npoints, &
-                         'npoints', &
-                         this%bwd(1))
+        write(lu_out,*) 'Read SEM mesh from first backward simulation'
+        
+        call nc_read_att_int(this%bwdmesh%npoints, 'npoints', this%bwd(1))
+        
+        do isim = 1, this%nsim_bwd
+           this%bwd(isim)%ngll = this%bwdmesh%npoints
+        end do
 
-    allocate(this%bwdmesh%s(this%bwdmesh%npoints))
-    allocate(this%bwdmesh%z(this%bwdmesh%npoints))
-    do isim = 1, this%nsim_bwd
-       this%bwd(isim)%ngll = this%bwdmesh%npoints
-    end do
-    
-    call  getvarid( ncid  = this%bwd(1)%mesh, &
-                    name  = "mesh_S", &
-                    varid = ncvarid_mesh_s) 
-    call  getvarid( ncid  = this%bwd(1)%mesh, &
-                    name  = "mesh_Z", &
-                    varid = ncvarid_mesh_z) 
+        if (trim(this%dump_type) == 'displ_only') then
+            call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
+            
+            allocate(this%bwdmesh%s(this%fwdmesh%nelem))
+            allocate(this%bwdmesh%z(this%fwdmesh%nelem))
 
-    call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_s,   &
-                   start  = 1,                    &
-                   count  = this%bwdmesh%npoints, &
-                   values = this%bwdmesh%s ) 
-    call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                             varid  = ncvarid_mesh_z,   &
-                   start  = 1,                    &
-                   count  = this%bwdmesh%npoints, &
-                   values = this%bwdmesh%z ) 
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "fem_mesh",            &
+                          varid = this%bwd(1)%fem_mesh_varid)
 
-   
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "sem_mesh",            &
+                          varid = this%bwd(1)%sem_mesh_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "eltype",              &
+                          varid = this%bwd(1)%eltype_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_S",              &
+                          varid = this%bwd(1)%mesh_s_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_Z",              &
+                          varid = this%bwd(1)%mesh_z_varid)
+           
+            
+            call  getvarid( ncid  = this%bwd(1)%mesh, &
+                            name  = "mp_mesh_S", &
+                            varid = ncvarid_mesh_s) 
+            call  getvarid( ncid  = this%bwd(1)%mesh, &
+                            name  = "mp_mesh_Z", &
+                            varid = ncvarid_mesh_z) 
+
+            call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                           varid  = ncvarid_mesh_s,   &
+                           start  = 1,                &
+                           count  = this%bwdmesh%nelem, &
+                           values = this%bwdmesh%s ) 
+            call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                           varid  = ncvarid_mesh_z,   &
+                           start  = 1,                &
+                           count  = this%bwdmesh%nelem, &
+                           values = this%bwdmesh%z ) 
+        else
+
+            allocate(this%bwdmesh%s(this%bwdmesh%npoints))
+            allocate(this%bwdmesh%z(this%bwdmesh%npoints))
+            
+            call  getvarid( ncid  = this%bwd(1)%mesh, &
+                            name  = "mesh_S", &
+                            varid = ncvarid_mesh_s) 
+            call  getvarid( ncid  = this%bwd(1)%mesh, &
+                            name  = "mesh_Z", &
+                            varid = ncvarid_mesh_z) 
+
+            call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                           varid  = ncvarid_mesh_s,   &
+                           start  = 1,                &
+                           count  = this%bwdmesh%npoints, &
+                           values = this%bwdmesh%s ) 
+            call nc_getvar(ncid   = this%bwd(1)%mesh, &
+                           varid  = ncvarid_mesh_z,   &
+                           start  = 1,                &
+                           count  = this%bwdmesh%npoints, &
+                           values = this%bwdmesh%z ) 
+        endif
     endif
-   
-   ! Read surface element theta
-   ! Forward mesh
-   call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
-                               name  = 'surf_elems',     &
-                               dimid = surfdimid) ) 
+
+    ! Read surface element theta
+    ! Forward mesh
+    call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
+                                name  = 'surf_elems',     &
+                                dimid = surfdimid) ) 
 
    call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
                                       dimid = surfdimid,               &
@@ -1240,78 +1692,81 @@ subroutine read_meshes(this)
    allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
    allocate( theta(this%fwdmesh%nsurfelem) )
    call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                             varid  = ncvarid_theta,       &
+                   varid  = ncvarid_theta,          &
                    start  = 1,                      & 
                    count  = this%fwdmesh%nsurfelem, &
                    values = theta                    )
    this%fwdmesh%theta = real(theta, kind=dp)
-
    
    ! Backward mesh
+   if (this%nsim_bwd > 0) then
+
+      call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
+                                  name  = 'surf_elems',     &
+                                  dimid = surfdimid) ) 
+
+      call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
+                                         dimid = surfdimid,               &
+                                         len   = this%bwdmesh%nsurfelem) )
+
+      call  getvarid(ncid  = this%bwd(1)%surf, &
+                     name  = "elem_theta",     &
+                     varid = ncvarid_theta) 
+
+      allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
+      ! sure that fwd is correct here??
+      call nc_getvar( ncid   = this%fwd(1)%surf,   &
+                      varid  = ncvarid_theta,          &
+                      start  = 1,                      & 
+                      count  = this%bwdmesh%nsurfelem, &
+                      values = theta                    )
+      this%fwdmesh%theta = real(theta, kind=dp)
+   endif
+                             
+
+    ! Mesh sanity checks
+    mesherror = .false.
+    if (maxval(abs(this%fwdmesh%s)) > 1e32) then
+       write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
+       write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
+       mesherror = .true.
+    end if
+    if (maxval(abs(this%fwdmesh%z)) > 1e32) then
+       write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
+       write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
+       mesherror = .true.
+    end if
+    if (maxval(this%fwdmesh%theta).gt.180) then
+       write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+       write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
+       write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
+       mesherror = .true.
+    end if
+
     if (this%nsim_bwd > 0) then
-   call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
-                               name  = 'surf_elems',     &
-                               dimid = surfdimid) ) 
+        if (maxval(abs(this%bwdmesh%s)) > 1e32) then
+           write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
+           mesherror = .true.
+        end if
+        if (maxval(abs(this%bwdmesh%z)) > 1e32) then
+           write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
+           mesherror = .true.
+        end if
+        if (maxval(this%bwdmesh%theta).gt.180) then
+           write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+           write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+           write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+           mesherror = .true.
+        end if
+    endif
 
-   call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
-                                      dimid = surfdimid,               &
-                                      len   = this%bwdmesh%nsurfelem) )
 
-   call  getvarid(ncid  = this%bwd(1)%surf, &
-                  name  = "elem_theta",     &
-                  varid = ncvarid_theta) 
-
-   allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
-   call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                             varid  = ncvarid_theta,       &
-                   start  = 1,                      & 
-                   count  = this%bwdmesh%nsurfelem, &
-                   values = theta                    )
-   this%fwdmesh%theta = real(theta, kind=dp)
-   endif                          
-
-   ! Mesh sanity checks
-   mesherror = .false.
-   if (maxval(abs(this%fwdmesh%s)) > 1e32) then
-      write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
-      write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
-      mesherror = .true.
-   end if
-   if (maxval(abs(this%fwdmesh%z)) > 1e32) then
-      write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
-      write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
-      mesherror = .true.
-   end if
-
-   if (maxval(abs(this%bwdmesh%s)) > 1e32) then
-      write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
-      write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
-      mesherror = .true.
-   end if
-   if (maxval(abs(this%bwdmesh%z)) > 1e32) then
-      write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
-      write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
-      mesherror = .true.
-   end if
-
-   if (maxval(this%fwdmesh%theta).gt.180) then
-      write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-      write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-      write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
-      mesherror = .true.
-   end if
-
-   if (maxval(this%fwdmesh%theta).gt.180) then
-      write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-      write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-      write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
-      mesherror = .true.
-   end if
-
-   if (mesherror) then
-      write(*,*) 'ERROR: One or more mesh errors found!'
-      call pabort
-   end if
+    if (mesherror) then
+       write(*,*) 'ERROR: One or more mesh errors found!'
+       call pabort
+    end if
 
                                    
    this%meshes_read = .true.
@@ -1323,120 +1778,6 @@ end subroutine read_meshes
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
-function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return)
-    !! 'strain_dsus', 'strain_dsuz', 'strain_dpup', &
-    !! 'strain_dsup', 'strain_dzup', 'straintrace']
-    real(kind=dp), intent(in)    :: tensor_vector(:,:)
-    real(kind=dp), intent(in)    :: phi, mij(6)
-    integer      , intent(in)    :: isim
-
-    real(kind=dp), allocatable   :: tensor_return(:,:)
-
-    real(kind=dp), allocatable   :: tensor_matrix(:,:,:)
-    real(kind=dp)                :: conv_mat(3,3)     !from s,z,phi to x,y,z
-    real(kind=dp)                :: azim_factor_1, azim_factor_2
-    integer                      :: idump
-
-    print *, 'Length of tensor_vector: ', size(tensor_vector,1), size(tensor_vector,2)
-    if (size(tensor_vector,2).ne.6) then
-        print *, 'ERROR in rotate_straintensor: size of first dimension of tensor_vector:'
-        print *, 'should be: 6, is: ', size(tensor_vector, 2)
-    end if
-
-    allocate(tensor_return(size(tensor_vector, 1), 6))
-    allocate(tensor_matrix(3, 3, size(tensor_vector, 1)))
-
-    azim_factor_1 = azim_factor(phi, mij, isim, 1)
-    azim_factor_2 = azim_factor(phi, mij, isim, 2)
-
-
-    do idump = 1, size(tensor_vector, 1)
-        tensor_matrix(1,1,idump) =  tensor_vector(idump,1) * azim_factor_1  !ss
-        tensor_matrix(1,2,idump) =  tensor_vector(idump,2) * azim_factor_2  !sz
-        tensor_matrix(1,3,idump) =  tensor_vector(idump,4) * azim_factor_1  !sp
-        tensor_matrix(2,1,idump) =  tensor_matrix(1,2,idump)                !zs
-        tensor_matrix(2,2,idump) = (tensor_vector(idump,6) - &
-                                    tensor_vector(idump,1) - &
-                                    tensor_vector(idump,3)) * azim_factor_1 !zz
-        tensor_matrix(2,3,idump) =  tensor_vector(idump,5) * azim_factor_2  !zp
-        tensor_matrix(3,1,idump) =  tensor_matrix(1,3,idump)                !ps
-        tensor_matrix(3,2,idump) =  tensor_matrix(2,3,idump)                !pz
-        tensor_matrix(3,3,idump) =  tensor_vector(idump,3) * azim_factor_1  !pp
-    end do
-
-
-    ! Conversion to cartesian coordinates, from s,z,phi to x,y,z
-    conv_mat(1,:) = [ dcos(phi), dsin(phi),       0.0d0]
-    conv_mat(2,:) = [     0.0d0,     0.0d0,       1.0d0]
-    conv_mat(3,:) = [-dsin(phi), dcos(phi),       0.0d0]
-    
-    do idump = 1, size(tensor_vector, 1)
-        tensor_matrix(:,:,idump) = matmul(matmul(transpose(conv_mat),       &
-                                                 tensor_matrix(:,:,idump)), &
-                                          conv_mat)
-        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
-            abs(tensor_matrix(1,3,idump))>1e-5) then
-            print *, 'nonsymmetric strain components (1,3) at dump', idump
-            print *, '(1,3),(3,1):',tensor_matrix(1,3,idump),tensor_matrix(3,1,idump)
-        end if
-    end do
-
-
-    tensor_return(:,1) = tensor_matrix(1,1,:) !xx
-    tensor_return(:,2) = tensor_matrix(2,2,:) !yy
-    tensor_return(:,3) = tensor_matrix(3,3,:) !zz
-    tensor_return(:,4) = tensor_matrix(1,2,:) !xy
-    tensor_return(:,5) = tensor_matrix(1,3,:) !xz
-    tensor_return(:,6) = tensor_matrix(2,3,:) !yz
-
-end function rotate_straintensor
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine rotate_frame_rd(npts, srd, phird, zrd, rgd, phigr, thetagr)
-
-    implicit none
-    integer, intent(in)                            :: npts
-    !< Number of points to rotate
-    
-    real(kind=dp), dimension(3, npts), intent(in)  :: rgd
-    !< Coordinates to rotate (in x, y, z)
-    
-    real(kind=dp), intent(in)                      :: phigr, thetagr
-    !< Rotation angles phi and theta
-    
-    real(kind=dp), dimension(npts), intent(out)    :: srd, zrd, phird
-    !< Rotated coordinates (in s, z, phi)
-
-    real(kind=dp), dimension(npts)                 :: xp, yp, zp
-    real(kind=dp), dimension(npts)                 :: xp_cp, yp_cp, zp_cp
-    real(kind=dp)                                  :: phi_cp
-    integer                                        :: ipt
-
-    !first rotation (longitude)
-    xp_cp =  rgd(1,:) * dcos(phigr) + rgd(2,:) * dsin(phigr)
-    yp_cp = -rgd(1,:) * dsin(phigr) + rgd(2,:) * dcos(phigr)
-    zp_cp =  rgd(3,:)
-
-    !second rotation (colat)
-    xp = xp_cp * dcos(thetagr) - zp_cp * dsin(thetagr)
-    yp = yp_cp 
-    zp = xp_cp * dsin(thetagr) + zp_cp * dcos(thetagr)
-
-    srd = dsqrt(xp*xp + yp*yp)
-    zrd = zp
-    do ipt = 1, npts
-       phi_cp = datan2(yp(ipt), xp(ipt))
-       if (phi_cp<0.d0) then
-          phird(ipt) = 2.d0 * pi + phi_cp
-       else
-          phird(ipt) = phi_cp
-       endif
-    enddo
-end subroutine rotate_frame_rd
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
 subroutine nc_read_att_int(attribute_value, attribute_name, nc)
   character(len=*),  intent(in)     :: attribute_name
@@ -1447,7 +1788,7 @@ subroutine nc_read_att_int(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
@@ -1465,7 +1806,7 @@ subroutine nc_read_att_char(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort 
   end if
@@ -1483,7 +1824,7 @@ subroutine nc_read_att_real(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
@@ -1501,7 +1842,7 @@ subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/axisem_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if

@@ -177,8 +177,7 @@ function calc_misfit_kernel(this, timeseries)
    real(kind=dp), intent(in)               :: timeseries(:,:)
    real(kind=dp)                           :: calc_misfit_kernel(size(timeseries,2))
    real(kind=dp), allocatable              :: cut_timeseries(:)
-   real(kind=dp)                           :: dt
-   integer                                 :: lenseis, itrace, ntrace, lu_errorlog
+   integer                                 :: itrace, ntrace, lu_errorlog
    character(len=64)                       :: fmtstring
 
    ntrace = size(timeseries,2)
@@ -235,7 +234,6 @@ subroutine cut_timewindow(t, x, timewindow, cut_tw)
    real(kind=dp), allocatable :: cut_tw(:)
    real(kind=dp), allocatable :: cut_timewindow_temp(:)
    integer                    :: ntimes, i, iintimewindow
-   integer                    :: ntraces
    real(kind=dp)              :: dt
    
    ntimes = size(t)

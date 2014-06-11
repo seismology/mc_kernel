@@ -53,7 +53,6 @@ subroutine test( proc, text )
     character(len=*)  :: text
 
     integer           :: lun
-    integer           :: ierr
 
     ! Check if the test should run
     testno = testno + 1
