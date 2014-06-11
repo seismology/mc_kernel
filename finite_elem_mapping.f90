@@ -198,6 +198,23 @@ function jacobian_det(xi, eta, nodes, element_type, j)
 end function jacobian_det
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+function jacobian_over_jacobian_det(xi, eta, nodes, element_type)
+
+  real(kind=dp), intent(in) :: xi, eta, nodes(4,2)
+  integer, intent(in)       :: element_type
+  real(kind=dp)             :: jacobian_over_jacobian_det(2,2)
+  real(kind=dp)             :: jacobian_buff(2,2)
+
+  jacobian_buff = jacobian(xi, eta, nodes, element_type)
+
+  jacobian_over_jacobian_det = jacobian_buff &
+                                 / (  jacobian_buff(1,1) * jacobian_buff(2,2) &
+                                    - jacobian_buff(2,1) * jacobian_buff(1,2) )
+  
+end function jacobian_over_jacobian_det
+!-----------------------------------------------------------------------------------------
+
 
 !!!!!!! SEMI SPHEROIDAL MAPPING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
