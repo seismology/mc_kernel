@@ -139,8 +139,12 @@ subroutine test_all
 
   ! test_buffer
   write(6,'(/,a)') 'TEST BUFFER MODULE'
-  call test(test_buffer_storage, 'put data into the buffer')
-  call test(test_buffer_retrieval, 'get data back from the buffer')
+  call test(test_buffer_storage_1d, 'put 1d data into the buffer')
+  call test(test_buffer_storage_2d, 'put 2d data into the buffer')
+  call test(test_buffer_storage_3d, 'put 3d data into the buffer')
+  call test(test_buffer_retrieval_1d, 'get 1d data back from the buffer')
+  call test(test_buffer_retrieval_2d, 'get 2d data back from the buffer')
+  call test(test_buffer_retrieval_3d, 'get 3d data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
 
   call finish_output()
