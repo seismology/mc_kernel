@@ -1,4 +1,43 @@
 !=========================================================================================
+! this module provides the functionality to map physical to reference coordinates and back
+! note that the definition of the Jacobian matrix is
+!
+!     | ds / dxi  ds / deta |
+! J = |                     |
+!     | dz / dxi  dz / deta |
+!
+! and its inverse is
+! 
+!        | dxi  / ds  dxi  / dz |
+! J^-1 = |                      |
+!        | deta / ds  deta / dz |
+!
+! which means that the gradient of a function u transforms as
+!
+! | d_xi  u |        | d_s u |
+! |         | = J^T  |       |
+! | d_eta u |        | d_z u |
+!
+! and
+!
+! | d_s u |            | d_xi  u | 
+! |       | = (J^-1)^T |         | 
+! | d_z u |            | d_eta u | 
+!
+! node numbering of the elements is
+!
+! 4 - - - - - - - 3
+! |       ^       |
+! |   eta |       |
+! |       |       |
+! |        --->   |
+! |        xi     |
+! |               |
+! |               |
+! 1 - - - - - - - 2
+!
+! for axial elements, xi is hence the normal and eta the parallel direction to the axis
+
 module finite_elem_mapping
     use global_parameters, only            : sp, dp, pi
 
