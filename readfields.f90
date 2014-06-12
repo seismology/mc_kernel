@@ -173,7 +173,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%nsim_bwd = 4
        write(lu_out,*) 'Backword simulation was ''moment'' source'
        write(lu_out,*) 'This is not implemented yet!'
-       call pabort
+       call pabort()
     elseif (force) then
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
@@ -192,25 +192,36 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     allocate( this%bwd(this%nsim_bwd) )
 
     select case(this%nsim_fwd)
-    case(1)
+    case(1)    ! Single
         this%fwd(1)%meshdir = fwd_dir//'/'
 
-    case(2) 
+    case(2)    ! Forces
         this%fwd(1)%meshdir = trim(fwd_dir)//'/PZ/'
         this%fwd(2)%meshdir = trim(fwd_dir)//'/PX/'
 
-    case(4)
+    case(4)    ! Moment
         this%fwd(1)%meshdir = trim(fwd_dir)//'/MZZ/'
         this%fwd(2)%meshdir = trim(fwd_dir)//'/MXX_P_MYY/'
         this%fwd(3)%meshdir = trim(fwd_dir)//'/MXZ_MYZ/'
         this%fwd(4)%meshdir = trim(fwd_dir)//'/MXY_MXX_M_MYY/'
     end select
     
-    ! MvD: why is bwd always single?
-    do isim = 1, this%nsim_bwd
-        this%bwd(isim)%meshdir = trim(bwd_dir)//'/'
-    end do
+    select case(this%nsim_bwd)
+    case(1)    ! Single
+        this%bwd(1)%meshdir = bwd_dir//'/'
 
+    case(2)    ! Forces
+        this%bwd(1)%meshdir = trim(bwd_dir)//'/PZ/'
+        this%bwd(2)%meshdir = trim(bwd_dir)//'/PX/'
+
+    case(4)    ! Moment
+        this%bwd(1)%meshdir = trim(bwd_dir)//'/MZZ/'
+        this%bwd(2)%meshdir = trim(bwd_dir)//'/MXX_P_MYY/'
+        this%bwd(3)%meshdir = trim(bwd_dir)//'/MXZ_MYZ/'
+        this%bwd(4)%meshdir = trim(bwd_dir)//'/MXY_MXX_M_MYY/'
+
+    end select
+    
     if (present(model_param)) then
        this%model_param = model_param
     else
@@ -262,7 +273,7 @@ subroutine open_files(this)
 
     do isim = 1, this%nsim_fwd
         ! Forward wavefield
-        filename=trim(this%fwd(isim)%meshdir)//'/ordered_output.nc4'
+        filename=trim(this%fwd(isim)%meshdir)//'/Data/ordered_output.nc4'
         
         if (verbose>0) write(lu_out,format20) trim(filename), myrank
         call nc_open_for_read(    filename = filename,              &
@@ -393,7 +404,7 @@ subroutine open_files(this)
 
     do isim = 1, this%nsim_bwd
         ! Backward wavefield
-        filename=trim(this%bwd(isim)%meshdir)//'/ordered_output.nc4'
+        filename=trim(this%bwd(isim)%meshdir)//'/Data/ordered_output.nc4'
         
         if (verbose>0) write(lu_out,format20) trim(filename), myrank
         call nc_open_for_read(filename = filename,              &
@@ -996,14 +1007,17 @@ function load_bw_points(this, coordinates, receiver)
         
         select case(receiver%component)
         case('Z')
+            utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%model_param)
             load_bw_points(:,:,ipoint) &
                 =                               utemp / this%bwd(1)%amplitude
         case('R')
+            utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%model_param)
             load_bw_points(:,:,ipoint) &
-                =   dcos(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude
+                =   dcos(rotmesh_phi(ipoint)) * utemp / this%bwd(2)%amplitude
         case('T')
+            utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%model_param)
             load_bw_points(:,:,ipoint) &
-                = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(1)%amplitude 
+                = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(2)%amplitude 
         end select
 
         if (this%model_param.eq.'vs') then
@@ -1758,15 +1772,15 @@ subroutine read_meshes(this)
                       name  = "elem_theta",     &
                       varid = ncvarid_theta) 
 
-       allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
-       ! sure that fwd is correct here??
-       call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                       varid  = ncvarid_theta,          &
-                       start  = 1,                      & 
-                       count  = this%bwdmesh%nsurfelem, &
-                       values = theta                    )
-       this%fwdmesh%theta = real(theta, kind=dp)
-    endif
+      allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
+      ! sure that fwd is correct here??
+      call nc_getvar( ncid   = this%bwd(1)%surf,   &
+                      varid  = ncvarid_theta,          &
+                      start  = 1,                      & 
+                      count  = this%bwdmesh%nsurfelem, &
+                      values = theta                    )
+      this%bwdmesh%theta = real(theta, kind=dp)
+   endif
                              
     ! define terms needed to compute gradient
     if (trim(this%dump_type) == 'displ_only') then
@@ -1802,7 +1816,7 @@ subroutine read_meshes(this)
        write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
        mesherror = .true.
     end if
-    if (maxval(this%fwdmesh%theta).gt.180) then
+    if (maxval(this%fwdmesh%theta).gt.180.0) then
        write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
        write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
        write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
@@ -1820,7 +1834,7 @@ subroutine read_meshes(this)
            write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
            mesherror = .true.
         end if
-        if (maxval(this%bwdmesh%theta).gt.180) then
+        if (maxval(this%bwdmesh%theta).gt.180.0) then
            write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
            write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
            write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
@@ -1854,7 +1868,7 @@ subroutine nc_read_att_int(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
@@ -1872,7 +1886,7 @@ subroutine nc_read_att_char(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort 
   end if
@@ -1890,7 +1904,7 @@ subroutine nc_read_att_real(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
@@ -1908,7 +1922,7 @@ subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
   status = nf90_get_att(nc%ncid, NF90_GLOBAL, attribute_name, attribute_value)
   if (status.ne.NF90_NOERR) then
       write(6,*) 'Could not find attribute ', trim(attribute_name)
-      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/ordered_output.nc4'
+      write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
       call pabort
   end if
