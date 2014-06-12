@@ -257,15 +257,6 @@ subroutine test_derivative_tensors()
                                 real(G2_ref), &
                                 1e-7, 'derivatives tensor, gll')
 
-  write(6,*) G2
-  write(6,*) G2_ref
-
-  write(6,*) G1
-  write(6,*) G1_ref
-
-  write(6,*) G0
-  write(6,*) G0_ref
-
 end subroutine test_derivative_tensors
 !-----------------------------------------------------------------------------------------
 
