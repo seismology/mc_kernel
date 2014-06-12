@@ -72,6 +72,10 @@ module readfields
         integer,       public              :: ndumps, decimate_factor
         integer,       public              :: nseis 
         integer,       public              :: npol
+        real(kind=dp), public, allocatable :: G1(:,:), G1T(:,:)
+        real(kind=dp), public, allocatable :: G2(:,:), G2T(:,:)
+        real(kind=dp), public, allocatable :: G0(:)
+        real(kind=dp), public, allocatable :: gll_points(:), glj_points(:)
         real(kind=dp), public              :: windowlength
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
@@ -1443,6 +1447,44 @@ end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function load_strain_point_interp(sem_obj, pointids, model_param)
+
+    type(ncparamtype), intent(in)   :: sem_obj
+    integer, intent(in)             :: pointids(:,:)
+    character(len=*), intent(in)    :: model_param
+    real(kind=dp), allocatable      :: load_strain_point_interp(:,:)
+
+    integer                         :: start_chunk, iread, gll_to_read
+    integer                         :: iclockold, status, istrainvar
+    real(kind=sp)                   :: utemp(sem_obj%ndumps)
+    real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+
+    if (trim(sem_obj%dump_type) /= 'displ_only') then
+        write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
+        write(6,*) '       written with dump_type "displ_only"'
+        call pabort
+    endif
+
+    ! load displacements from all GLL points
+
+    select case(model_param)
+    case('vp')
+        write(6,*) 'to be implemented'
+        ! compute straintrace
+
+    case('vs')
+        write(6,*) 'to be implemented'
+        ! compute full strain tensor
+
+        ! voigt mapping
+        ! dsus, dpup, dzuz, dzup, dsuz, dsup
+    end select
+    call pabort
+
+end function load_strain_point_interp
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine build_kdtree(this)
     class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
@@ -1505,6 +1547,9 @@ end subroutine build_kdtree
 !-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
+    use spectral_basis, only : zelegl, zemngl2, &
+                               def_lagrange_derivs_gll, def_lagrange_derivs_glj
+
     class(semdata_type)        :: this
     integer                    :: ncvarid_mesh_s, ncvarid_mesh_z
     integer                    :: surfdimid, ncvarid_theta
@@ -1681,48 +1726,69 @@ subroutine read_meshes(this)
                                 name  = 'surf_elems',     &
                                 dimid = surfdimid) ) 
 
-   call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
-                                      dimid = surfdimid,               &
-                                      len   = this%fwdmesh%nsurfelem) )
+    call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
+                                       dimid = surfdimid,               &
+                                       len   = this%fwdmesh%nsurfelem) )
 
-   call  getvarid( ncid  = this%fwd(1)%surf, &
-                   name  = "elem_theta",     &
-                   varid = ncvarid_theta) 
+    call  getvarid( ncid  = this%fwd(1)%surf, &
+                    name  = "elem_theta",     &
+                    varid = ncvarid_theta) 
 
-   allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
-   allocate( theta(this%fwdmesh%nsurfelem) )
-   call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                   varid  = ncvarid_theta,          &
-                   start  = 1,                      & 
-                   count  = this%fwdmesh%nsurfelem, &
-                   values = theta                    )
-   this%fwdmesh%theta = real(theta, kind=dp)
-   
-   ! Backward mesh
-   if (this%nsim_bwd > 0) then
+    allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
+    allocate( theta(this%fwdmesh%nsurfelem) )
+    call nc_getvar( ncid   = this%fwd(1)%surf,   &
+                    varid  = ncvarid_theta,          &
+                    start  = 1,                      & 
+                    count  = this%fwdmesh%nsurfelem, &
+                    values = theta                    )
+    this%fwdmesh%theta = real(theta, kind=dp)
+    
+    ! Backward mesh
+    if (this%nsim_bwd > 0) then
 
-      call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
-                                  name  = 'surf_elems',     &
-                                  dimid = surfdimid) ) 
+       call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
+                                   name  = 'surf_elems',     &
+                                   dimid = surfdimid) ) 
 
-      call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
-                                         dimid = surfdimid,               &
-                                         len   = this%bwdmesh%nsurfelem) )
+       call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
+                                          dimid = surfdimid,               &
+                                          len   = this%bwdmesh%nsurfelem) )
 
-      call  getvarid(ncid  = this%bwd(1)%surf, &
-                     name  = "elem_theta",     &
-                     varid = ncvarid_theta) 
+       call  getvarid(ncid  = this%bwd(1)%surf, &
+                      name  = "elem_theta",     &
+                      varid = ncvarid_theta) 
 
-      allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
-      ! sure that fwd is correct here??
-      call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                      varid  = ncvarid_theta,          &
-                      start  = 1,                      & 
-                      count  = this%bwdmesh%nsurfelem, &
-                      values = theta                    )
-      this%fwdmesh%theta = real(theta, kind=dp)
-   endif
+       allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
+       ! sure that fwd is correct here??
+       call nc_getvar( ncid   = this%fwd(1)%surf,   &
+                       varid  = ncvarid_theta,          &
+                       start  = 1,                      & 
+                       count  = this%bwdmesh%nsurfelem, &
+                       values = theta                    )
+       this%fwdmesh%theta = real(theta, kind=dp)
+    endif
                              
+    ! define terms needed to compute gradient
+    if (trim(this%dump_type) == 'displ_only') then
+        allocate(this%G1(0:this%npol,0:this%npol))
+        allocate(this%G1T(0:this%npol,0:this%npol))
+        allocate(this%G2(0:this%npol,0:this%npol))
+        allocate(this%G2T(0:this%npol,0:this%npol))
+        allocate(this%G0(0:this%npol))
+
+        allocate(this%gll_points(0:this%npol))
+        allocate(this%glj_points(0:this%npol))
+
+        this%gll_points = zelegl(this%npol)
+        this%glj_points = zemngl2(this%npol)
+
+        this%G1 = def_lagrange_derivs_glj(this%npol, this%G0)
+        this%G2 = def_lagrange_derivs_gll(this%npol)
+
+        this%G1T = transpose(this%G1)
+        this%G2T = transpose(this%G2)
+
+    endif
 
     ! Mesh sanity checks
     mesherror = .false.
