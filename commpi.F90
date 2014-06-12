@@ -49,14 +49,20 @@ end subroutine ppinit
 !-----------------------------------------------------------------------------
 subroutine pbroadcast_char(input_char,input_proc)
 
-  integer, intent(in)           :: input_proc
-  character(*), intent(inout)   :: input_char
-  integer                       :: ierror
+  integer, intent(in)          :: input_proc
+  character(*), intent(inout)  :: input_char
+  integer                      :: ierror
+  logical                      :: isinitialized
 
+  call MPI_Initialized(isinitialized, ierror)
 
-  call mpi_bcast(input_char, len(input_char), MPI_CHARACTER, input_proc, &
-                 MPI_COMM_WORLD, ierror)
-  call mpi_barrier(MPI_COMM_WORLD, ierror)
+  if (isinitialized) then
+     call mpi_bcast(input_char, len(input_char), MPI_CHARACTER, input_proc, &
+                    MPI_COMM_WORLD, ierror)
+     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  else
+     input_char = input_char
+  end if
 
 end subroutine pbroadcast_char
 !=============================================================================
@@ -64,12 +70,19 @@ end subroutine pbroadcast_char
 !-----------------------------------------------------------------------------
 subroutine pbroadcast_log(input_log,input_proc)
 
-  integer, intent(in)    :: input_proc
-  logical, intent(inout) :: input_log
-  integer                :: ierror
+  integer, intent(in)          :: input_proc
+  logical, intent(inout)       :: input_log
+  integer                      :: ierror
+  logical                      :: isinitialized
 
-  call mpi_bcast(input_log, 1, MPI_LOGICAL, input_proc, MPI_COMM_WORLD, ierror)
-  call mpi_barrier(MPI_COMM_WORLD, ierror)
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     call mpi_bcast(input_log, 1, MPI_LOGICAL, input_proc, MPI_COMM_WORLD, ierror)
+     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  else
+     input_log = input_log
+  end if
 
 end subroutine pbroadcast_log
 !=============================================================================
@@ -77,12 +90,19 @@ end subroutine pbroadcast_log
 !-----------------------------------------------------------------------------
 subroutine pbroadcast_int(input_int,input_proc)
 
-  integer, intent(in)    :: input_proc
-  integer, intent(inout) :: input_int
-  integer                :: ierror
+  integer, intent(in)          :: input_proc
+  integer, intent(inout)       :: input_int
+  integer                      :: ierror
+  logical                      :: isinitialized
 
-  call mpi_bcast(input_int, 1, MPI_INTEGER, input_proc, MPI_COMM_WORLD, ierror)
-  call mpi_barrier(MPI_COMM_WORLD, ierror)
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     call mpi_bcast(input_int, 1, MPI_INTEGER, input_proc, MPI_COMM_WORLD, ierror)
+     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  else 
+     input_int = input_int
+  end if
 
 end subroutine pbroadcast_int
 !=============================================================================
@@ -90,13 +110,20 @@ end subroutine pbroadcast_int
 !-----------------------------------------------------------------------------
 subroutine pbroadcast_int_arr(input_int, input_proc)
 
-  integer, intent(in)    :: input_proc
-  integer, intent(inout) :: input_int(:)
-  integer                :: ierror
+  integer, intent(in)          :: input_proc
+  integer, intent(inout)       :: input_int(:)
+  integer                      :: ierror
+  logical                      :: isinitialized
 
-  call mpi_bcast(input_int, size(input_int), MPI_INTEGER, input_proc, &
-                 MPI_COMM_WORLD, ierror)
-  call mpi_barrier(MPI_COMM_WORLD, ierror)
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     call mpi_bcast(input_int, size(input_int), MPI_INTEGER, input_proc, &
+                    MPI_COMM_WORLD, ierror)
+     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  else 
+     input_int = input_int
+  end if
 
 end subroutine pbroadcast_int_arr
 !=============================================================================
@@ -107,10 +134,17 @@ subroutine pbroadcast_dble(input_dble,input_proc)
   integer, intent(in)          :: input_proc
   real(kind=dp), intent(inout) :: input_dble
   integer                      :: ierror
+  logical                      :: isinitialized
 
-  call mpi_bcast(input_dble, 1, MPI_DOUBLE_PRECISION, input_proc, &
-                 MPI_COMM_WORLD, ierror)
-  call mpi_barrier(MPI_COMM_WORLD, ierror)
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     call mpi_bcast(input_dble, 1, MPI_DOUBLE_PRECISION, input_proc, &
+                    MPI_COMM_WORLD, ierror)
+     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  else 
+     input_dble = input_dble
+  end if
 
 end subroutine pbroadcast_dble
 !=============================================================================
@@ -121,10 +155,17 @@ subroutine pbroadcast_dble_arr(input_dble,input_proc)
   integer, intent(in)          :: input_proc
   real(kind=dp), intent(inout) :: input_dble(:)
   integer                      :: ierror
+  logical                      :: isinitialized
 
-  call mpi_bcast(input_dble, size(input_dble), MPI_DOUBLE_PRECISION, &
-                 input_proc, MPI_COMM_WORLD, ierror)
-  call mpi_barrier(MPI_COMM_WORLD, ierror)
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     call mpi_bcast(input_dble, size(input_dble), MPI_DOUBLE_PRECISION, &
+                    input_proc, MPI_COMM_WORLD, ierror)
+     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  else 
+     input_dble = input_dble
+  end if
 
 end subroutine pbroadcast_dble_arr
 !=============================================================================
@@ -132,8 +173,13 @@ end subroutine pbroadcast_dble_arr
 !-----------------------------------------------------------------------------
 subroutine pbarrier
   integer :: ierror
- 
-  CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
+  logical                      :: isinitialized
+
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
+  end if
 
 end subroutine pbarrier
 !=============================================================================
@@ -153,7 +199,6 @@ subroutine pabort
 !< Calls MPI_ABORT
   integer :: ierror
   logical :: isinitialized
-
 
 #if defined(__GFORTRAN__)
 #if (__GNUC_MINOR__>=8)

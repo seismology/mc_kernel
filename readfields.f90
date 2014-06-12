@@ -33,12 +33,14 @@ module readfields
         integer                           :: seis_disp, seis_velo    ! Variable IDs
         integer                           :: stf_varid               ! Variable IDs
         integer                           :: fem_mesh_varid          ! Variable IDs
+        integer                           :: sem_mesh_varid          ! Variable IDs
+        integer                           :: eltype_varid            ! Variable IDs
         integer                           :: mesh_s_varid            ! Variable IDs
         integer                           :: mesh_z_varid            ! Variable IDs
         integer                           :: chunk_gll
         character(len=200)                :: meshdir
         character(len=12)                 :: dump_type
-        integer                           :: ndumps, nseis, ngll
+        integer                           :: ndumps, nseis, ngll, npol
         integer                           :: source_shift_samples    
         real(kind=dp)                     :: source_shift_t
         real(kind=sp), allocatable        :: stf(:)
@@ -69,6 +71,7 @@ module readfields
         real(kind=dp), public              :: dt
         integer,       public              :: ndumps, decimate_factor
         integer,       public              :: nseis 
+        integer,       public              :: npol
         real(kind=dp), public              :: windowlength
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
@@ -106,7 +109,6 @@ function get_ndim(this)
     get_ndim = this%ndim
 end function
 !-----------------------------------------------------------------------------------------
-
 
 !-----------------------------------------------------------------------------------------
 subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
@@ -301,6 +303,9 @@ subroutine open_files(this)
                                              chunksizes = chunks, &
                                              deflate_level = deflev) )
 
+            call nc_read_att_int(this%fwd(isim)%npol, 'npol', this%fwd(isim))
+
+
         elseif (trim(this%fwd(isim)%dump_type) == 'fullfields') then
             do istrainvar = 1, 6
                 status = nf90_inq_varid(ncid  = this%fwd(isim)%snap,                  &
@@ -388,18 +393,6 @@ subroutine open_files(this)
                                   varid  = this%fwd(isim)%stf_varid, &
                                   values = this%fwd(isim)%stf  ))
         
-        if (trim(this%fwd(isim)%dump_type) == 'displ_only') then
-            call getvarid(ncid  = this%fwd(isim)%mesh,   &
-                          name  = "fem_mesh",            &
-                          varid = this%fwd(isim)%fem_mesh_varid)
-
-            call getvarid(ncid  = this%fwd(isim)%mesh,   &
-                          name  = "mesh_S",              &
-                          varid = this%fwd(isim)%mesh_s_varid)
-            call getvarid(ncid  = this%fwd(isim)%mesh,   &
-                          name  = "mesh_Z",              &
-                          varid = this%fwd(isim)%mesh_z_varid)
-        endif
     end do
         
     call flush(lu_out)
@@ -439,6 +432,9 @@ subroutine open_files(this)
                                              varid      = this%bwd(isim)%displvarid(1), &
                                              chunksizes = chunks, &
                                              deflate_level = deflev) )
+
+            call nc_read_att_int(this%bwd(isim)%npol, 'npol', this%bwd(isim))
+
         elseif (trim(this%bwd(isim)%dump_type) == 'fullfields') then
             do istrainvar = 1, 6            
                 status = nf90_inq_varid(ncid  = this%bwd(isim)%snap,                  &
@@ -586,7 +582,7 @@ subroutine check_consistency(this)
     real(kind=dp)          :: dt_agreed
     character(len=512)     :: fmtstring, fmtstring_stf
     character(len=12)      :: dump_type_agreed
-    integer                :: ndumps_agreed, nseis_agreed
+    integer                :: ndumps_agreed, nseis_agreed, npol_agreed
     real(kind=dp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
     real(kind=dp)          :: stf_agreed_fwd(this%fwd(1)%ndumps)
     real(kind=dp)          :: stf_agreed_bwd(this%bwd(1)%ndumps)
@@ -637,6 +633,30 @@ subroutine check_consistency(this)
     end do
 
     this%dt = dt_agreed
+
+    ! Check whether npol is the same in all files
+    npol_agreed = this%fwd(1)%npol
+
+    fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",I7,") vs ", I7, " in the others")' 
+    do isim = 1, this%nsim_fwd
+       if (npol_agreed.ne.this%fwd(isim)%npol) then
+          write(*,fmtstring) 'npol', isim, npol_agreed, this%fwd(isim)%npol
+          call pabort
+       end if
+    end do
+
+    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                '  in simulation ", I1, "(",I7,"s) vs ", I7, " in the forward case")' 
+
+    do isim = 1, this%nsim_bwd
+       if (npol_agreed.ne.this%bwd(isim)%npol) then
+          write(*,fmtstring) 'npol', isim, npol_agreed, this%bwd(isim)%npol
+          call pabort
+       end if
+    end do
+
+    this%npol = npol_agreed
 
     ! Check whether the number of dumps (time samples) is the same in all files
     ndumps_agreed = this%fwd(1)%ndumps
@@ -1024,7 +1044,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     integer                           :: npoints, nnext_points
     integer                           :: pointid(size(source_params))
     integer                           :: ipoint, inext_point, isim, iclockold, i, icp
-    integer                           :: corner_point_ids(4)
+    integer                           :: corner_point_ids(4), eltype(1)
+    integer, allocatable              :: gll_point_ids(:,:)
     real(kind=dp)                     :: corner_points(4,2)
     real(kind=dp)                     :: cps(1), cpz(1)
     real(kind=dp)                     :: rotmesh_s(size(source_params))
@@ -1037,6 +1058,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
     if (trim(this%dump_type) == 'displ_only') then
         nnext_points = 6 ! 6, because this is the maximum valence in the mesh
+        allocate(gll_point_ids(0:this%npol, 0:this%npol))
     else
         nnext_points = 1
     endif
@@ -1079,6 +1101,12 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                         count  = [4, 1], &
                                         values = corner_point_ids))
                 
+                call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                        varid  = this%fwd(1)%eltype_varid, &
+                                        start  = [nextpoint(inext_point)%idx], &
+                                        count  = [1], &
+                                        values = eltype))
+                
                 do icp = 1, 4
                     call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
                                             varid  = this%fwd(1)%mesh_s_varid, &
@@ -1096,13 +1124,31 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                     corner_points(icp, 2) = cpz(1)
                 enddo                        
                 ! test point to be inside, if so, exit
-                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), corner_points, 0, xi=xi, eta=eta)) then
+                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
+                                   corner_points, eltype(1), xi=xi, eta=eta)) then
+                    write(6,*) 'eltype     = ', eltype
                     write(6,*) 'xi, eta    = ', xi, eta
                     write(6,*) 'element id = ', nextpoint(inext_point)%idx
-                    stop
                     exit
                 endif
             enddo
+
+            if (inext_point >= nnext_points) then
+               write(6,*) 'ERROR: element not found. '
+               write(6,*) '       Try increasing nnext_points in case this problem persists'
+               call pabort
+            endif
+
+            ! get gll points of spectral element
+            gll_point_ids = -1
+            write(6,*) 'npol = ', this%npol
+            write(6,*) 'element id = ', nextpoint(inext_point)%idx
+            call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                    varid  = this%fwd(1)%sem_mesh_varid, &
+                                    start  = [1, 1, nextpoint(inext_point)%idx], &
+                                    count  = [this%npol+1, this%npol+1, 1], &
+                                    values = gll_point_ids))
+            write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
         endif
     end do
 
@@ -1149,6 +1195,9 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                load_fw_points_rdbm(:, :, ipoint) = &
                        utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
 
+          case default
+               write(6,*) 'component "', component, '" unknown or not yet implemented'
+               call pabort
           end select
        elseif (this%model_param == 'vs') then
           select case(component)
@@ -1284,11 +1333,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
           case default
                write(6,*) 'component "', component, '" unknown or not yet implemented'
-               stop
+               call pabort
           end select
          
        else
-          stop
+          call pabort
        endif
 
     end do !ipoint
@@ -1313,7 +1362,7 @@ function load_strain_point(sem_obj, pointid, model_param)
     if (trim(sem_obj%dump_type) /= 'fullfields') then
         write(6,*) 'ERROR: trying to read strain from a file that was not'
         write(6,*) '       written with dump_type "fullfields"'
-        stop
+        call pabort
     endif
 
     select case(model_param)
@@ -1497,6 +1546,25 @@ subroutine read_meshes(this)
         allocate(this%fwdmesh%s(this%fwdmesh%nelem))
         allocate(this%fwdmesh%z(this%fwdmesh%nelem))
 
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "fem_mesh",            &
+                      varid = this%fwd(1)%fem_mesh_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "sem_mesh",            &
+                      varid = this%fwd(1)%sem_mesh_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "eltype",              &
+                      varid = this%fwd(1)%eltype_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_S",              &
+                      varid = this%fwd(1)%mesh_s_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_Z",              &
+                      varid = this%fwd(1)%mesh_z_varid)
            
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mp_mesh_S", &
@@ -1556,6 +1624,27 @@ subroutine read_meshes(this)
             
             allocate(this%bwdmesh%s(this%fwdmesh%nelem))
             allocate(this%bwdmesh%z(this%fwdmesh%nelem))
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "fem_mesh",            &
+                          varid = this%bwd(1)%fem_mesh_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "sem_mesh",            &
+                          varid = this%bwd(1)%sem_mesh_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "eltype",              &
+                          varid = this%bwd(1)%eltype_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_S",              &
+                          varid = this%bwd(1)%mesh_s_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_Z",              &
+                          varid = this%bwd(1)%mesh_z_varid)
+           
             
             call  getvarid( ncid  = this%bwd(1)%mesh, &
                             name  = "mp_mesh_S", &
@@ -1639,12 +1728,12 @@ subroutine read_meshes(this)
 
       allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
       ! sure that fwd is correct here??
-      call nc_getvar( ncid   = this%fwd(1)%surf,   &
+      call nc_getvar( ncid   = this%bwd(1)%surf,   &
                       varid  = ncvarid_theta,          &
                       start  = 1,                      & 
                       count  = this%bwdmesh%nsurfelem, &
                       values = theta                    )
-      this%fwdmesh%theta = real(theta, kind=dp)
+      this%bwdmesh%theta = real(theta, kind=dp)
    endif
                              
 
@@ -1660,7 +1749,7 @@ subroutine read_meshes(this)
        write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
        mesherror = .true.
     end if
-    if (maxval(this%fwdmesh%theta).gt.180) then
+    if (maxval(this%fwdmesh%theta).gt.180.0) then
        write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
        write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
        write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
@@ -1678,7 +1767,7 @@ subroutine read_meshes(this)
            write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
            mesherror = .true.
         end if
-        if (maxval(this%bwdmesh%theta).gt.180) then
+        if (maxval(this%bwdmesh%theta).gt.180.0) then
            write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
            write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
            write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))

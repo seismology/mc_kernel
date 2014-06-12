@@ -28,6 +28,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST SPECTRAL BASIS MODULE'
   call test(test_lagrange_interpol_1D, 'lagrangian interpolation in 1D')
   call test(test_lagrange_interpol_2D, 'lagrangian interpolation in 2D')
+  call test(test_lagrange_interpol_2D_td, 'lagrangian interpolation in 2D time dep')
 
   call test(test_gll_points, 'gll points')
   call test(test_glj_points, 'glj points')
@@ -138,8 +139,12 @@ subroutine test_all
 
   ! test_buffer
   write(6,'(/,a)') 'TEST BUFFER MODULE'
-  call test(test_buffer_storage, 'put data into the buffer')
-  call test(test_buffer_retrieval, 'get data back from the buffer')
+  call test(test_buffer_storage_1d, 'put 1d data into the buffer')
+  call test(test_buffer_storage_2d, 'put 2d data into the buffer')
+  call test(test_buffer_storage_3d, 'put 3d data into the buffer')
+  call test(test_buffer_retrieval_1d, 'get 1d data back from the buffer')
+  call test(test_buffer_retrieval_2d, 'get 2d data back from the buffer')
+  call test(test_buffer_retrieval_3d, 'get 3d data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
 
   call finish_output()

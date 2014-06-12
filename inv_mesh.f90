@@ -662,12 +662,6 @@ subroutine init_weight_tet_mesh(this)
   real(kind=dp)                    :: x1, y1, z1, ab(4,4)
   integer                          :: ielem, ivertex
 
-  if (.not. this%initialized) then
-     write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
-     call pabort 
-  end if
-
-
   allocate(this%abinv(4,4,this%nelements))
   do ielem = 1, this%nelements
      x1 = this%vertices(1, this%connectivity(1,ielem)+1)

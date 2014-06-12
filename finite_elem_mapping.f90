@@ -11,6 +11,7 @@ module finite_elem_mapping
     public  :: inv_mapping
     public  :: jacobian
     public  :: inv_jacobian
+    public  :: jacobian_det
 
     public  :: mapping_semino
     public  :: inv_mapping_semino
@@ -176,6 +177,25 @@ function inv_jacobian(xi, eta, nodes, element_type)
   end select
 
 end function inv_jacobian
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function jacobian_det(xi, eta, nodes, element_type, j)
+
+  real(kind=dp), intent(in) :: xi, eta, nodes(4,2)
+  integer, intent(in)       :: element_type
+  real(kind=dp), intent(out), optional :: j(2,2)
+  real(kind=dp)             :: jacobian_det
+  real(kind=dp)             :: jacobian_buff(2,2)
+
+  jacobian_buff = jacobian(xi, eta, nodes, element_type)
+
+  jacobian_det = jacobian_buff(1,1) * jacobian_buff(2,2) &
+               - jacobian_buff(2,1) * jacobian_buff(1,2)
+  
+  if (present(j)) j = jacobian_buff
+
+end function jacobian_det
 !-----------------------------------------------------------------------------------------
 
 
