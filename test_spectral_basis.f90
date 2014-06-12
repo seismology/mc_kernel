@@ -207,5 +207,62 @@ subroutine test_glj_points()
 end subroutine test_glj_points
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_derivative_tensors()
+  
+  integer                    :: npol
+  real(kind=dp), allocatable :: G0(:), G0_ref(:)
+  real(kind=dp), allocatable :: G1(:,:), G1_ref(:)
+  real(kind=dp), allocatable :: G2(:,:), G2_ref(:)
+  real(kind=dp), allocatable :: gll_points(:), glj_points(:)
+
+  npol = 4
+  allocate(G0(0:npol))
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
+
+  allocate(G0_ref(0:npol))
+  allocate(G1_ref(1:(npol+1)**2))
+  allocate(G2_ref(1:(npol+1)**2))
+
+  allocate(gll_points(0:npol))
+  allocate(glj_points(0:npol))
+
+  gll_points = zelegl(npol)
+  glj_points = zemngl2(npol)
+
+  call def_lagrange_derivs(npol, glj_points, gll_points, G1, G2, G0)
+
+  G1_ref = &
+   [-4.00000000,  6.69583750, -4.63974380,   3.19390655,  -1.25000000, &
+    -0.61643892, -1.01582170,  2.49033880,  -1.36116433,   0.50308620, &
+     0.16810566, -0.98008018, -0.44157877,   1.80197537,  -0.54842215, &
+    -0.10722228,  0.49635028, -1.66964221,  -0.29259955,   1.57311368, &
+     0.20000000, -0.87433373,  2.42184663,  -7.49751282,   5.75000000]
+
+  call assert_comparable_real1d(real(reshape(G1, (/(npol+1)**2/))), &
+                                real(G1_ref), &
+                                1e-7, 'derivatives tensor, glj')
+
+  G2_ref = &
+   [-5.00000000,  6.75650263, -2.66666675,  1.41016424, -0.50000000, &
+    -1.24099028, -0.00000000,  1.74574316, -0.76376259,  0.25900974, &
+     0.37500000, -1.33658457,  0.00000000,  1.33658457, -0.37500000, &
+    -0.25900974,  0.76376259, -1.74574316, -0.00000000,  1.24099028, &
+     0.50000000, -1.41016424,  2.66666675, -6.75650263,  5.00000000]
+
+  call assert_comparable_real1d(real(reshape(G2, (/(npol+1)**2/))), &
+                                real(G2_ref), &
+                                1e-7, 'derivatives tensor, gll')
+
+  G0_ref = [-4.0, 6.69583750, -4.63974380, 3.19390655, -1.25]
+
+  call assert_comparable_real1d(real(G0), real(G0_ref), &
+                                1e-7, 'derivatives tensor, axial')
+
+end subroutine test_derivative_tensors
+!-----------------------------------------------------------------------------------------
+
+
 end module
 !=========================================================================================

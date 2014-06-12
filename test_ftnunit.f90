@@ -33,6 +33,8 @@ subroutine test_all
   call test(test_gll_points, 'gll points')
   call test(test_glj_points, 'glj points')
 
+  call test(test_derivative_tensors, 'derivative tensors')
+
   ! test_finite_elem_mapping
   write(6,'(/,a)') 'TEST FINITE ELEMENT MODULE'
   call test(test_inside_element, 'inside element?')

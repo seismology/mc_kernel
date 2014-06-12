@@ -16,7 +16,7 @@ module spectral_basis
 contains
 
 !-----------------------------------------------------------------------------
-subroutine def_lagrange_derivs(npol, xi, eta, G1, G2)
+subroutine def_lagrange_derivs(npol, xi, eta, G1, G2, G0)
 !< Defines elemental arrays for the derivatives of Lagrange interpolating 
 !! functions either upon 
 !! Gauss-Lobatto-Legendre (all eta, and xi direction for non-axial elements) or 
@@ -29,6 +29,7 @@ subroutine def_lagrange_derivs(npol, xi, eta, G1, G2)
   real(kind=dp), intent(in)  :: eta(0:npol)
   real(kind=dp), intent(out) :: G1(0:npol,0:npol)
   real(kind=dp), intent(out) :: G2(0:npol,0:npol)
+  real(kind=dp), intent(out) :: G0(0:npol)
 
   real(kind=dp)         :: df(0:npol)
   integer               :: ipol, jpol
@@ -50,6 +51,8 @@ subroutine def_lagrange_derivs(npol, xi, eta, G1, G2)
         G1(ipol, jpol) = df(jpol)
      end do
   end do
+
+  G0 = G1(:,0)
 
 end subroutine
 !-----------------------------------------------------------------------------------------
