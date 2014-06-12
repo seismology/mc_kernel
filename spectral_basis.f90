@@ -11,50 +11,63 @@ module spectral_basis
 
     public :: zelegl
     public :: zemngl2
-    public :: def_lagrange_derivs
+    public :: def_lagrange_derivs_gll
+    public :: def_lagrange_derivs_glj
 
 contains
 
-!-----------------------------------------------------------------------------
-subroutine def_lagrange_derivs(npol, xi, eta, G1, G2, G0)
+!-----------------------------------------------------------------------------------------
+pure function def_lagrange_derivs_gll(npol)
 !< Defines elemental arrays for the derivatives of Lagrange interpolating 
-!! functions either upon 
 !! Gauss-Lobatto-Legendre (all eta, and xi direction for non-axial elements) or 
-!! Gauss-Lobatto-Jacobi (0,1) points (axial xi direction):
-!! G1(i,j) = \partial_\xi ( \bar{l}_i(\xi_j) )  i.e. axial xi direction
 !! G2(i,j) = \partial_\eta ( l_i(\eta_j) )  i.e. all eta/non-ax xi directions 
 
-  integer, intent(in)        :: npol
-  real(kind=dp), intent(in)  :: xi(0:npol)
-  real(kind=dp), intent(in)  :: eta(0:npol)
-  real(kind=dp), intent(out) :: G1(0:npol,0:npol)
-  real(kind=dp), intent(out) :: G2(0:npol,0:npol)
-  real(kind=dp), intent(out) :: G0(0:npol)
+  integer, intent(in)   :: npol
+  real(kind=dp)         :: def_lagrange_derivs_gll(0:npol,0:npol)
 
+  real(kind=dp)         :: eta(0:npol)
   real(kind=dp)         :: df(0:npol)
   integer               :: ipol, jpol
-  character(len=16)     :: fmt1
-  logical               :: tensorwrong
 
-  ! non-axial elements
+  eta = zelegl(npol)
+
   do ipol = 0, npol
      call hn_jprime(eta, ipol, npol, df)
      do jpol = 0, npol
-        G2(ipol, jpol) = df(jpol)
+        def_lagrange_derivs_gll(ipol, jpol) = df(jpol)
      end do
   end do
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function def_lagrange_derivs_glj(npol, G0)
+!< Defines elemental arrays for the derivatives of Lagrange interpolating 
+!! Gauss-Lobatto-Jacobi (0,1) points (axial xi direction):
+!! G2(i,j) = \partial_\eta ( l_i(\eta_j) )  i.e. all eta/non-ax xi directions 
+
+  integer, intent(in)                   :: npol
+  real(kind=dp), intent(out), optional  :: G0(0:npol)
+  real(kind=dp)                         :: def_lagrange_derivs_glj(0:npol,0:npol)
+
+  real(kind=dp)         :: xi(0:npol)
+  real(kind=dp)         :: df(0:npol)
+  integer               :: ipol, jpol
+
+  xi = zemngl2(npol)
 
   ! axial elements
   do ipol = 0, npol
      call lag_interp_deriv_wgl(df, xi, ipol, npol)
      do jpol = 0, npol 
-        G1(ipol, jpol) = df(jpol)
+        def_lagrange_derivs_glj(ipol, jpol) = df(jpol)
      end do
   end do
 
-  G0 = G1(:,0)
+  if (present(G0)) G0 = def_lagrange_derivs_glj(:,0)
 
-end subroutine
+end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -210,7 +223,7 @@ end subroutine hn_jprime
 !! value of the derivative of the i-th Lagrangian interpolant
 !! defined over the weighted GLL points computed at these
 !! weighted GLL points.
-subroutine lag_interp_deriv_wgl(dl,xi,i,N)
+pure subroutine lag_interp_deriv_wgl(dl,xi,i,N)
   
   integer, intent(in)    :: N, i
   real(dp), intent(in)   :: xi(0:N)
@@ -222,48 +235,46 @@ subroutine lag_interp_deriv_wgl(dl,xi,i,N)
   real(kind=dp)          :: DN
   integer                :: j
 
-  if ( i > N ) stop
   DN = dble(N)
-  call vamnpo(N,xi(i),mn_xi_i,mnprime_xi_i,mnprimeprime_xi_i)
+  call vamnpo(N, xi(i), mn_xi_i, mnprime_xi_i, mnprimeprime_xi_i)
 
   if ( i == 0) then
 
      do j = 0, N
-        call vamnpo(N,xi(j),mn_xi_j,mnprime_xi_j,mnprimeprime_xi_j)
+        call vamnpo(N, xi(j), mn_xi_j, mnprime_xi_j, mnprimeprime_xi_j)
 
         if (j == 0) &
-                     dl(j) = -DN*(DN+2d0)/6.d0 
+           dl(j) = -DN * (DN + 2d0) / 6.d0 
         if (j > 0 .and. j < N) &
-                     dl(j) = 2d0*((-1d0)**N)*mn_xi_j/((1d0+xi(j))*(DN+1d0))
+           dl(j) = 2d0 * ((-1d0)**N) * mn_xi_j / ((1d0 + xi(j)) * (DN + 1d0))
         if (j == N) &
-                     dl(j) = ((-1d0)**N)/(DN+1d0) 
+           dl(j) = ((-1d0)**N) / (DN + 1d0) 
      end do
 
   elseif (i == N) then
 
      do j = 0, N
-        call vamnpo(N,xi(j),mn_xi_j,mnprime_xi_j,mnprimeprime_xi_j)
+        call vamnpo(N, xi(j), mn_xi_j, mnprime_xi_j, mnprimeprime_xi_j)
         if (j == 0) &
-                     dl(j) = ((-1d0)**(N+1))*(DN+1d0)/4.d0
+           dl(j) = ((-1d0)**(N + 1)) * (DN + 1d0) / 4.d0
         if (j > 0 .and. j <  N) & 
-                     dl(j) = -mn_xi_j/(1d0-xi(j))
+           dl(j) = -mn_xi_j / (1d0 - xi(j))
         if (j == N) &
-                     dl(j) = (DN*(DN+2d0)-1d0)/4.d0 
+           dl(j) = (DN * (DN + 2d0) - 1d0) / 4.d0 
      end do
 
   else
 
      do j = 0, N
-        call vamnpo(N,xi(j),mn_xi_j,mnprime_xi_j,mnprimeprime_xi_j)
+        call vamnpo(N, xi(j), mn_xi_j, mnprime_xi_j, mnprimeprime_xi_j)
         if (j == 0) &
-                     dl(j) = ( ((-1d0)**(N+1)) * (DN+1d0) )&
-                            /(2d0 * mn_xi_i * (1d0 + xi(i)))
+           dl(j) = ( ((-1d0)**(N + 1)) * (DN + 1d0) ) / (2d0 * mn_xi_i * (1d0 + xi(i)))
         if (j > 0 .and. j < N .and. j /= i) &
-                     dl(j) = ((xi(j)-xi(i))**(-1)) * mn_xi_j/mn_xi_i
+           dl(j) = ((xi(j) - xi(i))**(-1)) * mn_xi_j / mn_xi_i
         if (j > 0 .and. j < N .and. j == i) &
-                     dl(j) = - 0.5d0/(1d0 + xi(j))
+           dl(j) = - 0.5d0 / (1d0 + xi(j))
         if (j == N) &
-                     dl(j) = (mn_xi_i*(1d0-xi(i)))**(-1)
+           dl(j) = (mn_xi_i * (1d0 - xi(i)))**(-1)
      end do
 
   end if
