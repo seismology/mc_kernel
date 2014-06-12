@@ -15,6 +15,7 @@ module unit_tests
   use test_resampling
   use test_finite_elem_mapping
   use test_spectral_basis
+  use test_sem_derivatives
 
   implicit none
 
@@ -23,6 +24,10 @@ contains
 subroutine test_all
 
   call init_output()
+
+  ! test sem derivatives
+  write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
+  call test(test_gradient, 'SEM gradient')
 
   ! test spectral basis functions
   write(6,'(/,a)') 'TEST SPECTRAL BASIS MODULE'

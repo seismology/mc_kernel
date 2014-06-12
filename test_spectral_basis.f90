@@ -214,7 +214,6 @@ subroutine test_derivative_tensors()
   real(kind=dp), allocatable :: G0(:), G0_ref(:)
   real(kind=dp), allocatable :: G1(:,:), G1_ref(:)
   real(kind=dp), allocatable :: G2(:,:), G2_ref(:)
-  real(kind=dp), allocatable :: glj_points(:)
 
   npol = 4
   allocate(G0(0:npol))
