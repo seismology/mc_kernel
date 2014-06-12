@@ -1637,12 +1637,12 @@ subroutine read_meshes(this)
 
       allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
       ! sure that fwd is correct here??
-      call nc_getvar( ncid   = this%fwd(1)%surf,   &
+      call nc_getvar( ncid   = this%bwd(1)%surf,   &
                       varid  = ncvarid_theta,          &
                       start  = 1,                      & 
                       count  = this%bwdmesh%nsurfelem, &
                       values = theta                    )
-      this%fwdmesh%theta = real(theta, kind=dp)
+      this%bwdmesh%theta = real(theta, kind=dp)
    endif
                              
 
@@ -1658,7 +1658,7 @@ subroutine read_meshes(this)
        write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
        mesherror = .true.
     end if
-    if (maxval(this%fwdmesh%theta).gt.180) then
+    if (maxval(this%fwdmesh%theta).gt.180.0) then
        write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
        write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
        write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
@@ -1676,7 +1676,7 @@ subroutine read_meshes(this)
            write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
            mesherror = .true.
         end if
-        if (maxval(this%bwdmesh%theta).gt.180) then
+        if (maxval(this%bwdmesh%theta).gt.180.0) then
            write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
            write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
            write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
