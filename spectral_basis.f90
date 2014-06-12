@@ -11,8 +11,48 @@ module spectral_basis
 
     public :: zelegl
     public :: zemngl2
+    public :: def_lagrange_derivs
 
 contains
+
+!-----------------------------------------------------------------------------
+subroutine def_lagrange_derivs(npol, xi, eta, G1, G2)
+!< Defines elemental arrays for the derivatives of Lagrange interpolating 
+!! functions either upon 
+!! Gauss-Lobatto-Legendre (all eta, and xi direction for non-axial elements) or 
+!! Gauss-Lobatto-Jacobi (0,1) points (axial xi direction):
+!! G1(i,j) = \partial_\xi ( \bar{l}_i(\xi_j) )  i.e. axial xi direction
+!! G2(i,j) = \partial_\eta ( l_i(\eta_j) )  i.e. all eta/non-ax xi directions 
+
+  integer, intent(in)        :: npol
+  real(kind=dp), intent(in)  :: xi(0:npol)
+  real(kind=dp), intent(in)  :: eta(0:npol)
+  real(kind=dp), intent(out) :: G1(0:npol,0:npol)
+  real(kind=dp), intent(out) :: G2(0:npol,0:npol)
+
+  real(kind=dp)         :: df(0:npol)
+  integer               :: ipol, jpol
+  character(len=16)     :: fmt1
+  logical               :: tensorwrong
+
+  ! non-axial elements
+  do ipol = 0, npol
+     call hn_jprime(eta, ipol, npol, df)
+     do jpol = 0, npol
+        G2(ipol, jpol) = df(jpol)
+     end do
+  end do
+
+  ! axial elements
+  do ipol = 0, npol
+     call lag_interp_deriv_wgl(df, xi, ipol, npol)
+     do jpol = 0, npol 
+        G1(ipol, jpol) = df(jpol)
+     end do
+  end do
+
+end subroutine
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> computes the Lagrangian interpolation polynomial of a function defined by its values at 
@@ -134,6 +174,101 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+!> Compute the value of the derivative of the j-th Lagrange polynomial
+!! of order N defined by the N+1 GLL points xi evaluated at these very
+!! same N+1 GLL points. 
+pure subroutine hn_jprime(xi,j,N,dhj)
+ 
+  real(dp), intent(in)  :: xi(0:N)
+  integer,intent(in)    :: j
+  integer,intent(in)    :: N
+  integer               :: i
+  real(dp), intent(out) :: dhj(0:N)
+  real(kind=dp)          :: DX,D2X
+  real(kind=dp)          :: VN (0:N), QN(0:N)
+ 
+  dhj(:) = 0d0
+  VN(:)= 0d0
+  QN(:)= 0d0
+  
+  
+  do i = 0, N
+     call valepo(N, xi(i), VN(i), DX, D2X)
+     if (i == j) QN(i) = 1d0
+  end do
+  
+  call delegl(N, xi, VN, QN, dhj)
+ 
+end subroutine hn_jprime
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Applies more robust formula to return
+!! value of the derivative of the i-th Lagrangian interpolant
+!! defined over the weighted GLL points computed at these
+!! weighted GLL points.
+subroutine lag_interp_deriv_wgl(dl,xi,i,N)
+  
+  integer, intent(in)    :: N, i
+  real(dp), intent(in)   :: xi(0:N)
+  real(dp), intent(out)  :: dl(0:N)
+  real(kind=dp)          :: mn_xi_i, mnprime_xi_i
+  real(kind=dp)          :: mnprimeprime_xi_i
+  real(kind=dp)          :: mn_xi_j, mnprime_xi_j 
+  real(kind=dp)          :: mnprimeprime_xi_j
+  real(kind=dp)          :: DN
+  integer                :: j
+
+  if ( i > N ) stop
+  DN = dble(N)
+  call vamnpo(N,xi(i),mn_xi_i,mnprime_xi_i,mnprimeprime_xi_i)
+
+  if ( i == 0) then
+
+     do j = 0, N
+        call vamnpo(N,xi(j),mn_xi_j,mnprime_xi_j,mnprimeprime_xi_j)
+
+        if (j == 0) &
+                     dl(j) = -DN*(DN+2d0)/6.d0 
+        if (j > 0 .and. j < N) &
+                     dl(j) = 2d0*((-1d0)**N)*mn_xi_j/((1d0+xi(j))*(DN+1d0))
+        if (j == N) &
+                     dl(j) = ((-1d0)**N)/(DN+1d0) 
+     end do
+
+  elseif (i == N) then
+
+     do j = 0, N
+        call vamnpo(N,xi(j),mn_xi_j,mnprime_xi_j,mnprimeprime_xi_j)
+        if (j == 0) &
+                     dl(j) = ((-1d0)**(N+1))*(DN+1d0)/4.d0
+        if (j > 0 .and. j <  N) & 
+                     dl(j) = -mn_xi_j/(1d0-xi(j))
+        if (j == N) &
+                     dl(j) = (DN*(DN+2d0)-1d0)/4.d0 
+     end do
+
+  else
+
+     do j = 0, N
+        call vamnpo(N,xi(j),mn_xi_j,mnprime_xi_j,mnprimeprime_xi_j)
+        if (j == 0) &
+                     dl(j) = ( ((-1d0)**(N+1)) * (DN+1d0) )&
+                            /(2d0 * mn_xi_i * (1d0 + xi(i)))
+        if (j > 0 .and. j < N .and. j /= i) &
+                     dl(j) = ((xi(j)-xi(i))**(-1)) * mn_xi_j/mn_xi_i
+        if (j > 0 .and. j < N .and. j == i) &
+                     dl(j) = - 0.5d0/(1d0 + xi(j))
+        if (j == N) &
+                     dl(j) = (mn_xi_i*(1d0-xi(i)))**(-1)
+     end do
+
+  end if
+
+end subroutine lag_interp_deriv_wgl
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 !> computes the nodes relative to the legendre gauss-lobatto formula
 pure function zelegl(n)
 
@@ -225,6 +360,96 @@ pure subroutine valepo(n, x, y, dy, d2y)
   endif
 
 end subroutine valepo
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!>  computes the derivative of a polynomial at the legendre gauss-lobatto
+!!  nodes from the values of the polynomial attained at the same points
+pure subroutine delegl(n,et,vn,qn,dqn)
+
+   integer, intent(in)   ::  n        !< the degree of the polynomial
+   real(dp), intent(in)  ::  et(0:n)  !< vector of the nodes, et(i), i=0,n
+   real(dp), intent(in)  ::  vn(0:n)  !< values of the legendre polynomial at the nodes, vn(i), i=0,n
+   real(dp), intent(in)  ::  qn(0:n)  !< values of the polynomial at the nodes, qn(i), i=0,n
+   real(dp), intent(out) ::  dqn(0:n) !< derivatives of the polynomial at the nodes, dqz(i), i=0,n
+   real(kind=dp)          ::  su, vi, ei, vj, ej, dn, c
+   integer               ::  i, j
+       
+   dqn(0) = 0.d0
+   if (n .eq. 0) return
+
+   do i=0,n
+       su = 0.d0
+       vi = vn(i)
+       ei = et(i)
+       do j=0,n 
+           if (i .eq. j) cycle !goto 2
+           vj = vn(j)
+           ej = et(j)
+           su = su+qn(j)/(vj*(ei-ej))
+       enddo !2  continue   
+       dqn(i) = vi*su
+    enddo !1  continue   
+
+    dn = dfloat(n)
+    c  = .25d0 * dn * (dn+1.d0)
+    dqn(0) = dqn(0) - c * qn(0)
+    dqn(n) = dqn(n) + c * qn(n)
+
+end subroutine delegl
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!>   Computes the value of the "cylindrical" polynomial
+!!   m_n = (l_n + l_{n+1})/(1+x) of degree n
+!!   and its first and second derivatives at a given point
+!!
+!!   implemented after bernardi et al., page 57, eq. (iii.1.10)
+pure subroutine vamnpo(n,x,y,dy,d2y)
+  
+  integer, intent(in)   :: n   !< degree of the polynomial 
+  real(dp), intent(in)  :: x   !< point in which the computation is performed
+  real(dp), intent(out) :: y   !< value of the polynomial in x
+  real(dp), intent(out) :: dy  !< value of the first derivative in x
+  real(dp), intent(out) :: d2y !< value of the second derivative in x
+  real(kind=dp)          :: yp, dyp, d2yp, c1
+  real(kind=dp)          :: ym, dym, d2ym
+  integer               :: i
+  
+  
+   y   = 1.d0
+   dy  = 0.d0
+   d2y = 0.d0
+  if (n  ==  0) return
+
+   y   = 1.5d0*x - 0.5d0
+   dy  = 1.5d0
+   d2y = 0.d0
+  if(n  ==  1) return
+
+   yp   = 1.d0
+   dyp  = 0.d0
+   d2yp = 0.d0
+  do i=2,n
+      c1 = dble(i-1)
+      ym = y
+       y = (x-1d0/((2*c1+1d0)*(2*c1+3d0)) ) * y &
+          - (c1/(2d0*c1+1d0))*yp
+       y = (2d0*c1+3d0)*y/(c1+2d0)
+      yp = ym
+     dym = dy
+      dy = (x-1d0/((2*c1+1d0)*(2*c1+3d0)) ) * dy &
+           +yp - (c1/(2d0*c1+1d0))*dyp
+      dy = (2d0*c1+3d0)*dy/(c1+2d0)
+     dyp = dym
+    d2ym = d2y
+    d2y  = 2d0*dyp + (x-1d0/((2*c1+1d0)*(2*c1+3d0)) ) * d2y &
+           - (c1/(2d0*c1+1d0))*d2yp
+    d2y  = (2d0*c1+3d0)*d2y/(c1+2d0)
+    d2yp = d2ym
+  end do
+  
+end subroutine vamnpo
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
