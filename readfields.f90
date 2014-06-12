@@ -272,9 +272,10 @@ subroutine open_files(this)
         call nc_open_for_read(    filename = filename,              &
                                   ncid     = this%fwd(isim)%ncid) 
 
-        call nc_read_att_char(this%fwd(isim)%dump_type, &
-                              'dump type (displ_only, displ_velo, fullfields)', &
-                               this%fwd(isim))
+        this%fwd(isim)%dump_type = 'fullfields'
+        !call nc_read_att_char(this%fwd(isim)%dump_type, &
+        !                      'dump type (displ_only, displ_velo, fullfields)', &
+        !                       this%fwd(isim))
 
         call getgrpid(  ncid     = this%fwd(isim)%ncid,   &
                         name     = "Snapshots",           &
@@ -411,9 +412,10 @@ subroutine open_files(this)
         call nc_open_for_read(filename = filename,              &
                               ncid     = this%bwd(isim)%ncid) 
 
-        call nc_read_att_char(this%bwd(isim)%dump_type, &
-                              'dump type (displ_only, displ_velo, fullfields)', &
-                               this%bwd(isim))
+        this%bwd(isim)%dump_type = 'fullfields'
+        !call nc_read_att_char(this%bwd(isim)%dump_type, &
+        !                      'dump type (displ_only, displ_velo, fullfields)', &
+        !                       this%bwd(isim))
 
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
                        name     = "Snapshots",           &
