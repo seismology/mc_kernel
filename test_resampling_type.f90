@@ -182,10 +182,10 @@ subroutine test_resampling_triangle
   end do
 
   data_in(1:ntimes_in/2+1,1) = T_in(1:ntimes_in/2+1,1)
-  data_in(ntimes_in/2+2:,1) = T_in(ntimes_in/2:1:-1,1)
+  data_in(ntimes_in/2+1:ntimes_in,1) = T_in(ntimes_in/2:1:-1,1)
 
   data_ref(1:ntimes_out/2+1,1) = T_out(1:ntimes_out/2+1,1)
-  data_ref(ntimes_out/2+2:,1) = T_out(ntimes_out/2:1:-1,1)
+  data_ref(ntimes_out/2+1:,1) = T_out(ntimes_out/2:1:-1,1)
 
 
   fnam = 'test_resampling_triangle_in'

@@ -38,6 +38,8 @@ subroutine test_gradient()
   G1 = def_lagrange_derivs_glj(npol)
   G2 = def_lagrange_derivs_gll(npol)
 
+  allocate(G1T(0:npol,0:npol))
+  allocate(G2T(0:npol,0:npol))
   G1T = transpose(G1)
   G2T = transpose(G2)
 
