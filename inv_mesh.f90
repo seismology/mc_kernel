@@ -544,6 +544,7 @@ subroutine read_abaqus_mesh(this, filename)
      call pabort 
   end if
 
+  write(6, *) 'Reading Mesh file from ', trim(filename)
   write(lu_out, *) 'Reading Mesh file from ', trim(filename)
 
   ! open file 

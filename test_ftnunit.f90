@@ -165,6 +165,7 @@ subroutine init_output()
   fnam = 'OUTPUT_test'
   open(newunit=lu_out, file=fnam, status='unknown', position='append')
   write(lu_out,*) '*********************************************************************'
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 

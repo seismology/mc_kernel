@@ -17,9 +17,9 @@ module global_parameters
   
   logical                    :: master, firstslave
   integer                    :: myrank, nproc
-  integer                    :: lu_out !< Logical unit for output. 
+  integer                    :: lu_out !< LOgical unit for output. 
                                        !! 6 (Screen) for master
-                                       !! file 'OUTPUT_#rank' for slaves
+                                       !! FIle 'OUTPUT_#rank' for slaves
 
   integer                    :: id_read, id_fft, id_fwd, id_bwd, id_mc, id_mpi,&
                                 id_filter_conv, id_inv_mesh, id_kernel, id_init, &

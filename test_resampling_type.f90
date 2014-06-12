@@ -15,6 +15,7 @@ subroutine test_resampling_const
 
   integer                                       :: ntimes_in, ntimes_out, ntraces
   integer                                       :: i
+  integer                                       :: myunit
   real(kind=dp), dimension(:,:), allocatable    :: data_in, data_out, data_ref
   real(kind=dp), dimension(:,:), allocatable    :: T_in, T_out
   real(kind=dp)                                 :: dt_in, dt_out
@@ -45,13 +46,13 @@ subroutine test_resampling_const
   data_ref = 1
 
   fnam = 'test_resampling_const_in'
-  open(newunit=lu_out, file=fnam, status='replace')
+  open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_in
-     write(lu_out,*) T_in(i,1), data_in(i,:)
+     write(myunit,*) T_in(i,1), data_in(i,:)
   enddo
 
-  close(lu_out)
+  close(myunit)
 
   call resamp%init(ntimes_in, ntimes_out, ntraces)
 
@@ -64,13 +65,13 @@ subroutine test_resampling_const
   enddo
 
   fnam = 'test_resampling_const_out'
-  open(newunit=lu_out, file=fnam, status='replace')
+  open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_out
-     write(lu_out,*) T_out(i,1), data_out(i,:)
+     write(myunit,*) T_out(i,1), data_out(i,:)
   enddo
 
-  close(lu_out)
+  close(myunit)
 
   call resamp%freeme()
 
@@ -84,6 +85,7 @@ subroutine test_resampling_const_ntraces
 
   integer                                       :: ntimes_in, ntimes_out, ntraces
   integer                                       :: i
+  integer                                       :: myunit
   real(kind=dp), dimension(:,:), allocatable    :: data_in, data_out, data_ref
   real(kind=dp), dimension(:,:), allocatable    :: T_in, T_out
   real(kind=dp)                                 :: dt_in, dt_out
@@ -116,13 +118,13 @@ subroutine test_resampling_const_ntraces
   enddo
 
   fnam = 'test_resampling_const_ntraces_in'
-  open(newunit=lu_out, file=fnam, status='replace')
+  open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_in
-     write(lu_out,*) T_in(i,1), data_in(i,:)
+     write(myunit,*) T_in(i,1), data_in(i,:)
   enddo
 
-  close(lu_out)
+  close(myunit)
 
   call resamp%init(ntimes_in, ntimes_out, ntraces)
 
@@ -135,13 +137,13 @@ subroutine test_resampling_const_ntraces
   enddo
 
   fnam = 'test_resampling_const_ntraces_out'
-  open(newunit=lu_out, file=fnam, status='replace')
+  open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_out
-     write(lu_out,*) T_out(i,1), data_out(i,:)
+     write(myunit,*) T_out(i,1), data_out(i,:)
   enddo
 
-  close(lu_out)
+  close(myunit)
 
   call resamp%freeme()
 
@@ -155,6 +157,7 @@ subroutine test_resampling_triangle
 
   integer                                       :: ntimes_in, ntimes_out, ntraces
   integer                                       :: i
+  integer                                       :: myunit
   real(kind=dp), dimension(:,:), allocatable    :: data_in, data_out, data_ref
   real(kind=dp), dimension(:,:), allocatable    :: T_in, T_out
   real(kind=dp)                                 :: dt_in, dt_out
@@ -189,13 +192,13 @@ subroutine test_resampling_triangle
 
 
   fnam = 'test_resampling_triangle_in'
-  open(newunit=lu_out, file=fnam, status='replace')
+  open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_in
-     write(lu_out,*) T_in(i,1), data_in(i,:)
+     write(myunit,*) T_in(i,1), data_in(i,:)
   enddo
 
-  close(lu_out)
+  close(myunit)
 
   call resamp%init(ntimes_in, ntimes_out, ntraces)
 
@@ -208,13 +211,13 @@ subroutine test_resampling_triangle
   enddo
 
   fnam = 'test_resampling_triangle_out'
-  open(newunit=lu_out, file=fnam, status='replace')
+  open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_out
-     write(lu_out,*) T_out(i,1), data_out(i,:), data_ref(i,:)
+     write(myunit,*) T_out(i,1), data_out(i,:), data_ref(i,:)
   enddo
 
-  close(lu_out)
+  close(myunit)
 
   call resamp%freeme()
 
