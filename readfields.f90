@@ -1153,18 +1153,12 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
           select case(component)
           case('Z')
                isim = 1
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
-
+               utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                load_fw_points_rdbm(:, :, ipoint) = utemp
 
           case('R')
                isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
-
+               utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                load_fw_points_rdbm(:, :, ipoint) = utemp 
 
           case('T')
@@ -1172,18 +1166,14 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
           case('N')
                isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+               utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
 
                load_fw_points_rdbm(:, :, ipoint) = &
-                       - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+                       - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1)
 
           case('E')
                isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+               utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
 
                load_fw_points_rdbm(:, :, ipoint) = &
                        utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
@@ -1196,9 +1186,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
           select case(component)
           case('Z')
                isim = 1
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+               utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
 
                ! rotate source mt to global cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
@@ -1208,9 +1196,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
                ! rotate source mt to receiver cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                mij_buff, &
-                                reci_source_params%lon, &
-                                reci_source_params%colat)
+                                mij_buff, reci_source_params%lon, reci_source_params%colat)
 
                ! rotate source mt to receiver s,phi,z system
                mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
@@ -1221,22 +1207,18 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                
                do i = 1, 3
                   load_fw_points_rdbm(:, 1, ipoint) = &
-                        load_fw_points_rdbm(:, 1, ipoint) &
-                            + mij_buff(i) * utemp(:,i)
+                        load_fw_points_rdbm(:, 1, ipoint) + mij_buff(i) * utemp(:,i)
                enddo 
 
                ! components 4-6 need a factor of two because of voigt mapping
                ! without factor of two in the strain
                i = 5
                load_fw_points_rdbm(:, 1, ipoint) = &
-                     load_fw_points_rdbm(:, 1, ipoint) &
-                         + 2 * mij_buff(i) * utemp(:,i)
+                     load_fw_points_rdbm(:, 1, ipoint) + 2 * mij_buff(i) * utemp(:,i)
 
           case('N')
                isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+               utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
 
                ! rotate source mt to global cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
@@ -1246,9 +1228,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
                ! rotate source mt to receiver cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                mij_buff, &
-                                reci_source_params%lon, &
-                                reci_source_params%colat)
+                                mij_buff, reci_source_params%lon, reci_source_params%colat)
 
                ! rotate source mt to receiver s,phi,z system
                mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
@@ -1282,9 +1262,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
           case('E')
                isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+               utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
 
                ! rotate source mt to global cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
@@ -1294,9 +1272,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
                ! rotate source mt to receiver cartesian system
                mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                mij_buff, &
-                                reci_source_params%lon, &
-                                reci_source_params%colat)
+                                mij_buff, reci_source_params%lon, reci_source_params%colat)
 
                ! rotate source mt to receiver s,phi,z system
                mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
