@@ -8,7 +8,7 @@ module commpi
   ! include below, in which case you will have to specify the location in the 
   ! Makefile or copy to the build directory!
   use mpi
-  use global_parameters, only: dp, lu_out, master, myrank, nproc, firstslave
+  use global_parameters, only: dp, master, myrank, nproc, firstslave
   implicit none
 
   private 
@@ -23,23 +23,28 @@ subroutine ppinit
 !< Start message-passing interface, assigning the total number of processors 
 !! nproc and each processor with its local number mynum=0,...,nproc-1.
 
-  integer            :: ierror
+  use global_parameters,  only : set_lu_out, set_myrank, set_nproc
+  integer            :: ierror, lu_out_loc, myrank_loc, nproc_loc
   character(len=10)  :: fnam
   
   call MPI_INIT( ierror)
-  call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierror )
-  call MPI_COMM_SIZE( MPI_COMM_WORLD, nproc, ierror )
+  call MPI_COMM_RANK( MPI_COMM_WORLD, myrank_loc, ierror )
+  call MPI_COMM_SIZE( MPI_COMM_WORLD, nproc_loc, ierror )
+
+  call set_myrank(myrank_loc)
+  call set_nproc(nproc_loc)
 
   firstslave = .false. 
 
   if (myrank == 0) then
       master = .true.
-      lu_out = 6
+      call set_lu_out(6)
   else
       master = .false.
       if (myrank == 1) firstslave = .true.
       write(fnam,"('OUTPUT_', I3.3)") myrank
-      open(newunit=lu_out, file=fnam, status='replace')
+      open(newunit=lu_out_loc, file=fnam, status='replace')
+      call set_lu_out(lu_out_loc)
   end if
 
   

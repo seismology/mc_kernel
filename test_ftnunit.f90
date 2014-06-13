@@ -161,9 +161,11 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine init_output()
   character(len=11) :: fnam
+  integer           :: lu_out_local
 
   fnam = 'OUTPUT_test'
-  open(newunit=lu_out, file=fnam, status='unknown', position='append')
+  open(newunit=lu_out_local, file=fnam, status='unknown', position='append')
+  call set_lu_out(lu_out_local)
   write(lu_out,*) '*********************************************************************'
 
 end subroutine
