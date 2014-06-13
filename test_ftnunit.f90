@@ -2,7 +2,7 @@
 module unit_tests
 
   use ftnunit, only: test
-  use global_parameters, only: lu_out
+  use global_parameters, only: lu_out, verbose
   use test_montecarlo
   use test_fft
   use test_tetrahedra
@@ -22,6 +22,9 @@ module unit_tests
 contains
 !-----------------------------------------------------------------------------------------
 subroutine test_all
+
+  write(6,*) 'verbose', verbose
+  verbose = 1
 
   call init_output()
 
@@ -151,9 +154,11 @@ subroutine test_all
   call test(test_buffer_storage_1d, 'put 1d data into the buffer')
   call test(test_buffer_storage_2d, 'put 2d data into the buffer')
   call test(test_buffer_storage_3d, 'put 3d data into the buffer')
+  call test(test_buffer_storage_4d, 'put 4d data into the buffer')
   call test(test_buffer_retrieval_1d, 'get 1d data back from the buffer')
   call test(test_buffer_retrieval_2d, 'get 2d data back from the buffer')
   call test(test_buffer_retrieval_3d, 'get 3d data back from the buffer')
+  call test(test_buffer_retrieval_4d, 'get 4d data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
 
   call finish_output()
