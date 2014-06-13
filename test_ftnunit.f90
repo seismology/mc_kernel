@@ -28,6 +28,7 @@ subroutine test_all
   ! test sem derivatives
   write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
   call test(test_gradient, 'SEM gradient')
+  call test(test_td_gradient, 'time dependent SEM gradient')
 
   ! test spectral basis functions
   write(6,'(/,a)') 'TEST SPECTRAL BASIS MODULE'

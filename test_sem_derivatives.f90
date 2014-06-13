@@ -77,5 +77,68 @@ subroutine test_gradient()
 end subroutine 
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_td_gradient()
+
+  real(kind=dp)                :: nodes(4,2)
+  integer                      :: element_type
+
+  integer                      :: npol, nsamp
+  real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
+  real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
+  real(kind=dp), allocatable   :: u(:,:,:), grad_u(:,:,:,:), grad_u_ref(:,:,:,:)
+
+  real(kind=dp), allocatable   :: glj_points(:)
+  real(kind=dp), allocatable   :: gll_points(:)
+
+  nodes(1,:) = [0,0]
+  nodes(2,:) = [1,0]
+  nodes(3,:) = [1,1]
+  nodes(4,:) = [0,1]
+
+  ! linear element
+  element_type = 1
+
+  npol = 1
+  nsamp = 2
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
+
+  allocate(G1T(0:npol,0:npol))
+  allocate(G2T(0:npol,0:npol))
+  G1T = transpose(G1)
+  G2T = transpose(G2)
+
+  glj_points = zemngl2(npol)
+  gll_points = zelegl(npol)
+
+  allocate(u(1:nsamp,0:npol,0:npol))
+  allocate(grad_u_ref(1:nsamp,0:npol,0:npol,2))
+  
+  u = 1
+  grad_u_ref = 0
+  grad_u = axisym_gradient(u, G2, G2T, gll_points, gll_points, npol, nsamp, nodes, element_type)
+  call assert_comparable_real1d(1 + real(reshape(grad_u, (/nsamp * (npol+1)**2 * 2/))), &
+                                1 + real(reshape(grad_u_ref, (/nsamp * (npol+1)**2 * 2/))), &
+                                1e-7, 'gradient of a constant = 0')
+
+  u(1,0,:) = 0
+  u(1,1,:) = 1
+  grad_u_ref(1,:,:,1) = 1
+  grad_u_ref(1,:,:,2) = 0
+  u(2,:,0) = 0
+  u(2,:,1) = 1
+  grad_u_ref(2,:,:,1) = 0
+  grad_u_ref(2,:,:,2) = 1
+
+  grad_u = axisym_gradient(u, G2, G2T, gll_points, gll_points, npol, nsamp, nodes, element_type)
+  call assert_comparable_real1d(1 + real(reshape(grad_u, (/nsamp * (npol+1)**2 * 2/))), &
+                                1 + real(reshape(grad_u_ref, (/nsamp * (npol+1)**2 * 2/))), &
+                                1e-7, '1: linear in s, 2: linear in z')
+
+end subroutine 
+!-----------------------------------------------------------------------------------------
+
 end module
 !=========================================================================================
