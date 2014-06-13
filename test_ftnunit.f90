@@ -23,7 +23,6 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine test_all
 
-  write(6,*) 'verbose', verbose
   verbose = 1
 
   call init_output()
