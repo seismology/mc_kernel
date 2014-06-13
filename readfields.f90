@@ -44,7 +44,7 @@ module readfields
         integer                           :: source_shift_samples    
         real(kind=dp)                     :: source_shift_t
         real(kind=sp), allocatable        :: stf(:)
-        type(buffer_type), allocatable    :: buffer(:)
+        type(buffer_type)                 :: buffer
         real(kind=dp)                     :: dt
         real(kind=dp)                     :: amplitude
     end type
@@ -525,19 +525,11 @@ subroutine open_files(this)
     this%files_open = .true.
 
     do isim = 1, this%nsim_fwd
-        allocate(this%fwd(isim)%buffer(this%ndim))
-        do istrainvar = 1, this%ndim
-           status = this%fwd(isim)%buffer(istrainvar)%init(this%buffer_size,     &
-                                                           this%fwd(isim)%ndumps)
-        end do
+       status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, this%ndim)
     end do
 
     do isim = 1, this%nsim_bwd
-        allocate(this%bwd(isim)%buffer(this%ndim))
-        do istrainvar = 1, this%ndim
-           status = this%bwd(isim)%buffer(istrainvar)%init(this%buffer_size,     &
-                                                           this%bwd(isim)%ndumps)
-        end do
+       status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, this%ndim)
     end do
     call flush(lu_out)
 
@@ -553,23 +545,19 @@ subroutine close_files(this)
        status = nf90_close(this%fwd(isim)%ncid)
        if (verbose>0) then
           write(lu_out,'(A,I1,A,F9.6)') ' Buffer efficiency fwd(', isim, '): ',  &
-                                   this%fwd(isim)%buffer(1)%efficiency()
+                                   this%fwd(isim)%buffer%efficiency()
        end if
-       do istrainvar = 1, this%ndim
-           status = this%fwd(isim)%buffer(istrainvar)%freeme()
-       end do
+       status = this%fwd(isim)%buffer%freeme()
     end do
     deallocate(this%fwd)
 
     do isim = 1, this%nsim_bwd
        status = nf90_close(this%bwd(isim)%ncid)
        if (verbose>0) then
-       write(lu_out,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
-                           this%bwd(isim)%buffer(1)%efficiency()
+          write(lu_out,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
+                              this%bwd(isim)%buffer%efficiency()
        end if
-       do istrainvar = 1, this%ndim
-           status = this%bwd(isim)%buffer(istrainvar)%freeme()
-       end do
+       status = this%bwd(isim)%buffer%freeme()
     end do
     deallocate(this%bwd)
 
@@ -1361,8 +1349,8 @@ function load_strain_point(sem_obj, pointid, model_param)
 
     integer                         :: start_chunk, iread, gll_to_read
     integer                         :: iclockold, status, istrainvar
-    real(kind=sp)                   :: utemp(sem_obj%ndumps)
-    real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+    real(kind=sp), allocatable      :: utemp(:,:)
+    real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
 
     if (trim(sem_obj%dump_type) /= 'fullfields') then
         write(6,*) 'ERROR: trying to read strain from a file that was not'
@@ -1373,9 +1361,11 @@ function load_strain_point(sem_obj, pointid, model_param)
     select case(model_param)
     case('vp')
         allocate(load_strain_point(sem_obj%ndumps, 1))
+        allocate(utemp(sem_obj%ndumps, 1))
+        allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 1))
 
         !iclockold = tick()
-        status = sem_obj%buffer(1)%get(pointid, utemp)
+        status = sem_obj%buffer%get(pointid, utemp)
         !iclockold = tick(id=id_buffer, since=iclockold)
 
         if (status.ne.0) then
@@ -1388,59 +1378,56 @@ function load_strain_point(sem_obj, pointid, model_param)
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
-                           values = utemp_chunk(1:gll_to_read, :)) 
+                           values = utemp_chunk(1:gll_to_read, :, 1)) 
 
            !iclockold = tick(id=id_netcdf, since=iclockold)
 
            do iread = 0, sem_obj%chunk_gll - 1
-               status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
+               status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,1))
            end do
            !iclockold = tick(id=id_buffer, since=iclockold)
-           load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
+           load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1,:,1), kind=dp)
         else
-           load_strain_point(:,1) = real(utemp, kind=dp)
+           load_strain_point(:,1) = real(utemp(:,1), kind=dp)
         end if
 
     case('vs')
+        allocate(utemp(sem_obj%ndumps, 6))
+        allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 6))
         allocate(strain_buff(sem_obj%ndumps, 6))
 
-        do istrainvar = 1, 6
-
-            if (sem_obj%strainvarid(istrainvar).eq.-1) then
-                strain_buff(:, istrainvar) = 0
-                cycle ! For monopole source which does not have this component.
-            endif
-
-            !iclockold = tick()
-            status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
-            !iclockold = tick(id=id_buffer, since=iclockold)
+        status = sem_obj%buffer%get(pointid, utemp)
+        if (status.ne.0) then
+            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
             
-            if (status.ne.0) then
-               start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-               
-               ! Only read to last point, not further
-               gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+            ! Only read to last point, not further
+            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+            do istrainvar = 1, 6
 
-               !iclockold = tick()
-               call nc_getvar( ncid   = sem_obj%snap,           & 
-                               varid  = sem_obj%strainvarid(istrainvar), &
-                               start  = [start_chunk, 1],       &
-                               count  = [gll_to_read, sem_obj%ndumps], &
-                               values = utemp_chunk(1:gll_to_read, :)) 
+                if (sem_obj%strainvarid(istrainvar).eq.-1) then
+                    strain_buff(:, istrainvar) = 0
+                    cycle ! For monopole source which does not have this component.
+                endif
 
-               !iclockold = tick(id=id_netcdf, since=iclockold)
-               do iread = 0, gll_to_read - 1
-                   status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
-                                                           utemp_chunk(iread+1,:))
-               end do
-               !iclockold = tick(id=id_buffer, since=iclockold)
-               strain_buff(:,istrainvar) &
-                    = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
-            else
-               strain_buff(:,istrainvar) = real(utemp, kind=dp)
-            end if
+                !iclockold = tick()
+                call nc_getvar( ncid   = sem_obj%snap,           & 
+                                varid  = sem_obj%strainvarid(istrainvar), &
+                                start  = [start_chunk, 1],       &
+                                count  = [gll_to_read, sem_obj%ndumps], &
+                                values = utemp_chunk(1:gll_to_read, :, istrainvar)) 
 
-        end do
+                !iclockold = tick(id=id_netcdf, since=iclockold)
+                !iclockold = tick(id=id_buffer, since=iclockold)
+                strain_buff(:,istrainvar) &
+                     = real(utemp_chunk(pointid-start_chunk+1, :, istrainvar), kind=dp)
+
+            end do
+            do iread = 0, gll_to_read - 1
+                status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
+            end do
+        else
+           strain_buff(:,:) = real(utemp, kind=dp)
+        endif
 
         allocate(load_strain_point(sem_obj%ndumps, 6))
         ! transform strain to voigt mapping
