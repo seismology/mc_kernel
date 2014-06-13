@@ -1142,6 +1142,9 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                     count  = [this%npol+1, this%npol+1, 1], &
                                     values = gll_point_ids))
             write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
+
+            utemp = load_strain_point_interp(this%fwd(1), gll_point_ids, this%model_param)
+
         endif
     end do
 
@@ -1427,15 +1430,17 @@ end function load_strain_point
 function load_strain_point_interp(sem_obj, pointids, model_param)
 
     type(ncparamtype), intent(in)   :: sem_obj
-    integer, intent(in)             :: pointids(:,:)
+    integer, intent(in)             :: pointids(0:sem_obj%npol,0:sem_obj%npol)
     character(len=*), intent(in)    :: model_param
     real(kind=dp), allocatable      :: load_strain_point_interp(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold, status, istrainvar
-    real(kind=sp)                   :: utemp(sem_obj%ndumps)
+    integer                         :: iclockold, status, idisplvar
+    real(kind=sp)                   :: utemp(sem_obj%ndumps, 0:sem_obj%npol,0:sem_obj%npol, 3)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+    integer                         :: ipol, jpol
 
+    write(6,*) sem_obj%dump_type
     if (trim(sem_obj%dump_type) /= 'displ_only') then
         write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
         write(6,*) '       written with dump_type "displ_only"'
@@ -1443,6 +1448,25 @@ function load_strain_point_interp(sem_obj, pointids, model_param)
     endif
 
     ! load displacements from all GLL points
+    do ipol = 0, sem_obj%npol
+       do jpol = 0, sem_obj%npol
+          do idisplvar = 1, 3
+
+              if (sem_obj%displvarid(idisplvar).eq.-1) then
+                  utemp(:, ipol, jpol, idisplvar) = 0
+                  cycle ! For monopole source which does not have this component.
+              endif
+
+              call check(nf90_get_var( ncid   = sem_obj%snap,           & 
+                                       varid  = sem_obj%displvarid(idisplvar), &
+                                       start  = [pointids(ipol,jpol) + 1, 1],       &
+                                       count  = [1, sem_obj%ndumps], &
+                                       values = utemp(:, ipol, jpol, idisplvar)))
+          enddo
+       enddo
+    enddo
+
+    write(6,*) utemp
 
     select case(model_param)
     case('vp')
