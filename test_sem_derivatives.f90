@@ -18,7 +18,6 @@ subroutine test_gradient()
   integer                      :: element_type
 
   integer                      :: npol
-  real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
   real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
   real(kind=dp), allocatable   :: u(:,:), grad_u(:,:,:), grad_u_ref(:,:,:)
 
@@ -35,12 +34,8 @@ subroutine test_gradient()
 
   npol = 1
 
-  G1 = def_lagrange_derivs_glj(npol)
   G2 = def_lagrange_derivs_gll(npol)
-
-  allocate(G1T(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
-  G1T = transpose(G1)
   G2T = transpose(G2)
 
   glj_points = zemngl2(npol)
@@ -73,6 +68,88 @@ subroutine test_gradient()
   call assert_comparable_real1d(1 + real(reshape(grad_u, (/(npol+1)**2 * 2/))), &
                                 1 + real(reshape(grad_u_ref, (/(npol+1)**2 * 2/))), &
                                 1e-7, 'linear in z')
+
+end subroutine 
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_gradient2()
+
+  real(kind=dp)                :: nodes(4,2)
+  integer                      :: element_type
+
+  integer                      :: npol
+  real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
+  real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
+  real(kind=dp), allocatable   :: u(:,:), grad_u(:,:,:), grad_u_ref(:,:,:)
+
+  real(kind=dp), allocatable   :: glj_points(:)
+  real(kind=dp), allocatable   :: gll_points(:)
+  integer                      :: ipol
+
+  nodes(1,:) = [-1,-1]
+  nodes(2,:) = [1,-1]
+  nodes(3,:) = [1,1]
+  nodes(4,:) = [-1,1]
+
+  ! linear element
+  element_type = 1
+
+  npol = 4
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
+
+  allocate(G1T(0:npol,0:npol))
+  allocate(G2T(0:npol,0:npol))
+  G1T = transpose(G1)
+  G2T = transpose(G2)
+
+  glj_points = zemngl2(npol)
+  gll_points = zelegl(npol)
+
+  allocate(u(0:npol,0:npol))
+  allocate(grad_u_ref(0:npol,0:npol,2))
+
+  do ipol = 0, npol
+     u(:,ipol) = gll_points
+  enddo
+  grad_u_ref(:,:,1) = 1
+  grad_u_ref(:,:,2) = 0
+  grad_u = axisym_gradient(u, G2, G2T, gll_points, gll_points, npol, nodes, element_type)
+  call assert_comparable_real1d(1 + real(reshape(grad_u, (/(npol+1)**2 * 2/))), &
+                                1 + real(reshape(grad_u_ref, (/(npol+1)**2 * 2/))), &
+                                1e-7, 'nonaxial, npol = 4, linera in s')
+  
+  do ipol = 0, npol
+     u(ipol,:) = gll_points
+  enddo
+  grad_u_ref(:,:,1) = 0
+  grad_u_ref(:,:,2) = 1
+  grad_u = axisym_gradient(u, G2, G2T, gll_points, gll_points, npol, nodes, element_type)
+  call assert_comparable_real1d(1 + real(reshape(grad_u, (/(npol+1)**2 * 2/))), &
+                                1 + real(reshape(grad_u_ref, (/(npol+1)**2 * 2/))), &
+                                1e-7, 'nonaxial, npol = 4, linera in z')
+
+  do ipol = 0, npol
+     u(:,ipol) = glj_points
+  enddo
+  grad_u_ref(:,:,1) = 1
+  grad_u_ref(:,:,2) = 0
+  grad_u = axisym_gradient(u, G2, G1T, glj_points, gll_points, npol, nodes, element_type)
+  call assert_comparable_real1d(1 + real(reshape(grad_u, (/(npol+1)**2 * 2/))), &
+                                1 + real(reshape(grad_u_ref, (/(npol+1)**2 * 2/))), &
+                                1e-7, 'axial, npol = 4, linera in s')
+
+  do ipol = 0, npol
+     u(ipol,:) = gll_points
+  enddo
+  grad_u_ref(:,:,1) = 0
+  grad_u_ref(:,:,2) = 1
+  grad_u = axisym_gradient(u, G2, G1T, glj_points, gll_points, npol, nodes, element_type)
+  call assert_comparable_real1d(1 + real(reshape(grad_u, (/(npol+1)**2 * 2/))), &
+                                1 + real(reshape(grad_u_ref, (/(npol+1)**2 * 2/))), &
+                                1e-7, 'axial, npol = 4, linera in z')
 
 end subroutine 
 !-----------------------------------------------------------------------------------------
