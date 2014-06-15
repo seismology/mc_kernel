@@ -43,6 +43,8 @@ module readfields
         integer                           :: ndumps, nseis, ngll, npol
         integer                           :: source_shift_samples    
         real(kind=dp)                     :: source_shift_t
+        character(len=10)                 :: source_type
+        character(len=10)                 :: excitation_type
         real(kind=sp), allocatable        :: stf(:)
         type(buffer_type)                 :: buffer
         real(kind=dp)                     :: dt
@@ -283,6 +285,14 @@ subroutine open_files(this)
                               'dump type (displ_only, displ_velo, fullfields)', &
                                this%fwd(isim))
 
+        call nc_read_att_char(this%fwd(isim)%source_type, &
+                              'source type', &
+                               this%fwd(isim))
+
+        call nc_read_att_char(this%fwd(isim)%excitation_type, &
+                              'excitation type', &
+                               this%fwd(isim))
+
         call getgrpid(  ncid     = this%fwd(isim)%ncid,   &
                         name     = "Snapshots",           &
                         grp_ncid = this%fwd(isim)%snap)
@@ -412,6 +422,14 @@ subroutine open_files(this)
 
         call nc_read_att_char(this%bwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
+                               this%bwd(isim))
+
+        call nc_read_att_char(this%bwd(isim)%source_type, &
+                              'source type', &
+                               this%bwd(isim))
+
+        call nc_read_att_char(this%bwd(isim)%excitation_type, &
+                              'excitation type', &
                                this%bwd(isim))
 
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
