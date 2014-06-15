@@ -8,6 +8,12 @@ module sem_derivatives
   private
 
   public :: axisym_gradient
+  public :: dsdf_axis
+
+  interface dsdf_axis
+    module procedure  :: dsdf_axis
+    module procedure  :: dsdf_axis_td
+  end interface
 
   interface axisym_gradient
     module procedure  :: axisym_gradient
@@ -20,7 +26,83 @@ module sem_derivatives
     module procedure  :: mxm_btd
   end interface
 
+  interface mxm_ipol0
+    module procedure  :: mxm_ipol0
+    module procedure  :: mxm_ipol0_atd
+    module procedure  :: mxm_ipol0_btd
+  end interface
+
 contains
+
+!-----------------------------------------------------------------------------------------
+function dsdf_axis_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
+  ! Computes the axisymmetric gradient of scalar field f
+  ! grad = \nabla {f} = \partial_s(f) \hat{s} + \partial_z(f) \hat{z}
+  
+  integer, intent(in)           :: npol, nsamp
+  real(kind=dp), intent(in)     :: f(1:nsamp,0:npol,0:npol)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  real(kind=dp)                 :: dsdf_axis_td(1:nsamp,0:npol)
+
+  real(kind=dp)                 :: inv_j_npol(0:npol,2,2)
+  integer                       :: ipol, jpol
+  real(kind=dp)                 :: mxm_ipol0_1(1:nsamp,0:npol)
+  real(kind=dp)                 :: mxm_ipol0_2(1:nsamp,0:npol)
+
+  ipol = 0
+  do jpol = 0, npol
+     inv_j_npol(jpol,:,:) = inv_jacobian(xi(ipol), eta(jpol), nodes, element_type)
+  enddo
+
+  mxm_ipol0_1 = mxm_ipol0(GT,f)
+  mxm_ipol0_2 = mxm_ipol0(f,G)
+
+  do jpol = 0, npol
+     dsdf_axis_td(:,jpol) =   &
+             inv_j_npol(jpol,1,1) * mxm_ipol0_1(:,jpol) &
+           + inv_j_npol(jpol,2,1) * mxm_ipol0_2(:,jpol)
+  enddo
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function dsdf_axis(f, G, GT, xi, eta, npol, nodes, element_type)
+  ! Computes the partial derivative of scalar field f for ipol = 0
+  ! needed for l'hospitals rule to compute f/s = df/ds at the axis s = 0
+  
+  integer, intent(in)           :: npol
+  real(kind=dp), intent(in)     :: f(0:npol,0:npol)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  real(kind=dp)                 :: dsdf_axis(0:npol)
+
+  real(kind=dp)                 :: inv_j_npol(0:npol,2,2)
+  integer                       :: ipol, jpol
+  real(kind=dp)                 :: mxm_ipol0_1(0:npol)
+  real(kind=dp)                 :: mxm_ipol0_2(0:npol)
+
+  ipol = 0
+  do jpol = 0, npol
+     inv_j_npol(jpol,:,:) = inv_jacobian(xi(ipol), eta(jpol), nodes, element_type)
+  enddo
+
+  mxm_ipol0_1 = mxm_ipol0(GT,f)
+  mxm_ipol0_2 = mxm_ipol0(f,G)
+  dsdf_axis(:) =   inv_j_npol(:,1,1) * mxm_ipol0_1(:) &
+                 + inv_j_npol(:,2,1) * mxm_ipol0_2(:)
+
+end function
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function axisym_gradient_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
@@ -168,6 +250,64 @@ pure function mxm(a, b)
   end do 
 
 end function mxm
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Multiplies matrizes a and b to have c, but only computes the component (0,:) of c
+!! a is time dependent
+pure function mxm_ipol0_atd(a, b)
+
+  real(kind=dp), intent(in)  :: a(1:,0:,0:), b(0:,0:)                  !< Input matrices
+  real(kind=dp)              :: mxm_ipol0_atd(1:size(a,1), 0:size(b,2)-1)  !< Result
+  integer                    :: i, j, k
+
+  mxm_ipol0_atd = 0
+  i = 0
+
+  do j = 0, size(b,2) -1
+     do k = 0, size(a,3) -1
+        mxm_ipol0_atd(:,j) = mxm_ipol0_atd(:,j) + a(:,i,k) * b(k,j)
+     enddo
+  end do 
+
+end function mxm_ipol0_atd
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Multiplies matrizes a and b to have c, but only computes the component (0,:) of c
+!! b is time dependent
+pure function mxm_ipol0_btd(a, b)
+
+  real(kind=dp), intent(in)  :: a(0:,0:), b(1:,0:,0:)                  !< Input matrices
+  real(kind=dp)              :: mxm_ipol0_btd(1:size(b,1),0:size(b,2)-1)  !< Result
+  integer                    :: i, j, k
+
+  mxm_ipol0_btd = 0
+
+  i = 0
+  do j = 0, size(b,2) -1
+     do k = 0, size(a,2) -1
+        mxm_ipol0_btd(:,j) = mxm_ipol0_btd(:,j) + a(i,k) * b(:,k,j)
+     enddo
+  end do 
+
+end function mxm_ipol0_btd
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Multiplies matrizes a and b to have c, but only computes the component (0,:) of c
+pure function mxm_ipol0(a, b)
+
+  real(kind=dp), intent(in)  :: a(0:,0:), b(0:,0:)                  !< Input matrices
+  real(kind=dp)              :: mxm_ipol0(0:size(b,2)-1)    !< Result
+  integer                    :: i, j
+
+  i = 0
+  do j = 0, size(b,2) -1
+     mxm_ipol0(j) = sum(a(i,:) * b(:,j))
+  end do 
+
+end function mxm_ipol0
 !-----------------------------------------------------------------------------------------
 
 end module
