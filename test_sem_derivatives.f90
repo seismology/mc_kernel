@@ -12,6 +12,117 @@ module test_sem_derivatives
 contains
 
 !-----------------------------------------------------------------------------------------
+subroutine test_dsdf()
+
+  real(kind=dp)                :: nodes(4,2)
+  integer                      :: element_type
+
+  integer                      :: npol
+  real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
+  real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
+  real(kind=dp), allocatable   :: u(:,:), dsdu(:), dsdu_ref(:)
+
+  real(kind=dp), allocatable   :: glj_points(:)
+  real(kind=dp), allocatable   :: gll_points(:)
+
+  nodes(1,:) = [0,0]
+  nodes(2,:) = [1,0]
+  nodes(3,:) = [1,1]
+  nodes(4,:) = [0,1]
+
+  ! linear element
+  element_type = 1
+
+  npol = 1
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1T(0:npol,0:npol))
+  allocate(G2T(0:npol,0:npol))
+  G1T = transpose(G1)
+  G2T = transpose(G2)
+
+  glj_points = zemngl2(npol)
+  gll_points = zelegl(npol)
+
+  allocate(u(0:npol,0:npol))
+  allocate(dsdu_ref(0:npol))
+  
+  u = 1
+  dsdu_ref = 0
+  dsdu = dsdf_axis(u, G2, G1T, glj_points, gll_points, npol, nodes, element_type)
+  call assert_comparable_real1d(1 + real(dsdu), 1 + real(dsdu_ref), &
+                                1e-7, 'gradient of a constant = 0')
+
+  u(0,:) = 0
+  u(1,:) = 1
+  dsdu_ref = 1
+  dsdu = dsdf_axis(u, G2, G1T, glj_points, gll_points, npol, nodes, element_type)
+  call assert_comparable_real1d(1 + real(dsdu), 1 + real(dsdu_ref), &
+                                1e-7, 'gradient of a constant = 0')
+
+  nodes(1,:) = [0,0]
+  nodes(2,:) = [1,0]
+  nodes(3,:) = [2,1]
+  nodes(4,:) = [0,1]
+
+  u(0,:) = 0
+  u(1,:) = 1
+  dsdu_ref = [1d0, 0.5d0]
+  dsdu = dsdf_axis(u, G2, G1T, glj_points, gll_points, npol, nodes, element_type)
+  call assert_comparable_real1d(1 + real(dsdu), 1 + real(dsdu_ref), &
+                                1e-7, 'gradient of a constant = 0')
+
+
+end subroutine 
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_td_dsdf()
+
+  real(kind=dp)                :: nodes(4,2)
+  integer                      :: element_type
+
+  integer                      :: npol, nsamp
+  real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
+  real(kind=dp), allocatable   :: u(:,:,:), dsdu(:,:), dsdu_ref(:,:)
+
+  real(kind=dp), allocatable   :: gll_points(:)
+
+  nodes(1,:) = [0,0]
+  nodes(2,:) = [1,0]
+  nodes(3,:) = [1,1]
+  nodes(4,:) = [0,1]
+
+  ! linear element
+  element_type = 1
+
+  npol = 1
+  nsamp = 2
+
+  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G2T(0:npol,0:npol))
+  G2T = transpose(G2)
+
+  gll_points = zelegl(npol)
+
+  allocate(u(1:nsamp,0:npol,0:npol))
+  allocate(dsdu_ref(1:nsamp,0:npol))
+  
+  u(1,0,:) = 0
+  u(1,1,:) = 1
+  dsdu_ref(1,:) = 1
+  u(2,0,:) = 0
+  u(2,1,:) = -1
+  dsdu_ref(2,:) = -1
+  dsdu = dsdf_axis(u, G2, G2T, gll_points, gll_points, npol, nsamp, nodes, element_type)
+  call assert_comparable_real1d(1 + real(dsdu(1,:)), 1 + real(dsdu_ref(1,:)), &
+                                1e-7, 'td dsdf')
+
+end subroutine 
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_gradient()
 
   real(kind=dp)                :: nodes(4,2)
@@ -21,7 +132,6 @@ subroutine test_gradient()
   real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
   real(kind=dp), allocatable   :: u(:,:), grad_u(:,:,:), grad_u_ref(:,:,:)
 
-  real(kind=dp), allocatable   :: glj_points(:)
   real(kind=dp), allocatable   :: gll_points(:)
 
   nodes(1,:) = [0,0]
@@ -38,7 +148,6 @@ subroutine test_gradient()
   allocate(G2T(0:npol,0:npol))
   G2T = transpose(G2)
 
-  glj_points = zemngl2(npol)
   gll_points = zelegl(npol)
 
   allocate(u(0:npol,0:npol))

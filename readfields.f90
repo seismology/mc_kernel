@@ -1438,7 +1438,7 @@ function load_strain_point_interp(sem_obj, pointids, model_param)
     integer                         :: iclockold, status, idisplvar
     real(kind=sp)                   :: utemp(sem_obj%ndumps, 0:sem_obj%npol,0:sem_obj%npol, 3)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
-    integer                         :: ipol, jpol
+    integer                         :: ipol, jpol, i
 
     write(6,*) sem_obj%dump_type
     if (trim(sem_obj%dump_type) /= 'displ_only') then
@@ -1465,16 +1465,19 @@ function load_strain_point_interp(sem_obj, pointids, model_param)
           enddo
        enddo
     enddo
-
-    write(6,*) utemp
+   
+   
+    do i = 1, sem_obj%ndumps
+        write(6,*) utemp(i,0,0,3), utemp(i,1,0,3)
+    enddo
 
     select case(model_param)
     case('vp')
         write(6,*) 'to be implemented'
+        call pabort
         ! compute straintrace
 
     case('vs')
-        write(6,*) 'to be implemented'
         ! compute full strain tensor
 
         ! voigt mapping
