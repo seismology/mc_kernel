@@ -35,6 +35,43 @@ module sem_derivatives
 contains
 
 !-----------------------------------------------------------------------------------------
+function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol
+  real(kind=dp), intent(in)     :: u(0:npol,0:npol, 3)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  real(kind=dp)                 :: strain_monopole(0:npol,0:npol,6)
+  
+  real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
+  real(kind=dp)                 :: grad_buff2(0:npol,0:npol,2)
+  
+  ! 1: dsus, 2: dzus
+  grad_buff1 = axisym_gradient(u(:,:,1), G, GT, xi, eta, npol, nodes, element_type)
+  
+  ! 1: dsuz, 2: dzuz
+  grad_buff2 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
+
+
+  strain_monopole(:,:,1) = grad_buff1(:,:,1)
+  strain_monopole(:,:,2) = 0 !@TODO implement f/s
+  strain_monopole(:,:,3) = grad_buff2(:,:,2)
+  strain_monopole(:,:,4) = 0
+  strain_monopole(:,:,5) = grad_buff1(:,:,2) + grad_buff2(:,:,1)
+  strain_monopole(:,:,6) = 0
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function dsdf_axis_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
   ! Computes the axisymmetric gradient of scalar field f
   ! grad = \nabla {f} = \partial_s(f) \hat{s} + \partial_z(f) \hat{z}
@@ -42,8 +79,10 @@ function dsdf_axis_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
   integer, intent(in)           :: npol, nsamp
   real(kind=dp), intent(in)     :: f(1:nsamp,0:npol,0:npol)
   real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
-  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for axial elements
-  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial elements
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
   real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
@@ -63,9 +102,8 @@ function dsdf_axis_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
   mxm_ipol0_2 = mxm_ipol0(f,G)
 
   do jpol = 0, npol
-     dsdf_axis_td(:,jpol) =   &
-             inv_j_npol(jpol,1,1) * mxm_ipol0_1(:,jpol) &
-           + inv_j_npol(jpol,2,1) * mxm_ipol0_2(:,jpol)
+     dsdf_axis_td(:,jpol) =   inv_j_npol(jpol,1,1) * mxm_ipol0_1(:,jpol) &
+                            + inv_j_npol(jpol,2,1) * mxm_ipol0_2(:,jpol)
   enddo
 
 end function
