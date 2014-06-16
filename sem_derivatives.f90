@@ -124,6 +124,80 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
 end function
 !-----------------------------------------------------------------------------------------
 
+
+!-----------------------------------------------------------------------------------------
+function straintrace_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, &
+                                 axial)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol, nsamp
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, 3)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: straintrace_monopole_td(1:nsamp,0:npol,0:npol)
+  
+  real(kind=dp)                 :: grad_buff1(1:nsamp,0:npol,0:npol,2)
+  real(kind=dp)                 :: grad_buff2(1:nsamp,0:npol,0:npol,2)
+  
+  ! 1: dsus, 2: dzus
+  grad_buff1 = axisym_gradient(u(:,:,:,1), G, GT, xi, eta, npol, nsamp, &
+                               nodes, element_type)
+  
+  ! 1: dsuz, 2: dzuz
+  grad_buff2 = axisym_gradient(u(:,:,:,3), G, GT, xi, eta, npol, nsamp, &
+                               nodes, element_type)
+
+  straintrace_monopole_td(:,:,:) &
+        = grad_buff1(:,:,:,1)  &
+        + f_over_s(u(:,:,:,1), G, GT, xi, eta, npol, nsamp, nodes, element_type, axial) &
+        + grad_buff2(:,:,:,2)
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function straintrace_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol
+  real(kind=dp), intent(in)     :: u(0:npol,0:npol, 3)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: straintrace_monopole(0:npol,0:npol)
+  
+  real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
+  real(kind=dp)                 :: grad_buff2(0:npol,0:npol,2)
+  
+  ! 1: dsus, 2: dzus
+  grad_buff1 = axisym_gradient(u(:,:,1), G, GT, xi, eta, npol, nodes, element_type)
+  
+  ! 1: dsuz, 2: dzuz
+  grad_buff2 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
+
+  straintrace_monopole(:,:) &
+        = grad_buff1(:,:,1) &
+        + f_over_s(u(:,:,1), G, GT, xi, eta, npol, nodes, element_type, axial) &
+        + grad_buff2(:,:,2)
+
+end function
+!-----------------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 function f_over_s_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the f / s
