@@ -40,7 +40,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    use fft,       only                      : rfft_type, taperandzeropad
    !use filtering, only                      : timeshift
    class(kernelspec_type)                  :: this
-   character(len=16), intent(in)           :: name
+   character(len=32), intent(in)           :: name
    real(kind=dp), intent(in)               :: time_window(2)
    type(filter_type), target, intent(in)   :: filter
    character(len=4), intent(in)            :: misfit_type
@@ -61,7 +61,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(*,*) 'This kernel is already initialized'
       call pabort 
    end if
-   this%name              = name
+   this%name              = trim(name)
    this%time_window       = time_window 
    this%filter            => filter
    this%misfit_type       = misfit_type
