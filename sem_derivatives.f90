@@ -68,7 +68,8 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   grad_buff2 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
 
   strain_monopole(:,:,1) = grad_buff1(:,:,1)
-  strain_monopole(:,:,2) = 0 !@TODO implement f/s
+  strain_monopole(:,:,2) = f_over_s(u(:,:,1), G, GT, xi, eta, npol, nodes, &
+                                    element_type, axial)
   strain_monopole(:,:,3) = grad_buff2(:,:,2)
   strain_monopole(:,:,4) = 0
   strain_monopole(:,:,5) = grad_buff1(:,:,2) + grad_buff2(:,:,1)
