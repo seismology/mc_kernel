@@ -29,6 +29,7 @@ subroutine test_all
 
   ! test sem derivatives
   write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
+  call test(test_f_over_s, 'SEM f_over_s')
   call test(test_dsdf, 'SEM dsdf')
   call test(test_td_dsdf, 'SEM dsdfi time dependent')
   call test(test_gradient, 'SEM gradient')

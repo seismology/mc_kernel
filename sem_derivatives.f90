@@ -9,6 +9,11 @@ module sem_derivatives
 
   public :: axisym_gradient
   public :: dsdf_axis
+  public :: f_over_s
+
+  interface f_over_s
+    module procedure  :: f_over_s
+  end interface
 
   interface dsdf_axis
     module procedure  :: dsdf_axis
@@ -35,7 +40,7 @@ module sem_derivatives
 contains
 
 !-----------------------------------------------------------------------------------------
-function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type)
+function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a monopole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -49,6 +54,7 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type)
   real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
   real(kind=dp)                 :: strain_monopole(0:npol,0:npol,6)
   
   real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
@@ -60,13 +66,52 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type)
   ! 1: dsuz, 2: dzuz
   grad_buff2 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
 
-
   strain_monopole(:,:,1) = grad_buff1(:,:,1)
   strain_monopole(:,:,2) = 0 !@TODO implement f/s
   strain_monopole(:,:,3) = grad_buff2(:,:,2)
   strain_monopole(:,:,4) = 0
   strain_monopole(:,:,5) = grad_buff1(:,:,2) + grad_buff2(:,:,1)
   strain_monopole(:,:,6) = 0
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function f_over_s(f, G, GT, xi, eta, npol, nodes, element_type, axial)
+  ! Computes the f / s
+  ! needs G and GT for l'hospitals rule to compute f/s = df/ds at the axis s = 0
+  
+  use finite_elem_mapping, only : mapping
+  
+  integer, intent(in)           :: npol
+  real(kind=dp), intent(in)     :: f(0:npol,0:npol)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: f_over_s(0:npol,0:npol)
+
+  integer                       :: ipol, jpol
+  real(kind=dp)                 :: sz(0:npol,0:npol,1:2)
+
+  do ipol=0, npol
+     do jpol=0, npol
+        sz(ipol, jpol,:) =  mapping(xi(ipol), eta(jpol), nodes, element_type)
+     enddo
+  enddo
+
+
+  if (.not. axial) then
+     f_over_s(:,:) = f(:,:) / sz(:,:,1)
+  else
+     f_over_s(1:npol,0:npol) = f(1:npol,0:npol) / sz(1:npol,0:npol,1)
+     f_over_s(0,:) = dsdf_axis(f, G, GT, xi, eta, npol, nodes, element_type)
+  endif
 
 end function
 !-----------------------------------------------------------------------------------------
@@ -117,8 +162,10 @@ function dsdf_axis(f, G, GT, xi, eta, npol, nodes, element_type)
   integer, intent(in)           :: npol
   real(kind=dp), intent(in)     :: f(0:npol,0:npol)
   real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
-  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for axial elements
-  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial elements
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
   real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
