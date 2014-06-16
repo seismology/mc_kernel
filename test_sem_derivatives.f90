@@ -12,6 +12,60 @@ module test_sem_derivatives
 contains
 
 !-----------------------------------------------------------------------------------------
+subroutine test_f_over_s_td()
+
+  real(kind=dp)                :: nodes(4,2)
+  integer                      :: element_type
+
+  integer                      :: npol, nsamp, jpol
+  real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
+  real(kind=dp), allocatable   :: u(:,:,:), u_over_s(:,:,:), u_over_s_ref(:,:,:)
+
+  real(kind=dp), allocatable   :: gll_points(:)
+  logical                      :: axial
+
+  nodes(1,:) = [0,0]
+  nodes(2,:) = [1,0]
+  nodes(3,:) = [1,1]
+  nodes(4,:) = [0,1]
+
+  ! linear element
+  element_type = 1
+  axial = .true.
+
+  npol = 4
+  nsamp = 2
+
+  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G2T(0:npol,0:npol))
+  G2T = transpose(G2)
+  gll_points = zelegl(npol)
+
+  allocate(u(1:nsamp,0:npol,0:npol))
+  allocate(u_over_s(1:nsamp,0:npol,0:npol))
+  allocate(u_over_s_ref(1:nsamp,0:npol,0:npol))
+
+  do jpol=0, npol 
+     u(1,:,jpol) = (gll_points + 1) / 2d0
+  enddo
+  u_over_s_ref(1,0:npol,0:npol) = 1
+
+  do jpol=0, npol 
+     u(2,:,jpol) = (gll_points + 1)
+  enddo
+  u_over_s_ref(2,0:npol,0:npol) = 2
+
+  u_over_s = f_over_s(u, G2, G2T, gll_points, gll_points, npol, nsamp, nodes, &
+                      element_type, axial)
+  
+  call assert_comparable_real1d(1 + real(reshape(u_over_s, (/(npol+1)**2/))), &
+                                1 + real(reshape(u_over_s_ref, (/(npol+1)**2/))), &
+                                1e-7, 'f over s axial')
+
+end subroutine 
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_f_over_s()
 
   real(kind=dp)                :: nodes(4,2)

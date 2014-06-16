@@ -13,6 +13,7 @@ module sem_derivatives
 
   interface f_over_s
     module procedure  :: f_over_s
+    module procedure  :: f_over_s_td
   end interface
 
   interface dsdf_axis
@@ -72,6 +73,54 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   strain_monopole(:,:,4) = 0
   strain_monopole(:,:,5) = grad_buff1(:,:,2) + grad_buff2(:,:,1)
   strain_monopole(:,:,6) = 0
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function f_over_s_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
+  ! Computes the f / s
+  ! needs G and GT for l'hospitals rule to compute f/s = df/ds at the axis s = 0
+  
+  use finite_elem_mapping, only : mapping
+  
+  integer, intent(in)           :: npol, nsamp
+  real(kind=dp), intent(in)     :: f(nsamp, 0:npol,0:npol)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: f_over_s_td(nsamp, 0:npol,0:npol)
+
+  integer                       :: ipol, jpol
+  real(kind=dp)                 :: sz(0:npol,0:npol,1:2)
+
+  do ipol=0, npol
+     do jpol=0, npol
+        sz(ipol, jpol,:) =  mapping(xi(ipol), eta(jpol), nodes, element_type)
+     enddo
+  enddo
+
+
+  if (.not. axial) then
+     do jpol=0, npol
+        do ipol=0, npol
+           f_over_s_td(:,ipol,jpol) = f(:,ipol,jpol) / sz(ipol,jpol,1)
+        enddo
+     enddo
+  else
+     do jpol=0, npol
+        do ipol=1, npol
+           f_over_s_td(:,ipol,jpol) = f(:,ipol,jpol) / sz(ipol,jpol,1)
+        enddo
+     enddo
+     f_over_s_td(:,0,:) = dsdf_axis(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
+  endif
 
 end function
 !-----------------------------------------------------------------------------------------
