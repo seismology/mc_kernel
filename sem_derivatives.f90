@@ -46,6 +46,8 @@ module sem_derivatives
 
 contains
 
+!--MONOPOLE-------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 function strain_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a monopole source
@@ -124,7 +126,6 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
 end function
 !-----------------------------------------------------------------------------------------
 
-
 !-----------------------------------------------------------------------------------------
 function straintrace_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, &
                                  axial)
@@ -198,6 +199,59 @@ function straintrace_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axia
 end function
 !-----------------------------------------------------------------------------------------
 
+!--DIPOLE---------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function strain_dipole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol
+  real(kind=dp), intent(in)     :: u(0:npol,0:npol, 3)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: strain_dipole(0:npol,0:npol,6)
+  
+  real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
+  real(kind=dp)                 :: grad_buff2(0:npol,0:npol,2)
+  real(kind=dp)                 :: grad_buff3(0:npol,0:npol,2)
+  
+  ! 1: dsus, 2: dzus
+  grad_buff1 = axisym_gradient(u(:,:,1) + u(:,:,2), G, GT, xi, eta, npol, nodes, &
+                               element_type)
+  
+  ! 1: dsup, 2: dzup
+  grad_buff2 = axisym_gradient(u(:,:,1) - u(:,:,2), G, GT, xi, eta, npol, nodes, &
+                               element_type)
+
+  ! 1: dsuz, 2: dzuz
+  grad_buff3 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
+
+  strain_dipole(:,:,1) = grad_buff1(:,:,1)
+  strain_dipole(:,:,2) = 2 * f_over_s(u(:,:,2), G, GT, xi, eta, npol, nodes, &
+                                  element_type, axial)
+  strain_dipole(:,:,3) = grad_buff3(:,:,2)
+  strain_dipole(:,:,4) = - 0.5d0 * (f_over_s(u(:,:,3), G, GT, xi, eta, npol, nodes, &
+                                             element_type, axial) &
+                                    + grad_buff2(:,:,2))
+  strain_dipole(:,:,5) = grad_buff1(:,:,2) + grad_buff3(:,:,1)
+  strain_dipole(:,:,6) = - f_over_s(u(:,:,2), G, GT, xi, eta, npol, nodes, &
+                                  element_type, axial) &
+                         - grad_buff2(:,:,1) / 2d0
+
+end function
+!-----------------------------------------------------------------------------------------
+
+
+!--GENERAL--------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 function f_over_s_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the f / s
@@ -221,12 +275,11 @@ function f_over_s_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   integer                       :: ipol, jpol
   real(kind=dp)                 :: sz(0:npol,0:npol,1:2)
 
-  do ipol=0, npol
-     do jpol=0, npol
+  do jpol=0, npol
+     do ipol=0, npol
         sz(ipol, jpol,:) =  mapping(xi(ipol), eta(jpol), nodes, element_type)
      enddo
   enddo
-
 
   if (.not. axial) then
      do jpol=0, npol
@@ -274,7 +327,6 @@ function f_over_s(f, G, GT, xi, eta, npol, nodes, element_type, axial)
         sz(ipol, jpol,:) =  mapping(xi(ipol), eta(jpol), nodes, element_type)
      enddo
   enddo
-
 
   if (.not. axial) then
      f_over_s(:,:) = f(:,:) / sz(:,:,1)

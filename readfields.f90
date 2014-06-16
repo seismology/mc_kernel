@@ -1454,7 +1454,8 @@ function load_strain_point_interp(sem_obj, pointids, model_param)
 
     integer                         :: start_chunk, iread, gll_to_read
     integer                         :: iclockold, status, idisplvar
-    real(kind=sp)                   :: utemp(sem_obj%ndumps, 0:sem_obj%npol,0:sem_obj%npol, 3)
+    real(kind=sp)                   :: utemp(sem_obj%ndumps, 0:sem_obj%npol, &
+                                             0:sem_obj%npol, 3)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
     integer                         :: ipol, jpol, i
 
