@@ -37,6 +37,11 @@ module sem_derivatives
     module procedure  :: strain_quadpole_td
   end interface
 
+  interface straintrace_quadpole
+    module procedure  :: straintrace_quadpole
+    module procedure  :: straintrace_quadpole_td
+  end interface
+
   interface f_over_s
     module procedure  :: f_over_s
     module procedure  :: f_over_s_td
