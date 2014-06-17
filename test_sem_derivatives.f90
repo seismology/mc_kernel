@@ -12,6 +12,154 @@ module test_sem_derivatives
 contains
 
 !-----------------------------------------------------------------------------------------
+subroutine test_strain_monopole()
+
+  real(kind=dp)                :: nodes(4,2)
+  integer                      :: element_type
+
+  integer                      :: npol, nsamp, ipol, jpol
+  real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
+  real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
+  real(kind=dp), allocatable   :: u(:,:,:), strain(:,:,:), strain_ref(:,:,:)
+
+  real(kind=dp), allocatable   :: gll_points(:), glj_points(:)
+  real(kind=dp), allocatable   :: s(:,:), z(:,:), sz(:,:,:)
+  logical                      :: axial
+  real(kind=dp)                :: phi, r1, r2
+
+  nodes(1,:) = [0,0]
+  nodes(2,:) = [1,0]
+  nodes(3,:) = [1,1]
+  nodes(4,:) = [0,1]
+
+  ! linear element
+  element_type = 1
+  axial = .true.
+
+  npol = 4
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1T(0:npol,0:npol))
+  allocate(G2T(0:npol,0:npol))
+  G1T = transpose(G1)
+  G2T = transpose(G2)
+
+  allocate(gll_points(0:npol))
+  allocate(glj_points(0:npol))
+  gll_points(0:npol) = zelegl(npol)
+  glj_points(0:npol) = zemngl2(npol)
+
+  allocate(s(0:npol,0:npol))
+  allocate(z(0:npol,0:npol))
+  allocate(u(0:npol,0:npol,3))
+  allocate(strain(0:npol,0:npol,6))
+  allocate(strain_ref(0:npol,0:npol,6))
+
+  do ipol=0, npol 
+     z(ipol,:) = (gll_points + 1) / 2d0
+  enddo
+
+  do jpol=0, npol 
+     s(:,jpol) = (glj_points + 1) / 2d0
+  enddo
+
+  u(:,:,1) = s**2 * z
+  u(:,:,2) = 0
+  u(:,:,3) = s * z**2
+  
+  strain_ref(:,:,1) = 2 * s * z
+  strain_ref(:,:,2) = s * z
+  strain_ref(:,:,3) = 2 * s * z
+  strain_ref(:,:,4) = 0
+  strain_ref(:,:,5) = (s**2 + z**2) / 2
+  strain_ref(:,:,6) = 0
+
+  strain = strain_monopole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
+                           element_type, axial)
+  
+  call assert_comparable_real1d(1 + real(reshape(strain, (/(npol+1)**2 * 6/))), &
+                                1 + real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
+                                1e-7, 'monopole strain axial')
+
+  nodes(1,:) = [1,0]
+  nodes(2,:) = [2,0]
+  nodes(3,:) = [2,1]
+  nodes(4,:) = [1,1]
+
+  axial = .false.
+
+  do ipol=0, npol 
+     z(ipol,:) = (gll_points + 1) / 2d0
+  enddo
+
+  do jpol=0, npol 
+     s(:,jpol) = (gll_points + 1) / 2d0 + 1
+  enddo
+
+  u(:,:,1) = s**2 * z
+  u(:,:,2) = 0
+  u(:,:,3) = s * z**2
+  
+  strain_ref(:,:,1) = 2 * s * z
+  strain_ref(:,:,2) = s * z
+  strain_ref(:,:,3) = 2 * s * z
+  strain_ref(:,:,4) = 0
+  strain_ref(:,:,5) = (s**2 + z**2) / 2
+  strain_ref(:,:,6) = 0
+
+  strain = strain_monopole(u, G2, G2T, gll_points, gll_points, npol, nodes, &
+                           element_type, axial)
+  
+  call assert_comparable_real1d(10 + real(reshape(strain, (/(npol+1)**2 * 6/))), &
+                                10 + real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
+                                1e-7, 'monopole strain non-axial')
+
+  
+  phi = 0.1d0
+  r1 = 10d0
+  r2 = 11d0
+
+  nodes(1,:) = [0d0, r1]
+  nodes(2,:) = [r1 * dsin(phi), r1 * dcos(phi)]
+  nodes(3,:) = [r2 * dsin(phi), r2 * dcos(phi)]
+  nodes(4,:) = [0d0, r2]
+
+  ! speroidal element
+  element_type = 0
+  axial = .true.
+
+  allocate(sz(0:npol,0:npol,2))
+  do ipol=0, npol 
+     do jpol=0, npol 
+        sz(ipol, jpol,:) = mapping(glj_points(ipol), gll_points(jpol), nodes, element_type)
+        s = sz(:,:,1)
+        z = sz(:,:,2)
+     enddo
+  enddo
+
+  u(:,:,1) = s**2 * z
+  u(:,:,2) = 0
+  u(:,:,3) = s * z**2
+  
+  strain_ref(:,:,1) = 2 * s * z
+  strain_ref(:,:,2) = s * z
+  strain_ref(:,:,3) = 2 * s * z
+  strain_ref(:,:,4) = 0
+  strain_ref(:,:,5) = (s**2 + z**2) / 2
+  strain_ref(:,:,6) = 0
+
+  strain = strain_monopole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
+                           element_type, axial)
+  
+  call assert_comparable_real1d(10 + real(reshape(strain, (/(npol+1)**2 * 6/))), &
+                                10 + real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
+                                1e-5, 'monopole strain axial, spheroidal element')
+
+end subroutine 
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_f_over_s_td()
 
   real(kind=dp)                :: nodes(4,2)
