@@ -34,6 +34,7 @@ subroutine test_all
   call test(test_strain_dipole, 'SEM strain dipole')
   call test(test_strain_dipole_td, 'SEM strain dipole time dep')
   call test(test_strain_quadpole, 'SEM strain quadpole')
+  call test(test_strain_quadpole_td, 'SEM strain quadpole time dep')
   call test(test_f_over_s, 'SEM f_over_s')
   call test(test_f_over_s_td, 'SEM f_over_s time dep')
   call test(test_dsdf, 'SEM dsdf')
