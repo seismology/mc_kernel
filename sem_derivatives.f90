@@ -421,12 +421,12 @@ function strain_quadpole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type,
   real(kind=dp)                 :: grad_buff3(1:nsamp,0:npol,0:npol,2)
   
   ! 1: dsus, 2: dzus
-  grad_buff1 = axisym_gradient(u(:,:,:,1) + u(:,:,:,2), G, GT, xi, eta, npol, nsamp, &
-                               nodes, element_type)
+  grad_buff1 = axisym_gradient(u(:,:,:,1), G, GT, xi, eta, npol, nsamp, nodes, &
+                               element_type)
   
   ! 1: dsup, 2: dzup
-  grad_buff2 = axisym_gradient(u(:,:,:,1) - u(:,:,:,2), G, GT, xi, eta, npol, nsamp, &
-                               nodes, element_type)
+  grad_buff2 = axisym_gradient(u(:,:,:,2), G, GT, xi, eta, npol, nsamp, nodes, &
+                               element_type)
 
   ! 1: dsuz, 2: dzuz
   grad_buff3 = axisym_gradient(u(:,:,:,3), G, GT, xi, eta, npol, nsamp, nodes, &
@@ -470,22 +470,20 @@ function strain_quadpole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   real(kind=dp)                 :: grad_buff3(0:npol,0:npol,2)
   
   ! 1: dsus, 2: dzus
-  grad_buff1 = axisym_gradient(u(:,:,1) + u(:,:,2), G, GT, xi, eta, npol, nodes, &
-                               element_type)
+  grad_buff1 = axisym_gradient(u(:,:,1), G, GT, xi, eta, npol, nodes, element_type)
   
   ! 1: dsup, 2: dzup
-  grad_buff2 = axisym_gradient(u(:,:,1) - u(:,:,2), G, GT, xi, eta, npol, nodes, &
-                               element_type)
+  grad_buff2 = axisym_gradient(u(:,:,2), G, GT, xi, eta, npol, nodes, element_type)
 
   ! 1: dsuz, 2: dzuz
   grad_buff3 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
 
   strain_quadpole(:,:,1) = grad_buff1(:,:,1)
-  strain_quadpole(:,:,2) = f_over_s(u(:,:,1) - 2 *u(:,:,2), G, GT, xi, eta, npol, nodes, &
-                                  element_type, axial)
+  strain_quadpole(:,:,2) = f_over_s(u(:,:,1) - 2 * u(:,:,2), G, GT, xi, eta, npol, nodes, &
+                                    element_type, axial)
   strain_quadpole(:,:,3) = grad_buff3(:,:,2)
   strain_quadpole(:,:,4) = - f_over_s(u(:,:,3), G, GT, xi, eta, npol, nodes, &
-                                       element_type, axial) &
+                                      element_type, axial) &
                            - grad_buff2(:,:,2) / 2d0
   strain_quadpole(:,:,5) = (grad_buff1(:,:,2) + grad_buff3(:,:,1)) / 2d0
   strain_quadpole(:,:,6) = f_over_s(0.5d0 * u(:,:,2) - u(:,:,1), G, GT, xi, eta, npol, &
@@ -517,8 +515,8 @@ function straintrace_quadpole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_
   real(kind=dp)                 :: grad_buff3(1:nsamp,0:npol,0:npol,2)
   
   ! 1: dsus, 2: dzus
-  grad_buff1 = axisym_gradient(u(:,:,:,1) + u(:,:,:,2), G, GT, xi, eta, npol, nsamp, &
-                               nodes, element_type)
+  grad_buff1 = axisym_gradient(u(:,:,:,1), G, GT, xi, eta, npol, nsamp, nodes, &
+                               element_type)
   
   ! 1: dsuz, 2: dzuz
   grad_buff3 = axisym_gradient(u(:,:,:,3), G, GT, xi, eta, npol, nsamp, nodes, &
@@ -555,8 +553,7 @@ function straintrace_quadpole(u, G, GT, xi, eta, npol, nodes, element_type, axia
   real(kind=dp)                 :: grad_buff3(0:npol,0:npol,2)
   
   ! 1: dsus, 2: dzus
-  grad_buff1 = axisym_gradient(u(:,:,1) + u(:,:,2), G, GT, xi, eta, npol, nodes, &
-                               element_type)
+  grad_buff1 = axisym_gradient(u(:,:,1), G, GT, xi, eta, npol, nodes, element_type)
 
   ! 1: dsuz, 2: dzuz
   grad_buff3 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
