@@ -27,15 +27,6 @@ subroutine test_strain_monopole_td()
   logical                      :: axial
   real(kind=dp)                :: phi, r1, r2
 
-  nodes(1,:) = [0,0]
-  nodes(2,:) = [1,0]
-  nodes(3,:) = [1,1]
-  nodes(4,:) = [0,1]
-
-  ! linear element
-  element_type = 1
-  axial = .true.
-
   npol = 4
   nsamp = 2
 
@@ -150,7 +141,7 @@ subroutine test_strain_monopole()
   real(kind=dp)                :: nodes(4,2)
   integer                      :: element_type
 
-  integer                      :: npol, nsamp, ipol, jpol
+  integer                      :: npol, ipol, jpol
   real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
   real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
   real(kind=dp), allocatable   :: u(:,:,:), strain(:,:,:), strain_ref(:,:,:)
@@ -159,15 +150,6 @@ subroutine test_strain_monopole()
   real(kind=dp), allocatable   :: s(:,:), z(:,:), sz(:,:,:)
   logical                      :: axial
   real(kind=dp)                :: phi, r1, r2
-
-  nodes(1,:) = [0,0]
-  nodes(2,:) = [1,0]
-  nodes(3,:) = [1,1]
-  nodes(4,:) = [0,1]
-
-  ! linear element
-  element_type = 1
-  axial = .true.
 
   npol = 4
 
@@ -286,15 +268,6 @@ subroutine test_strain_dipole_td()
   logical                      :: axial
   real(kind=dp)                :: phi1, phi2, r1, r2
 
-  nodes(1,:) = [0,0]
-  nodes(2,:) = [1,0]
-  nodes(3,:) = [1,1]
-  nodes(4,:) = [0,1]
-
-  ! linear element
-  element_type = 1
-  axial = .true.
-
   npol = 4
   nsamp = 2
 
@@ -411,7 +384,7 @@ subroutine test_strain_dipole()
   real(kind=dp)                :: nodes(4,2)
   integer                      :: element_type
 
-  integer                      :: npol, nsamp, ipol, jpol
+  integer                      :: npol, ipol, jpol
   real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
   real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
   real(kind=dp), allocatable   :: u(:,:,:), strain(:,:,:), strain_ref(:,:,:)
@@ -420,15 +393,6 @@ subroutine test_strain_dipole()
   real(kind=dp), allocatable   :: s(:,:), z(:,:), sz(:,:,:)
   logical                      :: axial
   real(kind=dp)                :: phi1, phi2, r1, r2
-
-  nodes(1,:) = [0,0]
-  nodes(2,:) = [1,0]
-  nodes(3,:) = [1,1]
-  nodes(4,:) = [0,1]
-
-  ! linear element
-  element_type = 1
-  axial = .true.
 
   npol = 4
 
@@ -549,10 +513,6 @@ subroutine test_strain_quadpole_td()
   logical                      :: axial
   real(kind=dp)                :: phi1, phi2, r1, r2
 
-  ! linear element
-  element_type = 1
-  axial = .true.
-
   npol = 4
   nsamp = 2
 
@@ -668,7 +628,7 @@ subroutine test_strain_quadpole()
   real(kind=dp)                :: nodes(4,2)
   integer                      :: element_type
 
-  integer                      :: npol, nsamp, ipol, jpol
+  integer                      :: npol, ipol, jpol
   real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
   real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
   real(kind=dp), allocatable   :: u(:,:,:), strain(:,:,:), strain_ref(:,:,:)
@@ -677,15 +637,6 @@ subroutine test_strain_quadpole()
   real(kind=dp), allocatable   :: s(:,:), z(:,:), sz(:,:,:)
   logical                      :: axial
   real(kind=dp)                :: phi1, phi2, r1, r2
-
-  nodes(1,:) = [0,0]
-  nodes(2,:) = [1,0]
-  nodes(3,:) = [1,1]
-  nodes(4,:) = [0,1]
-
-  ! linear element
-  element_type = 1
-  axial = .true.
 
   npol = 4
 
