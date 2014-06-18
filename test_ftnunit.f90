@@ -29,6 +29,7 @@ subroutine test_all
 
   ! test sem derivatives
   write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
+  call test(test_strain_dipole, 'SEM strain dipole')
   call test(test_strain_monopole, 'SEM strain monopole')
   call test(test_f_over_s, 'SEM f_over_s')
   call test(test_f_over_s_td, 'SEM f_over_s time dep')

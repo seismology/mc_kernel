@@ -8,6 +8,8 @@ module sem_derivatives
   private
 
   public :: strain_monopole
+  public :: strain_dipole
+  public :: strain_quadpole
   public :: axisym_gradient
   public :: dsdf_axis
   public :: f_over_s

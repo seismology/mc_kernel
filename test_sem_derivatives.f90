@@ -58,6 +58,42 @@ subroutine test_strain_monopole()
   allocate(strain(0:npol,0:npol,6))
   allocate(strain_ref(0:npol,0:npol,6))
 
+  nodes(1,:) = [1,2]
+  nodes(2,:) = [2,1]
+  nodes(3,:) = [3,2]
+  nodes(4,:) = [2,3]
+
+  ! linear element
+  element_type = 1
+  axial = .false.
+
+  do ipol=0, npol 
+     do jpol=0, npol 
+        sz(ipol, jpol,:) = mapping(glj_points(ipol), gll_points(jpol), &
+                                   nodes, element_type)
+        s = sz(:,:,1)
+        z = sz(:,:,2)
+     enddo
+  enddo
+
+  u(:,:,1) = s**2 * z
+  u(:,:,2) = 0
+  u(:,:,3) = s * z**2
+  
+  strain_ref(:,:,1) = 2 * s * z
+  strain_ref(:,:,2) = s * z
+  strain_ref(:,:,3) = 2 * s * z
+  strain_ref(:,:,4) = 0
+  strain_ref(:,:,5) = (s**2 + z**2) / 2
+  strain_ref(:,:,6) = 0
+
+  strain = strain_monopole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
+                           element_type, axial)
+  
+  call assert_comparable_real1d(real(reshape(strain, (/(npol+1)**2 * 6/))), &
+                                real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
+                                1e-7, 'monopole strain non-axial, linear element')
+
   phi = 0.1d0
   r1 = 10d0
   r2 = 11d0
@@ -73,7 +109,8 @@ subroutine test_strain_monopole()
 
   do ipol=0, npol 
      do jpol=0, npol 
-        sz(ipol, jpol,:) = mapping(glj_points(ipol), gll_points(jpol), nodes, element_type)
+        sz(ipol, jpol,:) = mapping(glj_points(ipol), gll_points(jpol), &
+                                   nodes, element_type)
         s = sz(:,:,1)
         z = sz(:,:,2)
      enddo
@@ -97,40 +134,133 @@ subroutine test_strain_monopole()
                                 10 + real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
                                 1e-5, 'monopole strain axial, spheroidal element')
 
+end subroutine 
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_strain_dipole()
+
+  real(kind=dp)                :: nodes(4,2)
+  integer                      :: element_type
+
+  integer                      :: npol, nsamp, ipol, jpol
+  real(kind=dp), allocatable   :: G2(:,:), G2T(:,:)
+  real(kind=dp), allocatable   :: G1(:,:), G1T(:,:)
+  real(kind=dp), allocatable   :: u(:,:,:), strain(:,:,:), strain_ref(:,:,:)
+
+  real(kind=dp), allocatable   :: gll_points(:), glj_points(:)
+  real(kind=dp), allocatable   :: s(:,:), z(:,:), sz(:,:,:)
+  logical                      :: axial
+  real(kind=dp)                :: phi1, phi2, r1, r2
+
+  nodes(1,:) = [0,0]
+  nodes(2,:) = [1,0]
+  nodes(3,:) = [1,1]
+  nodes(4,:) = [0,1]
+
+  ! linear element
+  element_type = 1
+  axial = .true.
+
+  npol = 4
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1T(0:npol,0:npol))
+  allocate(G2T(0:npol,0:npol))
+  G1T = transpose(G1)
+  G2T = transpose(G2)
+
+  allocate(gll_points(0:npol))
+  allocate(glj_points(0:npol))
+  gll_points(0:npol) = zelegl(npol)
+  glj_points(0:npol) = zemngl2(npol)
+
+  allocate(s(0:npol,0:npol))
+  allocate(z(0:npol,0:npol))
+  allocate(sz(0:npol,0:npol,2))
+
+  allocate(u(0:npol,0:npol,3))
+  allocate(strain(0:npol,0:npol,6))
+  allocate(strain_ref(0:npol,0:npol,6))
+
   nodes(1,:) = [1,2]
   nodes(2,:) = [2,1]
   nodes(3,:) = [3,2]
   nodes(4,:) = [2,3]
 
-  ! speroidal element
+  ! linear element
   element_type = 1
   axial = .false.
 
   do ipol=0, npol 
      do jpol=0, npol 
-        sz(ipol, jpol,:) = mapping(glj_points(ipol), gll_points(jpol), nodes, element_type)
+        sz(ipol, jpol,:) = mapping(glj_points(ipol), gll_points(jpol), &
+                                   nodes, element_type)
         s = sz(:,:,1)
         z = sz(:,:,2)
      enddo
   enddo
 
-  u(:,:,1) = s**2 * z
-  u(:,:,2) = 0
+  u(:,:,1) = (s**2 * z + s**2 + z**2) / 2d0
+  u(:,:,2) = (s**2 * z - s**2 - z**2) / 2d0
   u(:,:,3) = s * z**2
   
   strain_ref(:,:,1) = 2 * s * z
-  strain_ref(:,:,2) = s * z
+  strain_ref(:,:,2) = s * z - s - z**2 / s
   strain_ref(:,:,3) = 2 * s * z
-  strain_ref(:,:,4) = 0
+  strain_ref(:,:,4) = - (z**2 + 2 * z) / 2
   strain_ref(:,:,5) = (s**2 + z**2) / 2
-  strain_ref(:,:,6) = 0
+  strain_ref(:,:,6) = (z**2 / s - s * z - s) / 2
 
-  strain = strain_monopole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
+  strain = strain_dipole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
                            element_type, axial)
-  
+
   call assert_comparable_real1d(real(reshape(strain, (/(npol+1)**2 * 6/))), &
                                 real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
-                                1e-7, 'monopole strain axial, spheroidal element')
+                                1e-7, 'dipole strain non-axial, linear element')
+
+  phi1 = 0.1d0
+  phi2 = 0.2d0
+  r1 = 10d0
+  r2 = 11d0
+
+  nodes(1,:) = [r1 * dsin(phi1), r1 * dcos(phi1)]
+  nodes(2,:) = [r1 * dsin(phi2), r1 * dcos(phi2)]
+  nodes(3,:) = [r2 * dsin(phi2), r2 * dcos(phi2)]
+  nodes(4,:) = [r2 * dsin(phi1), r2 * dcos(phi1)]
+
+  ! speroidal element
+  element_type = 0
+  axial = .false.
+
+  do ipol=0, npol 
+     do jpol=0, npol 
+        sz(ipol, jpol,:) = mapping(glj_points(ipol), gll_points(jpol), &
+                                   nodes, element_type)
+        s = sz(:,:,1)
+        z = sz(:,:,2)
+     enddo
+  enddo
+
+  ! +- basis!
+  u(:,:,1) = (s**2 * z + s**2 + z**2) / 2d0
+  u(:,:,2) = (s**2 * z - s**2 - z**2) / 2d0
+  u(:,:,3) = s * z**2
+  
+  strain_ref(:,:,1) = 2 * s * z
+  strain_ref(:,:,2) = s * z - s - z**2 / s
+  strain_ref(:,:,3) = 2 * s * z
+  strain_ref(:,:,4) = - (z**2 + 2 * z) / 2
+  strain_ref(:,:,5) = (s**2 + z**2) / 2
+  strain_ref(:,:,6) = (z**2 / s - s * z - s) / 2
+
+  strain = strain_dipole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
+                           element_type, axial)
+
+  call assert_comparable_real1d(10 + real(reshape(strain, (/(npol+1)**2 * 6/))), &
+                                10 + real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
+                                1e-5, 'dipole strain axial, spheroidal element')
 
 end subroutine 
 !-----------------------------------------------------------------------------------------
