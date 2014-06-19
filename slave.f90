@@ -396,7 +396,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            write(fmtstring,"('(I6, I6, ES10.3, A, L1, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
                            parameters%nkernel, parameters%nkernel 
            write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                     &
-                                   int_kernel(1)%areallconverged(), int_kernel(1)%getintegral(), &
+                                   int_kernel(1)%countnotconverged(), int_kernel(1)%getintegral(), &
                                    ' +- ', sqrt(int_kernel(1)%getvariance())
 
         end do ! Kernel coverged
