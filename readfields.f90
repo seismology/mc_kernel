@@ -1,10 +1,18 @@
 !=========================================================================================
 module readfields
+#ifdef flag_kerner    
+    use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
+                                             myrank, id_buffer, id_netcdf, id_rotate,       &
+                                             id_load_strain, id_kdtree
+#else
     use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
+#endif                                       
+
     use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
+    
     use clocks_mod,        only            : tick
     use commpi,            only            : pabort
     use nc_routines,       only            : getgrpid, getvarid, nc_open_for_read, nc_getvar, &
@@ -72,6 +80,10 @@ module readfields
         integer,       public              :: ndumps, decimate_factor
         integer,       public              :: nseis 
         integer,       public              :: npol
+        real(kind=dp), public, allocatable :: G1(:,:), G1T(:,:)
+        real(kind=dp), public, allocatable :: G2(:,:), G2T(:,:)
+        real(kind=dp), public, allocatable :: G0(:)
+        real(kind=dp), public, allocatable :: gll_points(:), glj_points(:)
         real(kind=dp), public              :: windowlength
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
@@ -174,6 +186,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
        write(lu_out,*) 'This is not implemented yet!'
+       call pabort
     elseif (single) then
        this%nsim_bwd = 1
        write(lu_out,*) 'Backword simulation was ''single'' source'
@@ -361,7 +374,8 @@ subroutine open_files(this)
         call nc_read_att_dble(   this%fwd(isim)%dt,               &
                                  'strain dump sampling rate in sec', &
                                  this%fwd(isim))
-
+        ! Was a hack because dt was written out wrong in earlier AxiSEM versions
+        !this%fwd(isim)%dt = 1.7064171433448792
         call nc_read_att_int(    this%fwd(isim)%nseis,             &
                                  'length of seismogram  in time samples', &
                                  this%fwd(isim))
@@ -784,6 +798,9 @@ function load_fw_points(this, coordinates, source_params)
                           source_params%lon, source_params%colat)
 
     allocate(nextpoint(1))
+#ifdef flag_kerner
+    iclockold = tick()
+#endif
     do ipoint = 1, npoints
         call kdtree2_n_nearest( this%fwdtree,                           &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
@@ -792,6 +809,9 @@ function load_fw_points(this, coordinates, source_params)
         
         pointid(ipoint) = nextpoint(1)%idx
     end do
+#ifdef flag_kerner
+    iclockold = tick(id=id_kdtree, since=iclockold)
+#endif
 
     load_fw_points(:,:,:) = 0.0
     
@@ -999,6 +1019,7 @@ function load_bw_points(this, coordinates, receiver)
     load_bw_points(:,:,:) = 0.0
     
     do ipoint = 1, npoints
+        utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%model_param)
         
         select case(receiver%component)
         case('Z')
@@ -1078,6 +1099,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
     allocate(nextpoint(nnext_points))
     do ipoint = 1, npoints
+        
         call kdtree2_n_nearest( this%fwdtree, &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
                                 nn = nnext_points, &
@@ -1355,7 +1377,7 @@ function load_strain_point(sem_obj, pointid, model_param)
     real(kind=dp), allocatable      :: strain_buff(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold, status, istrainvar
+    integer                         :: iclockold_total, iclockold, status, istrainvar
     real(kind=sp)                   :: utemp(sem_obj%ndumps)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
 
@@ -1365,32 +1387,46 @@ function load_strain_point(sem_obj, pointid, model_param)
         call pabort
     endif
 
+#ifdef flag_kerner
+    iclockold_total = tick()
+#endif
+
     select case(model_param)
     case('vp')
         allocate(load_strain_point(sem_obj%ndumps, 1))
-
-        !iclockold = tick()
+#ifdef flag_kerner
+        iclockold = tick()
+#endif
         status = sem_obj%buffer(1)%get(pointid, utemp)
-        !iclockold = tick(id=id_buffer, since=iclockold)
+#ifdef flag_kerner
+        iclockold = tick(id=id_buffer, since=iclockold)
+#endif
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
 
            ! Only read to last point, not further
            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-           !iclockold = tick()
+#ifdef flag_kerner
+           iclockold = tick()
+#endif
            call nc_getvar( ncid   = sem_obj%snap,           & 
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
                            values = utemp_chunk(1:gll_to_read, :)) 
 
-           !iclockold = tick(id=id_netcdf, since=iclockold)
+#ifdef flag_kerner
+           iclockold = tick(id=id_netcdf, since=iclockold)
+#endif
 
            do iread = 0, sem_obj%chunk_gll - 1
                status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
-           !iclockold = tick(id=id_buffer, since=iclockold)
+
+#ifdef flag_kerner
+           iclockold = tick(id=id_buffer, since=iclockold)
+#endif
            load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
         else
            load_strain_point(:,1) = real(utemp, kind=dp)
@@ -1401,39 +1437,49 @@ function load_strain_point(sem_obj, pointid, model_param)
 
         do istrainvar = 1, 6
 
-            if (sem_obj%strainvarid(istrainvar).eq.-1) then
-                strain_buff(:, istrainvar) = 0
-                cycle ! For monopole source which does not have this component.
-            endif
+           if (sem_obj%strainvarid(istrainvar).eq.-1) then
+               strain_buff(:, istrainvar) = 0
+               cycle ! For monopole source which does not have this component.
+           endif
 
-            !iclockold = tick()
-            status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
-            !iclockold = tick(id=id_buffer, since=iclockold)
-            
-            if (status.ne.0) then
-               start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-               
-               ! Only read to last point, not further
-               gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+#ifdef flag_kerner
+           iclockold = tick()
+#endif
+           status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
+#ifdef flag_kerner
+           iclockold = tick(id=id_buffer, since=iclockold)
+#endif
+           
+           if (status.ne.0) then
+              start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+              
+              ! Only read to last point, not further
+              gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
 
-               !iclockold = tick()
-               call nc_getvar( ncid   = sem_obj%snap,           & 
-                               varid  = sem_obj%strainvarid(istrainvar), &
-                               start  = [start_chunk, 1],       &
-                               count  = [gll_to_read, sem_obj%ndumps], &
-                               values = utemp_chunk(1:gll_to_read, :)) 
+#ifdef flag_kerner
+              iclockold = tick()
+#endif
+              call nc_getvar( ncid   = sem_obj%snap,           & 
+                              varid  = sem_obj%strainvarid(istrainvar), &
+                              start  = [start_chunk, 1],       &
+                              count  = [gll_to_read, sem_obj%ndumps], &
+                              values = utemp_chunk(1:gll_to_read, :)) 
 
-               !iclockold = tick(id=id_netcdf, since=iclockold)
-               do iread = 0, gll_to_read - 1
-                   status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
-                                                           utemp_chunk(iread+1,:))
-               end do
-               !iclockold = tick(id=id_buffer, since=iclockold)
-               strain_buff(:,istrainvar) &
-                    = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
-            else
-               strain_buff(:,istrainvar) = real(utemp, kind=dp)
-            end if
+#ifdef flag_kerner
+              iclockold = tick(id=id_netcdf, since=iclockold)
+#endif
+              do iread = 0, gll_to_read - 1
+                  status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
+                                                          utemp_chunk(iread+1,:))
+              end do
+#ifdef flag_kerner
+              iclockold = tick(id=id_buffer, since=iclockold)
+#endif
+              strain_buff(:,istrainvar) &
+                   = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
+           else
+              strain_buff(:,istrainvar) = real(utemp, kind=dp)
+           end if
 
         end do
 
@@ -1452,7 +1498,49 @@ function load_strain_point(sem_obj, pointid, model_param)
         load_strain_point(:,6) = -strain_buff(:,4)
     end select
 
+#ifdef flag_kerner
+    iclockold_total = tick(id=id_load_strain, since=iclockold_total)
+#endif
+
 end function load_strain_point
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function load_strain_point_interp(sem_obj, pointids, model_param)
+
+    type(ncparamtype), intent(in)   :: sem_obj
+    integer, intent(in)             :: pointids(:,:)
+    character(len=*), intent(in)    :: model_param
+    real(kind=dp), allocatable      :: load_strain_point_interp(:,:)
+
+    integer                         :: start_chunk, iread, gll_to_read
+    integer                         :: iclockold, status, istrainvar
+    real(kind=sp)                   :: utemp(sem_obj%ndumps)
+    real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+
+    if (trim(sem_obj%dump_type) /= 'displ_only') then
+        write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
+        write(6,*) '       written with dump_type "displ_only"'
+        call pabort
+    endif
+
+    ! load displacements from all GLL points
+
+    select case(model_param)
+    case('vp')
+        write(6,*) 'to be implemented'
+        ! compute straintrace
+
+    case('vs')
+        write(6,*) 'to be implemented'
+        ! compute full strain tensor
+
+        ! voigt mapping
+        ! dsus, dpup, dzuz, dzup, dsuz, dsup
+    end select
+    call pabort
+
+end function load_strain_point_interp
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1518,6 +1606,9 @@ end subroutine build_kdtree
 !-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
+    use spectral_basis, only : zelegl, zemngl2, &
+                               def_lagrange_derivs_gll, def_lagrange_derivs_glj
+
     class(semdata_type)        :: this
     integer                    :: ncvarid_mesh_s, ncvarid_mesh_z
     integer                    :: surfdimid, ncvarid_theta
@@ -1694,37 +1785,37 @@ subroutine read_meshes(this)
                                 name  = 'surf_elems',     &
                                 dimid = surfdimid) ) 
 
-   call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
-                                      dimid = surfdimid,               &
-                                      len   = this%fwdmesh%nsurfelem) )
+    call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
+                                       dimid = surfdimid,               &
+                                       len   = this%fwdmesh%nsurfelem) )
 
-   call  getvarid( ncid  = this%fwd(1)%surf, &
-                   name  = "elem_theta",     &
-                   varid = ncvarid_theta) 
+    call  getvarid( ncid  = this%fwd(1)%surf, &
+                    name  = "elem_theta",     &
+                    varid = ncvarid_theta) 
 
-   allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
-   allocate( theta(this%fwdmesh%nsurfelem) )
-   call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                   varid  = ncvarid_theta,          &
-                   start  = 1,                      & 
-                   count  = this%fwdmesh%nsurfelem, &
-                   values = theta                    )
-   this%fwdmesh%theta = real(theta, kind=dp)
-   
-   ! Backward mesh
-   if (this%nsim_bwd > 0) then
+    allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
+    allocate( theta(this%fwdmesh%nsurfelem) )
+    call nc_getvar( ncid   = this%fwd(1)%surf,   &
+                    varid  = ncvarid_theta,          &
+                    start  = 1,                      & 
+                    count  = this%fwdmesh%nsurfelem, &
+                    values = theta                    )
+    this%fwdmesh%theta = real(theta, kind=dp)
+    
+    ! Backward mesh
+    if (this%nsim_bwd > 0) then
 
-      call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
-                                  name  = 'surf_elems',     &
-                                  dimid = surfdimid) ) 
+       call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
+                                   name  = 'surf_elems',     &
+                                   dimid = surfdimid) ) 
 
-      call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
-                                         dimid = surfdimid,               &
-                                         len   = this%bwdmesh%nsurfelem) )
+       call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
+                                          dimid = surfdimid,               &
+                                          len   = this%bwdmesh%nsurfelem) )
 
-      call  getvarid(ncid  = this%bwd(1)%surf, &
-                     name  = "elem_theta",     &
-                     varid = ncvarid_theta) 
+       call  getvarid(ncid  = this%bwd(1)%surf, &
+                      name  = "elem_theta",     &
+                      varid = ncvarid_theta) 
 
       allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
       ! sure that fwd is correct here??
@@ -1736,6 +1827,27 @@ subroutine read_meshes(this)
       this%bwdmesh%theta = real(theta, kind=dp)
    endif
                              
+    ! define terms needed to compute gradient
+    if (trim(this%dump_type) == 'displ_only') then
+        allocate(this%G1(0:this%npol,0:this%npol))
+        allocate(this%G1T(0:this%npol,0:this%npol))
+        allocate(this%G2(0:this%npol,0:this%npol))
+        allocate(this%G2T(0:this%npol,0:this%npol))
+        allocate(this%G0(0:this%npol))
+
+        allocate(this%gll_points(0:this%npol))
+        allocate(this%glj_points(0:this%npol))
+
+        this%gll_points = zelegl(this%npol)
+        this%glj_points = zemngl2(this%npol)
+
+        this%G1 = def_lagrange_derivs_glj(this%npol, this%G0)
+        this%G2 = def_lagrange_derivs_gll(this%npol)
+
+        this%G1T = transpose(this%G1)
+        this%G2T = transpose(this%G2)
+
+    endif
 
     ! Mesh sanity checks
     mesherror = .false.

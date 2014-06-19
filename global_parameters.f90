@@ -16,18 +16,19 @@ module global_parameters
   integer, parameter         :: DIETAG  = 2
   
   logical                    :: master, firstslave
-  integer                    :: myrank, nproc
-  integer                    :: lu_out !< Logical unit for output. 
+  integer, protected         :: myrank, nproc
+  integer, protected         :: lu_out !< Logical unit for output. 
                                        !! 6 (Screen) for master
-                                       !! file 'OUTPUT_#rank' for slaves
+                                       !! File 'OUTPUT_#rank' for slaves
 
   integer                    :: id_read, id_fft, id_fwd, id_bwd, id_mc, id_mpi,&
                                 id_filter_conv, id_inv_mesh, id_kernel, id_init, &
-                                id_buffer, id_netcdf, id_rotate
+                                id_buffer, id_netcdf, id_rotate, id_load_strain, &
+                                id_kdtree
   contains
 
 
-!-----------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------
 subroutine init_random_seed()
    integer :: i, n, clock
    integer, dimension(:), allocatable :: seed
@@ -43,6 +44,32 @@ subroutine init_random_seed()
    deallocate(seed)
 end subroutine
 !-----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_myrank(myrank_value)
+  integer, intent(in)   :: myrank_value
+
+  myrank = myrank_value
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_nproc(nproc_value)
+  integer, intent(in)   :: nproc_value
+
+  nproc = nproc_value
+
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_lu_out(lu_out_value)
+  integer, intent(in)   :: lu_out_value
+
+  lu_out = lu_out_value
+
+end subroutine
+!----------------------------------------------------------------------------------------
 
 
 end module

@@ -38,8 +38,7 @@ print MAKEFILE "#Example to include specific netcdf libraries: \n";
 #print MAKEFILE 'LIBS = -lm -llapack -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib';
 print MAKEFILE 'LIBS = -lm -llapack -lfftw3 -lfftw3f -lnetcdff';
 print MAKEFILE " \n\n";
-print MAKEFILE "# set unc to compile with netcdf: \n";
-print MAKEFILE "#F90FLAGS = -Dunc \n";
+print MAKEFILE "F90FLAGS = -cpp -Dflag_rdbm \n";
 print MAKEFILE "CC = gcc\n";
 print MAKEFILE "CFLAGS = -O3 -DF_UNDERSCORE\n";
 

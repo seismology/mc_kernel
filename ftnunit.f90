@@ -25,6 +25,8 @@ module ftnunit
     integer, private, save :: noruns              ! Number of runs so far
     logical, private, save :: call_final = .true. ! Call runtests_final implicitly?
 
+    real, private, save :: infinity = huge(1.0)   ! used to test for infinite values
+    
     interface assert_equal
         module procedure assert_equal_int
         module procedure assert_equal_int1d
@@ -67,6 +69,7 @@ subroutine test( proc, text )
 
     ! Run the test
     write( *, '(2a)' ) 'Test: ', trim(text)
+    call flush(6)
 
     call proc
 
@@ -106,7 +109,7 @@ end subroutine
 !     do the actual tests.
 subroutine runtests_final
     if ( ftnunit_file_exists("ftnunit.run") ) then
-        write(6,'(/,a,/,a)') 'TEST SUMMARY', '------------'
+        write(6,'(/,/,a,/,a)') 'TEST SUMMARY', '------------'
         write(*,'(a,i5)') 'Number of failed assertions:                ', nofails
         write(*,'(a,i5)') 'Number of runs needed to complete the tests:', noruns
         call ftnunit_remove_file( "ftnunit.lst" )
@@ -136,7 +139,8 @@ subroutine runtests( testproc )
 
     if ( ftnunit_file_exists("ftnunit.run") ) then
 
-        if (noruns == 0) write(6,'(a,/,a)') 'TEST DETAILS', '------------'
+        if (noruns == 0) write(6,'(/,a,/,a)') 'TEST DETAILS', &
+                '------------------------------------------------------------------------------------------'
 
         if ( ftnunit_file_exists("ftnunit.lst") ) then
             open( newunit=lun, file = "ftnunit.lst", iostat = ierr )
@@ -152,6 +156,8 @@ subroutine runtests( testproc )
         endif
 
         noruns = noruns + 1
+
+        if (noruns /= 0) write(6,'(a,i4)') 'RUN NO', noruns
 
         call testproc
 
@@ -288,6 +294,20 @@ subroutine assert_comparable_real( value1, value2, margin, text )
     real, intent(in)             :: margin
     character(len=*), intent(in) :: text
 
+    if (value1 > infinity .or. -value1 > infinity) then
+        write(*,*) '   value1 is infinite - assertion failed'
+        nofails = nofails + 1
+    elseif (value2 > infinity .or. -value2 > infinity) then
+        write(*,*) '   value2 is infinite - assertion failed'
+        nofails = nofails + 1
+    elseif (isnan(value1)) then
+        write(*,*) '   value1 is NAN - assertion failed'
+        nofails = nofails + 1
+    elseif (isnan(value2)) then
+        write(*,*) '   value2 is NAN - assertion failed'
+        nofails = nofails + 1
+    endif
+
     if ( abs(value1-value2) > 0.5 * margin * (abs(value1)+abs(value2)) ) then
         nofails = nofails + 1
         write(*,*) '    Values not comparable: "',trim(text), '" - assertion failed'
@@ -320,6 +340,20 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
         nofails = nofails + 1
         write(*,*) '    Arrays have different sizes: "',trim(text), '" - assertion failed'
     else
+        if (any(array1 > infinity) .or. any(-array1 > infinity)) then
+            write(*,*) '   array1 contains infinite values - assertion failed'
+            nofails = nofails + 1
+        elseif (any(array2 > infinity) .or. any(-array2 > infinity)) then
+            write(*,*) '   array2 contains infinite values - assertion failed'
+            nofails = nofails + 1
+        elseif (any(isnan(array1))) then
+            write(*,*) '   array1 contains NAN values - assertion failed'
+            nofails = nofails + 1
+        elseif (any(isnan(array2))) then
+            write(*,*) '   array2 contains NAN values - assertion failed'
+            nofails = nofails + 1
+        endif
+
         if ( any( abs(array1-array2) > 0.5 * margin * (abs(array1)+abs(array2)) ) ) then
             nofails = nofails + 1
             write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'

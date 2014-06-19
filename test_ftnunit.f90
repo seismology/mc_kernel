@@ -2,7 +2,7 @@
 module unit_tests
 
   use ftnunit, only: test
-  use global_parameters, only: lu_out
+  use global_parameters, only: lu_out, verbose
   use test_montecarlo
   use test_fft
   use test_tetrahedra
@@ -15,6 +15,7 @@ module unit_tests
   use test_resampling
   use test_finite_elem_mapping
   use test_spectral_basis
+  use test_sem_derivatives
 
   implicit none
 
@@ -22,7 +23,15 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine test_all
 
+  verbose = 1
+
   call init_output()
+
+  ! test sem derivatives
+  write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
+  call test(test_gradient, 'SEM gradient')
+  call test(test_gradient2, 'SEM gradient, npol=4')
+  call test(test_td_gradient, 'time dependent SEM gradient')
 
   ! test spectral basis functions
   write(6,'(/,a)') 'TEST SPECTRAL BASIS MODULE'
@@ -32,6 +41,8 @@ subroutine test_all
 
   call test(test_gll_points, 'gll points')
   call test(test_glj_points, 'glj points')
+
+  call test(test_derivative_tensors, 'derivative tensors')
 
   ! test_finite_elem_mapping
   write(6,'(/,a)') 'TEST FINITE ELEMENT MODULE'
@@ -142,9 +153,11 @@ subroutine test_all
   call test(test_buffer_storage_1d, 'put 1d data into the buffer')
   call test(test_buffer_storage_2d, 'put 2d data into the buffer')
   call test(test_buffer_storage_3d, 'put 3d data into the buffer')
+  call test(test_buffer_storage_4d, 'put 4d data into the buffer')
   call test(test_buffer_retrieval_1d, 'get 1d data back from the buffer')
   call test(test_buffer_retrieval_2d, 'get 2d data back from the buffer')
   call test(test_buffer_retrieval_3d, 'get 3d data back from the buffer')
+  call test(test_buffer_retrieval_4d, 'get 4d data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
 
   call finish_output()
@@ -154,10 +167,13 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine init_output()
   character(len=11) :: fnam
+  integer           :: lu_out_local
 
   fnam = 'OUTPUT_test'
-  open(newunit=lu_out, file=fnam, status='unknown', position='append')
+  open(newunit=lu_out_local, file=fnam, status='unknown', position='append')
+  call set_lu_out(lu_out_local)
   write(lu_out,*) '*********************************************************************'
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 
