@@ -302,36 +302,37 @@ subroutine test_strain_dipole_td()
 
   do ipol=0, npol 
      do jpol=0, npol 
-        sz(ipol, jpol,:) = mapping(glj_points(ipol), gll_points(jpol), &
+        sz(ipol, jpol,:) = mapping(gll_points(ipol), gll_points(jpol), &
                                    nodes, element_type)
         s = sz(:,:,1)
         z = sz(:,:,2)
      enddo
   enddo
 
-  u(1,:,:,1) = (s**2 * z + s**2 + z**2) / 2d0
-  u(1,:,:,2) = (s**2 * z - s**2 - z**2) / 2d0
+  ! +- basis!
+  u(1,:,:,1) = (s**2 * z + s**2 + s * z) / 2d0
+  u(1,:,:,2) = (s**2 * z - s**2 - s * z) / 2d0
   u(1,:,:,3) = s * z**2
   
   strain_ref(1,:,:,1) = 2 * s * z
-  strain_ref(1,:,:,2) = s * z - s - z**2 / s
+  strain_ref(1,:,:,2) = s * z - s - z
   strain_ref(1,:,:,3) = 2 * s * z
-  strain_ref(1,:,:,4) = - (z**2 + 2 * z) / 2
+  strain_ref(1,:,:,4) = - (z**2 + s) / 2
   strain_ref(1,:,:,5) = (s**2 + z**2) / 2
-  strain_ref(1,:,:,6) = (z**2 / s - s * z - s) / 2
+  strain_ref(1,:,:,6) = - (s * z + s) / 2
 
   u(2,:,:,:) = u(1,:,:,:) / 2
   strain_ref(2,:,:,:) = strain_ref(1,:,:,:) / 2
 
-  strain = strain_dipole(u, G2, G1T, glj_points, gll_points, npol, nsamp, nodes, &
+  strain = strain_dipole(u, G2, G2T, gll_points, gll_points, npol, nsamp, nodes, &
                            element_type, axial)
 
   call assert_comparable_real1d(real(reshape(strain, (/(npol+1)**2 * 6 * nsamp/))), &
                                 real(reshape(strain_ref, (/(npol+1)**2 * 6 * nsamp/))), &
                                 1e-7, 'dipole strain non-axial, linear element, time dep')
 
-  phi1 = 0.1d0
-  phi2 = 0.2d0
+  phi1 = 0.0d0
+  phi2 = 0.1d0
   r1 = 10d0
   r2 = 11d0
 
@@ -342,7 +343,7 @@ subroutine test_strain_dipole_td()
 
   ! speroidal element
   element_type = 0
-  axial = .false.
+  axial = .true.
 
   do ipol=0, npol 
      do jpol=0, npol 
@@ -354,16 +355,16 @@ subroutine test_strain_dipole_td()
   enddo
 
   ! +- basis!
-  u(1,:,:,1) = (s**2 * z + s**2 + z**2) / 2d0
-  u(1,:,:,2) = (s**2 * z - s**2 - z**2) / 2d0
+  u(1,:,:,1) = (s**2 * z + s**2 + s * z) / 2d0
+  u(1,:,:,2) = (s**2 * z - s**2 - s * z) / 2d0
   u(1,:,:,3) = s * z**2
   
   strain_ref(1,:,:,1) = 2 * s * z
-  strain_ref(1,:,:,2) = s * z - s - z**2 / s
+  strain_ref(1,:,:,2) = s * z - s - z
   strain_ref(1,:,:,3) = 2 * s * z
-  strain_ref(1,:,:,4) = - (z**2 + 2 * z) / 2
+  strain_ref(1,:,:,4) = - (z**2 + s) / 2
   strain_ref(1,:,:,5) = (s**2 + z**2) / 2
-  strain_ref(1,:,:,6) = (z**2 / s - s * z - s) / 2
+  strain_ref(1,:,:,6) = - (s * z + s) / 2
 
   u(2,:,:,:) = u(1,:,:,:) / 2
   strain_ref(2,:,:,:) = strain_ref(1,:,:,:) / 2
@@ -371,9 +372,9 @@ subroutine test_strain_dipole_td()
   strain = strain_dipole(u, G2, G1T, glj_points, gll_points, npol, nsamp, nodes, &
                            element_type, axial)
 
-  call assert_comparable_real1d(10 + real(reshape(strain, (/(npol+1)**2 * 6 * nsamp/))), &
-                                10 + real(reshape(strain_ref, (/(npol+1)**2 * 6 * nsamp/))), &
-                                1e-5, 'dipole strain axial, spheroidal element, time dep')
+  call assert_comparable_real1d(1 + real(reshape(strain, (/(npol+1)**2 * 6 * nsamp/))), &
+                                1 + real(reshape(strain_ref, (/(npol+1)**2 * 6 * nsamp/))), &
+                                1e-4, 'dipole strain axial, spheroidal element, time dep')
 
 end subroutine 
 !-----------------------------------------------------------------------------------------
@@ -434,16 +435,16 @@ subroutine test_strain_dipole()
      enddo
   enddo
 
-  u(:,:,1) = (s**2 * z + s**2 + z**2) / 2d0
-  u(:,:,2) = (s**2 * z - s**2 - z**2) / 2d0
+  u(:,:,1) = (s**2 * z + s**2 + s * z) / 2d0
+  u(:,:,2) = (s**2 * z - s**2 - s * z) / 2d0
   u(:,:,3) = s * z**2
   
   strain_ref(:,:,1) = 2 * s * z
-  strain_ref(:,:,2) = s * z - s - z**2 / s
+  strain_ref(:,:,2) = s * z - s - z
   strain_ref(:,:,3) = 2 * s * z
-  strain_ref(:,:,4) = - (z**2 + 2 * z) / 2
+  strain_ref(:,:,4) = - (z**2 + s) / 2
   strain_ref(:,:,5) = (s**2 + z**2) / 2
-  strain_ref(:,:,6) = (z**2 / s - s * z - s) / 2
+  strain_ref(:,:,6) = - (s * z + s) / 2
 
   strain = strain_dipole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
                            element_type, axial)
@@ -452,8 +453,8 @@ subroutine test_strain_dipole()
                                 real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
                                 1e-7, 'dipole strain non-axial, linear element')
 
-  phi1 = 0.1d0
-  phi2 = 0.2d0
+  phi1 = 0d0
+  phi2 = 0.1d0
   r1 = 10d0
   r2 = 11d0
 
@@ -464,7 +465,7 @@ subroutine test_strain_dipole()
 
   ! speroidal element
   element_type = 0
-  axial = .false.
+  axial = .true.
 
   do ipol=0, npol 
      do jpol=0, npol 
@@ -476,23 +477,23 @@ subroutine test_strain_dipole()
   enddo
 
   ! +- basis!
-  u(:,:,1) = (s**2 * z + s**2 + z**2) / 2d0
-  u(:,:,2) = (s**2 * z - s**2 - z**2) / 2d0
+  u(:,:,1) = (s**2 * z + s**2 + s * z) / 2d0
+  u(:,:,2) = (s**2 * z - s**2 - s * z) / 2d0
   u(:,:,3) = s * z**2
   
   strain_ref(:,:,1) = 2 * s * z
-  strain_ref(:,:,2) = s * z - s - z**2 / s
+  strain_ref(:,:,2) = s * z - s - z
   strain_ref(:,:,3) = 2 * s * z
-  strain_ref(:,:,4) = - (z**2 + 2 * z) / 2
+  strain_ref(:,:,4) = - (z**2 + s) / 2
   strain_ref(:,:,5) = (s**2 + z**2) / 2
-  strain_ref(:,:,6) = (z**2 / s - s * z - s) / 2
+  strain_ref(:,:,6) = - (s * z + s) / 2
 
   strain = strain_dipole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
                            element_type, axial)
 
-  call assert_comparable_real1d(10 + real(reshape(strain, (/(npol+1)**2 * 6/))), &
-                                10 + real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
-                                1e-5, 'dipole strain axial, spheroidal element')
+  call assert_comparable_real1d(1 + real(reshape(strain, (/(npol+1)**2 * 6/))), &
+                                1 + real(reshape(strain_ref, (/(npol+1)**2 * 6/))), &
+                                1e-4, 'dipole strain axial, spheroidal element')
 
 end subroutine 
 !-----------------------------------------------------------------------------------------
