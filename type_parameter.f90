@@ -6,7 +6,7 @@ module type_parameter
     use receiver_class,     only : rec_param_type
     use filtering,          only : filter_type
     use commpi,             only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
-                                   pbroadcast_dble_arr, pbarrier, pabort
+                                   pbroadcast_dble_arr, pbroadcast_log, pbarrier, pabort
     implicit none    
 
     type parameter_type
