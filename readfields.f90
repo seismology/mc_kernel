@@ -1,10 +1,18 @@
 !=========================================================================================
 module readfields
+#ifdef flag_kerner    
+    use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
+                                             myrank, id_buffer, id_netcdf, id_rotate,       &
+                                             id_load_strain, id_kdtree
+#else
     use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
+#endif                                       
+
     use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
+    
     use clocks_mod,        only            : tick
     use commpi,            only            : pabort
     use nc_routines,       only            : getgrpid, getvarid, nc_open_for_read, nc_getvar, &
@@ -788,6 +796,9 @@ function load_fw_points(this, coordinates, source_params)
                           source_params%lon, source_params%colat)
 
     allocate(nextpoint(1))
+#ifdef flag_kerner
+    iclockold = tick()
+#endif
     do ipoint = 1, npoints
         call kdtree2_n_nearest( this%fwdtree,                           &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
@@ -796,6 +807,9 @@ function load_fw_points(this, coordinates, source_params)
         
         pointid(ipoint) = nextpoint(1)%idx
     end do
+#ifdef flag_kerner
+    iclockold = tick(id=id_kdtree, since=iclockold)
+#endif
 
     load_fw_points(:,:,:) = 0.0
     
@@ -1083,6 +1097,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
     allocate(nextpoint(nnext_points))
     do ipoint = 1, npoints
+        
         call kdtree2_n_nearest( this%fwdtree, &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
                                 nn = nnext_points, &
@@ -1360,7 +1375,7 @@ function load_strain_point(sem_obj, pointid, model_param)
     real(kind=dp), allocatable      :: strain_buff(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold, status, istrainvar
+    integer                         :: iclockold_total, iclockold, status, istrainvar
     real(kind=sp)                   :: utemp(sem_obj%ndumps)
     real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
 
@@ -1370,32 +1385,46 @@ function load_strain_point(sem_obj, pointid, model_param)
         call pabort
     endif
 
+#ifdef flag_kerner
+    iclockold_total = tick()
+#endif
+
     select case(model_param)
     case('vp')
         allocate(load_strain_point(sem_obj%ndumps, 1))
-
-        !iclockold = tick()
+#ifdef flag_kerner
+        iclockold = tick()
+#endif
         status = sem_obj%buffer(1)%get(pointid, utemp)
-        !iclockold = tick(id=id_buffer, since=iclockold)
+#ifdef flag_kerner
+        iclockold = tick(id=id_buffer, since=iclockold)
+#endif
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
 
            ! Only read to last point, not further
            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-           !iclockold = tick()
+#ifdef flag_kerner
+           iclockold = tick()
+#endif
            call nc_getvar( ncid   = sem_obj%snap,           & 
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
                            values = utemp_chunk(1:gll_to_read, :)) 
 
-           !iclockold = tick(id=id_netcdf, since=iclockold)
+#ifdef flag_kerner
+           iclockold = tick(id=id_netcdf, since=iclockold)
+#endif
 
            do iread = 0, sem_obj%chunk_gll - 1
                status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
-           !iclockold = tick(id=id_buffer, since=iclockold)
+
+#ifdef flag_kerner
+           iclockold = tick(id=id_buffer, since=iclockold)
+#endif
            load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
         else
            load_strain_point(:,1) = real(utemp, kind=dp)
@@ -1406,39 +1435,49 @@ function load_strain_point(sem_obj, pointid, model_param)
 
         do istrainvar = 1, 6
 
-            if (sem_obj%strainvarid(istrainvar).eq.-1) then
-                strain_buff(:, istrainvar) = 0
-                cycle ! For monopole source which does not have this component.
-            endif
+           if (sem_obj%strainvarid(istrainvar).eq.-1) then
+               strain_buff(:, istrainvar) = 0
+               cycle ! For monopole source which does not have this component.
+           endif
 
-            !iclockold = tick()
-            status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
-            !iclockold = tick(id=id_buffer, since=iclockold)
-            
-            if (status.ne.0) then
-               start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-               
-               ! Only read to last point, not further
-               gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+#ifdef flag_kerner
+           iclockold = tick()
+#endif
+           status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
+#ifdef flag_kerner
+           iclockold = tick(id=id_buffer, since=iclockold)
+#endif
+           
+           if (status.ne.0) then
+              start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+              
+              ! Only read to last point, not further
+              gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
 
-               !iclockold = tick()
-               call nc_getvar( ncid   = sem_obj%snap,           & 
-                               varid  = sem_obj%strainvarid(istrainvar), &
-                               start  = [start_chunk, 1],       &
-                               count  = [gll_to_read, sem_obj%ndumps], &
-                               values = utemp_chunk(1:gll_to_read, :)) 
+#ifdef flag_kerner
+              iclockold = tick()
+#endif
+              call nc_getvar( ncid   = sem_obj%snap,           & 
+                              varid  = sem_obj%strainvarid(istrainvar), &
+                              start  = [start_chunk, 1],       &
+                              count  = [gll_to_read, sem_obj%ndumps], &
+                              values = utemp_chunk(1:gll_to_read, :)) 
 
-               !iclockold = tick(id=id_netcdf, since=iclockold)
-               do iread = 0, gll_to_read - 1
-                   status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
-                                                           utemp_chunk(iread+1,:))
-               end do
-               !iclockold = tick(id=id_buffer, since=iclockold)
-               strain_buff(:,istrainvar) &
-                    = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
-            else
-               strain_buff(:,istrainvar) = real(utemp, kind=dp)
-            end if
+#ifdef flag_kerner
+              iclockold = tick(id=id_netcdf, since=iclockold)
+#endif
+              do iread = 0, gll_to_read - 1
+                  status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
+                                                          utemp_chunk(iread+1,:))
+              end do
+#ifdef flag_kerner
+              iclockold = tick(id=id_buffer, since=iclockold)
+#endif
+              strain_buff(:,istrainvar) &
+                   = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
+           else
+              strain_buff(:,istrainvar) = real(utemp, kind=dp)
+           end if
 
         end do
 
@@ -1456,6 +1495,10 @@ function load_strain_point(sem_obj, pointid, model_param)
         load_strain_point(:,5) = strain_buff(:,2)
         load_strain_point(:,6) = -strain_buff(:,4)
     end select
+
+#ifdef flag_kerner
+    iclockold_total = tick(id=id_load_strain, since=iclockold_total)
+#endif
 
 end function load_strain_point
 !-----------------------------------------------------------------------------------------
