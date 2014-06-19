@@ -185,8 +185,6 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     elseif (force) then
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
-       write(lu_out,*) 'This is not implemented yet!'
-       call pabort
     elseif (single) then
        this%nsim_bwd = 1
        write(lu_out,*) 'Backword simulation was ''single'' source'
