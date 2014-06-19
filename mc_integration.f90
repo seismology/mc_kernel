@@ -20,7 +20,7 @@ module montecarlo
         procedure, pass                          :: check_montecarlo_integral
         procedure, pass                          :: initialize_montecarlo
         procedure, pass                          :: areallconverged
-        procedure, pass                          :: countnotconverged
+        procedure, pass                          :: countconverged
         procedure, pass                          :: getintegral
         procedure, pass                          :: getvariance
         procedure, pass                          :: isconverged
@@ -150,9 +150,9 @@ end function
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function countnotconverged(this, ikernels)
+function countconverged(this, ikernels)
     class(integrated_type)        :: this
-    integer                       :: countnotconverged
+    integer                       :: countconverged
     integer, optional, intent(in) :: ikernels(:)
 
     if (.not.this%isinitialized) then
@@ -161,9 +161,9 @@ function countnotconverged(this, ikernels)
     end if
 
     if (present(ikernels)) then
-       countnotconverged = count(this%converged(ikernels))
+       countconverged = count(this%converged(ikernels))
     else 
-       countnotconverged = count(this%converged)
+       countconverged = count(this%converged)
     end if
 
 end function

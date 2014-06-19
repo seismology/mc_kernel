@@ -115,8 +115,6 @@ subroutine do_slave()
        call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
        iclockold = tick(id=id_mpi, since=iclockold)
 
-
-       call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, wt%connectivity)
        ! Check the tag of the received message. If no more work to do, exit loop
        ! and return to main program
        if (mpistatus(MPI_TAG) == DIETAG) exit
@@ -126,6 +124,8 @@ subroutine do_slave()
        write(lu_out,'(A, I3, A)') ' Received task # ', itask, ', going to work'
        write(lu_out,'(A)') '***************************************************************'
        call flush(lu_out)
+
+       call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, wt%connectivity)
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
 
@@ -393,11 +393,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            end do
 
            ! Print convergence info
-           write(fmtstring,"('(I6, I6, ES10.3, A, I5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
+           write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
                            parameters%nkernel, parameters%nkernel 
-           write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                     &
-                                   int_kernel(1)%countnotconverged(), int_kernel(1)%getintegral(), &
-                                   ' +- ', sqrt(int_kernel(1)%getvariance())
+           write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
+                                   int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
+                                   int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
 
         end do ! Kernel coverged
     
