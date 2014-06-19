@@ -69,6 +69,7 @@ subroutine test( proc, text )
 
     ! Run the test
     write( *, '(2a)' ) 'Test: ', trim(text)
+    call flush(6)
 
     call proc
 
@@ -108,7 +109,7 @@ end subroutine
 !     do the actual tests.
 subroutine runtests_final
     if ( ftnunit_file_exists("ftnunit.run") ) then
-        write(6,'(/,a,/,a)') 'TEST SUMMARY', '------------'
+        write(6,'(/,/,a,/,a)') 'TEST SUMMARY', '------------'
         write(*,'(a,i5)') 'Number of failed assertions:                ', nofails
         write(*,'(a,i5)') 'Number of runs needed to complete the tests:', noruns
         call ftnunit_remove_file( "ftnunit.lst" )
@@ -138,7 +139,8 @@ subroutine runtests( testproc )
 
     if ( ftnunit_file_exists("ftnunit.run") ) then
 
-        if (noruns == 0) write(6,'(a,/,a)') 'TEST DETAILS', '------------'
+        if (noruns == 0) write(6,'(/,a,/,a)') 'TEST DETAILS', &
+                '------------------------------------------------------------------------------------------'
 
         if ( ftnunit_file_exists("ftnunit.lst") ) then
             open( newunit=lun, file = "ftnunit.lst", iostat = ierr )
@@ -154,6 +156,8 @@ subroutine runtests( testproc )
         endif
 
         noruns = noruns + 1
+
+        if (noruns /= 0) write(6,'(a,i4)') 'RUN NO', noruns
 
         call testproc
 
