@@ -5,7 +5,7 @@ module fft
   use commpi,          only      : pabort
   use, intrinsic :: iso_c_binding
   implicit none
-  include 'fftw3.f'
+  include 'fftw3.f03'
 
   private
   public :: rfft_type

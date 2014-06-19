@@ -37,6 +37,7 @@ module type_parameter
         logical                              :: source_read     = .false.
         logical                              :: filter_read     = .false.
         logical                              :: kernel_read     = .false.
+        logical                              :: deconv_stf      = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -120,6 +121,9 @@ subroutine read_parameters(this, input_file_in)
         case('POINTS_PER_MC_STEP')
            read(keyvalue, *) this%npoints_per_step
 
+        case('DECONVOLVE_STF')
+           read(keyvalue, *) this%deconv_stf
+
         case('WHAT_TO_DO')
            this%whattodo = keyvalue
 
@@ -147,6 +151,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)
   call pbroadcast_char(this%whattodo, 0)
+  call pbroadcast_log(this%deconv_stf, 0)
 
   write(lu_out,*)
   call flush(lu_out)
@@ -358,9 +363,12 @@ subroutine read_kernel(this, sem_data, filter)
 
    if (.not. master) then
        nfilter = size(filter)
-       !do ifilter = 1, nfilter
-       !    call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
-       !end do
+
+       if (this%deconv_stf) then
+          do ifilter = 1, nfilter
+              call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
+          end do
+       end if
    end if
 
    do irec = 1, this%nrec
