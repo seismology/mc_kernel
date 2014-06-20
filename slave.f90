@@ -38,7 +38,7 @@ subroutine do_slave()
     real(kind=dp)                       :: df
     real(kind=dp), allocatable          :: K_x(:,:)
     integer                             :: ielement, itask
-    character(len=64)                   :: fmtstring, fnam
+    character(len=255)                  :: fmtstring, fnam
     integer                             :: nptperstep
 
     write(lu_out,'(A)') '***************************************************************'
@@ -239,7 +239,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer,          allocatable       :: niterations(:,:)
     real(kind=dp)                       :: volume
 
-    character(len=64)                   :: fmtstring
+    character(len=256)                  :: fmtstring
     integer                             :: ielement, irec, ivertex, ikernel
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nvertices_per_elem
