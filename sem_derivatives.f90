@@ -10,6 +10,9 @@ module sem_derivatives
   public :: strain_monopole
   public :: strain_dipole
   public :: strain_quadpole
+  public :: straintrace_monopole
+  public :: straintrace_dipole
+  public :: straintrace_quadpole
   public :: axisym_gradient
   public :: dsdf_axis
   public :: f_over_s

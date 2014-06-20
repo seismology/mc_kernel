@@ -16,39 +16,44 @@ module readfields
 
     implicit none
     private
-    public                                :: semdata_type
+    public                                 :: semdata_type
 
     type meshtype
-        real(kind=sp), allocatable        :: s(:), z(:)
-        integer                           :: npoints, nelem
-        real(kind=dp), allocatable        :: theta(:)
-        integer                           :: nsurfelem
+        real(kind=sp), allocatable         :: s(:), z(:)
+        integer                            :: npoints, nelem
+        real(kind=dp), allocatable         :: theta(:)
+        integer                            :: nsurfelem
     end type
 
     type ncparamtype
-        integer                           :: ncid
-        integer                           :: snap, surf, mesh, seis  ! Group IDs
-        integer                           :: strainvarid(6)          ! Variable IDs
-        integer                           :: displvarid(3)           ! Variable IDs
-        integer                           :: seis_disp, seis_velo    ! Variable IDs
-        integer                           :: stf_varid               ! Variable IDs
-        integer                           :: fem_mesh_varid          ! Variable IDs
-        integer                           :: sem_mesh_varid          ! Variable IDs
-        integer                           :: eltype_varid            ! Variable IDs
-        integer                           :: mesh_s_varid            ! Variable IDs
-        integer                           :: mesh_z_varid            ! Variable IDs
-        integer                           :: chunk_gll
-        character(len=200)                :: meshdir
-        character(len=12)                 :: dump_type
-        integer                           :: ndumps, nseis, ngll, npol
-        integer                           :: source_shift_samples    
-        real(kind=dp)                     :: source_shift_t
-        character(len=10)                 :: source_type
-        character(len=10)                 :: excitation_type
-        real(kind=sp), allocatable        :: stf(:)
-        type(buffer_type)                 :: buffer
-        real(kind=dp)                     :: dt
-        real(kind=dp)                     :: amplitude
+        integer                            :: ncid
+        integer                            :: snap, surf, mesh, seis  ! Group IDs
+        integer                            :: strainvarid(6)          ! Variable IDs
+        integer                            :: displvarid(3)           ! Variable IDs
+        integer                            :: seis_disp, seis_velo    ! Variable IDs
+        integer                            :: stf_varid               ! Variable IDs
+        integer                            :: fem_mesh_varid          ! Variable IDs
+        integer                            :: sem_mesh_varid          ! Variable IDs
+        integer                            :: eltype_varid            ! Variable IDs
+        integer                            :: axis_varid              ! Variable IDs
+        integer                            :: mesh_s_varid            ! Variable IDs
+        integer                            :: mesh_z_varid            ! Variable IDs
+        integer                            :: chunk_gll
+        character(len=200)                 :: meshdir
+        character(len=12)                  :: dump_type
+        integer                            :: ndumps, nseis, ngll, npol
+        integer                            :: source_shift_samples    
+        real(kind=dp)                      :: source_shift_t
+        character(len=10)                  :: source_type
+        character(len=10)                  :: excitation_type
+        real(kind=sp), allocatable         :: stf(:)
+        type(buffer_type)                  :: buffer
+        real(kind=dp)                      :: dt
+        real(kind=dp)                      :: amplitude
+        real(kind=dp), public, allocatable :: G1(:,:), G1T(:,:)
+        real(kind=dp), public, allocatable :: G2(:,:), G2T(:,:)
+        real(kind=dp), public, allocatable :: G0(:)
+        real(kind=dp), public, allocatable :: gll_points(:), glj_points(:)
     end type
 
     type semdata_type
@@ -1055,7 +1060,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     integer                           :: npoints, nnext_points
     integer                           :: pointid(size(source_params))
     integer                           :: ipoint, inext_point, isim, iclockold, i, icp
-    integer                           :: corner_point_ids(4), eltype(1)
+    integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
+    logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
     real(kind=dp)                     :: corner_points(4,2)
     real(kind=dp)                     :: cps(1), cpz(1)
@@ -1161,7 +1167,25 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                     values = gll_point_ids))
             write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
-            utemp = load_strain_point_interp(this%fwd(1), gll_point_ids, this%model_param)
+            call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                    varid  = this%fwd(1)%axis_varid, &
+                                    start  = [nextpoint(inext_point)%idx], &
+                                    count  = [1], &
+                                    values = axis_int))
+
+            if (axis_int(1) == 1) then
+               axis = .true.
+            elseif (axis_int(1) == 0) then
+               axis = .false.
+            else
+               call pabort
+            endif
+
+            write(6,*) 'axis = ', axis
+
+            utemp = load_strain_point_interp(this%fwd(1), gll_point_ids, &
+                                             xi, eta, this%model_param, &
+                                             corner_points, eltype(1), axis)
 
         endif
     end do
@@ -1445,18 +1469,30 @@ end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_strain_point_interp(sem_obj, pointids, model_param)
+function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes, element_type, axis)
+
+    use sem_derivatives
+    use spectral_basis, only : lagrange_interpol_2D_td
 
     type(ncparamtype), intent(in)   :: sem_obj
     integer, intent(in)             :: pointids(0:sem_obj%npol,0:sem_obj%npol)
+    real(kind=dp), intent(in)       :: xi, eta
     character(len=*), intent(in)    :: model_param
     real(kind=dp), allocatable      :: load_strain_point_interp(:,:)
+    real(kind=dp), intent(in)       :: nodes(4,2)
+    integer, intent(in)             :: element_type
+    logical, intent(in)             :: axis
 
-    integer                         :: start_chunk, iread, gll_to_read
+    integer                         :: start_chunk, gll_to_read
     integer                         :: iclockold, status, idisplvar
-    real(kind=sp)                   :: utemp(sem_obj%ndumps, 0:sem_obj%npol, &
+    real(kind=sp)                   :: utemp(1:sem_obj%ndumps, 0:sem_obj%npol, &
                                              0:sem_obj%npol, 3)
-    real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+    real(kind=sp)                   :: strain(1:sem_obj%ndumps, 0:sem_obj%npol, &
+                                              0:sem_obj%npol, 6)
+    real(kind=sp)                   :: straintrace(1:sem_obj%ndumps, 0:sem_obj%npol, &
+                                                   0:sem_obj%npol)
+    real(kind=dp), allocatable      :: G(:,:), GT(:,:)
+    real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
     integer                         :: ipol, jpol, i
 
     write(6,*) sem_obj%dump_type
@@ -1487,21 +1523,79 @@ function load_strain_point_interp(sem_obj, pointids, model_param)
    
    
     do i = 1, sem_obj%ndumps
-        write(6,*) utemp(i,0,0,3), utemp(i,1,0,3)
+        write(665,*) utemp(i,0,0,3), utemp(i,1,0,3)
     enddo
+
+    if (axis) then
+        G  = sem_obj%G2
+        GT = sem_obj%G1T
+        col_points_xi  = sem_obj%glj_points
+        col_points_eta = sem_obj%gll_points
+    else
+        G  = sem_obj%G2
+        GT = sem_obj%G2T
+        col_points_xi  = sem_obj%gll_points
+        col_points_eta = sem_obj%gll_points
+    endif
 
     select case(model_param)
     case('vp')
-        write(6,*) 'to be implemented'
-        call pabort
+        allocate(load_strain_point_interp(sem_obj%ndumps, 1))
         ! compute straintrace
+        if (sem_obj%excitation_type == 'monopole') then
+            straintrace = straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                               col_points_eta, sem_obj%npol, &
+                                               sem_obj%ndumps, nodes, element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'dipole') then
+            straintrace = straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                             col_points_eta, sem_obj%npol, sem_obj%ndumps, &
+                                             nodes, element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'quadpole') then
+            straintrace = straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                               col_points_eta, sem_obj%npol, &
+                                               sem_obj%ndumps, nodes, element_type, axis)
+        else
+            call abort
+        endif
+        load_strain_point_interp(:, 1) &
+            = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
+                                      real(straintrace(:,:,:), kind=dp), xi, eta)
 
     case('vs')
+        allocate(load_strain_point_interp(sem_obj%ndumps, 6))
         ! compute full strain tensor
+        if (sem_obj%excitation_type == 'monopole') then
+            strain = strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                     col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                     element_type, axis)
 
-        ! voigt mapping
-        ! dsus, dpup, dzuz, dzup, dsuz, dsup
+        elseif (sem_obj%excitation_type == 'dipole') then
+            strain = strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                   col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                   element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'quadpole') then
+            strain = strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                     col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                     element_type, axis)
+        else
+            call abort
+        endif
+        
+        do i = 1, 6
+            load_strain_point_interp(:, i) &
+                = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
+                                          real(strain(:,:,:,i), kind=dp), xi, eta)
+        enddo
+
+        do i = 1, sem_obj%ndumps
+            write(666,*) strain(i,2,2,1), load_strain_point_interp(i,1)
+        enddo
+
     end select
+
     call pabort
 
 end function load_strain_point_interp
@@ -1614,6 +1708,10 @@ subroutine read_meshes(this)
                       varid = this%fwd(1)%eltype_varid)
 
         call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "axis",              &
+                      varid = this%fwd(1)%axis_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
                       name  = "mesh_S",              &
                       varid = this%fwd(1)%mesh_s_varid)
 
@@ -1691,6 +1789,10 @@ subroutine read_meshes(this)
             call getvarid(ncid  = this%bwd(1)%mesh,   &
                           name  = "eltype",              &
                           varid = this%bwd(1)%eltype_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "axis",              &
+                          varid = this%bwd(1)%axis_varid)
 
             call getvarid(ncid  = this%bwd(1)%mesh,   &
                           name  = "mesh_S",              &
@@ -1810,6 +1912,26 @@ subroutine read_meshes(this)
 
         this%G1T = transpose(this%G1)
         this%G2T = transpose(this%G2)
+
+        do isim = 1, this%nsim_fwd
+           this%fwd(isim)%gll_points = this%gll_points
+           this%fwd(isim)%glj_points = this%glj_points
+           this%fwd(isim)%G1 = this%G1
+           this%fwd(isim)%G2 = this%G2
+           this%fwd(isim)%G1T = this%G1T
+           this%fwd(isim)%G2T = this%G2T
+           this%fwd(isim)%G0 = this%G0
+        end do
+
+        do isim = 1, this%nsim_bwd
+           this%bwd(isim)%gll_points = this%gll_points
+           this%bwd(isim)%glj_points = this%glj_points
+           this%bwd(isim)%G1 = this%G1
+           this%bwd(isim)%G2 = this%G2
+           this%bwd(isim)%G1T = this%G1T
+           this%bwd(isim)%G2T = this%G2T
+           this%bwd(isim)%G0 = this%G0
+        end do
 
     endif
 
