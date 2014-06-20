@@ -78,15 +78,17 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        call pabort
     end select
 
-20  format('filterresponse_', A, 2('_', F0.6))
-    write(fnam,20) trim(filterclass), frequencies(1:2)
+    if (firstslave) then
+20     format('filterresponse_', A, 2('_', F0.6))
+       write(fnam,20) trim(filterclass), frequencies(1:2)
 
-    open(10, file=trim(fnam), action='write')
-    do ifreq = 1, nfreq
-       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
-                                   imag(this%transferfunction(ifreq))
-    end do
-    close(10)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, nfreq
+          write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
+                                      imag(this%transferfunction(ifreq))
+       end do
+       close(10)
+    end if   
 
     this%initialized = .true.
     this%stf_added = .false.
@@ -140,35 +142,37 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     
     call fft_stf%freeme()
 
-20  format('filterresponse_stf_', A, 2('_', F0.3))
-    write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
-    open(10, file=trim(fnam), action='write')
-    do ifreq = 1, this%nfreq
-       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
-                                   imag(this%transferfunction(ifreq))
-    end do
-    close(10)
-    
-21  format('stf_spectrum_', A, 2('_', F0.3))
-22  format(5(E16.8))
-    write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
+    if (firstslave) then
+20     format('filterresponse_stf_', A, 2('_', F0.3))
+       write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, this%nfreq
+          write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
+                                      imag(this%transferfunction(ifreq))
+       end do
+       close(10)
+       
+21     format('stf_spectrum_', A, 2('_', F0.3))
+22     format(5(E16.8))
+       write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
 
-    open(10, file=trim(fnam), action='write')
-    do ifreq = 1, this%nfreq
-        write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
-                                     real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
-    end do
-    close(10)
-    
-23  format('stf_', A, 2('_', F0.3))
-24  format(3(E16.8))
-    write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, this%nfreq
+           write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
+                                        real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
+       end do
+       close(10)
+       
+23     format('stf_', A, 2('_', F0.3))
+24     format(3(E16.8))
+       write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
 
-    open(10, file=trim(fnam), action='write')
-    do ifreq = 1, size(stf_fwd)
-       write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,2)
-    end do
-    close(10)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, size(stf_fwd)
+          write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,2)
+       end do
+       close(10)
+    end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
        write(*,*) 'WARNING: Filter is not vanishing fast enough for high frequencies.'

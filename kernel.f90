@@ -1,6 +1,6 @@
 !=========================================================================================
 module kernel
-use global_parameters,                    only: sp, dp, verbose, lu_out
+use global_parameters,                    only: sp, dp, verbose, lu_out, firstslave
 use filtering,                            only: filter_type
 use commpi,                               only: pabort
 implicit none
@@ -38,7 +38,7 @@ contains
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                 seis, dt, timeshift_fwd)
    use fft,       only                      : rfft_type, taperandzeropad
-   !use filtering, only                      : timeshift
+
    class(kernelspec_type)                  :: this
    character(len=32), intent(in)           :: name
    real(kind=dp), intent(in)               :: time_window(2)
@@ -136,23 +136,25 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(lu_out,*) ''
    end if
 
-   open(unit=100,file='seismogram_raw_'//trim(this%name), action='write')
-   do isample = 1, size(seis,1)
-      write(100,*) this%t(isample), seis(isample)
-   end do
-   close(100)
+   if (firstslave) then
+      open(unit=100,file='seismogram_raw_'//trim(this%name), action='write')
+      do isample = 1, size(seis,1)
+         write(100,*) this%t(isample), seis(isample)
+      end do
+      close(100)
 
-   open(unit=100,file='seismogram_'//trim(this%name), action='write')
-   do isample = 1, size(seis_filtered,1)
-      write(100,*) this%t(isample), seis_filtered(isample,1)
-   end do
-   close(100)
+      open(unit=100,file='seismogram_'//trim(this%name), action='write')
+      do isample = 1, size(seis_filtered,1)
+         write(100,*) this%t(isample), seis_filtered(isample,1)
+      end do
+      close(100)
 
-   open(unit=100,file='seismogram_cut_'//trim(this%name), action='write')
-   do isample = 1, size(this%seis,1)
-      write(100,*) t_cut(isample), this%seis(isample)
-   end do
-   close(100)
+      open(unit=100,file='seismogram_cut_'//trim(this%name), action='write')
+      do isample = 1, size(this%seis,1)
+         write(100,*) t_cut(isample), this%seis(isample)
+      end do
+      close(100)
+   end if
 
 end subroutine init
 !-------------------------------------------------------------------------------
