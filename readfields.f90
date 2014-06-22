@@ -1570,8 +1570,9 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
 
           status = sem_obj%buffer%get(pointids(ipol,jpol), ubuff(:,:))
           if (status.ne.0) then
-             start_chunk = ((pointids(ipol,jpol)-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+             start_chunk = ((pointids(ipol,jpol)) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
              write(6,*) 'start_chunk', start_chunk
+             write(6,*) 'pointid', pointids(ipol,jpol)
              
              ! Only read to last point, not further
              gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
@@ -1598,6 +1599,25 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
           endif
        enddo
     enddo
+
+    !do ipol = 0, sem_obj%npol
+    !   do jpol = 0, sem_obj%npol
+
+    !      do idisplvar = 1, 3
+
+    !          if (sem_obj%displvarid(idisplvar).eq.-1) then
+    !              utemp(:, ipol, jpol, idisplvar) = 0
+    !              cycle ! For monopole source which does not have this component.
+    !          endif
+
+    !          call check(nf90_get_var( ncid   = sem_obj%snap,           & 
+    !                                   varid  = sem_obj%displvarid(idisplvar), &
+    !                                   start  = [pointids(ipol,jpol) + 1, 1],       &
+    !                                   count  = [1, sem_obj%ndumps], &
+    !                                   values = utemp(:, ipol, jpol, idisplvar)))
+    !      enddo
+    !   enddo
+    !enddo
    
     if (axis) then
         G  = sem_obj%G2
