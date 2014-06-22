@@ -25,6 +25,9 @@ SRC_TYPE                moment
 # Component of the seismogram, should be one of [Z,N,E,R,T]
 COMPONENT               N
 
+# Resample (otherwise same sampling as in the forward run is used)
+RESAMPLE                T
+
 # number of samples in the seismograms, resampling is done in the frequency domain, 
 # length of the traces in seconds depends on the forward run
 NSAMP                   3600

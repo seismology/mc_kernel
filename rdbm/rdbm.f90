@@ -82,7 +82,8 @@ program rdbm
      T(i) = dt_out * (i - 1)
   end do
 
-  call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
+  if (parameters%resample) &
+     call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
   iclockold = tick(id=id_init, since=iclockold)
 
   do i=1, receivers%num_rec
@@ -92,11 +93,13 @@ program rdbm
      iclockold = tick(id=id_load, since=iclockold)
 
 
-     iclockold = tick()
-     call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
-                                          ntimes=sem_data%ndumps * 2), &
-                          fw_field_res)
-     iclockold = tick(id=id_resamp, since=iclockold)
+     if (parameters%resample) then
+        iclockold = tick()
+        call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
+                                             ntimes=sem_data%ndumps * 2), &
+                             fw_field_res)
+        iclockold = tick(id=id_resamp, since=iclockold)
+     endif
 
      iclockold = tick()
      write(fname,'("seis_",I0.3)') i
