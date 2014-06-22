@@ -68,8 +68,14 @@ program rdbm
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
+  if (.not. parameters%resample) then
+     parameters%nsamp = sem_data%ndumps
+     allocate(fw_field_res(parameters%nsamp, nsources))
+  else
+     allocate(fw_field_res(parameters%nsamp * 2, nsources))
+  endif
+
   allocate(fw_field(sem_data%ndumps, 1, nsources))
-  allocate(fw_field_res(parameters%nsamp * 2, nsources))
   allocate(sources(nsources))
 
   call sources(1)%read_cmtsolution()
@@ -99,6 +105,8 @@ program rdbm
                                              ntimes=sem_data%ndumps * 2), &
                              fw_field_res)
         iclockold = tick(id=id_resamp, since=iclockold)
+     else
+        fw_field_res = fw_field(:,1,:)
      endif
 
      iclockold = tick()
