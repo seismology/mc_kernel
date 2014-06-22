@@ -111,6 +111,7 @@ program rdbm
      iclockold = tick(id=id_out, since=iclockold)
   enddo
 
+  call sem_data%close_files
   call end_clock()
 
 contains

@@ -547,13 +547,25 @@ subroutine open_files(this)
     call flush(6) 
     this%files_open = .true.
 
-    do isim = 1, this%nsim_fwd
-       status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, this%ndim)
-    end do
+    !@TODO memory could be used more efficient for monopole sources in the buffers
+    if (trim(this%dump_type) == 'displ_only') then
+       do isim = 1, this%nsim_fwd
+          status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, 3)
+       end do
 
-    do isim = 1, this%nsim_bwd
-       status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, this%ndim)
-    end do
+       do isim = 1, this%nsim_bwd
+          status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, 3)
+       end do
+    else
+       do isim = 1, this%nsim_fwd
+          status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, this%ndim)
+       end do
+
+       do isim = 1, this%nsim_bwd
+          status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, this%ndim)
+       end do
+    endif
+
     call flush(lu_out)
 
 end subroutine open_files
@@ -599,8 +611,15 @@ subroutine check_consistency(this)
     character(len=12)      :: dump_type_agreed
     integer                :: ndumps_agreed, nseis_agreed, npol_agreed
     real(kind=dp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
-    real(kind=dp)          :: stf_agreed_fwd(this%fwd(1)%ndumps)
-    real(kind=dp)          :: stf_agreed_bwd(this%bwd(1)%ndumps)
+    real(kind=dp), allocatable  :: stf_agreed_fwd(:)
+    real(kind=dp), allocatable  :: stf_agreed_bwd(:)
+
+    if (this%nsim_fwd > 0) then
+       allocate(stf_agreed_fwd(this%fwd(1)%ndumps))
+    endif
+    if (this%nsim_bwd > 0) then
+       allocate(stf_agreed_bwd(this%fwd(1)%ndumps))
+    endif
 
     ! Check whether the dump_type is the same in all files
     dump_type_agreed = this%fwd(1)%dump_type
@@ -1521,8 +1540,10 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
     integer, intent(in)             :: element_type
     logical, intent(in)             :: axis
 
-    integer                         :: start_chunk, gll_to_read
+    integer                         :: start_chunk, iread, gll_to_read
     integer                         :: iclockold, status, idisplvar
+    real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
+    real(kind=sp), allocatable      :: ubuff(:,:)
     real(kind=sp)                   :: utemp(1:sem_obj%ndumps, 0:sem_obj%npol, &
                                              0:sem_obj%npol, 3)
     real(kind=sp)                   :: strain(1:sem_obj%ndumps, 0:sem_obj%npol, &
@@ -1540,30 +1561,44 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
         call pabort
     endif
 
+    allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
+    allocate(ubuff(sem_obj%ndumps, 3))
+
     ! load displacements from all GLL points
     do ipol = 0, sem_obj%npol
        do jpol = 0, sem_obj%npol
-          do idisplvar = 1, 3
 
-              if (sem_obj%displvarid(idisplvar).eq.-1) then
-                  utemp(:, ipol, jpol, idisplvar) = 0
-                  cycle ! For monopole source which does not have this component.
-              endif
+          status = sem_obj%buffer%get(pointids(ipol,jpol), ubuff(:,:))
+          if (status.ne.0) then
+             start_chunk = ((pointids(ipol,jpol)-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+             write(6,*) 'start_chunk', start_chunk
+             
+             ! Only read to last point, not further
+             gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+             do idisplvar = 1, 3
 
-              call check(nf90_get_var( ncid   = sem_obj%snap,           & 
-                                       varid  = sem_obj%displvarid(idisplvar), &
-                                       start  = [pointids(ipol,jpol) + 1, 1],       &
-                                       count  = [1, sem_obj%ndumps], &
-                                       values = utemp(:, ipol, jpol, idisplvar)))
-          enddo
+                 if (sem_obj%displvarid(idisplvar).eq.-1) then
+                     utemp(:, ipol, jpol, idisplvar) = 0
+                     cycle ! For monopole source which does not have this component.
+                 endif
+
+                 call check(nf90_get_var( ncid   = sem_obj%snap,           & 
+                                          varid  = sem_obj%displvarid(idisplvar), &
+                                          start  = [start_chunk, 1],       &
+                                          count  = [gll_to_read, sem_obj%ndumps], &
+                                          values = utemp_chunk(1:gll_to_read, :, idisplvar)))
+
+                 utemp(:,ipol,jpol, idisplvar) = utemp_chunk(pointids(ipol,jpol)-start_chunk + 2, :, idisplvar)
+             enddo
+             do iread = 0, sem_obj%chunk_gll - 1
+                 status = sem_obj%buffer%put(start_chunk + iread - 1, utemp_chunk(iread+1,:,:))
+             end do
+          else
+             utemp(:,ipol,jpol,:) = ubuff(:,:)
+          endif
        enddo
     enddo
    
-   
-    !do i = 1, sem_obj%ndumps
-    !    write(665,*) utemp(i,0,0,3), utemp(i,1,0,3)
-    !enddo
-
     if (axis) then
         G  = sem_obj%G2
         GT = sem_obj%G1T
