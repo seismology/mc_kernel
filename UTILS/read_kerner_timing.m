@@ -17,7 +17,7 @@ result.timeratio   = zeros(nproc, ntimers);
 formatSpec = '%*37s%11f%14f%14f%f%[^\n\r]';
 
 for iproc = 1:nproc
-    system(['tail -n 18 ', rundir, '/', output_files(iproc).name, ' > OUTPUT_temp'])
+    system(['tail -n 18 ', rundir, '/', output_files(iproc).name, ' > OUTPUT_temp']);
 
     fid = fopen('OUTPUT_temp', 'r');
     dataArray = textscan(fid, formatSpec, ntimers, 'Delimiter', '', 'WhiteSpace', '',  'ReturnOnError', false);

@@ -1,0 +1,115 @@
+function plot_test_results(bool_plot, descriptions)
+
+rundirs = dir('rundir*');
+
+rundirs = rundirs(bool_plot);
+
+clock(1).desc = 'FFT routines';
+clock(2).desc = 'Reading bwd field';
+clock(3).desc = 'Reading fwd field';
+clock(4).desc = 'KD-tree lookup (only fwd)';
+clock(5).desc = 'Load_strain (fwd and bwd)';
+clock(6).desc = 'NetCDF routines';
+clock(7).desc = 'Rotate fields';
+clock(8).desc = 'Buffer routines';
+clock(9).desc = 'Monte Carlo routines';
+clock(10).desc = 'Filtering and convolution';
+clock(11).desc = 'Inversion mesh routines';
+clock(12).desc = 'Kernel routines';
+clock(13).desc = 'Initialization per task';
+clock(14).desc = 'MPI communication with Master';
+
+clock(1).short = 'fft';
+clock(2).short = 'read_bwd';
+clock(3).short = 'read_fwd';
+clock(4).short = 'kdtree';
+clock(5).short = 'load_strain';
+clock(6).short = 'netcdf';
+clock(7).short = 'rotate';
+clock(8).short = 'buffer';
+clock(9).short = 'montecarlo';
+clock(10).short = 'filt_and_conv';
+clock(11).short = 'inv_mesh';
+clock(12).short = 'kernel';
+clock(13).short = 'init_per_task';
+clock(14).short = 'mpi_comm';
+
+nruns = length(rundirs);
+nclock = 14;
+for irun = 1:nruns
+    result = read_kerner_timing(rundirs(irun).name);
+    
+    for iclock =1:nclock
+        clock(iclock).ncalls(:, irun)      = result.ncalls(:,iclock);
+        clock(iclock).timepercall(:, irun) = result.timepercall(:,iclock);
+        clock(iclock).timetotal(:, irun)   = result.timetotal(:,iclock);
+        clock(iclock).timeratio(:, irun)   = result.timeratio(:,iclock);
+    end
+  
+end
+
+for iclock = 1:nclock
+    %% Time per call
+    hfig = figure('Visible', 'off');
+    hold on;
+    plot(clock(iclock).timepercall', 'o')
+    plot(mean(clock(iclock).timepercall,1), 'Linewidth', 2)
+    set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
+    xlabel('Tests')
+    ylim([0, max(max(clock(iclock).timepercall))*1.1])
+    ylabel('time per call / s')
+    
+    title(clock(iclock).desc)
+    fnam = sprintf('test_results_%s_timepercall', clock(iclock).short);
+    print('-dpng', fnam)
+    close(hfig)
+    
+    %% Number of calls
+    hfig = figure('Visible', 'off');
+    hold on;
+    plot(clock(iclock).ncalls', 'o')
+    plot(mean(clock(iclock).ncalls,1), 'Linewidth', 2)
+    set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
+    xlabel('Tests')
+    ylim([0, max(max(clock(iclock).ncalls))*1.1])
+    ylabel('Number of calls')
+    
+    title(clock(iclock).desc)
+    fnam = sprintf('test_results_%s_ncalls', clock(iclock).short);
+    print('-dpng', fnam)
+    close(hfig)
+    
+    %% Total time
+    hfig = figure('Visible', 'off');
+    hold on;
+    plot(clock(iclock).timetotal', 'o')
+    plot(mean(clock(iclock).timetotal,1), 'Linewidth', 2)
+    set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
+    xlabel('Tests')
+    ylim([0, max(max(clock(iclock).timetotal))*1.1])
+    ylabel('total time / s')
+    
+    title(clock(iclock).desc)
+    fnam = sprintf('test_results_%s_timetotal', clock(iclock).short);
+    print('-dpng', fnam)
+    close(hfig)
+    
+    
+    
+    %% Time ratio
+    hfig = figure('Visible', 'off');
+    hold on;
+    plot(clock(iclock).timeratio' * 100, 'o')
+    plot(mean(clock(iclock).timeratio * 100, 1), 'Linewidth', 2)
+    set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
+    xlabel('Tests')
+    ylim([0, 100])
+    ylabel('ratio of total time in %')
+    
+    title(clock(iclock).desc)
+    fnam = sprintf('test_results_%s_timeratio', clock(iclock).short);
+    print('-dpng', fnam)
+    close(hfig)
+    
+   
+end
