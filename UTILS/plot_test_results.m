@@ -1,6 +1,6 @@
 function plot_test_results(bool_plot, descriptions)
 
-rundirs = dir('rundir*');
+rundirs = dir('test_*');
 
 rundirs = rundirs(bool_plot);
 
@@ -47,6 +47,50 @@ for irun = 1:nruns
     end
   
 end
+
+%% Plot ratios of most important parts
+hfig = figure('Visible', 'off');
+hold on;
+plot(mean(clock(1).timeratio*100,1), 'k',   'LineWidth', 2)  % FFT
+plot(mean(clock(6).timeratio*100,1), 'b--', 'LineWidth', 2)  % NetCDF
+plot(mean(clock(8).timeratio*100,1), 'b-.',   'LineWidth', 2)  % Buffer
+plot(mean(clock(8).timeratio*100,1)+ ...
+     mean(clock(6).timeratio*100,1), 'b',   'LineWidth', 2)  % Buffer
+plot(mean(clock(10).timeratio*100,1), 'r',  'LineWidth', 2) % Filter and Convolution
+
+legend({'FFT calls', 'NetCDF calls', 'Buffer calls', 'NetCDF + Buffer', 'Filtering and convolution'}, ...
+        'Location', 'NorthWest')
+set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
+xlabel('Tests')
+ylim([0, 100])
+ylabel('ratio of total time in %')
+title('Ratio of most important program parts')
+fnam = sprintf('test_results_comparison_ratio');
+print('-dpng', fnam)
+close(hfig)
+
+%% Total time of most important parts
+hfig = figure('Visible', 'off');
+hold on;
+plot(sum(clock(1).timetotal,1), 'k',   'LineWidth', 2)  % FFT
+plot(sum(clock(6).timetotal,1), 'b--', 'LineWidth', 2)  % NetCDF
+plot(sum(clock(8).timetotal,1), 'b-.',   'LineWidth', 2)  % Buffer
+plot(sum(clock(8).timetotal,1)+ ...
+     sum(clock(6).timetotal,1), 'b',   'LineWidth', 2)  % Buffer
+plot(sum(clock(10).timetotal,1), 'r',  'LineWidth', 2) % Filter and Convolution
+
+legend({'FFT calls', 'NetCDF calls', 'Buffer calls', 'NetCDF + Buffer', 'Filtering and convolution'}, ...
+        'Location', 'NorthWest')
+set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
+xlabel('Tests')
+% ylim([0, 100])
+ylabel('total time in s')
+title('Total time of most important program parts')
+fnam = sprintf('test_results_comparison_totaltime');
+print('-dpng', fnam)
+close(hfig)
+
+%% More plots
 
 for iclock = 1:nclock
     %% Time per call
@@ -113,3 +157,6 @@ for iclock = 1:nclock
     
    
 end
+
+
+
