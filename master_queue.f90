@@ -23,9 +23,9 @@ subroutine init_queue(ntasks)
 ! the number of tasks is fixed here
 
   use work_type_mod, only    : wt
-  integer, intent(out)  :: ntasks
-  integer               :: itask, nelems, iel
-  character(len=64)     :: fmtstring
+  integer, intent(out)      :: ntasks
+  integer                   :: itask, nelems, iel
+  character(len=64)         :: fmtstring
   
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
@@ -109,7 +109,6 @@ subroutine get_next_task(itask)
 
   allocate(ivertex(inv_mesh%nvertices_per_elem))
 
-  !wt%ielements = elems_in_task(itask, :)
   wt%itask = itask
 
   do iel = 1, parameters%nelems_per_task
@@ -120,9 +119,6 @@ subroutine get_next_task(itask)
       wt%vertices(:, ivertex) = inv_mesh%get_element(ielement)
       wt%connectivity(:, iel) = ivertex
   end do
-
-  !wt%ntotal_kernel = tasks(itask)
-  !wt%ndimensions = 10
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -137,7 +133,6 @@ subroutine extract_receive_buffer(itask, irank)
 
   ! extract from receive buffer
   do iel = 1, parameters%nelems_per_task
-      !ielement = wt%ielements(iel)
       ielement = elems_in_task(itask, iel)
       if (ielement.eq.-1) cycle
       do ivertex = 1, inv_mesh%nvertices_per_elem
