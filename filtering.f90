@@ -28,10 +28,17 @@ module filtering
        procedure, pass   :: get_transferfunction
    end type
 
-   interface timeshift
-      module procedure   :: timeshift_1d
-      module procedure   :: timeshift_md
-   end interface
+   type timeshift_type
+       complex(kind=dp), allocatable  :: shift_fd(:) !< Array with complex multiplicators 
+                                                     !! to apply the timeshift
+       logical                        :: isinitialized = .false.
+       contains
+       procedure, pass   :: init
+       procedure, pass   :: timeshift_1d
+       procedure, pass   :: timeshift_md
+       procedure, pass   :: freeme
+       generic           :: apply => timeshift_1d, timeshift_md
+   end type
 
 contains
 
@@ -306,47 +313,62 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-!> Apply a timeshift of dtshift on the frequency domain traces in field
-subroutine timeshift_md(field, freq, dtshift)
-
-   complex(kind=dp), intent(inout)  :: field(:,:,:) !< Frequency domain traces to apply 
-                                                   !! time shift on. 
-                                                   !! Dimension: nfreq x ndim x ntraces
+!> Init a timeshift object
+subroutine init(this, freq, dtshift)
+   class(timeshift_type)            :: this
    real(kind=dp),    intent(in)     :: freq(:)     !< 1D array with the frequencies of 
                                                    !! the entries in field
                                                    !! Dimension: nfreq
    real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
-   
-   complex(kind=dp), allocatable    :: shift_fd(:)
 
-   allocate( shift_fd(size(field,1)) )
-   shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
+   allocate(this%shift_fd(size(freq,1)) )
+   this%shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
+   this%isinitialized = .true.
 
-   field(:,:,:) = mult3d_1d(field, shift_fd)
+
+end subroutine init
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Apply a timeshift of dtshift on the frequency domain traces in field
+subroutine timeshift_md(this, field)
+   class(timeshift_type)            :: this
+   complex(kind=dp), intent(inout)  :: field(:,:,:) !< Frequency domain traces to apply 
+                                                   !! time shift on. 
+                                                   !! Dimension: nfreq x ndim x ntraces
+   if (this%isinitialized) then
+     field(:,:,:) = mult3d_1d(field, this%shift_fd)
+   else
+     write(*,*) 'Timeshift is not initialized yet!'
+     call pabort()
+   end if
 
 end subroutine timeshift_md
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> Apply a timeshift of dtshift on the frequency domain traces in field
-subroutine timeshift_1d(field, freq, dtshift)
-
+subroutine timeshift_1d(this, field)
+   class(timeshift_type)            :: this
    complex(kind=dp), intent(inout)  :: field(:,:)  !< Frequency domain traces to apply 
                                                    !! time shift on. 
                                                    !! Dimension: nfreq x ntraces
-   real(kind=dp),    intent(in)     :: freq(:)     !< 1D array with the frequencies of 
-                                                   !! the entries in field
-                                                   !! Dimension: nfreq
-   real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
-   
-   complex(kind=dp), allocatable    :: shift_fd(:)
-
-   allocate( shift_fd(size(field,1)) )
-   shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
-
-   field(:,:) = mult2d_1d(field, shift_fd)
+   if (this%isinitialized) then
+     field(:,:) = mult2d_1d(field, this%shift_fd)
+   else
+     write(*,*) 'Timeshift is not initialized yet!'
+     call pabort()
+   end if
 
 end subroutine timeshift_1d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Delete this timeshift object
+subroutine freeme(this)
+   class(timeshift_type)           :: this
+   deallocate(this%shift_fd)
+end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------!

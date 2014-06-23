@@ -218,7 +218,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
     use fft,                         only: rfft_type, taperandzeropad
-    use filtering,                   only: timeshift
+    use filtering,                   only: timeshift_type
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
     use clocks_mod,                  only: tick
 
@@ -227,6 +227,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     type(semdata_type),             intent(in)    :: sem_data
     type(rfft_type),                intent(in)    :: fft_data
     type(slave_result_type)                       :: slave_result
+    type(timeshift_type)                          :: timeshift_fwd, timeshift_bwd
 
     type(integrated_type), allocatable  :: int_kernel(:)
 
@@ -281,6 +282,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(niterations(parameters%nkernel, nelements))
     niterations = 0
 
+    call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
+    call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+    
+
     !write(*,*) '***************************************************************'
     !write(*,*) ' Start loop over elements'
     !write(*,*) '***************************************************************'
@@ -323,7 +328,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            ! Timeshift forward field
            ! Not necessary, if STF is deconvolved
            if (.not.parameters%deconv_stf) then
-              call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
+              call timeshift_fwd%apply(fw_field_fd)
               iclockold = tick(id=id_filter_conv, since=iclockold)
            end if
 
@@ -348,7 +353,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               ! Timeshift backward field
               ! Not necessary, if STF is deconvolved
               if (.not.parameters%deconv_stf) then
-                 call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
+                 call timeshift_bwd%apply(bw_field_fd)
               end if
 
               ! Convolve forward and backward fields
@@ -420,6 +425,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     end do ! ielement
 
+    call timeshift_fwd%freeme()
+    call timeshift_bwd%freeme()
 end function slave_work
 !=========================================================================================
 
