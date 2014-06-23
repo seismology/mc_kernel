@@ -26,6 +26,7 @@ module type_parameter
         character(len=1)                     :: component
         character(len=4)                     :: model_param
         character(len=32)                    :: whattodo
+        character(len=32)                    :: fftw_plan = 'MEASURE'
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
         integer                              :: nelems_per_task
@@ -124,6 +125,9 @@ subroutine read_parameters(this, input_file_in)
         case('DECONVOLVE_STF')
            read(keyvalue, *) this%deconv_stf
 
+        case('FFTW_PLAN')
+           read(keyvalue, *) this%fftw_plan
+
         case('WHAT_TO_DO')
            this%whattodo = keyvalue
 
@@ -150,8 +154,9 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)
-  call pbroadcast_char(this%whattodo, 0)
   call pbroadcast_log(this%deconv_stf, 0)
+  call pbroadcast_char(this%fftw_plan, 0)
+  call pbroadcast_char(this%whattodo, 0)
 
   write(lu_out,*)
   call flush(lu_out)

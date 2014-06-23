@@ -77,7 +77,8 @@ subroutine do_slave()
     write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
-    call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, measure=.true.)
+    call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, &
+                       fftw_plan=parameters%fftw_plan)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()
@@ -245,9 +246,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: nvertices_per_elem
     integer                             :: iclockold
     integer                             :: ndim
+    
+    iclockold = tick()
 
     ndim = sem_data%get_ndim()
-    iclockold = tick()
     nptperstep = parameters%npoints_per_step
     ndumps = sem_data%ndumps
     ntimes = fft_data%get_ntimes()
@@ -315,7 +317,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            iclockold = tick(id=id_fwd, since=iclockold)
            
            ! FFT of forward field
-           iclockold = tick()
            call fft_data%rfft( taperandzeropad(fw_field, ntimes), fw_field_fd )
            iclockold = tick(id=id_fft, since=iclockold)
 
@@ -340,7 +341,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               bw_field = sem_data%load_bw_points( random_points, parameters%receiver(irec) )
               iclockold = tick(id=id_bwd, since=iclockold)
 
-              ! FFT of forward field
+              ! FFT of backward field
               call fft_data%rfft( taperandzeropad(bw_field, ntimes), bw_field_fd )
               iclockold = tick(id=id_fft, since=iclockold)
 
@@ -366,7 +367,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
                  iclockold = tick(id=id_filter_conv, since=iclockold)
 
-                 ! Backward FFT
+                 ! iFFT of multiplied spectra
                  call fft_data%irfft(conv_field_fd_filt, conv_field)
                  iclockold = tick(id=id_fft, since=iclockold)
 
@@ -399,8 +400,16 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                                    int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
                                    int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
 
-        end do ! Kernel coverged
+        end do ! End of Monte Carlo loop
     
+        if (any(niterations(:, ielement)>parameters%max_iter)) then
+           fmtstring = "('Max number of iterations reached. ', I5 , ' kernels were not converged.')"
+           write(lu_out, fmtstring) parameters%nkernel - int_kernel(1)%countconverged()
+        else
+           fmtstring = "('All kernels converged after', I5, ' iterations')"
+           write(lu_out, fmtstring) maxval(niterations(:, ielement))
+        end if
+
 
         do ivertex = 1, inv_mesh%nvertices_per_elem
             slave_result%kernel_values(:, ivertex, ielement) = int_kernel(ivertex)%getintegral()
