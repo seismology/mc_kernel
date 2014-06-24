@@ -483,7 +483,12 @@ function efficiency(this)
     class(buffer_type)  :: this
     real(kind=sp)       :: efficiency
   
-    efficiency = real(this%nhit)/real(this%naccess)
+    if (this%naccess > 0) then
+       efficiency = real(this%nhit) / real(this%naccess)
+    else
+       efficiency = real(this%nhit)
+    endif
+
 end function
 !-----------------------------------------------------------------------------------------
 

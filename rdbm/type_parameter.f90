@@ -20,6 +20,7 @@ module type_parameter
       character(len=8)                      :: receiver_file_type
       character(len=1)                      :: component
       integer                               :: nsim_fwd
+      logical                               :: resample
       integer                               :: nsamp
       integer                               :: buffer_size
       integer                               :: verbose
@@ -71,6 +72,9 @@ subroutine read_parameters(this, input_file_in)
 
      case('SIM_DIR')
         this%sim_dir = keyvalue
+
+     case('RESAMPLE')
+        read(keyvalue, *) this%resample
 
      case('NSAMP')
         read(keyvalue, *) this%nsamp

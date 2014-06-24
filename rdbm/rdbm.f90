@@ -9,6 +9,7 @@ program rdbm
   use type_parameter
   use receivers_rdbm
   use fft, only : taperandzeropad
+  use clocks_mod
 
   implicit none
 
@@ -29,8 +30,13 @@ program rdbm
   real(kind=dp), allocatable          :: fw_field_res(:,:)
   integer                             :: nsources
 
+  integer                             :: iclockold
+
   real(kind=dp), dimension(:), allocatable      :: T
   real(kind=dp)                                 :: dt_out
+
+  call start_clock()
+  iclockold = tick()
 
   call parameters%read_parameters('inparam_basic')
 
@@ -62,8 +68,14 @@ program rdbm
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
+  if (.not. parameters%resample) then
+     parameters%nsamp = sem_data%ndumps
+     allocate(fw_field_res(parameters%nsamp, nsources))
+  else
+     allocate(fw_field_res(parameters%nsamp * 2, nsources))
+  endif
+
   allocate(fw_field(sem_data%ndumps, 1, nsources))
-  allocate(fw_field_res(parameters%nsamp * 2, nsources))
   allocate(sources(nsources))
 
   call sources(1)%read_cmtsolution()
@@ -76,23 +88,39 @@ program rdbm
      T(i) = dt_out * (i - 1)
   end do
 
-  call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
+  if (parameters%resample) &
+     call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
+  iclockold = tick(id=id_init, since=iclockold)
 
   do i=1, receivers%num_rec
+     iclockold = tick()
      fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
                                              parameters%component)
+     iclockold = tick(id=id_load, since=iclockold)
 
-     call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
-                                          ntimes=sem_data%ndumps * 2), &
-                          fw_field_res)
 
+     if (parameters%resample) then
+        iclockold = tick()
+        call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
+                                             ntimes=sem_data%ndumps * 2), &
+                             fw_field_res)
+        iclockold = tick(id=id_resamp, since=iclockold)
+     else
+        fw_field_res = fw_field(:,1,:)
+     endif
+
+     iclockold = tick()
      write(fname,'("seis_",I0.3)') i
      open(newunit=lu_seis, file=fname)
      do j = 1, parameters%nsamp
         write(lu_seis,*) T(j), fw_field_res(j,:)
      enddo
      close(lu_seis)
+     iclockold = tick(id=id_out, since=iclockold)
   enddo
+
+  call sem_data%close_files
+  call end_clock()
 
 contains
 
@@ -118,18 +146,10 @@ subroutine start_clock
 
   call clocks_init(0)
 
-  id_fft         = clock_id('FFT routines')
-  id_fwd         = clock_id('Reading fwd field')
-  id_netcdf      = clock_id(' - NetCDF routines')
-  id_rotate      = clock_id(' - Rotate fields')
-  id_buffer      = clock_id(' - Buffer routines')
-  id_bwd         = clock_id('Reading bwd field')
-  id_mc          = clock_id('Monte Carlo routines')
-  id_filter_conv = clock_id('Filtering and convolution')
-  id_inv_mesh    = clock_id('Inversion mesh routines')
-  id_kernel      = clock_id('Kernel routines')
-  id_init        = clock_id('Initialization per task')
-  id_mpi         = clock_id('MPI communication with Master')
+  id_init   = clock_id('initialization')
+  id_load   = clock_id('loading seismograms from file')
+  id_resamp = clock_id('resampling')
+  id_out    = clock_id('output')
 
 end subroutine start_clock
 !-----------------------------------------------------------------------------------------

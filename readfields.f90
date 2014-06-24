@@ -12,7 +12,6 @@ module readfields
     use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
-    
     use clocks_mod,        only            : tick
     use commpi,            only            : pabort
     use nc_routines,       only            : getgrpid, getvarid, nc_open_for_read, nc_getvar, &
@@ -24,37 +23,44 @@ module readfields
 
     implicit none
     private
-    public                                :: semdata_type
+    public                                 :: semdata_type
 
     type meshtype
-        real(kind=sp), allocatable        :: s(:), z(:)
-        integer                           :: npoints, nelem
-        real(kind=dp), allocatable        :: theta(:)
-        integer                           :: nsurfelem
+        real(kind=sp), allocatable         :: s(:), z(:)
+        integer                            :: npoints, nelem
+        real(kind=dp), allocatable         :: theta(:)
+        integer                            :: nsurfelem
     end type
 
     type ncparamtype
-        integer                           :: ncid
-        integer                           :: snap, surf, mesh, seis  ! Group IDs
-        integer                           :: strainvarid(6)          ! Variable IDs
-        integer                           :: displvarid(3)           ! Variable IDs
-        integer                           :: seis_disp, seis_velo    ! Variable IDs
-        integer                           :: stf_varid               ! Variable IDs
-        integer                           :: fem_mesh_varid          ! Variable IDs
-        integer                           :: sem_mesh_varid          ! Variable IDs
-        integer                           :: eltype_varid            ! Variable IDs
-        integer                           :: mesh_s_varid            ! Variable IDs
-        integer                           :: mesh_z_varid            ! Variable IDs
-        integer                           :: chunk_gll
-        character(len=200)                :: meshdir
-        character(len=12)                 :: dump_type
-        integer                           :: ndumps, nseis, ngll, npol
-        integer                           :: source_shift_samples    
-        real(kind=dp)                     :: source_shift_t
-        real(kind=sp), allocatable        :: stf(:)
-        type(buffer_type), allocatable    :: buffer(:)
-        real(kind=dp)                     :: dt
-        real(kind=dp)                     :: amplitude
+        integer                            :: ncid
+        integer                            :: snap, surf, mesh, seis  ! Group IDs
+        integer                            :: strainvarid(6)          ! Variable IDs
+        integer                            :: displvarid(3)           ! Variable IDs
+        integer                            :: seis_disp, seis_velo    ! Variable IDs
+        integer                            :: stf_varid               ! Variable IDs
+        integer                            :: fem_mesh_varid          ! Variable IDs
+        integer                            :: sem_mesh_varid          ! Variable IDs
+        integer                            :: eltype_varid            ! Variable IDs
+        integer                            :: axis_varid              ! Variable IDs
+        integer                            :: mesh_s_varid            ! Variable IDs
+        integer                            :: mesh_z_varid            ! Variable IDs
+        integer                            :: chunk_gll
+        character(len=200)                 :: meshdir
+        character(len=12)                  :: dump_type
+        integer                            :: ndumps, nseis, ngll, npol
+        integer                            :: source_shift_samples    
+        real(kind=dp)                      :: source_shift_t
+        character(len=10)                  :: source_type
+        character(len=10)                  :: excitation_type
+        real(kind=sp), allocatable         :: stf(:)
+        type(buffer_type)                  :: buffer
+        real(kind=dp)                      :: dt
+        real(kind=dp)                      :: amplitude
+        real(kind=dp), public, allocatable :: G1(:,:), G1T(:,:)
+        real(kind=dp), public, allocatable :: G2(:,:), G2T(:,:)
+        real(kind=dp), public, allocatable :: G0(:)
+        real(kind=dp), public, allocatable :: gll_points(:), glj_points(:)
     end type
 
     type semdata_type
@@ -532,21 +538,25 @@ subroutine open_files(this)
     call flush(6) 
     this%files_open = .true.
 
-    do isim = 1, this%nsim_fwd
-        allocate(this%fwd(isim)%buffer(this%ndim))
-        do istrainvar = 1, this%ndim
-           status = this%fwd(isim)%buffer(istrainvar)%init(this%buffer_size,     &
-                                                           this%fwd(isim)%ndumps)
-        end do
-    end do
+    !@TODO memory could be used more efficient for monopole sources in the buffers
+    if (trim(this%dump_type) == 'displ_only') then
+       do isim = 1, this%nsim_fwd
+          status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, 3)
+       end do
 
-    do isim = 1, this%nsim_bwd
-        allocate(this%bwd(isim)%buffer(this%ndim))
-        do istrainvar = 1, this%ndim
-           status = this%bwd(isim)%buffer(istrainvar)%init(this%buffer_size,     &
-                                                           this%bwd(isim)%ndumps)
-        end do
-    end do
+       do isim = 1, this%nsim_bwd
+          status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, 3)
+       end do
+    else
+       do isim = 1, this%nsim_fwd
+          status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, this%ndim)
+       end do
+
+       do isim = 1, this%nsim_bwd
+          status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, this%ndim)
+       end do
+    endif
+
     call flush(lu_out)
 
 end subroutine open_files
@@ -561,23 +571,19 @@ subroutine close_files(this)
        status = nf90_close(this%fwd(isim)%ncid)
        if (verbose>0) then
           write(lu_out,'(A,I1,A,F9.6)') ' Buffer efficiency fwd(', isim, '): ',  &
-                                   this%fwd(isim)%buffer(1)%efficiency()
+                                   this%fwd(isim)%buffer%efficiency()
        end if
-       do istrainvar = 1, this%ndim
-           status = this%fwd(isim)%buffer(istrainvar)%freeme()
-       end do
+       status = this%fwd(isim)%buffer%freeme()
     end do
     deallocate(this%fwd)
 
     do isim = 1, this%nsim_bwd
        status = nf90_close(this%bwd(isim)%ncid)
        if (verbose>0) then
-       write(lu_out,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
-                           this%bwd(isim)%buffer(1)%efficiency()
+          write(lu_out,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
+                              this%bwd(isim)%buffer%efficiency()
        end if
-       do istrainvar = 1, this%ndim
-           status = this%bwd(isim)%buffer(istrainvar)%freeme()
-       end do
+       status = this%bwd(isim)%buffer%freeme()
     end do
     deallocate(this%bwd)
 
@@ -596,8 +602,15 @@ subroutine check_consistency(this)
     character(len=12)      :: dump_type_agreed
     integer                :: ndumps_agreed, nseis_agreed, npol_agreed
     real(kind=dp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
-    real(kind=dp)          :: stf_agreed_fwd(this%fwd(1)%ndumps)
-    real(kind=dp)          :: stf_agreed_bwd(this%bwd(1)%ndumps)
+    real(kind=dp), allocatable  :: stf_agreed_fwd(:)
+    real(kind=dp), allocatable  :: stf_agreed_bwd(:)
+
+    if (this%nsim_fwd > 0) then
+       allocate(stf_agreed_fwd(this%fwd(1)%ndumps))
+    endif
+    if (this%nsim_bwd > 0) then
+       allocate(stf_agreed_bwd(this%fwd(1)%ndumps))
+    endif
 
     ! Check whether the dump_type is the same in all files
     dump_type_agreed = this%fwd(1)%dump_type
@@ -647,28 +660,30 @@ subroutine check_consistency(this)
     this%dt = dt_agreed
 
     ! Check whether npol is the same in all files
-    npol_agreed = this%fwd(1)%npol
+    if (trim(this%dump_type) == 'displ_only') then
+        npol_agreed = this%fwd(1)%npol
 
-    fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
-                '  in simulation ", I1, "(",I7,") vs ", I7, " in the others")' 
-    do isim = 1, this%nsim_fwd
-       if (npol_agreed.ne.this%fwd(isim)%npol) then
-          write(*,fmtstring) 'npol', isim, npol_agreed, this%fwd(isim)%npol
-          call pabort
-       end if
-    end do
+        fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
+                    '  in simulation ", I1, " (", I7,") vs ", I7, " in the others")' 
+        do isim = 1, this%nsim_fwd
+           if (npol_agreed.ne.this%fwd(isim)%npol) then
+              write(*,fmtstring) 'npol', isim, npol_agreed, this%fwd(isim)%npol
+              call pabort
+           end if
+        end do
 
-    fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
-                '  in simulation ", I1, "(",I7,"s) vs ", I7, " in the forward case")' 
+        fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
+                    '  in simulation ", I1, "(",I7,"s) vs ", I7, " in the forward case")' 
 
-    do isim = 1, this%nsim_bwd
-       if (npol_agreed.ne.this%bwd(isim)%npol) then
-          write(*,fmtstring) 'npol', isim, npol_agreed, this%bwd(isim)%npol
-          call pabort
-       end if
-    end do
+        do isim = 1, this%nsim_bwd
+           if (npol_agreed.ne.this%bwd(isim)%npol) then
+              write(*,fmtstring) 'npol', isim, npol_agreed, this%bwd(isim)%npol
+              call pabort
+           end if
+        end do
 
-    this%npol = npol_agreed
+        this%npol = npol_agreed
+    endif
 
     ! Check whether the number of dumps (time samples) is the same in all files
     ndumps_agreed = this%fwd(1)%ndumps
@@ -1063,7 +1078,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     integer                           :: npoints, nnext_points
     integer                           :: pointid(size(source_params))
     integer                           :: ipoint, inext_point, isim, iclockold, i, icp
-    integer                           :: corner_point_ids(4), eltype(1)
+    integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
+    logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
     real(kind=dp)                     :: corner_points(4,2)
     real(kind=dp)                     :: cps(1), cpz(1)
@@ -1081,6 +1097,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     else
         nnext_points = 1
     endif
+
+    load_fw_points_rdbm(:,:,:) = 0.0
     
     npoints = size(source_params)
 
@@ -1097,7 +1115,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
     allocate(nextpoint(nnext_points))
     do ipoint = 1, npoints
-        
         call kdtree2_n_nearest( this%fwdtree, &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
                                 nn = nnext_points, &
@@ -1169,196 +1186,227 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                     count  = [this%npol+1, this%npol+1, 1], &
                                     values = gll_point_ids))
             write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
+
+            call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                    varid  = this%fwd(1)%axis_varid, &
+                                    start  = [nextpoint(inext_point)%idx], &
+                                    count  = [1], &
+                                    values = axis_int))
+
+            if (axis_int(1) == 1) then
+               axis = .true.
+            elseif (axis_int(1) == 0) then
+               axis = .false.
+            else
+               call pabort
+            endif
+
+            write(6,*) 'axis = ', axis
+
+
         endif
-    end do
-
-    load_fw_points_rdbm(:,:,:) = 0.0
     
-    do ipoint = 1, npoints
-    
-       if (this%model_param == 'vp') then
-          select case(component)
-          case('Z')
-               isim = 1
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+        if (this%model_param == 'vp') then
+            select case(component)
+            case('Z')
+                 isim = 1
+                 if (trim(this%dump_type) == 'displ_only') then
+                     utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                                                      xi, eta, this%model_param, &
+                                                      corner_points, eltype(1), axis)
+                 else
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                 endif
+                 load_fw_points_rdbm(:, :, ipoint) = utemp
 
-               load_fw_points_rdbm(:, :, ipoint) = utemp
+            case('R')
+                 isim = 2
+                 if (trim(this%dump_type) == 'displ_only') then
+                     utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                                                      xi, eta, this%model_param, &
+                                                      corner_points, eltype(1), axis)
+                 else
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                 endif
+                 load_fw_points_rdbm(:, :, ipoint) = utemp 
 
-          case('R')
-               isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+            case('T')
+                 load_fw_points_rdbm(:, :, ipoint) = 0
 
-               load_fw_points_rdbm(:, :, ipoint) = utemp 
+            case('N')
+                 isim = 2
+                 if (trim(this%dump_type) == 'displ_only') then
+                     utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                                                      xi, eta, this%model_param, &
+                                                      corner_points, eltype(1), axis)
+                 else
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                 endif
 
-          case('T')
-               load_fw_points_rdbm(:, :, ipoint) = 0
+                 load_fw_points_rdbm(:, :, ipoint) = &
+                         - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1)
 
-          case('N')
-               isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+            case('E')
+                 isim = 2
+                 if (trim(this%dump_type) == 'displ_only') then
+                     utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                                                      xi, eta, this%model_param, &
+                                                      corner_points, eltype(1), axis)
+                 else
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                 endif
 
-               load_fw_points_rdbm(:, :, ipoint) = &
-                       - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+                 load_fw_points_rdbm(:, :, ipoint) = &
+                         utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
 
-          case('E')
-               isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+            case default
+                 write(6,*) 'component "', component, '" unknown or not yet implemented'
+                 call pabort
+            end select
+        elseif (this%model_param == 'vs') then
+            select case(component)
+            case('Z')
+                 isim = 1
+                 if (trim(this%dump_type) == 'displ_only') then
+                     utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                                                      xi, eta, this%model_param, &
+                                                      corner_points, eltype(1), axis)
+                 else
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                 endif
 
-               load_fw_points_rdbm(:, :, ipoint) = &
-                       utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+                 ! rotate source mt to global cartesian system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                                  source_params(ipoint)%mij_voigt, &
+                                  source_params(ipoint)%lon, &
+                                  source_params(ipoint)%colat)
 
-          case default
-               write(6,*) 'component "', component, '" unknown or not yet implemented'
-               call pabort
-          end select
-       elseif (this%model_param == 'vs') then
-          select case(component)
-          case('Z')
-               isim = 1
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+                 ! rotate source mt to receiver cartesian system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                                  mij_buff, reci_source_params%lon, reci_source_params%colat)
 
-               ! rotate source mt to global cartesian system
-               mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
-                                source_params(ipoint)%mij_voigt, &
-                                source_params(ipoint)%lon, &
-                                source_params(ipoint)%colat)
+                 ! rotate source mt to receiver s,phi,z system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
 
-               ! rotate source mt to receiver cartesian system
-               mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                mij_buff, &
-                                reci_source_params%lon, &
-                                reci_source_params%colat)
+                 mij_buff = mij_buff / this%fwd(isim)%amplitude
 
-               ! rotate source mt to receiver s,phi,z system
-               mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+                 load_fw_points_rdbm(:, :, ipoint) = 0
+                 
+                 do i = 1, 3
+                    load_fw_points_rdbm(:, 1, ipoint) = &
+                          load_fw_points_rdbm(:, 1, ipoint) + mij_buff(i) * utemp(:,i)
+                 enddo 
 
-               mij_buff = mij_buff / this%fwd(isim)%amplitude
+                 ! components 4-6 need a factor of two because of voigt mapping
+                 ! without factor of two in the strain
+                 i = 5
+                 load_fw_points_rdbm(:, 1, ipoint) = &
+                       load_fw_points_rdbm(:, 1, ipoint) + 2 * mij_buff(i) * utemp(:,i)
 
-               load_fw_points_rdbm(:, :, ipoint) = 0
-               
-               do i = 1, 3
-                  load_fw_points_rdbm(:, 1, ipoint) = &
-                        load_fw_points_rdbm(:, 1, ipoint) &
-                            + mij_buff(i) * utemp(:,i)
-               enddo 
+            case('N')
+                 isim = 2
+                 if (trim(this%dump_type) == 'displ_only') then
+                     utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                                                      xi, eta, this%model_param, &
+                                                      corner_points, eltype(1), axis)
+                 else
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                 endif
 
-               ! components 4-6 need a factor of two because of voigt mapping
-               ! without factor of two in the strain
-               i = 5
-               load_fw_points_rdbm(:, 1, ipoint) = &
-                     load_fw_points_rdbm(:, 1, ipoint) &
-                         + 2 * mij_buff(i) * utemp(:,i)
+                 ! rotate source mt to global cartesian system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                                  source_params(ipoint)%mij_voigt, &
+                                  source_params(ipoint)%lon, &
+                                  source_params(ipoint)%colat)
 
-          case('N')
-               isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+                 ! rotate source mt to receiver cartesian system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                                  mij_buff, reci_source_params%lon, reci_source_params%colat)
 
-               ! rotate source mt to global cartesian system
-               mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
-                                source_params(ipoint)%mij_voigt, &
-                                source_params(ipoint)%lon, &
-                                source_params(ipoint)%colat)
+                 ! rotate source mt to receiver s,phi,z system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
 
-               ! rotate source mt to receiver cartesian system
-               mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                mij_buff, &
-                                reci_source_params%lon, &
-                                reci_source_params%colat)
+                 mij_buff = mij_buff / this%fwd(isim)%amplitude
 
-               ! rotate source mt to receiver s,phi,z system
-               mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+                 load_fw_points_rdbm(:, :, ipoint) = 0
 
-               mij_buff = mij_buff / this%fwd(isim)%amplitude
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
+                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
+                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
+                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
+                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
+                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
+                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+                 
+                 !@TODO not sure why we need the - sign here. Might be because N
+                 !      is in negative theta direction
+                 load_fw_points_rdbm(:, 1, ipoint) = - load_fw_points_rdbm(:, 1, ipoint)
 
-               load_fw_points_rdbm(:, :, ipoint) = 0
+            case('E')
+                 isim = 2
+                 if (trim(this%dump_type) == 'displ_only') then
+                     utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                                                      xi, eta, this%model_param, &
+                                                      corner_points, eltype(1), axis)
+                 else
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                 endif
 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
-                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
-                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
-                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
-                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
-                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
-                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
-               
-               !@TODO not sure why we need the - sign here. Might be because N
-               !      is in negative theta direction
-               load_fw_points_rdbm(:, 1, ipoint) = - load_fw_points_rdbm(:, 1, ipoint)
+                 ! rotate source mt to global cartesian system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                                  source_params(ipoint)%mij_voigt, &
+                                  source_params(ipoint)%lon, &
+                                  source_params(ipoint)%colat)
 
-          case('E')
-               isim = 2
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
+                 ! rotate source mt to receiver cartesian system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                                  mij_buff, reci_source_params%lon, reci_source_params%colat)
 
-               ! rotate source mt to global cartesian system
-               mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
-                                source_params(ipoint)%mij_voigt, &
-                                source_params(ipoint)%lon, &
-                                source_params(ipoint)%colat)
+                 ! rotate source mt to receiver s,phi,z system
+                 mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
 
-               ! rotate source mt to receiver cartesian system
-               mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                mij_buff, &
-                                reci_source_params%lon, &
-                                reci_source_params%colat)
+                 mij_buff = mij_buff / this%fwd(isim)%amplitude
 
-               ! rotate source mt to receiver s,phi,z system
-               mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+                 load_fw_points_rdbm(:, :, ipoint) = 0
+                 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
+                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
+                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
+                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
+                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
+                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+                 load_fw_points_rdbm(:, 1, ipoint) &
+                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
+                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
 
-               mij_buff = mij_buff / this%fwd(isim)%amplitude
-
-               load_fw_points_rdbm(:, :, ipoint) = 0
-               
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
-                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
-                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
-                        * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
-                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
-                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-               load_fw_points_rdbm(:, 1, ipoint) &
-                    = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
-                        * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
-
-          case default
-               write(6,*) 'component "', component, '" unknown or not yet implemented'
-               call pabort
-          end select
-         
-       else
-          call pabort
-       endif
+            case default
+                 write(6,*) 'component "', component, '" unknown or not yet implemented'
+                 call pabort
+            end select
+          
+        else
+           call pabort
+        endif
 
     end do !ipoint
 
@@ -1375,9 +1423,9 @@ function load_strain_point(sem_obj, pointid, model_param)
     real(kind=dp), allocatable      :: strain_buff(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold_total, iclockold, status, istrainvar
-    real(kind=sp)                   :: utemp(sem_obj%ndumps)
-    real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+    integer                         :: iclockold, status, istrainvar
+    real(kind=sp), allocatable      :: utemp(:,:)
+    real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
 
     if (trim(sem_obj%dump_type) /= 'fullfields') then
         write(6,*) 'ERROR: trying to read strain from a file that was not'
@@ -1392,10 +1440,13 @@ function load_strain_point(sem_obj, pointid, model_param)
     select case(model_param)
     case('vp')
         allocate(load_strain_point(sem_obj%ndumps, 1))
+        allocate(utemp(sem_obj%ndumps, 1))
+        allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 1))
+
 #ifdef flag_kerner
         iclockold = tick()
 #endif
-        status = sem_obj%buffer(1)%get(pointid, utemp)
+        status = sem_obj%buffer%get(pointid, utemp)
 #ifdef flag_kerner
         iclockold = tick(id=id_buffer, since=iclockold)
 #endif
@@ -1412,7 +1463,7 @@ function load_strain_point(sem_obj, pointid, model_param)
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
-                           values = utemp_chunk(1:gll_to_read, :)) 
+                           values = utemp_chunk(1:gll_to_read, :, 1)) 
 
 #ifdef flag_kerner
            iclockold = tick(id=id_netcdf, since=iclockold)
@@ -1425,61 +1476,54 @@ function load_strain_point(sem_obj, pointid, model_param)
 #ifdef flag_kerner
            iclockold = tick(id=id_buffer, since=iclockold)
 #endif
-           load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
+
+           load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1,:,1), kind=dp)
         else
-           load_strain_point(:,1) = real(utemp, kind=dp)
+           load_strain_point(:,1) = real(utemp(:,1), kind=dp)
         end if
 
     case('vs')
+        allocate(utemp(sem_obj%ndumps, 6))
+        allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 6))
         allocate(strain_buff(sem_obj%ndumps, 6))
 
-        do istrainvar = 1, 6
+        status = sem_obj%buffer%get(pointid, utemp)
+        if (status.ne.0) then
+            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+            
+            ! Only read to last point, not further
+            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+            do istrainvar = 1, 6
 
-           if (sem_obj%strainvarid(istrainvar).eq.-1) then
-               strain_buff(:, istrainvar) = 0
-               cycle ! For monopole source which does not have this component.
-           endif
+                if (sem_obj%strainvarid(istrainvar).eq.-1) then
+                    strain_buff(:, istrainvar) = 0
+                    cycle ! For monopole source which does not have this component.
+                endif
 
 #ifdef flag_kerner
            iclockold = tick()
 #endif
-           status = sem_obj%buffer(istrainvar)%get(pointid, utemp)
-#ifdef flag_kerner
-           iclockold = tick(id=id_buffer, since=iclockold)
-#endif
-           
-           if (status.ne.0) then
-              start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-              
-              ! Only read to last point, not further
-              gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+
+                call nc_getvar( ncid   = sem_obj%snap,           & 
+                                varid  = sem_obj%strainvarid(istrainvar), &
+                                start  = [start_chunk, 1],       &
+                                count  = [gll_to_read, sem_obj%ndumps], &
+                                values = utemp_chunk(1:gll_to_read, :, istrainvar)) 
 
 #ifdef flag_kerner
-              iclockold = tick()
+                iclockold = tick(id=id_netcdf, since=iclockold)
 #endif
-              call nc_getvar( ncid   = sem_obj%snap,           & 
-                              varid  = sem_obj%strainvarid(istrainvar), &
-                              start  = [start_chunk, 1],       &
-                              count  = [gll_to_read, sem_obj%ndumps], &
-                              values = utemp_chunk(1:gll_to_read, :)) 
+                !iclockold = tick(id=id_buffer, since=iclockold)
+                strain_buff(:,istrainvar) &
+                     = real(utemp_chunk(pointid-start_chunk+1, :, istrainvar), kind=dp)
 
-#ifdef flag_kerner
-              iclockold = tick(id=id_netcdf, since=iclockold)
-#endif
-              do iread = 0, gll_to_read - 1
-                  status = sem_obj%buffer(istrainvar)%put(start_chunk + iread, &
-                                                          utemp_chunk(iread+1,:))
-              end do
-#ifdef flag_kerner
-              iclockold = tick(id=id_buffer, since=iclockold)
-#endif
-              strain_buff(:,istrainvar) &
-                   = real(utemp_chunk(pointid-start_chunk+1, :), kind=dp)
-           else
-              strain_buff(:,istrainvar) = real(utemp, kind=dp)
-           end if
-
-        end do
+            end do
+            do iread = 0, gll_to_read - 1
+                status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
+            end do
+        else
+           strain_buff(:,:) = real(utemp, kind=dp)
+        endif
 
         allocate(load_strain_point(sem_obj%ndumps, 6))
         ! transform strain to voigt mapping
@@ -1496,47 +1540,172 @@ function load_strain_point(sem_obj, pointid, model_param)
         load_strain_point(:,6) = -strain_buff(:,4)
     end select
 
-#ifdef flag_kerner
-    iclockold_total = tick(id=id_load_strain, since=iclockold_total)
-#endif
-
 end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_strain_point_interp(sem_obj, pointids, model_param)
+function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes, element_type, axis)
+
+    use sem_derivatives
+    use spectral_basis, only : lagrange_interpol_2D_td
 
     type(ncparamtype), intent(in)   :: sem_obj
-    integer, intent(in)             :: pointids(:,:)
+    integer, intent(in)             :: pointids(0:sem_obj%npol,0:sem_obj%npol)
+    real(kind=dp), intent(in)       :: xi, eta
     character(len=*), intent(in)    :: model_param
     real(kind=dp), allocatable      :: load_strain_point_interp(:,:)
+    real(kind=dp), intent(in)       :: nodes(4,2)
+    integer, intent(in)             :: element_type
+    logical, intent(in)             :: axis
 
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold, status, istrainvar
-    real(kind=sp)                   :: utemp(sem_obj%ndumps)
-    real(kind=sp)                   :: utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps)
+    integer                         :: iclockold, status, idisplvar
+    real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
+    real(kind=sp), allocatable      :: ubuff(:,:)
+    real(kind=sp)                   :: utemp(1:sem_obj%ndumps, 0:sem_obj%npol, &
+                                             0:sem_obj%npol, 3)
+    real(kind=sp)                   :: strain(1:sem_obj%ndumps, 0:sem_obj%npol, &
+                                              0:sem_obj%npol, 6)
+    real(kind=sp)                   :: straintrace(1:sem_obj%ndumps, 0:sem_obj%npol, &
+                                                   0:sem_obj%npol)
+    real(kind=dp), allocatable      :: G(:,:), GT(:,:)
+    real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
+    integer                         :: ipol, jpol, i
 
+    write(6,*) sem_obj%dump_type
     if (trim(sem_obj%dump_type) /= 'displ_only') then
         write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
         write(6,*) '       written with dump_type "displ_only"'
         call pabort
     endif
 
+    allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
+    allocate(ubuff(sem_obj%ndumps, 3))
+
     ! load displacements from all GLL points
+    do ipol = 0, sem_obj%npol
+       do jpol = 0, sem_obj%npol
+
+          status = sem_obj%buffer%get(pointids(ipol,jpol), ubuff(:,:))
+          if (status.ne.0) then
+             start_chunk = ((pointids(ipol,jpol)) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+             write(6,*) 'start_chunk', start_chunk
+             write(6,*) 'pointid', pointids(ipol,jpol)
+             
+             ! Only read to last point, not further
+             gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+             do idisplvar = 1, 3
+
+                 if (sem_obj%displvarid(idisplvar).eq.-1) then
+                     utemp(:, ipol, jpol, idisplvar) = 0
+                     cycle ! For monopole source which does not have this component.
+                 endif
+
+                 call check(nf90_get_var( ncid   = sem_obj%snap,           & 
+                                          varid  = sem_obj%displvarid(idisplvar), &
+                                          start  = [start_chunk, 1],       &
+                                          count  = [gll_to_read, sem_obj%ndumps], &
+                                          values = utemp_chunk(1:gll_to_read, :, idisplvar)))
+
+                 utemp(:,ipol,jpol, idisplvar) = utemp_chunk(pointids(ipol,jpol)-start_chunk + 2, :, idisplvar)
+             enddo
+             do iread = 0, sem_obj%chunk_gll - 1
+                 status = sem_obj%buffer%put(start_chunk + iread - 1, utemp_chunk(iread+1,:,:))
+             end do
+          else
+             utemp(:,ipol,jpol,:) = ubuff(:,:)
+          endif
+       enddo
+    enddo
+
+    !do ipol = 0, sem_obj%npol
+    !   do jpol = 0, sem_obj%npol
+
+    !      do idisplvar = 1, 3
+
+    !          if (sem_obj%displvarid(idisplvar).eq.-1) then
+    !              utemp(:, ipol, jpol, idisplvar) = 0
+    !              cycle ! For monopole source which does not have this component.
+    !          endif
+
+    !          call check(nf90_get_var( ncid   = sem_obj%snap,           & 
+    !                                   varid  = sem_obj%displvarid(idisplvar), &
+    !                                   start  = [pointids(ipol,jpol) + 1, 1],       &
+    !                                   count  = [1, sem_obj%ndumps], &
+    !                                   values = utemp(:, ipol, jpol, idisplvar)))
+    !      enddo
+    !   enddo
+    !enddo
+   
+    if (axis) then
+        G  = sem_obj%G2
+        GT = sem_obj%G1T
+        col_points_xi  = sem_obj%glj_points
+        col_points_eta = sem_obj%gll_points
+    else
+        G  = sem_obj%G2
+        GT = sem_obj%G2T
+        col_points_xi  = sem_obj%gll_points
+        col_points_eta = sem_obj%gll_points
+    endif
 
     select case(model_param)
     case('vp')
-        write(6,*) 'to be implemented'
+        allocate(load_strain_point_interp(sem_obj%ndumps, 1))
         ! compute straintrace
+        if (sem_obj%excitation_type == 'monopole') then
+            straintrace = straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                               col_points_eta, sem_obj%npol, &
+                                               sem_obj%ndumps, nodes, element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'dipole') then
+            straintrace = straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                             col_points_eta, sem_obj%npol, sem_obj%ndumps, &
+                                             nodes, element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'quadpole') then
+            straintrace = straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                               col_points_eta, sem_obj%npol, &
+                                               sem_obj%ndumps, nodes, element_type, axis)
+        else
+            call abort
+        endif
+        load_strain_point_interp(:, 1) &
+            = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
+                                      real(straintrace(:,:,:), kind=dp), xi, eta)
 
     case('vs')
-        write(6,*) 'to be implemented'
+        allocate(load_strain_point_interp(sem_obj%ndumps, 6))
         ! compute full strain tensor
+        if (sem_obj%excitation_type == 'monopole') then
+            strain = strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                     col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                     element_type, axis)
 
-        ! voigt mapping
-        ! dsus, dpup, dzuz, dzup, dsuz, dsup
+        elseif (sem_obj%excitation_type == 'dipole') then
+            strain = strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                   col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                   element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'quadpole') then
+            strain = strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                     col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                     element_type, axis)
+        else
+            call abort
+        endif
+        
+        do i = 1, 6
+            load_strain_point_interp(:, i) &
+                = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
+                                          real(strain(:,:,:,i), kind=dp), xi, eta)
+        enddo
+
+        !@TODO for consitency with SOLVER output
+        load_strain_point_interp(:, 4) = - load_strain_point_interp(:, 4) 
+        load_strain_point_interp(:, 6) = - load_strain_point_interp(:, 6) 
+
     end select
-    call pabort
 
 end function load_strain_point_interp
 !-----------------------------------------------------------------------------------------
@@ -1648,6 +1817,10 @@ subroutine read_meshes(this)
                       varid = this%fwd(1)%eltype_varid)
 
         call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "axis",              &
+                      varid = this%fwd(1)%axis_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
                       name  = "mesh_S",              &
                       varid = this%fwd(1)%mesh_s_varid)
 
@@ -1725,6 +1898,10 @@ subroutine read_meshes(this)
             call getvarid(ncid  = this%bwd(1)%mesh,   &
                           name  = "eltype",              &
                           varid = this%bwd(1)%eltype_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "axis",              &
+                          varid = this%bwd(1)%axis_varid)
 
             call getvarid(ncid  = this%bwd(1)%mesh,   &
                           name  = "mesh_S",              &
@@ -1844,6 +2021,26 @@ subroutine read_meshes(this)
 
         this%G1T = transpose(this%G1)
         this%G2T = transpose(this%G2)
+
+        do isim = 1, this%nsim_fwd
+           this%fwd(isim)%gll_points = this%gll_points
+           this%fwd(isim)%glj_points = this%glj_points
+           this%fwd(isim)%G1 = this%G1
+           this%fwd(isim)%G2 = this%G2
+           this%fwd(isim)%G1T = this%G1T
+           this%fwd(isim)%G2T = this%G2T
+           this%fwd(isim)%G0 = this%G0
+        end do
+
+        do isim = 1, this%nsim_bwd
+           this%bwd(isim)%gll_points = this%gll_points
+           this%bwd(isim)%glj_points = this%glj_points
+           this%bwd(isim)%G1 = this%G1
+           this%bwd(isim)%G2 = this%G2
+           this%bwd(isim)%G1T = this%G1T
+           this%bwd(isim)%G2T = this%G2T
+           this%bwd(isim)%G0 = this%G0
+        end do
 
     endif
 
