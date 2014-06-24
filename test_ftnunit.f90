@@ -4,7 +4,7 @@ module unit_tests
   use ftnunit, only: test
   use global_parameters, only: lu_out, verbose
   use test_montecarlo
-  use test_fft
+  use test_fft_type
   use test_tetrahedra
   use test_inversion_mesh
   use test_buffer
@@ -105,7 +105,7 @@ subroutine test_all
   call test(test_mc_unit_hexagon, 'MC unit hexagon')
   call test(test_mc_sphere_in_tetrahedron, 'MC sphere in tetrahedron')
 
-  ! test_fft
+  ! test_fft_type
   write(6,'(/,a)') 'TEST FFT MODULE'
   call test(test_fft_dirac, 'FFT_dirac')
   call test(test_fft_sine, 'FFT_sine')
