@@ -20,6 +20,7 @@ module montecarlo
         procedure, pass                          :: check_montecarlo_integral
         procedure, pass                          :: initialize_montecarlo
         procedure, pass                          :: areallconverged
+        procedure, pass                          :: countconverged
         procedure, pass                          :: getintegral
         procedure, pass                          :: getvariance
         procedure, pass                          :: isconverged
@@ -144,6 +145,26 @@ function getvariance(this)
        call pabort 
     end if
     getvariance = this%variance
+
+end function
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+function countconverged(this, ikernels)
+    class(integrated_type)        :: this
+    integer                       :: countconverged
+    integer, optional, intent(in) :: ikernels(:)
+
+    if (.not.this%isinitialized) then
+       write(*,*) 'Initialize this MC type first'
+       call pabort 
+    end if
+
+    if (present(ikernels)) then
+       countconverged = count(this%converged(ikernels))
+    else 
+       countconverged = count(this%converged)
+    end if
 
 end function
 !-------------------------------------------------------------------------------

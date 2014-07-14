@@ -6,7 +6,7 @@ module type_parameter
     use receiver_class,     only : rec_param_type
     use filtering,          only : filter_type
     use commpi,             only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
-                                   pbroadcast_dble_arr, pbarrier, pabort
+                                   pbroadcast_dble_arr, pbroadcast_log, pbarrier, pabort
     implicit none    
 
     type parameter_type
@@ -26,6 +26,7 @@ module type_parameter
         character(len=1)                     :: component
         character(len=4)                     :: model_param
         character(len=32)                    :: whattodo
+        character(len=32)                    :: fftw_plan = 'MEASURE'
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
         integer                              :: nelems_per_task
@@ -37,6 +38,7 @@ module type_parameter
         logical                              :: source_read     = .false.
         logical                              :: filter_read     = .false.
         logical                              :: kernel_read     = .false.
+        logical                              :: deconv_stf      = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -120,6 +122,12 @@ subroutine read_parameters(this, input_file_in)
         case('POINTS_PER_MC_STEP')
            read(keyvalue, *) this%npoints_per_step
 
+        case('DECONVOLVE_STF')
+           read(keyvalue, *) this%deconv_stf
+
+        case('FFTW_PLAN')
+           read(keyvalue, *) this%fftw_plan
+
         case('WHAT_TO_DO')
            this%whattodo = keyvalue
 
@@ -146,6 +154,8 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)
+  call pbroadcast_log(this%deconv_stf, 0)
+  call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
 
   write(lu_out,*)
@@ -358,9 +368,12 @@ subroutine read_kernel(this, sem_data, filter)
 
    if (.not. master) then
        nfilter = size(filter)
-       !do ifilter = 1, nfilter
-       !    call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
-       !end do
+
+       if (this%deconv_stf) then
+          do ifilter = 1, nfilter
+              call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
+          end do
+       end if
    end if
 
    do irec = 1, this%nrec

@@ -28,10 +28,17 @@ module filtering
        procedure, pass   :: get_transferfunction
    end type
 
-   interface timeshift
-      module procedure   :: timeshift_1d
-      module procedure   :: timeshift_md
-   end interface
+   type timeshift_type
+       complex(kind=dp), allocatable  :: shift_fd(:) !< Array with complex multiplicators 
+                                                     !! to apply the timeshift
+       logical                        :: isinitialized = .false.
+       contains
+       procedure, pass   :: init
+       procedure, pass   :: timeshift_1d
+       procedure, pass   :: timeshift_md
+       procedure, pass   :: freeme
+       generic           :: apply => timeshift_1d, timeshift_md
+   end type
 
 contains
 
@@ -78,15 +85,17 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        call pabort
     end select
 
-20  format('filterresponse_', A, 2('_', F0.6))
-    write(fnam,20) trim(filterclass), frequencies(1:2)
+    if (firstslave) then
+20     format('filterresponse_', A, 2('_', F0.6))
+       write(fnam,20) trim(filterclass), frequencies(1:2)
 
-    open(10, file=trim(fnam), action='write')
-    do ifreq = 1, nfreq
-       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
-                                   imag(this%transferfunction(ifreq))
-    end do
-    close(10)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, nfreq
+          write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
+                                      imag(this%transferfunction(ifreq))
+       end do
+       close(10)
+    end if   
 
     this%initialized = .true.
     this%stf_added = .false.
@@ -140,35 +149,37 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     
     call fft_stf%freeme()
 
-20  format('filterresponse_stf_', A, 2('_', F0.3))
-    write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
-    open(10, file=trim(fnam), action='write')
-    do ifreq = 1, this%nfreq
-       write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
-                                   imag(this%transferfunction(ifreq))
-    end do
-    close(10)
-    
-21  format('stf_spectrum_', A, 2('_', F0.3))
-22  format(5(E16.8))
-    write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
+    if (firstslave) then
+20     format('filterresponse_stf_', A, 2('_', F0.3))
+       write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, this%nfreq
+          write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
+                                      imag(this%transferfunction(ifreq))
+       end do
+       close(10)
+       
+21     format('stf_spectrum_', A, 2('_', F0.3))
+22     format(5(E16.8))
+       write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
 
-    open(10, file=trim(fnam), action='write')
-    do ifreq = 1, this%nfreq
-        write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
-                                     real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
-    end do
-    close(10)
-    
-23  format('stf_', A, 2('_', F0.3))
-24  format(3(E16.8))
-    write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, this%nfreq
+           write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
+                                        real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
+       end do
+       close(10)
+       
+23     format('stf_', A, 2('_', F0.3))
+24     format(3(E16.8))
+       write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
 
-    open(10, file=trim(fnam), action='write')
-    do ifreq = 1, size(stf_fwd)
-       write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,2)
-    end do
-    close(10)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, size(stf_fwd)
+          write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,2)
+       end do
+       close(10)
+    end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
        write(*,*) 'WARNING: Filter is not vanishing fast enough for high frequencies.'
@@ -302,47 +313,62 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-!> Apply a timeshift of dtshift on the frequency domain traces in field
-subroutine timeshift_md(field, freq, dtshift)
-
-   complex(kind=dp), intent(inout)  :: field(:,:,:) !< Frequency domain traces to apply 
-                                                   !! time shift on. 
-                                                   !! Dimension: nfreq x ndim x ntraces
+!> Init a timeshift object
+subroutine init(this, freq, dtshift)
+   class(timeshift_type)            :: this
    real(kind=dp),    intent(in)     :: freq(:)     !< 1D array with the frequencies of 
                                                    !! the entries in field
                                                    !! Dimension: nfreq
    real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
-   
-   complex(kind=dp), allocatable    :: shift_fd(:)
 
-   allocate( shift_fd(size(field,1)) )
-   shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
+   allocate(this%shift_fd(size(freq,1)) )
+   this%shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
+   this%isinitialized = .true.
 
-   field(:,:,:) = mult3d_1d(field, shift_fd)
+
+end subroutine init
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Apply a timeshift of dtshift on the frequency domain traces in field
+subroutine timeshift_md(this, field)
+   class(timeshift_type)            :: this
+   complex(kind=dp), intent(inout)  :: field(:,:,:) !< Frequency domain traces to apply 
+                                                   !! time shift on. 
+                                                   !! Dimension: nfreq x ndim x ntraces
+   if (this%isinitialized) then
+     field(:,:,:) = mult3d_1d(field, this%shift_fd)
+   else
+     write(*,*) 'Timeshift is not initialized yet!'
+     call pabort()
+   end if
 
 end subroutine timeshift_md
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> Apply a timeshift of dtshift on the frequency domain traces in field
-subroutine timeshift_1d(field, freq, dtshift)
-
+subroutine timeshift_1d(this, field)
+   class(timeshift_type)            :: this
    complex(kind=dp), intent(inout)  :: field(:,:)  !< Frequency domain traces to apply 
                                                    !! time shift on. 
                                                    !! Dimension: nfreq x ntraces
-   real(kind=dp),    intent(in)     :: freq(:)     !< 1D array with the frequencies of 
-                                                   !! the entries in field
-                                                   !! Dimension: nfreq
-   real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
-   
-   complex(kind=dp), allocatable    :: shift_fd(:)
-
-   allocate( shift_fd(size(field,1)) )
-   shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
-
-   field(:,:) = mult2d_1d(field, shift_fd)
+   if (this%isinitialized) then
+     field(:,:) = mult2d_1d(field, this%shift_fd)
+   else
+     write(*,*) 'Timeshift is not initialized yet!'
+     call pabort()
+   end if
 
 end subroutine timeshift_1d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Delete this timeshift object
+subroutine freeme(this)
+   class(timeshift_type)           :: this
+   deallocate(this%shift_fd)
+end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------!

@@ -412,7 +412,7 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
   this%nvertices = size(vertices,2)
   this%nelements = size(connectivity,2)
 
-  fmtstring = "('Initialize mesh with ', I5, ' vertices and ', I5, 'elements')"
+  fmtstring = "('  Initialize mesh with ', I5, ' vertices and ', I5, 'elements')"
   write(lu_out,fmtstring) this%nvertices, this%nelements
 
   select case(ielem_type)
