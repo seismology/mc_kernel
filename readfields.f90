@@ -2005,8 +2005,18 @@ subroutine read_meshes(this)
         this%G2T = transpose(this%G2)
 
         do isim = 1, this%nsim_fwd
+           allocate(this%fwd(isim)%gll_points(0:this%npol))
+           allocate(this%fwd(isim)%glj_points(0:this%npol))
+
            this%fwd(isim)%gll_points = this%gll_points
            this%fwd(isim)%glj_points = this%glj_points
+
+           allocate(this%fwd(isim)%G1(0:this%npol,0:this%npol))
+           allocate(this%fwd(isim)%G1T(0:this%npol,0:this%npol))
+           allocate(this%fwd(isim)%G2(0:this%npol,0:this%npol))
+           allocate(this%fwd(isim)%G2T(0:this%npol,0:this%npol))
+           allocate(this%fwd(isim)%G0(0:this%npol))
+
            this%fwd(isim)%G1 = this%G1
            this%fwd(isim)%G2 = this%G2
            this%fwd(isim)%G1T = this%G1T
@@ -2015,8 +2025,18 @@ subroutine read_meshes(this)
         end do
 
         do isim = 1, this%nsim_bwd
+           allocate(this%bwd(isim)%gll_points(0:this%npol))
+           allocate(this%bwd(isim)%glj_points(0:this%npol))
+           
            this%bwd(isim)%gll_points = this%gll_points
            this%bwd(isim)%glj_points = this%glj_points
+           
+           allocate(this%bwd(isim)%G1(0:this%npol,0:this%npol))
+           allocate(this%bwd(isim)%G1T(0:this%npol,0:this%npol))
+           allocate(this%bwd(isim)%G2(0:this%npol,0:this%npol))
+           allocate(this%bwd(isim)%G2T(0:this%npol,0:this%npol))
+           allocate(this%bwd(isim)%G0(0:this%npol))
+           
            this%bwd(isim)%G1 = this%G1
            this%bwd(isim)%G2 = this%G2
            this%bwd(isim)%G1T = this%G1T
