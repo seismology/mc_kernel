@@ -17,9 +17,14 @@ result.timeratio   = zeros(nproc, ntimers);
 formatSpec = '%*37s%11f%14f%14f%f%[^\n\r]';
 
 for iproc = 1:nproc
-    system(['tail -n 18 ', rundir, '/', output_files(iproc).name, ' > OUTPUT_temp']);
+    fnam = [rundir, '/', output_files(iproc).name];
+    
+    fprintf(' Cutting away everything but timing from %s\n', fnam);
+    system(['tail -n 18 ', fnam , ' > OUTPUT_temp']);
+    pause(1)
 
     fid = fopen('OUTPUT_temp', 'r');
+    fprintf(' Reading timing measurements from %s\n', fnam);
     dataArray = textscan(fid, formatSpec, ntimers, 'Delimiter', '', 'WhiteSpace', '',  'ReturnOnError', false);
     fclose(fid);
 

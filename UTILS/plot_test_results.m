@@ -1,6 +1,6 @@
 function plot_test_results(bool_plot, descriptions)
 
-rundirs = dir('test_*');
+rundirs = dir('test*');
 
 rundirs = rundirs(bool_plot);
 
@@ -36,27 +36,39 @@ clock(14).short = 'mpi_comm';
 
 nruns = length(rundirs);
 nclock = 14;
+nproc  = zeros(1,nruns);
 for irun = 1:nruns
+    fprintf('Reading results of test run: %d\n', irun)
     result = read_kerner_timing(rundirs(irun).name);
-    
+    nproc(irun) = size(result.ncalls, 1);
+    fprintf('Processing test run: %d\n\n', irun)
     for iclock =1:nclock
-        clock(iclock).ncalls(:, irun)      = result.ncalls(:,iclock);
-        clock(iclock).timepercall(:, irun) = result.timepercall(:,iclock);
-        clock(iclock).timetotal(:, irun)   = result.timetotal(:,iclock);
-        clock(iclock).timeratio(:, irun)   = result.timeratio(:,iclock);
+        
+        clock(iclock).ncalls(:,irun)                   = NaN;
+        clock(iclock).timepercall(:,irun)              = NaN;
+        clock(iclock).timetotal(:,irun)                = NaN;
+        clock(iclock).timeratio(:,irun)                = NaN;
+        
+        clock(iclock).ncalls(1:nproc(irun), irun)      = result.ncalls(:,iclock);
+        clock(iclock).timepercall(1:nproc(irun), irun) = result.timepercall(:,iclock);
+        clock(iclock).timetotal(1:nproc(irun), irun)   = result.timetotal(:,iclock);
+        clock(iclock).timeratio(1:nproc(irun), irun)   = result.timeratio(:,iclock);
     end
   
 end
 
+save 'Test_results.mat'  clock  nproc  nruns descriptions
+
+
 %% Plot ratios of most important parts
 hfig = figure('Visible', 'off');
 hold on;
-plot(mean(clock(1).timeratio*100,1), 'k',   'LineWidth', 2)  % FFT
-plot(mean(clock(6).timeratio*100,1), 'b--', 'LineWidth', 2)  % NetCDF
-plot(mean(clock(8).timeratio*100,1), 'b-.',   'LineWidth', 2)  % Buffer
-plot(mean(clock(8).timeratio*100,1)+ ...
-     mean(clock(6).timeratio*100,1), 'b',   'LineWidth', 2)  % Buffer
-plot(mean(clock(10).timeratio*100,1), 'r',  'LineWidth', 2) % Filter and Convolution
+plot(nanmean(clock(1).timeratio*100,1), 'k',   'LineWidth', 2)  % FFT
+plot(nanmean(clock(6).timeratio*100,1), 'b--', 'LineWidth', 2)  % NetCDF
+plot(nanmean(clock(8).timeratio*100,1), 'b-.', 'LineWidth', 2)  % Buffer
+plot(nanmean(clock(8).timeratio*100,1)+ ...
+     nanmean(clock(6).timeratio*100,1), 'b',   'LineWidth', 2)  % Buffer
+plot(nanmean(clock(10).timeratio*100,1), 'r',  'LineWidth', 2) % Filter and Convolution
 
 legend({'FFT calls', 'NetCDF calls', 'Buffer calls', 'NetCDF + Buffer', 'Filtering and convolution'}, ...
         'Location', 'NorthWest')
@@ -72,19 +84,19 @@ close(hfig)
 %% Total time of most important parts
 hfig = figure('Visible', 'off');
 hold on;
-plot(sum(clock(1).timetotal,1), 'k',   'LineWidth', 2)  % FFT
-plot(sum(clock(6).timetotal,1), 'b--', 'LineWidth', 2)  % NetCDF
-plot(sum(clock(8).timetotal,1), 'b-.',   'LineWidth', 2)  % Buffer
-plot(sum(clock(8).timetotal,1)+ ...
-     sum(clock(6).timetotal,1), 'b',   'LineWidth', 2)  % Buffer
-plot(sum(clock(10).timetotal,1), 'r',  'LineWidth', 2) % Filter and Convolution
+plot(nansum(clock(1).timetotal,1), 'k',   'LineWidth', 2)  % FFT
+plot(nansum(clock(6).timetotal,1), 'b--', 'LineWidth', 2)  % NetCDF
+plot(nansum(clock(8).timetotal,1), 'b-.',   'LineWidth', 2)  % Buffer
+plot(nansum(clock(8).timetotal,1)+ ...
+     nansum(clock(6).timetotal,1), 'b',   'LineWidth', 2)  % Buffer
+plot(nansum(clock(10).timetotal,1), 'r',  'LineWidth', 2) % Filter and Convolution
 
 legend({'FFT calls', 'NetCDF calls', 'Buffer calls', 'NetCDF + Buffer', 'Filtering and convolution'}, ...
         'Location', 'NorthWest')
 set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
 xlabel('Tests')
 % ylim([0, 100])
-ylabel('total time in s')
+ylabel('total time in CPUs')
 title('Total time of most important program parts')
 fnam = sprintf('test_results_comparison_totaltime');
 print('-dpng', fnam)
@@ -97,10 +109,10 @@ for iclock = 1:nclock
     hfig = figure('Visible', 'off');
     hold on;
     plot(clock(iclock).timepercall', 'o')
-    plot(mean(clock(iclock).timepercall,1), 'Linewidth', 2)
+    plot(nanmean(clock(iclock).timepercall,1), 'Linewidth', 2)
     set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
     xlabel('Tests')
-    ylim([0, max(max(clock(iclock).timepercall))*1.1])
+    ylim([0, nanmax(nanmax(clock(iclock).timepercall))*1.1])
     ylabel('time per call / s')
     
     title(clock(iclock).desc)
@@ -112,10 +124,10 @@ for iclock = 1:nclock
     hfig = figure('Visible', 'off');
     hold on;
     plot(clock(iclock).ncalls', 'o')
-    plot(mean(clock(iclock).ncalls,1), 'Linewidth', 2)
+    plot(nanmean(clock(iclock).ncalls,1), 'Linewidth', 2)
     set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
     xlabel('Tests')
-    ylim([0, max(max(clock(iclock).ncalls))*1.1])
+    ylim([0, nanmax(nanmax(clock(iclock).ncalls))*1.1])
     ylabel('Number of calls')
     
     title(clock(iclock).desc)
@@ -127,11 +139,11 @@ for iclock = 1:nclock
     hfig = figure('Visible', 'off');
     hold on;
     plot(clock(iclock).timetotal', 'o')
-    plot(mean(clock(iclock).timetotal,1), 'Linewidth', 2)
+    plot(nanmean(clock(iclock).timetotal,1), 'Linewidth', 2)
     set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
     xlabel('Tests')
-    ylim([0, max(max(clock(iclock).timetotal))*1.1])
-    ylabel('total time / s')
+    ylim([0, nanmax(nanmax(clock(iclock).timetotal))*1.1])
+    ylabel('total time / s per CPU')
     
     title(clock(iclock).desc)
     fnam = sprintf('test_results_%s_timetotal', clock(iclock).short);
@@ -144,7 +156,7 @@ for iclock = 1:nclock
     hfig = figure('Visible', 'off');
     hold on;
     plot(clock(iclock).timeratio' * 100, 'o')
-    plot(mean(clock(iclock).timeratio * 100, 1), 'Linewidth', 2)
+    plot(nanmean(clock(iclock).timeratio * 100, 1), 'Linewidth', 2)
     set(gca, 'XTick', 1:nruns, 'XTickLabel', descriptions)
     xlabel('Tests')
     ylim([0, 100])
