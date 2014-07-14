@@ -1683,7 +1683,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                                                col_points_eta, sem_obj%npol, &
                                                sem_obj%ndumps, nodes, element_type, axis)
         else
-            call abort
+            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+            call pabort
         endif
         load_strain_point_interp(:, 1) &
             = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
@@ -1707,7 +1708,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                                      col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
                                      element_type, axis)
         else
-            call abort
+            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+            call pabort
         endif
         
         do i = 1, 6
