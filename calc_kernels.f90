@@ -1,4 +1,4 @@
-program kerner
+program kerner_code
 
     use mpi
     use commpi,                      only: ppinit, pbroadcast_int
@@ -126,27 +126,19 @@ subroutine start_clock
 
   !id_read = clock_id('read_parameters')
   id_fft         = clock_id('FFT routines')
-  id_fwd         = clock_id('Reading fwd field')
-  id_netcdf      = clock_id(' - NetCDF routines')
-  id_rotate      = clock_id(' - Rotate fields')
-  id_buffer      = clock_id(' - Buffer routines')
   id_bwd         = clock_id('Reading bwd field')
+  id_fwd         = clock_id('Reading fwd field')
+  id_kdtree      = clock_id(' - KD-tree lookup (only fwd)')
+  id_load_strain = clock_id(' - Load_strain (fwd and bwd)')
+  id_netcdf      = clock_id(' - - NetCDF routines')
+  id_rotate      = clock_id(' - - Rotate fields')
+  id_buffer      = clock_id(' - - Buffer routines')
   id_mc          = clock_id('Monte Carlo routines')
   id_filter_conv = clock_id('Filtering and convolution')
   id_inv_mesh    = clock_id('Inversion mesh routines')
   id_kernel      = clock_id('Kernel routines')
   id_init        = clock_id('Initialization per task')
   id_mpi         = clock_id('MPI communication with Master')
-  !idold05 = clock_id('monte_carlo_routines')
-  !idold06 = clock_id('bkgrdmodel_testing')
-  !idold07 = clock_id('get_global no loop')
-  !idold08 = clock_id('glob-slob/flob numbering')
-  !idold09 = clock_id('get_global in loop')
-  !idold11 = clock_id('create_pdb')
-  !
-  !idold12 = clock_id('define_glocal_numbering')
-  !idold13 = clock_id('define_sflocal_numbering')
-  !idold14 = clock_id('generate_serendipity_per_proc')
 
 
 end subroutine start_clock

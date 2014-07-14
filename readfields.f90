@@ -1,7 +1,14 @@
 !=========================================================================================
 module readfields
+#ifdef flag_kerner    
+    use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
+                                             myrank, id_buffer, id_netcdf, id_rotate,       &
+                                             id_load_strain, id_kdtree
+#else
     use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
+#endif                                       
+
     use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
     use buffer,            only            : buffer_type
@@ -290,14 +297,6 @@ subroutine open_files(this)
                               'dump type (displ_only, displ_velo, fullfields)', &
                                this%fwd(isim))
 
-        call nc_read_att_char(this%fwd(isim)%source_type, &
-                              'source type', &
-                               this%fwd(isim))
-
-        call nc_read_att_char(this%fwd(isim)%excitation_type, &
-                              'excitation type', &
-                               this%fwd(isim))
-
         call getgrpid(  ncid     = this%fwd(isim)%ncid,   &
                         name     = "Snapshots",           &
                         grp_ncid = this%fwd(isim)%snap)
@@ -427,14 +426,6 @@ subroutine open_files(this)
 
         call nc_read_att_char(this%bwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
-                               this%bwd(isim))
-
-        call nc_read_att_char(this%bwd(isim)%source_type, &
-                              'source type', &
-                               this%bwd(isim))
-
-        call nc_read_att_char(this%bwd(isim)%excitation_type, &
-                              'excitation type', &
                                this%bwd(isim))
 
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
@@ -820,6 +811,9 @@ function load_fw_points(this, coordinates, source_params)
                           source_params%lon, source_params%colat)
 
     allocate(nextpoint(1))
+#ifdef flag_kerner
+    iclockold = tick()
+#endif
     do ipoint = 1, npoints
         call kdtree2_n_nearest( this%fwdtree,                           &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
@@ -828,6 +822,9 @@ function load_fw_points(this, coordinates, source_params)
         
         pointid(ipoint) = nextpoint(1)%idx
     end do
+#ifdef flag_kerner
+    iclockold = tick(id=id_kdtree, since=iclockold)
+#endif
 
     load_fw_points(:,:,:) = 0.0
     
@@ -1436,34 +1433,50 @@ function load_strain_point(sem_obj, pointid, model_param)
         call pabort
     endif
 
+#ifdef flag_kerner
+    iclockold_total = tick()
+#endif
+
     select case(model_param)
     case('vp')
         allocate(load_strain_point(sem_obj%ndumps, 1))
         allocate(utemp(sem_obj%ndumps, 1))
         allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 1))
 
-        !iclockold = tick()
+#ifdef flag_kerner
+        iclockold = tick()
+#endif
         status = sem_obj%buffer%get(pointid, utemp)
-        !iclockold = tick(id=id_buffer, since=iclockold)
+#ifdef flag_kerner
+        iclockold = tick(id=id_buffer, since=iclockold)
+#endif
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
 
            ! Only read to last point, not further
            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-           !iclockold = tick()
+#ifdef flag_kerner
+           iclockold = tick()
+#endif
            call nc_getvar( ncid   = sem_obj%snap,           & 
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
                            values = utemp_chunk(1:gll_to_read, :, 1)) 
 
-           !iclockold = tick(id=id_netcdf, since=iclockold)
+#ifdef flag_kerner
+           iclockold = tick(id=id_netcdf, since=iclockold)
+#endif
 
            do iread = 0, sem_obj%chunk_gll - 1
-               status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
+               status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
            end do
-           !iclockold = tick(id=id_buffer, since=iclockold)
+
+#ifdef flag_kerner
+           iclockold = tick(id=id_buffer, since=iclockold)
+#endif
+
            load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1,:,1), kind=dp)
         else
            load_strain_point(:,1) = real(utemp(:,1), kind=dp)
@@ -1487,14 +1500,19 @@ function load_strain_point(sem_obj, pointid, model_param)
                     cycle ! For monopole source which does not have this component.
                 endif
 
-                !iclockold = tick()
+#ifdef flag_kerner
+           iclockold = tick()
+#endif
+
                 call nc_getvar( ncid   = sem_obj%snap,           & 
                                 varid  = sem_obj%strainvarid(istrainvar), &
                                 start  = [start_chunk, 1],       &
                                 count  = [gll_to_read, sem_obj%ndumps], &
                                 values = utemp_chunk(1:gll_to_read, :, istrainvar)) 
 
-                !iclockold = tick(id=id_netcdf, since=iclockold)
+#ifdef flag_kerner
+                iclockold = tick(id=id_netcdf, since=iclockold)
+#endif
                 !iclockold = tick(id=id_buffer, since=iclockold)
                 strain_buff(:,istrainvar) &
                      = real(utemp_chunk(pointid-start_chunk+1, :, istrainvar), kind=dp)
