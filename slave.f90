@@ -38,7 +38,7 @@ subroutine do_slave()
     real(kind=dp)                       :: df
     real(kind=dp), allocatable          :: K_x(:,:)
     integer                             :: ielement, itask
-    character(len=64)                   :: fmtstring, fnam
+    character(len=255)                  :: fmtstring, fnam
     integer                             :: nptperstep
 
     write(lu_out,'(A)') '***************************************************************'
@@ -77,7 +77,8 @@ subroutine do_slave()
     write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
-    call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, measure=.true.)
+    call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, &
+                       fftw_plan=parameters%fftw_plan)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()
@@ -115,8 +116,6 @@ subroutine do_slave()
        call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
        iclockold = tick(id=id_mpi, since=iclockold)
 
-
-       call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, wt%connectivity)
        ! Check the tag of the received message. If no more work to do, exit loop
        ! and return to main program
        if (mpistatus(MPI_TAG) == DIETAG) exit
@@ -126,6 +125,8 @@ subroutine do_slave()
        write(lu_out,'(A, I3, A)') ' Received task # ', itask, ', going to work'
        write(lu_out,'(A)') '***************************************************************'
        call flush(lu_out)
+
+       call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, wt%connectivity)
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
 
@@ -217,7 +218,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
     use fft,                         only: rfft_type, taperandzeropad
-    use filtering,                   only: timeshift
+    use filtering,                   only: timeshift_type
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
     use clocks_mod,                  only: tick
 
@@ -226,6 +227,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     type(semdata_type),             intent(in)    :: sem_data
     type(rfft_type),                intent(in)    :: fft_data
     type(slave_result_type)                       :: slave_result
+    type(timeshift_type)                          :: timeshift_fwd, timeshift_bwd
 
     type(integrated_type), allocatable  :: int_kernel(:)
 
@@ -239,15 +241,16 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer,          allocatable       :: niterations(:,:)
     real(kind=dp)                       :: volume
 
-    character(len=64)                   :: fmtstring
+    character(len=256)                  :: fmtstring
     integer                             :: ielement, irec, ivertex, ikernel
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nvertices_per_elem
     integer                             :: iclockold
     integer                             :: ndim
+    
+    iclockold = tick()
 
     ndim = sem_data%get_ndim()
-    iclockold = tick()
     nptperstep = parameters%npoints_per_step
     ndumps = sem_data%ndumps
     ntimes = fft_data%get_ntimes()
@@ -278,6 +281,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     allocate(niterations(parameters%nkernel, nelements))
     niterations = 0
+
+    call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
+    call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+    
 
     !write(*,*) '***************************************************************'
     !write(*,*) ' Start loop over elements'
@@ -315,14 +322,16 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            iclockold = tick(id=id_fwd, since=iclockold)
            
            ! FFT of forward field
-           iclockold = tick()
            call fft_data%rfft( taperandzeropad(fw_field, ntimes), fw_field_fd )
            iclockold = tick(id=id_fft, since=iclockold)
 
            ! Timeshift forward field
            ! Not necessary, if STF is deconvolved
-           !call timeshift( fw_field_fd, fft_data%get_f(), sem_data%timeshift_fwd )
-           !iclockold = tick(id=id_filter_conv, since=iclockold)
+           if (.not.parameters%deconv_stf) then
+              call timeshift_fwd%apply(fw_field_fd)
+              iclockold = tick(id=id_filter_conv, since=iclockold)
+           end if
+
          
            do irec = 1, parameters%nrec
                 
@@ -337,13 +346,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               bw_field = sem_data%load_bw_points( random_points, parameters%receiver(irec) )
               iclockold = tick(id=id_bwd, since=iclockold)
 
-              ! FFT of forward field
+              ! FFT of backward field
               call fft_data%rfft( taperandzeropad(bw_field, ntimes), bw_field_fd )
               iclockold = tick(id=id_fft, since=iclockold)
 
               ! Timeshift backward field
               ! Not necessary, if STF is deconvolved
-              !call timeshift( bw_field_fd, fft_data%get_f(), sem_data%timeshift_bwd )
+              if (.not.parameters%deconv_stf) then
+                 call timeshift_bwd%apply(bw_field_fd)
+              end if
 
               ! Convolve forward and backward fields
               conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
@@ -361,7 +372,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
                  iclockold = tick(id=id_filter_conv, since=iclockold)
 
-                 ! Backward FFT
+                 ! iFFT of multiplied spectra
                  call fft_data%irfft(conv_field_fd_filt, conv_field)
                  iclockold = tick(id=id_fft, since=iclockold)
 
@@ -388,14 +399,22 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            end do
 
            ! Print convergence info
-           write(fmtstring,"('(I6, I6, ES10.3, A, L1, ', I2, '(ES11.3), A, ', I2, '(ES10.3))')") &
+           write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
                            parameters%nkernel, parameters%nkernel 
-           write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                     &
-                                   int_kernel(1)%areallconverged(), int_kernel(1)%getintegral(), &
-                                   ' +- ', sqrt(int_kernel(1)%getvariance())
+           write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
+                                   int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
+                                   int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
 
-        end do ! Kernel coverged
+        end do ! End of Monte Carlo loop
     
+        if (any(niterations(:, ielement)>parameters%max_iter)) then
+           fmtstring = "('Max number of iterations reached. ', I5 , ' kernels were not converged.')"
+           write(lu_out, fmtstring) parameters%nkernel - int_kernel(1)%countconverged()
+        else
+           fmtstring = "('All kernels converged after', I5, ' iterations')"
+           write(lu_out, fmtstring) maxval(niterations(:, ielement))
+        end if
+
 
         do ivertex = 1, inv_mesh%nvertices_per_elem
             slave_result%kernel_values(:, ivertex, ielement) = int_kernel(ivertex)%getintegral()
@@ -406,6 +425,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     end do ! ielement
 
+    call timeshift_fwd%freeme()
+    call timeshift_bwd%freeme()
 end function slave_work
 !=========================================================================================
 

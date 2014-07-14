@@ -191,8 +191,6 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     elseif (force) then
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
-       write(lu_out,*) 'This is not implemented yet!'
-       call pabort
     elseif (single) then
        this%nsim_bwd = 1
        write(lu_out,*) 'Backword simulation was ''single'' source'
@@ -293,9 +291,10 @@ subroutine open_files(this)
         call nc_open_for_read(    filename = filename,              &
                                   ncid     = this%fwd(isim)%ncid) 
 
-        call nc_read_att_char(this%fwd(isim)%dump_type, &
-                              'dump type (displ_only, displ_velo, fullfields)', &
-                               this%fwd(isim))
+        this%fwd(isim)%dump_type = 'fullfields'
+        !call nc_read_att_char(this%fwd(isim)%dump_type, &
+        !                      'dump type (displ_only, displ_velo, fullfields)', &
+        !                       this%fwd(isim))
 
         call getgrpid(  ncid     = this%fwd(isim)%ncid,   &
                         name     = "Snapshots",           &
@@ -424,9 +423,10 @@ subroutine open_files(this)
         call nc_open_for_read(filename = filename,              &
                               ncid     = this%bwd(isim)%ncid) 
 
-        call nc_read_att_char(this%bwd(isim)%dump_type, &
-                              'dump type (displ_only, displ_velo, fullfields)', &
-                               this%bwd(isim))
+        this%bwd(isim)%dump_type = 'fullfields'
+        !call nc_read_att_char(this%bwd(isim)%dump_type, &
+        !                      'dump type (displ_only, displ_velo, fullfields)', &
+        !                       this%bwd(isim))
 
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
                        name     = "Snapshots",           &
