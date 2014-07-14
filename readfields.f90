@@ -1423,7 +1423,8 @@ function load_strain_point(sem_obj, pointid, model_param)
     real(kind=dp), allocatable      :: strain_buff(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold, status, istrainvar
+    integer                         :: iclockold, iclockold_total
+    integer                         :: status, istrainvar
     real(kind=sp), allocatable      :: utemp(:,:)
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
 
@@ -1470,7 +1471,7 @@ function load_strain_point(sem_obj, pointid, model_param)
 #endif
 
            do iread = 0, sem_obj%chunk_gll - 1
-               status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
+               status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
            end do
 
 #ifdef flag_kerner

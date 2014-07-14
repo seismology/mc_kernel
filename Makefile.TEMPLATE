@@ -85,7 +85,7 @@ plot_wavefields.o: fft_type.o filtering.o global_parameters.o inv_mesh.o \
 random_tetrahedron.o: global_parameters.o Makefile 
 readfields.o: buffer.o clocks.o commpi.o finite_elem_mapping.o \
 	global_parameters.o kdtree2.o nc_routines.o receiver.o rotations.o \
-	simple_routines.o source.o spectral_basis.o Makefile 
+	sem_derivatives.o simple_routines.o source.o spectral_basis.o Makefile 
 receiver.o: global_parameters.o kernel.o Makefile 
 resampling_type.o: commpi.o fft_type.o global_parameters.o Makefile 
 rotations.o: global_parameters.o Makefile 
