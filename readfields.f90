@@ -295,8 +295,6 @@ subroutine open_files(this)
                               'dump type (displ_only, displ_velo, fullfields)', &
                                this%fwd(isim))
 
-        write(6,*) 'dump type fwd', isim, this%fwd(isim)%dump_type
-
         call nc_read_att_char(this%fwd(isim)%source_type, &
                               'source type', &
                                this%fwd(isim))
@@ -435,8 +433,6 @@ subroutine open_files(this)
         call nc_read_att_char(this%bwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
                                this%bwd(isim))
-
-        write(6,*) 'dump type bwd', isim, this%bwd(isim)%dump_type
 
         call nc_read_att_char(this%bwd(isim)%source_type, &
                               'source type', &
