@@ -1,5 +1,5 @@
 !=========================================================================================
-module test_fft
+module test_fft_type
 
   use global_parameters
   use fft, only: rfft_type, taperandzeropad
@@ -264,5 +264,5 @@ subroutine test_fft_taperandzeropad
 end subroutine
 !-----------------------------------------------------------------------------------------
 
-end module
+end module test_fft_type
 !=========================================================================================
