@@ -24,6 +24,15 @@ NETCDF_BUFFER_SIZE   1000
 # Number of elements in each MPI task. 
 ELEMENTS_PER_TASK    100 
 
+# FFTW Planning to use
+# Options: 
+# ESTIMATE:   Use heuristic to find best FFT plan
+# MEASURE:    Compute several test FFTs to find best plan (default)
+# PATIENT:    Compute a lot of test FFTs to find best plan
+# EXHAUSTIVE: Compute an awful amount of test FFTs to find best plan
+# for a detailed explanation: http://www.fftw.org/doc/Planner-Flags.html
+FFTW_PLAN              MEASURE
+
 # Do you want to calculate a kernel or just plot wavefields? 
 # integratekernel has to be run with MPI and at least two processors
 WHAT_TO_DO           'integratekernel'

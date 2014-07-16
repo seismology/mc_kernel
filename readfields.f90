@@ -191,8 +191,6 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     elseif (force) then
        this%nsim_bwd = 2
        write(lu_out,*) 'Backword simulation was ''forces'' source'
-       write(lu_out,*) 'This is not implemented yet!'
-       call pabort
     elseif (single) then
        this%nsim_bwd = 1
        write(lu_out,*) 'Backword simulation was ''single'' source'
@@ -295,6 +293,14 @@ subroutine open_files(this)
 
         call nc_read_att_char(this%fwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
+                               this%fwd(isim))
+
+        call nc_read_att_char(this%fwd(isim)%source_type, &
+                              'source type', &
+                               this%fwd(isim))
+
+        call nc_read_att_char(this%fwd(isim)%excitation_type, &
+                              'excitation type', &
                                this%fwd(isim))
 
         call getgrpid(  ncid     = this%fwd(isim)%ncid,   &
@@ -426,6 +432,14 @@ subroutine open_files(this)
 
         call nc_read_att_char(this%bwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
+                               this%bwd(isim))
+
+        call nc_read_att_char(this%bwd(isim)%source_type, &
+                              'source type', &
+                               this%bwd(isim))
+
+        call nc_read_att_char(this%bwd(isim)%excitation_type, &
+                              'excitation type', &
                                this%bwd(isim))
 
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
@@ -1423,7 +1437,8 @@ function load_strain_point(sem_obj, pointid, model_param)
     real(kind=dp), allocatable      :: strain_buff(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold, status, istrainvar
+    integer                         :: iclockold, iclockold_total
+    integer                         :: status, istrainvar
     real(kind=sp), allocatable      :: utemp(:,:)
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
 
@@ -1470,7 +1485,7 @@ function load_strain_point(sem_obj, pointid, model_param)
 #endif
 
            do iread = 0, sem_obj%chunk_gll - 1
-               status = sem_obj%buffer(1)%put(start_chunk + iread, utemp_chunk(iread+1,:))
+               status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
            end do
 
 #ifdef flag_kerner
@@ -1668,7 +1683,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                                                col_points_eta, sem_obj%npol, &
                                                sem_obj%ndumps, nodes, element_type, axis)
         else
-            call abort
+            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+            call pabort
         endif
         load_strain_point_interp(:, 1) &
             = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
@@ -1692,7 +1708,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                                      col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
                                      element_type, axis)
         else
-            call abort
+            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+            call pabort
         endif
         
         do i = 1, 6
@@ -2023,8 +2040,18 @@ subroutine read_meshes(this)
         this%G2T = transpose(this%G2)
 
         do isim = 1, this%nsim_fwd
+           allocate(this%fwd(isim)%gll_points(0:this%npol))
+           allocate(this%fwd(isim)%glj_points(0:this%npol))
+
            this%fwd(isim)%gll_points = this%gll_points
            this%fwd(isim)%glj_points = this%glj_points
+
+           allocate(this%fwd(isim)%G1(0:this%npol,0:this%npol))
+           allocate(this%fwd(isim)%G1T(0:this%npol,0:this%npol))
+           allocate(this%fwd(isim)%G2(0:this%npol,0:this%npol))
+           allocate(this%fwd(isim)%G2T(0:this%npol,0:this%npol))
+           allocate(this%fwd(isim)%G0(0:this%npol))
+
            this%fwd(isim)%G1 = this%G1
            this%fwd(isim)%G2 = this%G2
            this%fwd(isim)%G1T = this%G1T
@@ -2033,8 +2060,18 @@ subroutine read_meshes(this)
         end do
 
         do isim = 1, this%nsim_bwd
+           allocate(this%bwd(isim)%gll_points(0:this%npol))
+           allocate(this%bwd(isim)%glj_points(0:this%npol))
+           
            this%bwd(isim)%gll_points = this%gll_points
            this%bwd(isim)%glj_points = this%glj_points
+           
+           allocate(this%bwd(isim)%G1(0:this%npol,0:this%npol))
+           allocate(this%bwd(isim)%G1T(0:this%npol,0:this%npol))
+           allocate(this%bwd(isim)%G2(0:this%npol,0:this%npol))
+           allocate(this%bwd(isim)%G2T(0:this%npol,0:this%npol))
+           allocate(this%bwd(isim)%G0(0:this%npol))
+           
            this%bwd(isim)%G1 = this%G1
            this%bwd(isim)%G2 = this%G2
            this%bwd(isim)%G1T = this%G1T

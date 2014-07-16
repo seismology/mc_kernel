@@ -113,7 +113,9 @@ end subroutine
 !------------------------------------------------------------------------------
 subroutine test_filter_timeshift()
    use fft, only: rfft_type, taperandzeropad
+   use filtering, only: timeshift_type
 
+   type(timeshift_type)             :: timeshift
    type(rfft_type)                  :: fft_data
    integer, parameter               :: ntimes=32, npoints=1
    integer                          :: ntimes_ft, nomega
@@ -139,7 +141,10 @@ subroutine test_filter_timeshift()
    data_ref(5)  = 1.0
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   call timeshift(data_fd, fft_data%get_f(), 1.0d0)
+
+   call timeshift%init(fft_data%get_f(), 1.0d0)
+   call timeshift%apply(data_fd)
+   call timeshift%freeme()
    call fft_data%irfft(data_fd, data_out)
 
    call assert_comparable_real1d(1+real(data_out(:,1), kind=sp), &
@@ -157,7 +162,11 @@ subroutine test_filter_timeshift()
    data_ref(25)  = 1.0
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   call timeshift(data_fd, fft_data%get_f(), -1.0d0)
+   
+   call timeshift%init(fft_data%get_f(), -1.0d0)
+   call timeshift%apply(data_fd)
+   call timeshift%freeme()
+
    call fft_data%irfft(data_fd, data_out)
 
    call assert_comparable_real1d(1+real(data_out(:,1), kind=sp), &
@@ -175,7 +184,11 @@ subroutine test_filter_timeshift()
    data_ref(15)  = 1.0
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   call timeshift(data_fd, fft_data%get_f(), 6.4d0)
+   
+   call timeshift%init(fft_data%get_f(), 6.4d0)
+   call timeshift%apply(data_fd)
+   call timeshift%freeme()
+
    call fft_data%irfft(data_fd, data_out)
 
    call assert_comparable_real1d(1+real(data_out(:,1), kind=sp), &

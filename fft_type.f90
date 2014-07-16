@@ -5,7 +5,7 @@ module fft
   use commpi,          only      : pabort
   use, intrinsic :: iso_c_binding
   implicit none
-  include 'fftw3.f'
+  include 'fftw3.f03'
 
   private
   public :: rfft_type
@@ -18,8 +18,9 @@ module fft
      integer                    :: nomega, ntimes, ntraces, ndim, ntraces_fft
      real(kind=dp)              :: dt, df
      logical                    :: initialized = .false.
-     integer                    :: fftw_mode = FFTW_ESTIMATE
      real(kind=dp), allocatable :: t(:), f(:)
+     ! Default is estimate. For the heaviest ffts, this is set to measure.
+     integer                    :: fftw_mode = FFTW_ESTIMATE
      contains
      procedure, pass            :: get_nomega
      procedure, pass            :: get_ntimes
@@ -133,23 +134,22 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init(this, ntimes_in, ndim, ntraces, dt, measure, nfft)
+subroutine init(this, ntimes_in, ndim, ntraces, dt, fftw_plan, nfft)
 !< This routines initializes a FFTw plan for 1D DFTs. 
 !! The time series is supposed to have length ntimes_in, and is stored along the first 
 !! dimension of a three-dimensional array. The other two dimensions are ndim and ntraces.
 !! Internally, this array will always be converted to two-dimensional array of dimensions
 !! [ntimes_in, ndim*ntraces]
-  class(rfft_type)                     :: this
-  integer, intent(in)                  :: ntimes_in, ntraces, ndim
-  real(kind=dp), intent(in), optional  :: dt
-  logical, intent(in), optional        :: measure 
-  integer, intent(in), optional        :: nfft
+  class(rfft_type)                              :: this
+  integer, intent(in)                           :: ntimes_in, ntraces, ndim
+  real(kind=dp), intent(in), optional           :: dt
+  character(len=32), intent(in), optional       :: fftw_plan
+  integer, intent(in), optional                 :: nfft
 
-  integer                              :: ntimes_np2, nomega_np2, i, ntraces_fft
-  integer                              :: rank, istride, ostride, np2
-
-  real(kind=dp), dimension(:,:), allocatable       :: datat
-  complex(kind=dp), dimension(:,:), allocatable    :: dataf
+  integer                                       :: ntimes_np2, nomega_np2, i, ntraces_fft
+  integer                                       :: rank, istride, ostride, np2
+  real(kind=dp), dimension(:,:), allocatable    :: datat
+  complex(kind=dp), dimension(:,:), allocatable :: dataf
 
   if (present(nfft)) then
      if (nfft < ntimes_in) then
@@ -172,11 +172,24 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt, measure, nfft)
   this%ntraces     = ntraces 
   this%ntraces_fft = ntraces_fft 
 
-  this%fftw_mode = FFTW_ESTIMATE
-  if (present(measure)) then
-      if (measure) then
-          this%fftw_mode = FFTW_MEASURE
-      end if
+
+  if (present(fftw_plan)) then
+     select case(trim(fftw_plan))
+     case('ESTIMATE')
+        this%fftw_mode = ior(FFTW_ESTIMATE,   FFTW_DESTROY_INPUT)
+     case('MEASURE')   
+        this%fftw_mode = ior(FFTW_MEASURE,    FFTW_DESTROY_INPUT)
+     case('PATIENT')
+        this%fftw_mode = ior(FFTW_PATIENT,    FFTW_DESTROY_INPUT)
+     case('EXHAUSTIVE')
+        this%fftw_mode = ior(FFTW_EXHAUSTIVE, FFTW_DESTROY_INPUT)
+     case default
+        write(*,*) 'Unknown FFTW planning mode: ', trim(fftw_plan)
+     end select
+
+  else
+     this%fftw_mode = FFTW_ESTIMATE
+
   end if
 
 
