@@ -39,3 +39,8 @@ WHAT_TO_DO           'integratekernel'
 
 # plot_wavefield has to be run in serial
 #WHAT_TO_DO           'plot_wavefield'
+
+# Do you want your kernels to be given on the vertices ('onvertices') or
+# inside ('volumetric') each elements?
+INT_TYPE             'volumetric'
+
