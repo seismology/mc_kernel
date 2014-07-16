@@ -67,7 +67,7 @@ subroutine test_mesh_dump2
   open(newunit=myunit, file='unit_tests/testmesh_abaqus_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
+  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
 
   call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh_abaqus')
 
@@ -187,7 +187,7 @@ subroutine test_mesh_data_dump2
   open(newunit=myunit, file='unit_tests/testcellcircle_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_abaqus_mesh('unit_tests/circle.inp')
+  call inv_mesh%read_abaqus_mesh('unit_tests/circle.inp','onvertices')
   call inv_mesh%init_node_data(3)
 
   npoints = inv_mesh%get_nvertices()
@@ -264,7 +264,7 @@ subroutine test_mesh_data_dump3
   if (ierr == 0) close(myunit, status='delete')
 
 
-  call inv_mesh%read_abaqus_mesh('unit_tests/circle_quad2.inp')
+  call inv_mesh%read_abaqus_mesh('unit_tests/circle_quad2.inp','onvertices')
   call inv_mesh%init_node_data(3)
 
   npoints = inv_mesh%get_nvertices()
@@ -340,7 +340,7 @@ subroutine test_mesh_data_dump4
   open(newunit=myunit, file='unit_tests/testspherecell_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_abaqus_mesh('unit_tests/sphere.inp')
+  call inv_mesh%read_abaqus_mesh('unit_tests/sphere.inp','onvertices')
   call inv_mesh%init_node_data(3)
 
   npoints = inv_mesh%get_nvertices()
@@ -417,7 +417,7 @@ subroutine test_mesh_data_dump5
   open(newunit=myunit, file='unit_tests/testtetrahedronscell_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
+  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
   call inv_mesh%init_node_data(3)
 
   npoints = inv_mesh%get_nvertices()
@@ -507,7 +507,8 @@ subroutine test_initialize_mesh
   real(kind=dp)              :: vertices(3,3)
   integer                    :: connectivity(3,1)
 
-  integer                    :: nelements_out, connectivity_out(1,3), valence_out
+  integer                    :: nelements_out, connectivity_out(1,3)
+  integer                    :: nbasisfuncs_per_elem, valence_out
   real(kind=sp)              :: vertex_out(3,3), volume_out
 
   vertices(:,1) = [0, 0, 0]
@@ -516,7 +517,9 @@ subroutine test_initialize_mesh
 
   connectivity(:,1) = [1, 2, 3]
 
-  call inv_mesh%initialize_mesh(1, vertices, connectivity)
+  nbasisfuncs_per_elem = 8
+
+  call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
 
   nelements_out = inv_mesh%get_nelements()
   call assert_equal(nelements_out,          1,       'get nelements')
