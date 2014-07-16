@@ -43,7 +43,7 @@ subroutine init_queue(ntasks)
   if (trim(parameters%mesh_file).eq.'Karin') then
     call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
   else
-    call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file,parameters%inttype)
   end if
   
   wt%ielement_type = inv_mesh%get_element_type()
@@ -86,9 +86,9 @@ subroutine init_queue(ntasks)
      end do
   enddo
   
-  allocate(K_x(inv_mesh%get_nvertices(), parameters%nkernel))
+  allocate(K_x(inv_mesh%get_nbasisfuncs(parameters%inttype), parameters%nkernel))
   K_x = 0.0
-  allocate(Err(inv_mesh%get_nvertices(), parameters%nkernel))
+  allocate(Err(inv_mesh%get_nbasisfuncs(parameters%inttype), parameters%nkernel))
   Err = 0.0
 
   write(lu_out,'(A)') '***************************************************************'
@@ -120,7 +120,8 @@ subroutine get_next_task(itask)
       wt%connectivity(:, iel) = ivertex
   end do
 
-end subroutine
+
+end subroutine get_next_task
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -129,18 +130,30 @@ subroutine extract_receive_buffer(itask, irank)
 
   use work_type_mod, only    : wt
   integer, intent(in)       :: itask, irank
-  integer                   :: iel, ielement, ivertex
+  integer                   :: iel, ielement, ibasisfunc
 
   ! extract from receive buffer
   do iel = 1, parameters%nelems_per_task
       ielement = elems_in_task(itask, iel)
       if (ielement.eq.-1) cycle
-      do ivertex = 1, inv_mesh%nvertices_per_elem
-         K_x(connectivity(ivertex, ielement),:) = K_x(connectivity(ivertex, ielement),:) &
-                                                  + wt%kernel_values(:, ivertex, iel)
-         Err(connectivity(ivertex, ielement),:) = Err(connectivity(ivertex, ielement),:) &
-                                                  + wt%kernel_errors(:, ivertex, iel)    &
-                                                  / abs(wt%kernel_values(:, ivertex, iel))
+      do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
+
+         ! are we in volumetric or vertex mode?
+         select case(trim(parameters%inttype))
+         case('onvertices')         
+            K_x(connectivity(ibasisfunc, ielement),:) = K_x(connectivity(ibasisfunc, ielement),:) &
+                                                        + wt%kernel_values(:, ibasisfunc, iel)
+            Err(connectivity(ibasisfunc, ielement),:) = Err(connectivity(ibasisfunc, ielement),:) &
+                                                        + wt%kernel_errors(:, ibasisfunc, iel)    &
+                                                        / abs(wt%kernel_values(:, ibasisfunc, iel))
+         case('volumetric')
+            K_x(ielement,:) = K_x(ielement,:) &
+                              + wt%kernel_values(:, ibasisfunc, iel) 
+            Err(ielement,:) = Err(ielement,:) &
+                              + wt%kernel_errors(:, ibasisfunc, iel)    &
+                              / abs(wt%kernel_values(:, ibasisfunc, iel))
+         end select
+
 
       end do
       niterations(:,ielement)  = wt%niterations(:,iel)
@@ -158,20 +171,36 @@ subroutine finalize()
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
   write(lu_out,'(A)') '***************************************************************'
-  call inv_mesh%init_node_data(parameters%nkernel*2)
+  
+
 
   ! Save big kernel variable to disk
   write(lu_out,*) 'Write Kernel to disk'
-  
-  do ikernel = 1, parameters%nkernel
-     call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
-                                 ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
-     call inv_mesh%set_node_data_snap(real(Err(:,ikernel), kind=sp), &
-                                 ikernel+parameters%nkernel,         &
-                                 'Err_'//parameters%kernel(ikernel)%name )
-  end do
 
-  call inv_mesh%dump_node_data_xdmf('gaborkernel')
+  select case(trim(parameters%inttype))
+  case('onvertices')
+     call inv_mesh%init_node_data(parameters%nkernel*2)
+     do ikernel = 1, parameters%nkernel
+        call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
+             ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
+        call inv_mesh%set_node_data_snap(real(Err(:,ikernel), kind=sp), &
+             ikernel+parameters%nkernel,         &
+             'Err_'//parameters%kernel(ikernel)%name )
+     end do
+     call inv_mesh%dump_node_data_xdmf('gaborkernel')
+  case('volumetric')
+     call inv_mesh%init_cell_data(parameters%nkernel*2)
+     do ikernel = 1, parameters%nkernel
+        call inv_mesh%set_cell_data_snap(real(K_x(:,ikernel), kind=sp), &
+             ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
+        call inv_mesh%set_cell_data_snap(real(Err(:,ikernel), kind=sp), &
+             ikernel+parameters%nkernel,         &
+             'Err_'//parameters%kernel(ikernel)%name )
+     end do
+     call inv_mesh%dump_cell_data_xdmf('gaborkernel')
+  end select
+
+  call inv_mesh%free_node_and_cell_data()
 
   ! Save mesh partition and convergence information
   call inv_mesh%init_cell_data(parameters%nkernel + 1)

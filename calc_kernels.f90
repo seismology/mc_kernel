@@ -20,6 +20,8 @@ program kerner_code
 
     integer                             :: nvertices_per_elem
     integer                             :: nvertices_per_task
+    integer                             :: nbasisfuncs_per_elem
+    integer                             :: nbasisfuncs_per_task
     integer                             :: ierror
     
 
@@ -50,44 +52,52 @@ program kerner_code
     select case(trim(parameters%whattodo))
     case('integratekernel')
 
-        if (master) then
-            ! Get type of mesh and number of vertices per element
-            if (trim(parameters%mesh_file).eq.'Karin') then
-                nvertices_per_elem = 4
-            else
-                call inv_mesh%read_abaqus_meshtype(parameters%mesh_file)
-                nvertices_per_elem = inv_mesh%nvertices_per_elem
-                call inv_mesh%freeme()
-            end if
-        end if
-        call pbroadcast_int(nvertices_per_elem, 0)
-        nvertices_per_task = parameters%nelems_per_task * nvertices_per_elem
-        call pbroadcast_int(nvertices_per_task, 0)
+       if (master) then
+           ! Get type of mesh and number of vertices per element
+           if (trim(parameters%mesh_file).eq.'Karin') then
+               nvertices_per_elem = 4
+  			   nbasisfuncs_per_elem = 4
+           else
+               call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%inttype)
+               nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
+               nvertices_per_elem = inv_mesh%nvertices_per_elem
+               call inv_mesh%freeme()
+           end if
+       end if
 
-        write(lu_out,*) '***************************************************************'
-        write(lu_out,*) ' Initialize MPI work type'
-        write(lu_out,*) '***************************************************************'
+       call pbroadcast_int(nbasisfuncs_per_elem, 0)
+       call pbroadcast_int(nvertices_per_elem, 0)
+
+       nvertices_per_task = parameters%nelems_per_task * nvertices_per_elem
+       nbasisfuncs_per_task = parameters%nelems_per_task * nbasisfuncs_per_elem
+
+       call pbroadcast_int(nbasisfuncs_per_task, 0)
+       call pbroadcast_int(nvertices_per_task, 0)
+
+       write(lu_out,*) '***************************************************************'
+       write(lu_out,*) ' Initialize MPI work type'
+       write(lu_out,*) '***************************************************************'
+
 
         call init_work_type(nkernel            = parameters%nkernel,         &
                             nelems_per_task    = parameters%nelems_per_task, &
                             nvertices          = nvertices_per_task,   &
-                            nvertices_per_elem = nvertices_per_elem)
+                            nvertices_per_elem = nvertices_per_elem,          &
+                            nbasisfuncs_per_elem = nbasisfuncs_per_elem)
       
 
         write(lu_out,*) '***************************************************************'
         write(lu_out,*) ' Master and slave part ways'
         write(lu_out,*) '***************************************************************'
         if (master) then
-           !print *, 'MASTER'
            call do_master()
         else
-           !print *, 'SLAVE', myrank
            call do_slave()
         endif
-      
+ 
         call MPI_FINALIZE(ierror)
-        if (.not.master) call end_clock()
-
+        if (.not.master) call end_clock()   
+  
     case('plot_wavefield')
         if (master) then
             call start_clock()
@@ -97,6 +107,7 @@ program kerner_code
             print *, 'Nothing to do on rank ', myrank
         end if
     end select
+
 
 
     write(lu_out,*)

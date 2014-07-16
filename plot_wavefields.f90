@@ -63,7 +63,7 @@ subroutine plot_wavefields()
     !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
     !call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
     !call inv_mesh%read_abaqus_mesh('unit_tests/flat_triangles.inp')
-    call inv_mesh%read_abaqus_mesh(parameters%mesh_file)
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file,parameters%inttype)
 
     nvertices = inv_mesh%get_nvertices()
     nelems    = inv_mesh%get_nelements()

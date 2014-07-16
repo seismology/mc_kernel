@@ -4,8 +4,13 @@ module inversion_mesh
   use global_parameters, only: sp, dp, lu_out
   use tetrahedra,        only: get_volume_tet, get_volume_poly, &
                                generate_random_points_tet, generate_random_points_poly
+  use voxel,             only: get_volume_vox, &
+                               generate_random_points_vox
+
   use commpi,            only: pabort
   implicit none
+
+
   private
   public :: inversion_mesh_type
   public :: inversion_mesh_data_type
@@ -14,6 +19,7 @@ module inversion_mesh
   type :: inversion_mesh_type
      private
      integer, public                    :: nvertices_per_elem
+     integer, public                    :: nbasisfuncs_per_elem
      integer                            :: nelements, nvertices
      integer, allocatable               :: connectivity(:,:)
      real(kind=dp), allocatable         :: vertices(:,:)
@@ -26,6 +32,7 @@ module inversion_mesh
      procedure, pass :: get_nelements
      procedure, pass :: get_element
      procedure, pass :: get_nvertices
+     procedure, pass :: get_nbasisfuncs
      procedure, pass :: get_vertices
      procedure, pass :: get_valence
      procedure, pass :: get_connected_elements
@@ -40,6 +47,7 @@ module inversion_mesh
      procedure, pass :: weights
      procedure, pass :: initialize_mesh
      procedure, pass :: freeme
+     procedure, pass :: free_node_and_cell_data
      procedure       :: init_weight_tet_mesh
   end type
 
@@ -81,6 +89,8 @@ integer function get_element_type(this)
      get_element_type = 3
   case('tet')
      get_element_type = 4
+  case('vox')
+     get_element_type = 5
   end select
 end function
 !-----------------------------------------------------------------------------------------
@@ -124,6 +134,26 @@ integer function get_nvertices(this)
   end if
 
   get_nvertices = this%nvertices
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+integer function get_nbasisfuncs(this, inttype)
+  class(inversion_mesh_type)        :: this
+  character(len=32)                 :: inttype
+  
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
+  select case(trim(inttype))
+  case('onvertices')
+     get_nbasisfuncs = this%nvertices
+  case('volumetric')
+     get_nbasisfuncs = this%nelements
+  end select
+
 end function
 !-----------------------------------------------------------------------------------------
 
@@ -237,6 +267,8 @@ function get_volume(this, ielement)
      get_volume = get_volume_poly(4, this%get_element(ielement))
   case('tri')
      get_volume = get_volume_poly(3, this%get_element(ielement))
+  case('vox')
+     get_volume = get_volume_vox(this%get_element(ielement))
   case('hex')
      !get_volume = get_volume_hex(this%get_element(ielement))
   end select
@@ -331,8 +363,10 @@ function generate_random_points(this, ielement, npoints) result(points)
                            + this%v_2d(:,2,ielement) * points2d(2,ipoint)
      end do
   case('hex')
-     !generate_random_points = generate_random_points_hex( this%get_element(ielement), &
-     !                                                     ielement, npoints)
+     ! points  = generate_random_points_hex( this%get_element(ielement), npoints)
+  case('vox')
+     points = generate_random_points_vox( this%get_element(ielement), npoints)
+
   end select
 
 end function generate_random_points
@@ -396,18 +430,21 @@ end subroutine read_tet_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine initialize_mesh(this, ielem_type, vertices, connectivity) 
+subroutine initialize_mesh(this, ielem_type, vertices, connectivity, nbasisfuncs_per_elem) 
   class(inversion_mesh_type)        :: this
   !character(len=*), intent(in)     :: elem_type
   integer                          :: ielem_type !1-tet, 2-quad, 3-tri, 4-hex
+  integer                          :: nbasisfuncs_per_elem
   real(kind=dp),    intent(in)     :: vertices(:,:)
   integer,          intent(in)     :: connectivity(:,:)
   character(len=255)               :: fmtstring
+
 
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
      call pabort 
   end if
+  
 
   this%nvertices = size(vertices,2)
   this%nelements = size(connectivity,2)
@@ -428,6 +465,9 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
   case(4) ! tet
      this%nvertices_per_elem = 4
      this%element_type = 'tet'
+  case(5) ! vox
+     this%nvertices_per_elem = 8
+     this%element_type = 'vox'
   case default
      write(6,*) 'ERROR: Initializing with elementtype ', ielem_type, &
                 'not yet implemented'
@@ -440,6 +480,9 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
       write(*, '(A,I5,A,I2)') 'is: ', size(connectivity,1), ', should be: ', this%nvertices_per_elem
       call pabort
   end if
+
+  ! how many basis functions per elem
+  this%nbasisfuncs_per_elem = nbasisfuncs_per_elem    
 
   ! prepare arrays
   allocate(this%vertices(3,this%nvertices))
@@ -454,19 +497,21 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity)
      call this%init_weight_tet_mesh()
   end if
 
+
   this%initialized = .true.
 
 end subroutine initialize_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_abaqus_meshtype(this, filename)
+subroutine read_abaqus_meshtype(this, filename, inttype)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput
   integer                           :: ierr, ct
   character(len=128)                :: line
   character(len=16)                 :: elem_type
+  character(len=32)                 :: inttype
 
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
@@ -520,6 +565,9 @@ subroutine read_abaqus_meshtype(this, filename)
   case('C3D4')
      this%nvertices_per_elem = 4
      this%element_type = 'tet'
+  case('VOX')
+     this%nvertices_per_elem = 8
+     this%element_type = 'vox'
   case default
      write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
                 'not yet implemented'
@@ -527,17 +575,28 @@ subroutine read_abaqus_meshtype(this, filename)
   end select
   close(iinput)
 
+
+  select case(trim(inttype))
+  case('onvertices')
+     this%nbasisfuncs_per_elem = this%nvertices_per_elem    
+  case('volumetric')
+     this%nbasisfuncs_per_elem = 1     
+  end select
+
+
 end subroutine read_abaqus_meshtype
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_abaqus_mesh(this, filename)
+subroutine read_abaqus_mesh(this, filename, inttype)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput
   integer                           :: i, ierr, ct
   character(len=128)                :: line
   character(len=16)                 :: elem_type
+  character(len=32)                 :: inttype
+
 
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
@@ -592,6 +651,9 @@ subroutine read_abaqus_mesh(this, filename)
   case('C3D4')
      this%nvertices_per_elem = 4
      this%element_type = 'tet'
+  case('VOX')
+     this%nvertices_per_elem = 8
+     this%element_type = 'vox'
   case default
      write(6,*) 'ERROR: reading abaqus file with elementtype ', trim(elem_type), &
                 'not yet implemented'
@@ -648,12 +710,22 @@ subroutine read_abaqus_mesh(this, filename)
      call this%init_weight_tet_mesh()
   end if
 
+
   write(lu_out, '("  Mesh type: ", A)')  trim(this%element_type)
   write(lu_out, '("  nvertices: ", I8)') this%nvertices
   write(lu_out, '("  nelements: ", I8)') this%nelements
 
+
+  ! how many basis functions per elem
+  select case(trim(inttype))
+  case('onvertices')
+     this%nbasisfuncs_per_elem = this%nvertices_per_elem    
+  case('volumetric')
+     this%nbasisfuncs_per_elem = 1     
+  end select
+
   this%initialized = .true.
-end subroutine
+end subroutine read_abaqus_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -661,6 +733,12 @@ subroutine init_weight_tet_mesh(this)
   class(inversion_mesh_type)       :: this
   real(kind=dp)                    :: x1, y1, z1, ab(4,4)
   integer                          :: ielem, ivertex
+
+  if (this%initialized) then ! BUG REMOVED LA JUNE 15, removed .not., 
+     write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
+     call pabort 
+  end if
+
 
   allocate(this%abinv(4,4,this%nelements))
   do ielem = 1, this%nelements
@@ -835,8 +913,10 @@ subroutine dump_mesh_xdmf(this, filename)
      xdmf_elem_type = 'Quadrilateral'
   case('hex')
      xdmf_elem_type = 'Hexahedron'
+  case('vox')
+     xdmf_elem_type = 'Hexahedron'
   case default
-     write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
+     write(6,*) 'ERROR: xdmf dumping for element type ', this%element_type, &
                 ' not implemented'
      call pabort
   end select
@@ -885,6 +965,23 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine free_node_and_cell_data(this)
+  class(inversion_mesh_type)   :: this
+
+  select type (this)
+  type is (inversion_mesh_data_type)
+     if (allocated(this%datat_node))       deallocate(this%datat_node)
+     if (allocated(this%datat_cell))       deallocate(this%datat_cell)
+     if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
+     if (allocated(this%group_id_node))         deallocate(this%group_id_node)
+     if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
+     if (allocated(this%group_id_cell))         deallocate(this%group_id_cell)
+  end select
+
+end subroutine free_node_and_cell_data
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine freeme(this)
   class(inversion_mesh_type)        :: this
 
@@ -894,6 +991,7 @@ subroutine freeme(this)
   this%nvertices = -1
   this%nelements = -1
   this%nvertices_per_elem = -1
+  this%nbasisfuncs_per_elem = -1
   this%element_type = ''
   if (allocated(this%v_2d)) deallocate(this%v_2d)
   if (allocated(this%p_2d)) deallocate(this%p_2d)
@@ -915,6 +1013,7 @@ subroutine freeme(this)
 end subroutine freeme
 !-----------------------------------------------------------------------------------------
 
+
 !-----------------------------------------------------------------------------------------
 subroutine init_node_data(this, ntimes_node)
   class(inversion_mesh_data_type)   :: this
@@ -932,8 +1031,10 @@ subroutine init_node_data(this, ntimes_node)
   this%group_id_node = 1
 
   this%ngroups_node = 0
+
 end subroutine
 !-----------------------------------------------------------------------------------------
+
 
 !-----------------------------------------------------------------------------------------
 subroutine init_cell_data(this, ntimes_cell)
@@ -952,8 +1053,10 @@ subroutine init_cell_data(this, ntimes_cell)
   this%group_id_cell = 1
 
   this%ngroups_cell = 0
+
 end subroutine
 !-----------------------------------------------------------------------------------------
+
 
 !-----------------------------------------------------------------------------------------
 subroutine set_node_data_snap(this, data_snap, isnap, data_name)
@@ -1071,6 +1174,8 @@ subroutine dump_cell_data_xdmf(this, filename)
   case('quad')
      xdmf_elem_type = 'Quadrilateral'
   case('hex')
+     xdmf_elem_type = 'Hexahedron'
+  case('vox')
      xdmf_elem_type = 'Hexahedron'
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
@@ -1223,6 +1328,8 @@ subroutine dump_node_data_xdmf(this, filename)
   case('quad')
      xdmf_elem_type = 'Quadrilateral'
   case('hex')
+     xdmf_elem_type = 'Hexahedron'
+  case('vox')
      xdmf_elem_type = 'Hexahedron'
   case default
      write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &

@@ -64,6 +64,7 @@ subroutine do_slave()
                              parameters%bwd_dir,     &
                              parameters%buffer_size, & 
                              parameters%model_param)
+
     call sem_data%open_files()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
@@ -126,7 +127,10 @@ subroutine do_slave()
        write(lu_out,'(A)') '***************************************************************'
        call flush(lu_out)
 
-       call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, wt%connectivity)
+
+       call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, &
+                                     wt%connectivity, wt%nbasisfuncs_per_elem)
+
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
 
@@ -237,14 +241,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:)
-    real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:), kernelvalue_vertex(:,:)
+    real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:), kernelvalue_weighted(:,:)
     integer,          allocatable       :: niterations(:,:)
     real(kind=dp)                       :: volume
 
     character(len=256)                  :: fmtstring
-    integer                             :: ielement, irec, ivertex, ikernel
+    integer                             :: ielement, irec, ivertex, ikernel, ibasisfunc
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nvertices_per_elem
+    integer                             :: nbasisfuncs_per_elem
     integer                             :: iclockold
     integer                             :: ndim
     
@@ -255,17 +260,16 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     ndumps = sem_data%ndumps
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
-    nvertices_per_elem = inv_mesh%nvertices_per_elem
+    nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
     nelements = inv_mesh%get_nelements()
 
 
-    allocate(slave_result%kernel_values(parameters%nkernel, nvertices_per_elem, nelements))
-    allocate(slave_result%kernel_errors(parameters%nkernel, nvertices_per_elem, nelements))
+    allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%kernel_errors(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%niterations(parameters%nkernel, nelements))
 
+    allocate(kernelvalue_weighted(nptperstep, parameters%nkernel))
     allocate(kernelvalue(nptperstep, parameters%nkernel))
-    allocate(kernelvalue_vertex(nptperstep, parameters%nkernel))
-
     
     allocate(fw_field(ndumps, ndim, nptperstep))
     allocate(bw_field(ndumps, ndim, nptperstep))
@@ -291,7 +295,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     !write(*,*) '***************************************************************'
 
     allocate(random_points(3, nptperstep))
-    allocate(int_kernel(inv_mesh%nvertices_per_elem))
+    allocate(int_kernel(nbasisfuncs_per_elem))
 
     iclockold = tick(id=id_init, since=iclockold)
 
@@ -302,14 +306,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
         ! Initialize Monte Carlo integral for this element
         iclockold = tick(id=id_inv_mesh)
-        do ivertex = 1, inv_mesh%nvertices_per_elem
-            call int_kernel(ivertex)%initialize_montecarlo(parameters%nkernel, &
+        do ibasisfunc = 1, nbasisfuncs_per_elem
+            call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel, &
                                                            volume,   &
                                                            parameters%allowed_error) 
         end do
       
         do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
            iclockold = tick(id=id_mc)
+
            random_points = inv_mesh%generate_random_points( ielement, nptperstep )
            iclockold = tick(id=id_inv_mesh)
            
@@ -385,19 +390,20 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
            end do ! irec
            iclockold = tick(id=id_mc, since=iclockold)
-           ! Check for convergence
-           
-           do ivertex = 1, inv_mesh%nvertices_per_elem
-               iclockold = tick()
-               do ikernel = 1, parameters%nkernel
-                   kernelvalue_vertex(:, ikernel) = kernelvalue(:, ikernel) &
-                                                  * inv_mesh%weights(ielement, ivertex, random_points)
-               end do
-               iclockold = tick(id=id_kernel, since=iclockold)
-               call int_kernel(ivertex)%check_montecarlo_integral(kernelvalue_vertex)
-               iclockold = tick(id=id_mc, since=iclockold)
-           end do
 
+
+           ! Check for convergence           
+           do ibasisfunc = 1, nbasisfuncs_per_elem !inv_mesh%nvertices_per_elem
+              iclockold = tick()
+              do ikernel = 1, parameters%nkernel
+                 kernelvalue_weighted(:, ikernel) = kernelvalue(:, ikernel) &
+                      * inv_mesh%weights(ielement, ibasisfunc, random_points)
+              end do
+              iclockold = tick(id=id_kernel, since=iclockold)
+              call int_kernel(ibasisfunc)%check_montecarlo_integral(kernelvalue_weighted)
+              iclockold = tick(id=id_mc, since=iclockold)
+           end do        
+              
            ! Print convergence info
            write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
                            parameters%nkernel, parameters%nkernel 
@@ -416,11 +422,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         end if
 
 
-        do ivertex = 1, inv_mesh%nvertices_per_elem
-            slave_result%kernel_values(:, ivertex, ielement) = int_kernel(ivertex)%getintegral()
-            slave_result%kernel_errors(:, ivertex, ielement) = sqrt(int_kernel(ivertex)%getvariance())
-            slave_result%niterations(:,ielement)             = niterations(:,ielement)
-            call int_kernel(ivertex)%freeme()
+        do ibasisfunc = 1, nbasisfuncs_per_elem
+           
+           slave_result%kernel_values(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getintegral()
+           slave_result%kernel_errors(:, ibasisfunc, ielement) = sqrt(int_kernel(ibasisfunc)%getvariance())
+           slave_result%niterations(:,ielement)             = niterations(:,ielement)
+
+           call int_kernel(ibasisfunc)%freeme()
         end do
 
     end do ! ielement
@@ -429,19 +437,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     call timeshift_bwd%freeme()
 end function slave_work
 !=========================================================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
