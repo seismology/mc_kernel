@@ -86,16 +86,18 @@ program kerner_code
         endif
       
         call MPI_FINALIZE(ierror)
+        if (.not.master) call end_clock()
 
     case('plot_wavefield')
         if (master) then
+            call start_clock()
             call plot_wavefields()
+            call end_clock()
         else
             print *, 'Nothing to do on rank ', myrank
         end if
     end select
 
-    if (.not.master) call end_clock()
 
     write(lu_out,*)
     write(lu_out,*) ' Finished!'
