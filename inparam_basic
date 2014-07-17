@@ -1,28 +1,29 @@
 # directory of the forward and backward run
-FWD_DIR              './wavefield/fwd/'
-BWD_DIR              './wavefield/bwd/'
+FWD_DIR              './wavefield_10s/fwd/'
+BWD_DIR              './wavefield_10s/bwd/'
 
 # Paths of parameter files 
 SOURCE_FILE          'CMTSOLUTION'
 RECEIVER_FILE        'receiver.dat'
 FILTER_FILE          'filters.dat'
-MESH_FILE            'unit_tests/flat_triangles.inp'
+#MESH_FILE            'unit_tests/flat_triangles.inp'
+MESH_FILE            'unit_tests/vox_15l_5deg.dat'
 
 # Monte Carlo integration
 # Allowed absolute error per cell
 ALLOWED_ERROR        1e-4
 
 # Number of points on which the kernel should be evaluated per MC iteration
-POINTS_PER_MC_STEP   20
+POINTS_PER_MC_STEP   1
 
 # Maximum number of iterations after which to cancel Monte Carlo integration in one cell, regardless of error.
-MAXIMUM_ITERATIONS   100
+MAXIMUM_ITERATIONS   1
 
 # Size of reading buffer. 1000 is a good value, unless you run into memory problems. Higher values avoid repeated reading of the same point.
-NETCDF_BUFFER_SIZE   1000
+NETCDF_BUFFER_SIZE   50000
 
 # Number of elements in each MPI task. 
-ELEMENTS_PER_TASK    100 
+ELEMENTS_PER_TASK    100
 
 # FFTW Planning to use
 # Options: 
