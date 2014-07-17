@@ -7,6 +7,7 @@ module voxel
 
   public :: generate_random_points_vox
   public :: get_volume_vox
+  public :: point_in_voxel
 
 contains
 
@@ -87,8 +88,8 @@ function get_volume_vox(v)
   vol_shell = (4/3) * pi * ( sph_rng(2)**3 &
               - sph_rng(1)**3 )
 
-  frac = abs(sph_rng(5)-sph_rng(6)) &
-       * abs(sin(sph_rng(3))-sin(sph_rng(4))) &
+  frac = dabs(sph_rng(5)-sph_rng(6)) &
+       * dabs(dsin(sph_rng(3))-dsin(sph_rng(4))) &
        / (4*pi);
 
   get_volume_vox = vol_shell * frac
@@ -111,10 +112,11 @@ pure subroutine cartesian_to_spherical_range ( v, spherical_range )
   real(kind=dp)              :: s(3,8) !< the 8 vertices in spherical coordinates
 
   ! Convert cartesian to spherical coordinates
-  s(1,:) = sqrt   ( v(1,:)**2 + v(2,:)**2 + v(3,:)**2 )  ! radius r 
-  s(2,:) = acos   ( v(3,:) / s(1,:) )                    ! colatitude (phi)
-                                                         ! latitude = 90 - colatitude
-  s(3,:) = atan2  ( v(2,:), v(1,:) )                     ! longitude (theta)
+  call cartesian_to_spherical_points ( v, s )
+!  s(1,:) = dsqrt   ( v(1,:)**2 + v(2,:)**2 + v(3,:)**2 )  ! radius r 
+!  s(2,:) = dacos   ( v(3,:) / s(1,:) )                    ! colatitude (phi)
+!                                                         ! latitude = 90 - colatitude
+!  s(3,:) = datan2  ( v(2,:), v(1,:) )                     ! longitude (theta)
      
   ! Determine minimum and maximum r, phi and theta (in radians)
   spherical_range(1) = minval ( s(1,:) ) ! r_min
@@ -129,6 +131,27 @@ end subroutine cartesian_to_spherical_range
 
 
 !-----------------------------------------------------------------------------------------
+pure subroutine cartesian_to_spherical_points ( v, s )
+!
+! Converts an arbitray number of points given in cartesian
+! coordinates to spherical coordinates 
+!
+  implicit none
+
+  real(kind=dp), intent(in)  :: v(:,:) !< points in spherical coordinates
+  real(kind=dp), intent(out) :: s(:,:) !< points in cartesian coordinates
+
+  ! Convert cartesian to spherical coordinates
+  s(1,:) = dsqrt   ( v(1,:)**2 + v(2,:)**2 + v(3,:)**2 )  ! radius r 
+  s(2,:) = dacos   ( v(3,:) / s(1,:) )                    ! colatitude (phi)
+                                                          ! latitude = 90 - colatitude
+  s(3,:) = datan2  ( v(2,:), v(1,:) )                     ! longitude (theta)
+     
+end subroutine cartesian_to_spherical_points
+!-----------------------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------------------
 pure subroutine spherical_to_cartesian_point ( v, u )
 !
 ! Converts a point in spherical coordinates to a
@@ -139,13 +162,41 @@ pure subroutine spherical_to_cartesian_point ( v, u )
   real(kind=dp), intent(in)  :: v(3) !< Input in spherical coordinates
   real(kind=dp), intent(out) :: u(3) !< Output in cartesian coordinates
 
-  u(1)=v(1)*cos(v(3))*sin(v(2))
-  u(2)=v(1)*sin(v(3))*sin(v(2))
-  u(3)=v(1)*cos(v(2))
+  u(1) = v(1) * dcos(v(3)) * dsin(v(2))
+  u(2) = v(1) * dsin(v(3)) * dsin(v(2))
+  u(3) = v(1) * dcos(v(2))
 
 end subroutine spherical_to_cartesian_point
 !-----------------------------------------------------------------------------------------
 
+
+!-----------------------------------------------------------------------------------------
+function point_in_voxel(v, u)
+!
+! Checks whether the n points contained in x are in the voxel defied by v
+!
+   real(kind=dp), intent(in)  :: v(3,8)       ! a voxel defined by its cartesian coordinates 
+   real(kind=dp), intent(in)  :: u(:,:)       ! arbitrary number of spherical points
+   real(kind=dp)              :: w(size(u,1),size(u,2))       ! npoints in spherical coordinates   
+   real(kind=dp)              :: sph_rng(6)   ! spherical range: rmin,rmax,phmin,phmax,thmin,thmax  
+   logical                    :: point_in_voxel(size(u,2))
+   integer                    :: ipoint, npoints
+
+   npoints = size(u,2)
+   
+   call cartesian_to_spherical_range  ( v, sph_rng )
+   call cartesian_to_spherical_points ( u, w )
+   
+   do ipoint=1,npoints
+      if (((w(1,ipoint).ge.sph_rng(1)).and.(w(1,ipoint).le.sph_rng(2))) .and. &
+          ((w(2,ipoint).ge.sph_rng(3)).and.(w(2,ipoint).le.sph_rng(4))) .and. &  
+          ((w(3,ipoint).ge.sph_rng(5)).and.(w(3,ipoint).le.sph_rng(6)))) then
+         point_in_voxel(ipoint) = .true.
+      end if
+   end do
+   
+end function point_in_voxel
+!-----------------------------------------------------------------------------------------
 
 
 end module
