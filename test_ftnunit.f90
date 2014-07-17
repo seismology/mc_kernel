@@ -145,6 +145,7 @@ subroutine test_all
   call test(test_mesh_read, 'reading tetrahedral mesh')
   call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
   call test(test_mesh_dump2, 'reading/dumping tetrahedral mesh from abaqus')
+  call test(test_mesh_dump3, 'reading/dumping tetrahedral mesh from abaqus with multiple element blocks')
   call test(test_mesh_data_dump, 'reading/dumping tetrahedral mesh with data')
   call test(test_mesh_data_dump2, &
             'reading/dumping triangular mesh from abaqus file with data')

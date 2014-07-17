@@ -593,8 +593,8 @@ subroutine read_abaqus_mesh(this, filename, inttype)
   character(len=*), intent(in)      :: filename
   integer                           :: iinput
   integer                           :: i, ierr, ct
-  character(len=128)                :: line
-  character(len=16)                 :: elem_type
+  character(len=128)                :: line, line_buff
+  character(len=16)                 :: elem_type, elem_type_buff
   character(len=32)                 :: inttype
 
 
@@ -663,7 +663,18 @@ subroutine read_abaqus_mesh(this, filename, inttype)
   ! scan number of elements
   ct = 0
   do
-    read(iinput,*) line
+    read(iinput,'(A128)') line
+    if (index(line, '*ELEMENT') == 1) then
+        read(line,*) line_buff, elem_type_buff
+        elem_type_buff = trim(elem_type_buff(6:))
+        if (trim(elem_type_buff) /= trim(elem_type)) then
+           write(6,*) 'ERROR: reading abaqus file with multiple elementtypes (', &
+                      trim(elem_type), ', ', trim(elem_type_buff), &
+                      ') not yet implemented'
+           call pabort
+        endif
+        cycle
+    endif
     if (index(line, '**') == 1) exit
     ct = ct + 1
   enddo
@@ -694,8 +705,13 @@ subroutine read_abaqus_mesh(this, filename, inttype)
   enddo
 
   ! read elements
-  do i=1, this%nelements
-     read(iinput,*) line, this%connectivity(:,i)
+  ct = 0
+  do 
+     read(iinput,'(A128)') line_buff
+     if (index(line_buff, '*ELEMENT') == 1) cycle
+     ct = ct + 1
+     read(line_buff,*) line, this%connectivity(:,ct)
+     if (ct == this%nelements) exit
   enddo
 
   close(iinput)

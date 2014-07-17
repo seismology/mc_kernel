@@ -80,6 +80,33 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_mesh_dump3
+  type(inversion_mesh_type)    :: inv_mesh
+  integer                      :: myunit, ierr
+
+  ! tidy up
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
+
+  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh_abaqus_merge')
+
+  call assert_file_exists('unit_tests/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
+  
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_mesh_data_dump
   type(inversion_mesh_data_type)    :: inv_mesh
   real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
