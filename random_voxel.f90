@@ -17,8 +17,6 @@ function generate_random_points_vox(v, n)
 !  Returns uniform points in a voxel (i.e. non-conforming blocks as defined
 !  in Boschi et al. 1998).
 !
-!  http://mathworld.wolfram.com/SphericalCoordinates.html
-!
 !
 
   integer, intent(in)        ::  n           ! number of random points
