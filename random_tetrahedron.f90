@@ -357,7 +357,7 @@ end function get_volume_tet
 
 !-----------------------------------------------------------------------------------------
 function get_volume_poly(n, v) result(area)
-!! POLYGON_AREA_3D computes the area of a polygon in 3D.
+!! get_volume_poly computes the area of a polygon in 3D.
 !
 !  Discussion:
 !
@@ -367,25 +367,14 @@ function get_volume_poly(n, v) result(area)
 !    The polygon does not have to be "regular", that is, neither its
 !    sides nor its angles need to be equal.
 !
-!  Parameters:
-!
-!    Input, integer ( kind = 4 ) N, the number of vertices.
-!
-!    Input, real ( kind = 8 ) V(3,N), the coordinates of the vertices.
-!    The vertices should be listed in neighboring order.
-!
-!    Output, real ( kind = 8 ) AREA, the area of the polygon.
-!
-!    Output, real ( kind = 8 ) NORMAL(3), the unit normal vector to the polygon.
-!
   implicit none
 
-  integer, parameter        :: dim_num = 3
-  integer, intent(in)       :: n
-  real(kind=dp), intent(in) :: v(dim_num,n)
+  integer, parameter        :: dim_num = 3  !< Dimension of the space we're
+                                            !! living in
+  integer, intent(in)       :: n            !< N, degree of polygon
+  real(kind=dp), intent(in) :: v(dim_num,n) !< Vertices of polygon
   
-  real(kind=dp)             :: area
-  real(kind=dp)             :: cross(dim_num)
+  real(kind=dp)             :: area         !< Output, the area of the polygon
   integer                   :: i
   integer                   :: ip1
   real(kind=dp)             :: normal(dim_num)
@@ -398,19 +387,27 @@ function get_volume_poly(n, v) result(area)
      else
         ip1 = 1
      end if
-     !
-     !  Compute the cross product vector.
-     !
-     cross(1) = v(2,i) * v(3,ip1) - v(3,i) * v(2,ip1)
-     cross(2) = v(3,i) * v(1,ip1) - v(1,i) * v(3,ip1)
-     cross(3) = v(1,i) * v(2,ip1) - v(2,i) * v(1,ip1)
      
-     normal(:) = normal(:) + cross(:)
+     normal(:) = normal(:) + cross(v(:,i), v(:,ip1))
   end do
   
   area = 0.5D+00 * sqrt(sum(normal(:)**2))
 
 end function get_volume_poly
+
+
+
+function cross(a,b)
+! Compute the cross product between vectors a and b
+  real(kind=dp)             :: cross(3)
+  real(kind=dp), intent(in) :: a(3), b(3)
+           
+  cross(1) = a(2)*b(3) - a(3)*b(2)
+  cross(2) = a(3)*b(1) - a(1)*b(3)
+  cross(3) = a(1)*b(2) - b(1)*a(2)
+
+end function cross
+
 
 function point_in_triangle(r, x)
 ! Checks whether point x is in the triangle between r1, r2, r3
