@@ -181,16 +181,16 @@ end subroutine test_generate_random_point_triangle
 
 !-----------------------------------------------------------------------------------------
 subroutine test_point_in_triangle_3d
-  integer, parameter    :: npoints = 1000
+  integer, parameter    :: npoints = 10
   real(kind=dp)         :: x_ref_tri(2, npoints), x(3, npoints)
   real(kind=dp)         :: vertices(3,3), normal(3)
   logical               :: isintriangle(npoints), isinplane(npoints)
   integer               :: ipoint
 
 
-  vertices(:,1) = [3, 4, -7]
-  vertices(:,2) = [-1, 2, 0]
-  vertices(:,3) = [-2, 5, 2]
+  vertices(:,1) = [ 0, 7, 2]
+  vertices(:,2) = [-4, 0, 1]
+  vertices(:,3) = [-5, 1, 0]
 
   x_ref_tri = generate_random_points_ref_tri(npoints)
 
@@ -200,8 +200,10 @@ subroutine test_point_in_triangle_3d
                   + (vertices(:,3)-vertices(:,1)) * x_ref_tri(2,ipoint)
   end do
 
-  isintriangle = point_in_triangle_3d(vertices, x)
+  isintriangle = point_in_triangle_3d(vertices, x, isinplane)
 
+  call assert_true(isinplane,    'isintriangle recognizes points correctly as '// &
+                                 'being in plane')
   call assert_true(isintriangle, 'isintriangle recognizes points correctly as '// &
                                  'being inside triangle')
 
@@ -216,13 +218,13 @@ subroutine test_point_in_triangle_3d
   call assert_false(isinplane,    'isintriangle recognizes points correctly as '// &
                                   'being outside plane')
   call assert_false(isintriangle, 'isintriangle recognizes points correctly as '// &
-                                  'being outside triangle')
+                                  'being outside triangle (out of plane)')
 
 
   do ipoint = 1, npoints
       x(:,ipoint) =  vertices(:,1)                                  &
-                  + (vertices(:,2)-vertices(:,1)) *      x_ref_tri(1,ipoint)  &
-                  + (vertices(:,3)-vertices(:,1)) * (1 + x_ref_tri(2,ipoint))
+                  + (vertices(:,2)-vertices(:,1)) *         x_ref_tri(1,ipoint)  &
+                  + (vertices(:,3)-vertices(:,1)) * (1.01 + x_ref_tri(2,ipoint))
   end do
 
   isintriangle = point_in_triangle_3d(vertices, x, isinplane)
@@ -230,7 +232,7 @@ subroutine test_point_in_triangle_3d
   call assert_true(isinplane,    'isintriangle recognizes points correctly as '// &
                                  'being in plane')
   call assert_false(isintriangle, 'isintriangle recognizes points correctly as '// &
-                                  'being outside triangle')
+                                  'being outside triangle (in plane)')
 
 end subroutine test_point_in_triangle_3d
 !-----------------------------------------------------------------------------------------
