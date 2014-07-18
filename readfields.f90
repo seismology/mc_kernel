@@ -26,7 +26,10 @@ module readfields
     public                                 :: semdata_type
 
     type meshtype
-        real(kind=sp), allocatable         :: s(:), z(:)
+        real(kind=sp), allocatable         :: s(:), z(:)            ! Coordinates of all GLL points
+        real(kind=sp), allocatable         :: s_mp(:), z_mp(:)      ! Coordinates of element midpoints
+        integer, allocatable               :: corner_point_ids(:,:) ! (4,nelem)
+        integer, allocatable               :: eltype(:)             ! (nelem)
         integer                            :: npoints, nelem
         real(kind=dp), allocatable         :: theta(:)
         integer                            :: nsurfelem
@@ -840,49 +843,51 @@ function load_fw_points(this, coordinates, source_params)
     allocate(nextpoint(nnext_points))
     load_fw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
-#ifdef flag_kerner
+#       ifdef flag_kerner
         iclockold = tick()
-#endif
+#       endif
         call kdtree2_n_nearest( this%fwdtree,                           &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
                                 nn = nnext_points,                            &
                                 results = nextpoint )
-#ifdef flag_kerner
+#       ifdef flag_kerner
         iclockold = tick(id=id_kdtree, since=iclockold)
-#endif
+#       endif
         
         pointid(ipoint) = nextpoint(1)%idx
 
         if (trim(this%dump_type) == 'displ_only') then
             do inext_point = 1, nnext_points
                 ! get cornerpoints of finite element
-                call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                                        varid  = this%fwd(1)%fem_mesh_varid, &
-                                        start  = [1, nextpoint(inext_point)%idx], &
-                                        count  = [4, 1], &
-                                        values = corner_point_ids))
+                !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                !                        varid  = this%fwd(1)%fem_mesh_varid, &
+                !                        start  = [1, nextpoint(inext_point)%idx], &
+                !                        count  = [4, 1], &
+                !                        values = corner_point_ids))
                 
-                call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                                        varid  = this%fwd(1)%eltype_varid, &
-                                        start  = [nextpoint(inext_point)%idx], &
-                                        count  = [1], &
-                                        values = eltype))
+                corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
+                !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                !                        varid  = this%fwd(1)%eltype_varid, &
+                !                        start  = [nextpoint(inext_point)%idx], &
+                !                        count  = [1], &
+                !                        values = eltype))
+                eltype = this%fwdmesh%eltype(nextpoint(inext_point)%idx)
                 
                 do icp = 1, 4
-                    call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                                            varid  = this%fwd(1)%mesh_s_varid, &
-                                            start  = [corner_point_ids(icp) + 1], &
-                                            count  = [1], &
-                                            values = cps))
-                    
-                    call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                                            varid  = this%fwd(1)%mesh_z_varid, &
-                                            start  = [corner_point_ids(icp) + 1], &
-                                            count  = [1], &
-                                            values = cpz))
+                    !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                    !                        varid  = this%fwd(1)%mesh_s_varid, &
+                    !                        start  = [corner_point_ids(icp) + 1], &
+                    !                        count  = [1], &
+                    !                        values = cps))
+                    !
+                    !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                    !                        varid  = this%fwd(1)%mesh_z_varid, &
+                    !                        start  = [corner_point_ids(icp) + 1], &
+                    !                        count  = [1], &
+                    !                        values = cpz))
 
-                    corner_points(icp, 1) = cps(1)
-                    corner_points(icp, 2) = cpz(1)
+                    corner_points(icp, 1) = this%fwdmesh%s(corner_point_ids(icp)+1)
+                    corner_points(icp, 2) = this%fwdmesh%z(corner_point_ids(icp)+1)
                 enddo                        
                 ! test point to be inside, if so, exit
                 if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
@@ -1157,34 +1162,41 @@ function load_bw_points(this, coordinates, receiver)
         if (trim(this%dump_type) == 'displ_only') then
             do inext_point = 1, nnext_points
                 ! get cornerpoints of finite element
-                call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                        varid  = this%bwd(1)%fem_mesh_varid, &
-                                        start  = [1, nextpoint(inext_point)%idx], &
-                                        count  = [4, 1], &
-                                        values = corner_point_ids))
-                
-                call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                        varid  = this%bwd(1)%eltype_varid, &
-                                        start  = [nextpoint(inext_point)%idx], &
-                                        count  = [1], &
-                                        values = eltype))
+                corner_point_ids = this%bwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
+                eltype = this%bwdmesh%eltype(nextpoint(inext_point)%idx)
                 
                 do icp = 1, 4
-                    call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                            varid  = this%bwd(1)%mesh_s_varid, &
-                                            start  = [corner_point_ids(icp) + 1], &
-                                            count  = [1], &
-                                            values = cps))
-                    
-                    call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                            varid  = this%bwd(1)%mesh_z_varid, &
-                                            start  = [corner_point_ids(icp) + 1], &
-                                            count  = [1], &
-                                            values = cpz))
-
-                    corner_points(icp, 1) = cps(1)
-                    corner_points(icp, 2) = cpz(1)
+                    corner_points(icp, 1) = this%bwdmesh%s(corner_point_ids(icp)+1)
+                    corner_points(icp, 2) = this%bwdmesh%z(corner_point_ids(icp)+1)
                 enddo                        
+                !call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
+                !                        varid  = this%bwd(1)%fem_mesh_varid, &
+                !                        start  = [1, nextpoint(inext_point)%idx], &
+                !                        count  = [4, 1], &
+                !                        values = corner_point_ids))
+                !
+                !call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
+                !                        varid  = this%bwd(1)%eltype_varid, &
+                !                        start  = [nextpoint(inext_point)%idx], &
+                !                        count  = [1], &
+                !                        values = eltype))
+                !
+                !do icp = 1, 4
+                !    call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
+                !                            varid  = this%bwd(1)%mesh_s_varid, &
+                !                            start  = [corner_point_ids(icp) + 1], &
+                !                            count  = [1], &
+                !                            values = cps))
+                !    
+                !    call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
+                !                            varid  = this%bwd(1)%mesh_z_varid, &
+                !                            start  = [corner_point_ids(icp) + 1], &
+                !                            count  = [1], &
+                !                            values = cpz))
+
+                !    corner_points(icp, 1) = cps(1)
+                !    corner_points(icp, 2) = cpz(1)
+                !enddo                        
                 ! test point to be inside, if so, exit
                 if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
                                    corner_points, eltype(1), xi=xi, eta=eta, &
@@ -1334,8 +1346,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
         if (verbose > 1) &
             write(6,*) 'nearest point', nextpoint(1)%dis**.5, nextpoint(1)%idx, &
                        (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
-                       (this%fwdmesh%s(pointid(ipoint))**2  &
-                            + this%fwdmesh%z(pointid(ipoint))**2)**.5 
+                       (this%fwdmesh%s_mp(pointid(ipoint))**2  &
+                            + this%fwdmesh%z_mp(pointid(ipoint))**2)**.5 
 
         
         if (trim(this%dump_type) == 'displ_only') then
@@ -2013,8 +2025,8 @@ subroutine read_meshes(this)
     if (trim(this%dump_type) == 'displ_only') then
         call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
         
-        allocate(this%fwdmesh%s(this%fwdmesh%nelem))
-        allocate(this%fwdmesh%z(this%fwdmesh%nelem))
+        allocate(this%fwdmesh%s_mp(this%fwdmesh%nelem))
+        allocate(this%fwdmesh%z_mp(this%fwdmesh%nelem))
 
         call getvarid(ncid  = this%fwd(1)%mesh,   &
                       name  = "fem_mesh",            &
@@ -2051,12 +2063,44 @@ subroutine read_meshes(this)
                        varid  = ncvarid_mesh_s,         &
                        start  = 1,                    &
                        count  = this%fwdmesh%nelem, &
-                       values = this%fwdmesh%s ) 
+                       values = this%fwdmesh%s_mp ) 
         call nc_getvar(ncid   = this%fwd(1)%mesh,       &
                        varid  = ncvarid_mesh_z,         &
                        start  = 1,                    &
                        count  = this%fwdmesh%nelem, &
+                       values = this%fwdmesh%z_mp ) 
+
+
+#       ifdef flag_kerner
+!       Only executed, if compiled for the KERNER. This block is skipped for the RDBM!
+        allocate(this%fwdmesh%corner_point_ids(4, this%fwdmesh%nelem))
+        allocate(this%fwdmesh%s(this%fwdmesh%npoints))
+        allocate(this%fwdmesh%z(this%fwdmesh%npoints))
+        allocate(this%fwdmesh%eltype(this%fwdmesh%nelem))
+
+        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                varid  = this%fwd(1)%fem_mesh_varid, &
+                                start  = [1, 1], &
+                                count  = [4, this%fwdmesh%nelem], &
+                                values = this%fwdmesh%corner_point_ids))
+        
+        call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
+                                varid  = this%bwd(1)%eltype_varid, &
+                                start  = [1], &
+                                count  = [this%fwdmesh%nelem], &
+                                values = this%fwdmesh%eltype))
+        
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_s,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%npoints, &
+                       values = this%fwdmesh%s ) 
+        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
+                       varid  = ncvarid_mesh_z,         &
+                       start  = 1,                    &
+                       count  = this%fwdmesh%npoints, &
                        values = this%fwdmesh%z ) 
+#       endif
     
     else
         allocate(this%fwdmesh%s(this%fwdmesh%npoints))
@@ -2096,8 +2140,8 @@ subroutine read_meshes(this)
         if (trim(this%dump_type) == 'displ_only') then
             call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
             
-            allocate(this%bwdmesh%s(this%fwdmesh%nelem))
-            allocate(this%bwdmesh%z(this%fwdmesh%nelem))
+            allocate(this%bwdmesh%s_mp(this%fwdmesh%nelem))
+            allocate(this%bwdmesh%z_mp(this%fwdmesh%nelem))
 
             call getvarid(ncid  = this%bwd(1)%mesh,   &
                           name  = "fem_mesh",            &
@@ -2135,12 +2179,44 @@ subroutine read_meshes(this)
                            varid  = ncvarid_mesh_s,   &
                            start  = 1,                &
                            count  = this%bwdmesh%nelem, &
-                           values = this%bwdmesh%s ) 
+                           values = this%bwdmesh%s_mp ) 
             call nc_getvar(ncid   = this%bwd(1)%mesh, &
                            varid  = ncvarid_mesh_z,   &
                            start  = 1,                &
                            count  = this%bwdmesh%nelem, &
+                           values = this%bwdmesh%z_mp ) 
+
+#           ifdef flag_kerner
+!           Only executed, if compiled for the KERNER. This block is skipped for the RDBM!
+            allocate(this%bwdmesh%corner_point_ids(4, this%bwdmesh%nelem))
+            allocate(this%bwdmesh%s(this%bwdmesh%npoints))
+            allocate(this%bwdmesh%z(this%bwdmesh%npoints))
+            allocate(this%bwdmesh%eltype(this%bwdmesh%nelem))
+
+            call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
+                                    varid  = this%bwd(1)%fem_mesh_varid, &
+                                    start  = [1, 1], &
+                                    count  = [4, this%bwdmesh%nelem], &
+                                    values = this%bwdmesh%corner_point_ids))
+            
+            call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
+                                    varid  = this%bwd(1)%eltype_varid, &
+                                    start  = [1], &
+                                    count  = [this%bwdmesh%nelem], &
+                                    values = this%bwdmesh%eltype))
+            
+            call nc_getvar(ncid   = this%bwd(1)%mesh,       &
+                           varid  = ncvarid_mesh_s,         &
+                           start  = 1,                    &
+                           count  = this%bwdmesh%npoints, &
+                           values = this%bwdmesh%s ) 
+            call nc_getvar(ncid   = this%bwd(1)%mesh,       &
+                           varid  = ncvarid_mesh_z,         &
+                           start  = 1,                    &
+                           count  = this%bwdmesh%npoints, &
                            values = this%bwdmesh%z ) 
+#           endif
+
         else
 
             allocate(this%bwdmesh%s(this%bwdmesh%npoints))
@@ -2278,15 +2354,33 @@ subroutine read_meshes(this)
 
     ! Mesh sanity checks
     mesherror = .false.
-    if (maxval(abs(this%fwdmesh%s)) > 1e32) then
-       write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
-       write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
-       mesherror = .true.
+    if (allocated(this%fwdmesh%s)) then
+       if (maxval(abs(this%fwdmesh%s)) > 1e32) then
+          write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
+          write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
+          mesherror = .true.
+       end if
     end if
-    if (maxval(abs(this%fwdmesh%z)) > 1e32) then
-       write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
-       write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
-       mesherror = .true.
+    if (allocated(this%fwdmesh%z)) then
+       if (maxval(abs(this%fwdmesh%z)) > 1e32) then
+          write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
+          write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
+          mesherror = .true.
+       end if
+    end if
+    if (allocated(this%fwdmesh%s_mp)) then
+       if (maxval(abs(this%fwdmesh%s_mp)) > 1e32) then
+          write(*,*) 'Maximum value of S_mp in the forward mesh is unreasonably large'
+          write(*,*) 'maxval(S_mp): ', this%fwdmesh%s_mp(maxloc(abs(this%fwdmesh%s_mp))), ' m'
+          mesherror = .true.
+       end if
+    end if
+    if (allocated(this%fwdmesh%z_mp)) then
+       if (maxval(abs(this%fwdmesh%z_mp)) > 1e32) then
+          write(*,*) 'Maximum value of Z_mp in the forward mesh is unreasonably large'
+          write(*,*) 'maxval(Z_mp): ', this%fwdmesh%z_mp(maxloc(abs(this%fwdmesh%z_mp))), ' m'
+          mesherror = .true.
+       end if
     end if
     if (maxval(this%fwdmesh%theta).gt.180.0) then
        write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
@@ -2296,22 +2390,40 @@ subroutine read_meshes(this)
     end if
 
     if (this%nsim_bwd > 0) then
-        if (maxval(abs(this%bwdmesh%s)) > 1e32) then
-           write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
-           write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
-           mesherror = .true.
-        end if
-        if (maxval(abs(this%bwdmesh%z)) > 1e32) then
-           write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
-           write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
-           mesherror = .true.
-        end if
-        if (maxval(this%bwdmesh%theta).gt.180.0) then
-           write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-           write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-           write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
-           mesherror = .true.
-        end if
+       if (allocated(this%bwdmesh%s)) then
+          if (maxval(abs(this%bwdmesh%s)) > 1e32) then
+             write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
+             write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
+             mesherror = .true.
+          end if
+       end if
+       if (allocated(this%bwdmesh%z)) then
+          if (maxval(abs(this%bwdmesh%z)) > 1e32) then
+             write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
+             write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
+             mesherror = .true.
+          end if
+       end if
+       if (allocated(this%bwdmesh%s_mp)) then
+          if (maxval(abs(this%bwdmesh%s_mp)) > 1e32) then
+             write(*,*) 'Maximum value of S_mp in the backward mesh is unreasonably large'
+             write(*,*) 'maxval(S_mp): ', this%bwdmesh%s_mp(maxloc(abs(this%bwdmesh%s_mp))), ' m'
+             mesherror = .true.
+          end if
+       end if
+       if (allocated(this%bwdmesh%z_mp)) then
+          if (maxval(abs(this%bwdmesh%z_mp)) > 1e32) then
+             write(*,*) 'Maximum value of Z_mp in the backward mesh is unreasonably large'
+             write(*,*) 'maxval(Z_mp): ', this%bwdmesh%z_mp(maxloc(abs(this%bwdmesh%z_mp))), ' m'
+             mesherror = .true.
+          end if
+       end if
+       if (maxval(this%bwdmesh%theta).gt.180.0) then
+          write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+          write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+          write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+          mesherror = .true.
+       end if
     endif
 
 
