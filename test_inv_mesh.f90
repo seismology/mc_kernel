@@ -80,6 +80,33 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_mesh_dump3
+  type(inversion_mesh_type)    :: inv_mesh
+  integer                      :: myunit, ierr
+
+  ! tidy up
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
+
+  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh_abaqus_merge')
+
+  call assert_file_exists('unit_tests/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
+  
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_mesh_data_dump
   type(inversion_mesh_data_type)    :: inv_mesh
   real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
@@ -500,6 +527,71 @@ subroutine test_get_connected_elements
   call inv_mesh%freeme()
 end subroutine
 !-----------------------------------------------------------------------------------------
+
+!subroutine test_plane_exp_pro2
+!  real(kind=dp)      :: vertices(3,3)
+!  integer            :: npoints = 1
+!  real(kind=dp)      :: points(3,npoints)
+!  real(kind=dp)      :: p_2d(2,npoints)
+!  real(kind=dp)      :: vec(3,2)
+!
+!  vertices(:,1) = [0, 0, 0]
+!  vertices(:,2) = [0, 0, 1]
+!  vertices(:,3) = [0, 1, 0]
+!
+!  points(:,1)   = [0, 0.5, 0.5]
+!
+!  call plane_exp_pro2(p_ref   = vertices
+!                      npoints = 1
+!                      p_3d    = points
+!                      p_2d    = 
+!                      vec     = 
+!  call 
+!
+!
+!end subroutine test_plane_exp_pro2
+!
+!-----------------------------------------------------------------------------------------
+subroutine test_random_points_triangle_mesh
+  use tetrahedra, only        : point_in_triangle_3d
+  type(inversion_mesh_type)  :: inv_mesh
+  real(kind=dp)              :: vertices(3,3), offset(3,3)
+  integer                    :: connectivity(3,1)
+
+  integer, parameter         :: npoints = 1000, ntriangle = 10
+  integer                    :: nbasisfuncs_per_elem, itriangle
+  real(kind=dp)              :: points(3,npoints)
+  logical                    :: isintriangle(npoints)
+
+  do itriangle = 1, ntriangle
+
+      call random_number(vertices)
+      call random_number(offset)
+
+      vertices = (vertices-0.5)*2 + (offset-0.5)*20
+
+      !vertices(:,1) = [0, 0, 0]
+      !vertices(:,2) = [1, 0, 0]
+      !vertices(:,3) = [0, 0, 1]
+
+      connectivity(:,1) = [1, 2, 3]
+
+      nbasisfuncs_per_elem = 1
+      call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
+      
+      points = inv_mesh%generate_random_points(1, npoints)
+      
+      isintriangle = point_in_triangle_3d(vertices, points)
+
+      call assert_true(isintriangle, 'Points are in triangle')
+
+      call inv_mesh%freeme()
+  end do
+
+
+end subroutine test_random_points_triangle_mesh
+
+
 
 !-----------------------------------------------------------------------------------------
 subroutine test_initialize_mesh

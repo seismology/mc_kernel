@@ -3,7 +3,9 @@ module inversion_mesh
 
   use global_parameters, only: sp, dp, lu_out
   use tetrahedra,        only: get_volume_tet, get_volume_poly, &
-                               generate_random_points_tet, generate_random_points_poly
+                               generate_random_points_tet, &
+                               generate_random_points_poly, &
+                               generate_random_points_ref_tri
   use voxel,             only: get_volume_vox, &
                                generate_random_points_vox
 
@@ -356,7 +358,8 @@ function generate_random_points(this, ielement, npoints) result(points)
                            + this%v_2d(:,2,ielement) * points2d(2,ipoint)
      end do
   case('tri')
-     points2d = generate_random_points_poly(3, this%p_2d(:,:,ielement), npoints)
+     !points2d = generate_random_points_poly(3, this%p_2d(:,:,ielement), npoints)
+     points2d = generate_random_points_ref_tri(npoints)
      do ipoint = 1, npoints
         points(:,ipoint) =   this%v_2d(:,0,ielement)                         &
                            + this%v_2d(:,1,ielement) * points2d(1,ipoint)    &
@@ -364,9 +367,11 @@ function generate_random_points(this, ielement, npoints) result(points)
      end do
   case('hex')
      ! points  = generate_random_points_hex( this%get_element(ielement), npoints)
+     call pabort()
   case('vox')
      points = generate_random_points_vox( this%get_element(ielement), npoints)
-
+  case default
+     call pabort()
   end select
 
 end function generate_random_points
@@ -593,8 +598,8 @@ subroutine read_abaqus_mesh(this, filename, inttype)
   character(len=*), intent(in)      :: filename
   integer                           :: iinput
   integer                           :: i, ierr, ct
-  character(len=128)                :: line
-  character(len=16)                 :: elem_type
+  character(len=128)                :: line, line_buff
+  character(len=16)                 :: elem_type, elem_type_buff
   character(len=32)                 :: inttype
 
 
@@ -663,7 +668,18 @@ subroutine read_abaqus_mesh(this, filename, inttype)
   ! scan number of elements
   ct = 0
   do
-    read(iinput,*) line
+    read(iinput,'(A128)') line
+    if (index(line, '*ELEMENT') == 1) then
+        read(line,*) line_buff, elem_type_buff
+        elem_type_buff = trim(elem_type_buff(6:))
+        if (trim(elem_type_buff) /= trim(elem_type)) then
+           write(6,*) 'ERROR: reading abaqus file with multiple elementtypes (', &
+                      trim(elem_type), ', ', trim(elem_type_buff), &
+                      ') not yet implemented'
+           call pabort
+        endif
+        cycle
+    endif
     if (index(line, '**') == 1) exit
     ct = ct + 1
   enddo
@@ -694,8 +710,13 @@ subroutine read_abaqus_mesh(this, filename, inttype)
   enddo
 
   ! read elements
-  do i=1, this%nelements
-     read(iinput,*) line, this%connectivity(:,i)
+  ct = 0
+  do 
+     read(iinput,'(A128)') line_buff
+     if (index(line_buff, '*ELEMENT') == 1) cycle
+     ct = ct + 1
+     read(line_buff,*) line, this%connectivity(:,ct)
+     if (ct == this%nelements) exit
   enddo
 
   close(iinput)
@@ -796,21 +817,36 @@ subroutine make_2d_vectors(this)
   select case(trim(this%element_type))
   case('tri')
      nvec = 2
+     
+     allocate(this%v_2d(3,  0:2, this%nelements))
+     allocate(this%p_2d(2, nvec, this%nelements))
+
+     do ielem = 1, this%nelements
+        this%v_2d(:,0,ielem) = this%vertices(:, this%connectivity(1,ielem)+1)
+        this%v_2d(:,1,ielem) = this%vertices(:, this%connectivity(2,ielem)+1) - &
+                               this%vertices(:, this%connectivity(1,ielem)+1)
+        this%v_2d(:,2,ielem) = this%vertices(:, this%connectivity(3,ielem)+1) - &
+                               this%vertices(:, this%connectivity(1,ielem)+1)
+     end do
+    
+     this%p_2d = 0
+
+
   case('quad') 
      nvec = 3
-  end select
   
-  allocate(this%v_2d(3,  0:2, this%nelements))
-  allocate(this%p_2d(2, nvec, this%nelements))
+     allocate(this%v_2d(3,  0:2, this%nelements))
+     allocate(this%p_2d(2, nvec, this%nelements))
 
-  do ielem = 1, this%nelements
-     this%v_2d(:,0,ielem) = this%vertices(:, this%connectivity(1,ielem)+1)
-     call plane_exp_pro2(p_ref   = this%vertices(:, this%connectivity(1:3, ielem)+1),      &
-                         npoints = nvec,                                                   &
-                         p_3d    = this%vertices(:, this%connectivity(2:nvec+1, ielem)+1), &
-                         p_2d    = this%p_2d(:,:,ielem),                                   &
-                         vec     = this%v_2d(:,1:2,ielem))
-   end do
+     do ielem = 1, this%nelements
+        this%v_2d(:,0,ielem) = this%vertices(:, this%connectivity(1,ielem)+1)
+        call plane_exp_pro2(p_ref   = this%vertices(:, this%connectivity(1:3, ielem)+1),      &
+                            npoints = nvec,                                                   &
+                            p_3d    = this%vertices(:, this%connectivity(2:nvec+1, ielem)+1), &
+                            p_2d    = this%p_2d(:,:,ielem),                                   &
+                            vec     = this%v_2d(:,1:2,ielem))
+     end do
+  end select
 end subroutine make_2d_vectors
 !-----------------------------------------------------------------------------------------
 

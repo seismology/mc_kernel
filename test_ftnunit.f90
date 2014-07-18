@@ -139,12 +139,15 @@ subroutine test_all
   call test(test_tetra_volume_3d, 'Tetrahedron volume')
   call test(test_get_volume_poly_3, 'Triangle area')
   call test(test_get_volume_poly_4, 'Quadrilateral area')
+  call test(test_generate_random_point_triangle, 'Random points in reference triangle')
+  call test(test_point_in_triangle_3d, 'Test for test whether Point in triangle')
 
   ! test_inversion_mesh
   write(6,'(/,a)') 'TEST INVERSION MESH MODULE'
   call test(test_mesh_read, 'reading tetrahedral mesh')
   call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
   call test(test_mesh_dump2, 'reading/dumping tetrahedral mesh from abaqus')
+  call test(test_mesh_dump3, 'reading/dumping tetrahedral mesh from abaqus with multiple element blocks')
   call test(test_mesh_data_dump, 'reading/dumping tetrahedral mesh with data')
   call test(test_mesh_data_dump2, &
             'reading/dumping triangular mesh from abaqus file with data')
@@ -157,6 +160,8 @@ subroutine test_all
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
   call test(test_initialize_mesh, 'initialize mesh')
+  call test(test_random_points_triangle_mesh, &
+            'generate random numbers on triangular mesh')
 
   ! test_buffer
   write(6,'(/,a)') 'TEST BUFFER MODULE'
