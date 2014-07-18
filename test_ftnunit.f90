@@ -6,6 +6,7 @@ module unit_tests
   use test_montecarlo
   use test_fft_type
   use test_tetrahedra
+  use test_voxel
   use test_inversion_mesh
   use test_buffer
   use test_filter
@@ -139,6 +140,11 @@ subroutine test_all
   call test(test_tetra_volume_3d, 'Tetrahedron volume')
   call test(test_get_volume_poly_3, 'Triangle area')
   call test(test_get_volume_poly_4, 'Quadrilateral area')
+
+  ! test_voxel
+  write(6,'(/,a)') 'TEST VOXEL MODULE'
+  call test(test_generate_random_points_vox, 'Random points in Voxel')
+  call test(test_get_volume_vox, 'Volume of voxel')
 
   ! test_inversion_mesh
   write(6,'(/,a)') 'TEST INVERSION MESH MODULE'

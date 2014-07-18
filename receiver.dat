@@ -1,5 +1,10 @@
 1                                  # Nr of receivers
 vp Z                               # model parameter, seismogram component
+90deg 00.0000   00.0000  4       # Name, lat, lon, nr of kernels
+P_40s Gabor_40 CC 760.0 820.0        # Kernel name, Filter name, time window begin and end
+P_30s Gabor_30 CC 760.0 805.0       
+P_20s Gabor_20 CC 760.0 790.0       
+P_15s Gabor_15 CC 760.0 782.25      
 30deg  60.0000   00.0000  4       # Name, lat, lon, nr of kernels
 P_40s Gabor_40 CC 345.0 405.0        # Kernel name, Filter name, time window begin and end
 P_30s Gabor_30 CC 345.0 390.0       
@@ -10,11 +15,6 @@ P_40s Gabor_40 CC 580.0 640.0        # Kernel name, Filter name, time window beg
 P_30s Gabor_30 CC 580.0 625.0       
 P_20s Gabor_20 CC 580.0 610.0       
 P_15s Gabor_15 CC 580.0 602.25      
-90deg 00.0000   00.0000  4       # Name, lat, lon, nr of kernels
-P_40s Gabor_40 CC 760.0 820.0        # Kernel name, Filter name, time window begin and end
-P_30s Gabor_30 CC 760.0 805.0       
-P_20s Gabor_20 CC 760.0 790.0       
-P_15s Gabor_15 CC 760.0 782.25      
 120deg  -30.0000   00.0000  4       # Name, lat, lon, nr of kernels
 P_40s Gabor_40 CC 885.0 945.0        # Kernel name, Filter name, time window begin and end
 P_30s Gabor_30 CC 885.0 930.0       
