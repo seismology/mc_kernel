@@ -528,6 +528,71 @@ subroutine test_get_connected_elements
 end subroutine
 !-----------------------------------------------------------------------------------------
 
+!subroutine test_plane_exp_pro2
+!  real(kind=dp)      :: vertices(3,3)
+!  integer            :: npoints = 1
+!  real(kind=dp)      :: points(3,npoints)
+!  real(kind=dp)      :: p_2d(2,npoints)
+!  real(kind=dp)      :: vec(3,2)
+!
+!  vertices(:,1) = [0, 0, 0]
+!  vertices(:,2) = [0, 0, 1]
+!  vertices(:,3) = [0, 1, 0]
+!
+!  points(:,1)   = [0, 0.5, 0.5]
+!
+!  call plane_exp_pro2(p_ref   = vertices
+!                      npoints = 1
+!                      p_3d    = points
+!                      p_2d    = 
+!                      vec     = 
+!  call 
+!
+!
+!end subroutine test_plane_exp_pro2
+!
+!-----------------------------------------------------------------------------------------
+subroutine test_random_points_triangle_mesh
+  use tetrahedra, only        : point_in_triangle_3d
+  type(inversion_mesh_type)  :: inv_mesh
+  real(kind=dp)              :: vertices(3,3), offset(3,3)
+  integer                    :: connectivity(3,1)
+
+  integer, parameter         :: npoints = 1000, ntriangle = 10
+  integer                    :: nbasisfuncs_per_elem, itriangle
+  real(kind=dp)              :: points(3,npoints)
+  logical                    :: isintriangle(npoints)
+
+  do itriangle = 1, ntriangle
+
+      call random_number(vertices)
+      call random_number(offset)
+
+      vertices = (vertices-0.5)*2 + (offset-0.5)*20
+
+      !vertices(:,1) = [0, 0, 0]
+      !vertices(:,2) = [1, 0, 0]
+      !vertices(:,3) = [0, 0, 1]
+
+      connectivity(:,1) = [1, 2, 3]
+
+      nbasisfuncs_per_elem = 1
+      call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
+      
+      points = inv_mesh%generate_random_points(1, npoints)
+      
+      isintriangle = point_in_triangle_3d(vertices, points)
+
+      call assert_true(isintriangle, 'Points are in triangle')
+
+      call inv_mesh%freeme()
+  end do
+
+
+end subroutine test_random_points_triangle_mesh
+
+
+
 !-----------------------------------------------------------------------------------------
 subroutine test_initialize_mesh
   type(inversion_mesh_type)  :: inv_mesh
