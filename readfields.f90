@@ -49,6 +49,7 @@ module readfields
         integer                            :: mesh_s_varid            ! Variable IDs
         integer                            :: mesh_z_varid            ! Variable IDs
         integer                            :: chunk_gll
+        integer                            :: count_error_pointoutside
         character(len=200)                 :: meshdir
         character(len=12)                  :: dump_type
         integer                            :: ndumps, nseis, ngll, npol
@@ -559,10 +560,12 @@ subroutine open_files(this)
     if (trim(this%dump_type) == 'displ_only') then
        do isim = 1, this%nsim_fwd
           status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, 3)
+          this%fwd(isim)%count_error_pointoutside = 0
        end do
 
        do isim = 1, this%nsim_bwd
           status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, 3)
+          this%bwd(isim)%count_error_pointoutside = 0
        end do
     else
        do isim = 1, this%nsim_fwd
@@ -573,6 +576,7 @@ subroutine open_files(this)
           status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, this%ndim)
        end do
     endif
+
 
     call flush(lu_out)
 
@@ -591,6 +595,7 @@ subroutine close_files(this)
                                    this%fwd(isim)%buffer%efficiency()
        end if
        status = this%fwd(isim)%buffer%freeme()
+       print *, this%fwd(isim)%count_error_pointoutside
     end do
     deallocate(this%fwd)
 
@@ -601,6 +606,7 @@ subroutine close_files(this)
                               this%bwd(isim)%buffer%efficiency()
        end if
        status = this%bwd(isim)%buffer%freeme()
+       print *, this%bwd(isim)%count_error_pointoutside
     end do
     deallocate(this%bwd)
 
@@ -908,7 +914,18 @@ function load_fw_points(this, coordinates, source_params)
                write(6,*) 'ERROR: element not found. (fwd)'
                write(6,*) '       Probably outside depth/distance range in the netcdf file?'
                write(6,*) '       Try increasing nnext_points in case this problem persists'
-               call pabort
+               write(6,*) 'coordinates= ', coordinates(:,ipoint)
+               write(6,*) 's, z       = ', rotmesh_s(ipoint), rotmesh_z(ipoint)
+               do icp = 1, 4
+               write(6,*) 'cp: ', icp, ', s: ',   corner_points(icp, 1) 
+               write(6,*) 'cp: ', icp, ', z: ',   corner_points(icp, 2)
+                enddo                        
+               write(6,*) 'eltype     = ', eltype
+               write(6,*) 'xi, eta    = ', xi, eta
+               write(6,*) 'element id = ', nextpoint(inext_point)%idx
+               !call pabort
+               this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
+               cycle
             endif
 
             ! get gll points of spectral element
@@ -1216,7 +1233,9 @@ function load_bw_points(this, coordinates, receiver)
                write(6,*) 'ERROR: element not found. (bwd)'
                write(6,*) '       Probably outside depth/distance range in the netcdf file?'
                write(6,*) '       Try increasing nnext_points in case this problem persists'
-               call pabort
+               this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
+               cycle
+               !call pabort
             endif
 
             ! get gll points of spectral element
@@ -1950,15 +1969,15 @@ subroutine build_kdtree(this)
     call flush(lu_out)
 
     if (trim(this%dump_type) == 'displ_only') then
-        npoints = this%fwdmesh%nelem ! midpoints only
+        allocate(mesh(2, this%fwdmesh%nelem)) ! midpoints only
+        mesh = transpose(reshape([this%fwdmesh%s_mp, this%fwdmesh%z_mp], &
+                                 [this%fwdmesh%nelem, 2]))
     else
-        npoints = this%fwdmesh%npoints
+        allocate(mesh(2, this%fwdmesh%npoints))
+        mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z],       &
+                                 [this%fwdmesh%npoints, 2]))
     endif
 
-    allocate(mesh(2, npoints))
-    mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z], [npoints, 2]))
-
-    print *, npoints
 
     write(lu_out,*) ' Building forward KD-Tree'
     call flush(lu_out)
@@ -1970,18 +1989,21 @@ subroutine build_kdtree(this)
     
     deallocate(mesh)                           
 
-    if (trim(this%dump_type) == 'displ_only') then
-        npoints = this%bwdmesh%nelem ! midpoints only
-    else
-        npoints = this%bwdmesh%npoints
-    endif
-
     ! KDtree in backward field
     if (this%nsim_bwd > 0) then
+
+        if (trim(this%dump_type) == 'displ_only') then
+            allocate(mesh(2, this%bwdmesh%nelem)) ! midpoints only
+            mesh = transpose(reshape([this%bwdmesh%s_mp, this%bwdmesh%z_mp], &
+                                     [this%bwdmesh%nelem, 2]))
+        else
+            allocate(mesh(2, this%bwdmesh%npoints))
+            mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z],       &
+                                     [this%bwdmesh%npoints, 2]))
+        endif
+
         write(lu_out,*) ' Building backward KD-Tree'
         call flush(lu_out)
-        allocate(mesh(2, npoints))
-        mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z], [npoints, 2]))
         this%bwdtree => kdtree2_create(mesh,              &
                                        dim = 2,           &
                                        sort = .true.,     &
@@ -2070,7 +2092,6 @@ subroutine read_meshes(this)
                        count  = this%fwdmesh%nelem, &
                        values = this%fwdmesh%z_mp ) 
 
-
 #       ifdef flag_kerner
 !       Only executed, if compiled for the KERNER. This block is skipped for the RDBM!
         allocate(this%fwdmesh%corner_point_ids(4, this%fwdmesh%nelem))
@@ -2096,7 +2117,7 @@ subroutine read_meshes(this)
                        count  = this%fwdmesh%npoints,       &
                        values = this%fwdmesh%s ) 
         call nc_getvar(ncid   = this%fwd(1)%mesh,           &
-                       varid  = this%fwd(1)%mesh_s_varid,   &
+                       varid  = this%fwd(1)%mesh_z_varid,   &
                        start  = 1,                          &
                        count  = this%fwdmesh%npoints,       &
                        values = this%fwdmesh%z ) 
