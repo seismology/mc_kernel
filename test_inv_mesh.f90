@@ -444,7 +444,7 @@ subroutine test_mesh_data_dump5
   open(newunit=myunit, file='unit_tests/testtetrahedronscell_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
+  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp', 'onvertices')
   call inv_mesh%init_node_data(3)
 
   npoints = inv_mesh%get_nvertices()
@@ -528,51 +528,30 @@ subroutine test_get_connected_elements
 end subroutine
 !-----------------------------------------------------------------------------------------
 
-!subroutine test_plane_exp_pro2
-!  real(kind=dp)      :: vertices(3,3)
-!  integer            :: npoints = 1
-!  real(kind=dp)      :: points(3,npoints)
-!  real(kind=dp)      :: p_2d(2,npoints)
-!  real(kind=dp)      :: vec(3,2)
-!
-!  vertices(:,1) = [0, 0, 0]
-!  vertices(:,2) = [0, 0, 1]
-!  vertices(:,3) = [0, 1, 0]
-!
-!  points(:,1)   = [0, 0.5, 0.5]
-!
-!  call plane_exp_pro2(p_ref   = vertices
-!                      npoints = 1
-!                      p_3d    = points
-!                      p_2d    = 
-!                      vec     = 
-!  call 
-!
-!
-!end subroutine test_plane_exp_pro2
-!
 !-----------------------------------------------------------------------------------------
 subroutine test_random_points_triangle_mesh
   use tetrahedra, only        : point_in_triangle_3d
   type(inversion_mesh_type)  :: inv_mesh
-  real(kind=dp)              :: vertices(3,3), offset(3,3)
-  integer                    :: connectivity(3,1)
+  integer, parameter         :: ndim = 3, nvertices = 4
+  real(kind=dp)              :: vertices(ndim, nvertices), offset(ndim)
+  integer                    :: connectivity(3, 1)
 
   integer, parameter         :: npoints = 1000, ntriangle = 10
-  integer                    :: nbasisfuncs_per_elem, itriangle
-  real(kind=dp)              :: points(3,npoints)
+  integer                    :: nbasisfuncs_per_elem, itriangle, i
+  real(kind=dp)              :: points(ndim, npoints)
   logical                    :: isintriangle(npoints)
+  logical                    :: isinplane(npoints)
 
   do itriangle = 1, ntriangle
 
       call random_number(vertices)
       call random_number(offset)
 
-      vertices = (vertices-0.5)*2 + (offset-0.5)*20
-
-      !vertices(:,1) = [0, 0, 0]
-      !vertices(:,2) = [1, 0, 0]
-      !vertices(:,3) = [0, 0, 1]
+      do i = 1,3
+         vertices(1,:) = (vertices(1,:)-0.5)*2 + (offset(1)-0.5)*20
+         vertices(2,:) = (vertices(2,:)-0.5)*2 + (offset(2)-0.5)*20
+         vertices(3,:) = (vertices(3,:)-0.5)*2 + (offset(3)-0.5)*20
+      end do
 
       connectivity(:,1) = [1, 2, 3]
 
@@ -581,8 +560,9 @@ subroutine test_random_points_triangle_mesh
       
       points = inv_mesh%generate_random_points(1, npoints)
       
-      isintriangle = point_in_triangle_3d(vertices, points)
+      isintriangle = point_in_triangle_3d(vertices, points, isinplane)
 
+      call assert_true(isinplane,    'Points are in plane of triangle')
       call assert_true(isintriangle, 'Points are in triangle')
 
       call inv_mesh%freeme()
@@ -590,8 +570,7 @@ subroutine test_random_points_triangle_mesh
 
 
 end subroutine test_random_points_triangle_mesh
-
-
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine test_initialize_mesh

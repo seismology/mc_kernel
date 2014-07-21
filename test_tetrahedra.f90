@@ -181,11 +181,12 @@ end subroutine test_generate_random_point_triangle
 
 !-----------------------------------------------------------------------------------------
 subroutine test_point_in_triangle_3d
-  integer, parameter    :: npoints = 10
-  real(kind=dp)         :: x_ref_tri(2, npoints), x(3, npoints)
-  real(kind=dp)         :: vertices(3,3), normal(3)
-  logical               :: isintriangle(npoints), isinplane(npoints)
-  integer               :: ipoint
+  use simple_routines, only : cross
+  integer, parameter       :: npoints = 10
+  real(kind=dp)            :: x_ref_tri(2, npoints), x(3, npoints)
+  real(kind=dp)            :: vertices(3,3), normal(3), a, b, c
+  logical                  :: isintriangle(npoints), isinplane(npoints)
+  integer                  :: ipoint
 
 
   vertices(:,1) = [ 0, 7, 2]
@@ -233,6 +234,11 @@ subroutine test_point_in_triangle_3d
                                  'being in plane')
   call assert_false(isintriangle, 'isintriangle recognizes points correctly as '// &
                                   'being outside triangle (in plane)')
+  !do ipoint = 1, npoints
+  !   if (isintriangle(ipoint)) then 
+  !      write(1001, *) x(:,ipoint), a, b, c
+  !   end if
+  !end do
 
 end subroutine test_point_in_triangle_3d
 !-----------------------------------------------------------------------------------------
