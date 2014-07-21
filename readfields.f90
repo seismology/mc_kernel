@@ -2084,21 +2084,21 @@ subroutine read_meshes(this)
                                 count  = [4, this%fwdmesh%nelem], &
                                 values = this%fwdmesh%corner_point_ids))
         
-        call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                varid  = this%bwd(1)%eltype_varid, &
+        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                varid  = this%fwd(1)%eltype_varid, &
                                 start  = [1], &
                                 count  = [this%fwdmesh%nelem], &
                                 values = this%fwdmesh%eltype))
         
-        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                       varid  = ncvarid_mesh_s,         &
-                       start  = 1,                    &
-                       count  = this%fwdmesh%npoints, &
+        call nc_getvar(ncid   = this%fwd(1)%mesh,           &
+                       varid  = this%fwd(1)%mesh_s_varid,   &
+                       start  = 1,                          &
+                       count  = this%fwdmesh%npoints,       &
                        values = this%fwdmesh%s ) 
-        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                       varid  = ncvarid_mesh_z,         &
-                       start  = 1,                    &
-                       count  = this%fwdmesh%npoints, &
+        call nc_getvar(ncid   = this%fwd(1)%mesh,           &
+                       varid  = this%fwd(1)%mesh_s_varid,   &
+                       start  = 1,                          &
+                       count  = this%fwdmesh%npoints,       &
                        values = this%fwdmesh%z ) 
 #       endif
     
@@ -2205,15 +2205,15 @@ subroutine read_meshes(this)
                                     count  = [this%bwdmesh%nelem], &
                                     values = this%bwdmesh%eltype))
             
-            call nc_getvar(ncid   = this%bwd(1)%mesh,       &
-                           varid  = ncvarid_mesh_s,         &
-                           start  = 1,                    &
-                           count  = this%bwdmesh%npoints, &
+            call nc_getvar(ncid   = this%bwd(1)%mesh,            &
+                           varid  = this%bwd(1)%mesh_s_varid,    &
+                           start  = 1,                           &
+                           count  = this%bwdmesh%npoints,        &
                            values = this%bwdmesh%s ) 
-            call nc_getvar(ncid   = this%bwd(1)%mesh,       &
-                           varid  = ncvarid_mesh_z,         &
-                           start  = 1,                    &
-                           count  = this%bwdmesh%npoints, &
+            call nc_getvar(ncid   = this%bwd(1)%mesh,            &
+                           varid  = this%bwd(1)%mesh_z_varid,    &
+                           start  = 1,                           &
+                           count  = this%bwdmesh%npoints,        &
                            values = this%bwdmesh%z ) 
 #           endif
 
