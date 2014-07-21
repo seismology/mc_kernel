@@ -16,6 +16,7 @@ module unit_tests
   use test_finite_elem_mapping
   use test_spectral_basis
   use test_sem_derivatives
+  use test_simple_routines
 
   implicit none
 
@@ -26,6 +27,16 @@ subroutine test_all
   verbose = 1
 
   call init_output()
+
+  ! test simple routines
+  write(6,'(/,a)') 'TEST SIMPLE ROUTINES MODULE'
+  call test(test_mult2d_1d, 'Multiply 2D array with 1D array')
+  call test(test_mult3d_1d, 'Multiply 3D array with 1D array')
+  call test(test_mult2d_1d_complex, 'Multiply complex 2D array with 1D array')
+  call test(test_mult3d_1d_complex, 'Multiply complex 3D array with 1D array')
+  call test(test_to_lower, 'Transform string to lowercase')
+  call test(test_absreldiff, 'Calculate absolute relative difference')
+  call test(test_cross, 'Cross product')
 
   ! test sem derivatives
   write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
