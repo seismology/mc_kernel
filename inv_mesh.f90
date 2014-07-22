@@ -512,11 +512,11 @@ end subroutine initialize_mesh
 subroutine read_abaqus_meshtype(this, filename, inttype)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
+  character(len=*), intent(in)      :: inttype
   integer                           :: iinput
   integer                           :: ierr, ct
   character(len=128)                :: line
   character(len=16)                 :: elem_type
-  character(len=32)                 :: inttype
 
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
@@ -596,11 +596,11 @@ end subroutine read_abaqus_meshtype
 subroutine read_abaqus_mesh(this, filename, inttype)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
+  character(len=*), intent(in)      :: inttype
   integer                           :: iinput
   integer                           :: i, ierr, ct
   character(len=128)                :: line, line_buff
   character(len=16)                 :: elem_type, elem_type_buff
-  character(len=32)                 :: inttype
 
 
   if (this%initialized) then
