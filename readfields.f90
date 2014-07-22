@@ -3,7 +3,8 @@ module readfields
 #ifdef flag_kerner    
     use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate,       &
-                                             id_load_strain, id_kdtree
+                                             id_load_strain, id_kdtree, id_calc_strain,     &
+                                             id_find_point_fwd, id_find_point_bwd
 #else
     use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
@@ -389,8 +390,7 @@ subroutine open_files(this)
         call nc_read_att_dble(   this%fwd(isim)%dt,               &
                                  'strain dump sampling rate in sec', &
                                  this%fwd(isim))
-        ! Was a hack because dt was written out wrong in earlier AxiSEM versions
-        !this%fwd(isim)%dt = 1.7064171433448792
+
         call nc_read_att_int(    this%fwd(isim)%nseis,             &
                                  'length of seismogram  in time samples', &
                                  this%fwd(isim))
@@ -597,6 +597,7 @@ subroutine close_files(this)
        status = this%fwd(isim)%buffer%freeme()
        print *, this%fwd(isim)%count_error_pointoutside
     end do
+    write(lu_out,'(A,I8)') ' Points outside of element: ', this%fwd(1)%count_error_pointoutside
     deallocate(this%fwd)
 
     do isim = 1, this%nsim_bwd
@@ -606,8 +607,8 @@ subroutine close_files(this)
                               this%bwd(isim)%buffer%efficiency()
        end if
        status = this%bwd(isim)%buffer%freeme()
-       print *, this%bwd(isim)%count_error_pointoutside
     end do
+    write(lu_out,'(A,I8)') ' Points outside of element: ', this%bwd(1)%count_error_pointoutside
     deallocate(this%bwd)
 
     call flush(lu_out)
@@ -863,35 +864,14 @@ function load_fw_points(this, coordinates, source_params)
         pointid(ipoint) = nextpoint(1)%idx
 
         if (trim(this%dump_type) == 'displ_only') then
+#           ifdef flag_kerner
+            iclockold = tick()
+#           endif
             do inext_point = 1, nnext_points
-                ! get cornerpoints of finite element
-                !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                !                        varid  = this%fwd(1)%fem_mesh_varid, &
-                !                        start  = [1, nextpoint(inext_point)%idx], &
-                !                        count  = [4, 1], &
-                !                        values = corner_point_ids))
-                
                 corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
-                !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                !                        varid  = this%fwd(1)%eltype_varid, &
-                !                        start  = [nextpoint(inext_point)%idx], &
-                !                        count  = [1], &
-                !                        values = eltype))
                 eltype = this%fwdmesh%eltype(nextpoint(inext_point)%idx)
                 
                 do icp = 1, 4
-                    !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                    !                        varid  = this%fwd(1)%mesh_s_varid, &
-                    !                        start  = [corner_point_ids(icp) + 1], &
-                    !                        count  = [1], &
-                    !                        values = cps))
-                    !
-                    !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                    !                        varid  = this%fwd(1)%mesh_z_varid, &
-                    !                        start  = [corner_point_ids(icp) + 1], &
-                    !                        count  = [1], &
-                    !                        values = cpz))
-
                     corner_points(icp, 1) = this%fwdmesh%s(corner_point_ids(icp)+1)
                     corner_points(icp, 2) = this%fwdmesh%z(corner_point_ids(icp)+1)
                 enddo                        
@@ -957,6 +937,9 @@ function load_fw_points(this, coordinates, source_params)
             if (verbose > 1) &
                write(6,*) 'axis = ', axis
 
+#           ifdef flag_kerner
+            iclockold = tick(id=id_find_point_fwd, since=iclockold)
+#           endif
         endif
     
         do isim = 1, this%nsim_fwd
@@ -1164,19 +1147,23 @@ function load_bw_points(this, coordinates, receiver)
     allocate(nextpoint(nnext_points))
     load_bw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
-#ifdef flag_kerner
+#       ifdef flag_kerner
         iclockold = tick()
-#endif
+#       endif
         call kdtree2_n_nearest( this%bwdtree,                           &
                                 real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
                                 nn = nnext_points,                            &
                                 results = nextpoint )
-#ifdef flag_kerner
+#       ifdef flag_kerner
         iclockold = tick(id=id_kdtree, since=iclockold)
-#endif
+#       endif
     
         pointid(ipoint) = nextpoint(1)%idx
         if (trim(this%dump_type) == 'displ_only') then
+#           ifdef flag_kerner
+            iclockold = tick()
+#           endif
+          
             do inext_point = 1, nnext_points
                 ! get cornerpoints of finite element
                 corner_point_ids = this%bwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
@@ -1186,34 +1173,7 @@ function load_bw_points(this, coordinates, receiver)
                     corner_points(icp, 1) = this%bwdmesh%s(corner_point_ids(icp)+1)
                     corner_points(icp, 2) = this%bwdmesh%z(corner_point_ids(icp)+1)
                 enddo                        
-                !call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                !                        varid  = this%bwd(1)%fem_mesh_varid, &
-                !                        start  = [1, nextpoint(inext_point)%idx], &
-                !                        count  = [4, 1], &
-                !                        values = corner_point_ids))
-                !
-                !call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                !                        varid  = this%bwd(1)%eltype_varid, &
-                !                        start  = [nextpoint(inext_point)%idx], &
-                !                        count  = [1], &
-                !                        values = eltype))
-                !
-                !do icp = 1, 4
-                !    call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                !                            varid  = this%bwd(1)%mesh_s_varid, &
-                !                            start  = [corner_point_ids(icp) + 1], &
-                !                            count  = [1], &
-                !                            values = cps))
-                !    
-                !    call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                !                            varid  = this%bwd(1)%mesh_z_varid, &
-                !                            start  = [corner_point_ids(icp) + 1], &
-                !                            count  = [1], &
-                !                            values = cpz))
 
-                !    corner_points(icp, 1) = cps(1)
-                !    corner_points(icp, 2) = cpz(1)
-                !enddo                        
                 ! test point to be inside, if so, exit
                 if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
                                    corner_points, eltype(1), xi=xi, eta=eta, &
@@ -1267,6 +1227,9 @@ function load_bw_points(this, coordinates, receiver)
             if (verbose > 1) &
                write(6,*) 'axis = ', axis
 
+#           ifdef flag_kerner
+            iclockold = tick(id=id_find_point_bwd, since=iclockold)
+#           endif
         endif
     
         select case(receiver%component)
@@ -1678,9 +1641,9 @@ function load_strain_point(sem_obj, pointid, model_param)
         call pabort
     endif
 
-#ifdef flag_kerner
+#   ifdef flag_kerner
     iclockold_total = tick()
-#endif
+#   endif
 
     select case(model_param)
     case('vp')
@@ -1688,39 +1651,39 @@ function load_strain_point(sem_obj, pointid, model_param)
         allocate(utemp(sem_obj%ndumps, 1))
         allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 1))
 
-#ifdef flag_kerner
+#       ifdef flag_kerner
         iclockold = tick()
-#endif
+#       endif
         status = sem_obj%buffer%get(pointid, utemp)
-#ifdef flag_kerner
+#       ifdef flag_kerner
         iclockold = tick(id=id_buffer, since=iclockold)
-#endif
+#       endif
 
         if (status.ne.0) then
            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
 
            ! Only read to last point, not further
            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-#ifdef flag_kerner
+#          ifdef flag_kerner
            iclockold = tick()
-#endif
+#          endif
            call nc_getvar( ncid   = sem_obj%snap,           & 
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
                            values = utemp_chunk(1:gll_to_read, :, 1)) 
 
-#ifdef flag_kerner
+#          ifdef flag_kerner
            iclockold = tick(id=id_netcdf, since=iclockold)
-#endif
+#          endif
 
            do iread = 0, sem_obj%chunk_gll - 1
                status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
            end do
 
-#ifdef flag_kerner
+#          ifdef flag_kerner
            iclockold = tick(id=id_buffer, since=iclockold)
-#endif
+#          endif
 
            load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1,:,1), kind=dp)
         else
@@ -1745,9 +1708,9 @@ function load_strain_point(sem_obj, pointid, model_param)
                     cycle ! For monopole source which does not have this component.
                 endif
 
-#ifdef flag_kerner
-           iclockold = tick()
-#endif
+#               ifdef flag_kerner
+                iclockold = tick()
+#               endif
 
                 call nc_getvar( ncid   = sem_obj%snap,           & 
                                 varid  = sem_obj%strainvarid(istrainvar), &
@@ -1755,10 +1718,9 @@ function load_strain_point(sem_obj, pointid, model_param)
                                 count  = [gll_to_read, sem_obj%ndumps], &
                                 values = utemp_chunk(1:gll_to_read, :, istrainvar)) 
 
-#ifdef flag_kerner
+#               ifdef flag_kerner
                 iclockold = tick(id=id_netcdf, since=iclockold)
-#endif
-                !iclockold = tick(id=id_buffer, since=iclockold)
+#               endif
                 strain_buff(:,istrainvar) &
                      = real(utemp_chunk(pointid-start_chunk+1, :, istrainvar), kind=dp)
 
@@ -1785,6 +1747,10 @@ function load_strain_point(sem_obj, pointid, model_param)
         load_strain_point(:,6) = -strain_buff(:,4)
     end select
 
+
+#   ifdef flag_kerner
+    iclockold_total = tick(id=id_load_strain, since=iclockold)
+#   endif
 end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
@@ -1815,7 +1781,11 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                                                    0:sem_obj%npol)
     real(kind=dp), allocatable      :: G(:,:), GT(:,:)
     real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
-    integer                         :: ipol, jpol, i
+    integer                         :: ipol, jpol, i, iclockold_total
+
+#   ifdef flag_kerner
+    iclockold_total = tick()
+#   endif
 
     if (trim(sem_obj%dump_type) /= 'displ_only') then
         write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
@@ -1830,7 +1800,13 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
     do ipol = 0, sem_obj%npol
        do jpol = 0, sem_obj%npol
 
+#         ifdef flag_kerner
+          iclockold = tick()
+#         endif
           status = sem_obj%buffer%get(pointids(ipol,jpol), ubuff(:,:))
+#         ifdef flag_kerner
+          iclockold = tick(id=id_buffer, since=iclockold)
+#         endif
           if (status.ne.0) then
              start_chunk = ((pointids(ipol,jpol)) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
              ! Only read to last point, not further
@@ -1842,12 +1818,18 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                      cycle ! For monopole source which does not have this component.
                  endif
 
+#                ifdef flag_kerner
+                 iclockold = tick()
+#                endif
                  call check(nf90_get_var( ncid   = sem_obj%snap,           & 
                                           varid  = sem_obj%displvarid(idisplvar), &
                                           start  = [start_chunk, 1],       &
                                           count  = [gll_to_read, sem_obj%ndumps], &
                                           values = utemp_chunk(1:gll_to_read, :, idisplvar)))
 
+#                ifdef flag_kerner
+                 iclockold = tick(id=id_netcdf, since=iclockold)
+#                endif
                  utemp(:,ipol,jpol, idisplvar) = utemp_chunk(pointids(ipol,jpol)-start_chunk + 2, :, idisplvar)
              enddo
              do iread = 0, sem_obj%chunk_gll - 1
@@ -1866,7 +1848,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
 
     !          if (sem_obj%displvarid(idisplvar).eq.-1) then
     !              utemp(:, ipol, jpol, idisplvar) = 0
-    !              cycle ! For monopole source which does not have this component.
+    !         cycle ! For monopole source which does not have this component.
     !          endif
 
     !          call check(nf90_get_var( ncid   = sem_obj%snap,           & 
@@ -1889,7 +1871,9 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
         col_points_xi  = sem_obj%gll_points
         col_points_eta = sem_obj%gll_points
     endif
-
+#   ifdef flag_kerner
+    iclockold = tick()
+#   endif
     select case(model_param)
     case('vp')
         allocate(load_strain_point_interp(sem_obj%ndumps, 1))
@@ -1949,6 +1933,13 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
         load_strain_point_interp(:, 6) = - load_strain_point_interp(:, 6) 
 
     end select
+#   ifdef flag_kerner
+    iclockold = tick(id=id_calc_strain, since=iclockold)
+#   endif
+
+#   ifdef flag_kerner
+    iclockold_total = tick(id=id_load_strain, since=iclockold)
+#   endif
 
 end function load_strain_point_interp
 !-----------------------------------------------------------------------------------------
