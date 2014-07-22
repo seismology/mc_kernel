@@ -36,24 +36,28 @@ contains
 
 !-------------------------------------------------------------------------------
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
-                seis, dt, timeshift_fwd)
-   use fft,       only                      : rfft_type, taperandzeropad
+                seis, dt, timeshift_fwd, deconv_stf)
+   use fft,                           only  : rfft_type, taperandzeropad
+   use filtering,                     only  : timeshift_type
 
    class(kernelspec_type)                  :: this
-   character(len=32), intent(in)           :: name
+   character(len=*), intent(in)            :: name
    real(kind=dp), intent(in)               :: time_window(2)
    type(filter_type), target, intent(in)   :: filter
    character(len=4), intent(in)            :: misfit_type
    character(len=4), intent(in)            :: model_parameter
    real(kind=dp), intent(in)               :: seis(:)
    real(kind=dp), intent(in)               :: dt
-   real(kind=dp), intent(in)               :: timeshift_fwd
+   real(kind=dp), intent(in), optional     :: timeshift_fwd
+   logical, intent(in), optional           :: deconv_stf
    
    type(rfft_type)                         :: fft_data
+   type(timeshift_type)                    :: timeshift
    complex(kind=dp), allocatable           :: seis_fd(:,:)
    real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
    real(kind=dp),    allocatable           :: seis_filtered(:,:)
    character(len=32)                       :: fmtstring
+   logical                                 :: deconv_stf_loc
 
    integer                                 :: ntimes, ntimes_ft, nomega, isample
 
@@ -69,6 +73,18 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    this%initialized       = .true.
    this%dt                = dt
 
+   deconv_stf_loc = .false.
+   if (present(deconv_stf)) then
+     deconv_stf_loc = deconv_stf
+   end if
+
+   if ( (.not.deconv_stf_loc).and.(.not.present(timeshift_fwd)) ) then
+     write(*,*) 'Initialize Kernel needs a value for timeshift_fwd, if '
+     write(*,*) 'deconv_stf is set to false'
+     call pabort()
+   end if
+     
+
    if (verbose>0) then
       write(lu_out,*) '  ---------------------------------------------------------'
       write(lu_out,'(2(A))')         '   Initialize kernel ', this%name
@@ -79,7 +95,10 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(lu_out,'(A,L)')          '   Initialized:  ', this%initialized
       write(lu_out,'(2(A))')         '   Filter type:  ', this%filter%filterclass
       write(lu_out,'(A,4(F8.3))')    '   Filter freq:  ', this%filter%frequencies
-      write(lu_out,'(A,F8.3)')       '   Time shift :  ', timeshift_fwd
+      if (present(timeshift_fwd)) then
+        write(lu_out,'(A,F8.3)')       '   Time shift :  ', timeshift_fwd
+      end if
+      write(lu_out,'(A,L)')          '   Deconvolve :  ', deconv_stf_loc
    end if
 
 
@@ -108,7 +127,15 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
 
    ! FFT, timeshift and filter the seismogram
    call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft), seis_fd)
-   !call timeshift(seis_fd, fft_data%get_f(), timeshift_fwd)
+ 
+   if (.not.deconv_stf_loc) then
+     ! It's slightly ineffective to init that every time, but it is only 
+     ! called once per receiver at initialization.
+     call timeshift%init(fft_data%get_f(), timeshift_fwd)
+     call timeshift%apply(seis_fd)
+     call timeshift%freeme()
+   end if
+
    seis_fd = this%filter%apply_2d(seis_fd)
    call fft_data%irfft(seis_fd, seis_filtered)
    call fft_data%freeme()
