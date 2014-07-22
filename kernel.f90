@@ -150,10 +150,10 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                        this%time_window,   &
                        t_cut )
 
-   if (sum(this%seis**2).lt.1.e-30) then
+   if (sum(this%seis**2).lt.1.d-100) then
        this%normalization = 0
    else
-       this%normalization = 1./sum(this%seis**2)
+       this%normalization = 1.d0/sum(this%seis**2)
    end if
    
    if (verbose>0) then
