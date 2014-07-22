@@ -56,7 +56,7 @@ program kerner_code
            ! Get type of mesh and number of vertices per element
            if (trim(parameters%mesh_file).eq.'Karin') then
                nvertices_per_elem = 4
-  			   nbasisfuncs_per_elem = 4
+               nbasisfuncs_per_elem = 4
            else
                call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%inttype)
                nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
