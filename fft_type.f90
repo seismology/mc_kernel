@@ -462,7 +462,6 @@ function taperandzeropad_1d(array, ntimes, ntaper)
 
   taperandzeropad_1d(:,:) = 0
 
-
   if (ntaper_loc > 0) then
      allocate(win(ntimes_in))
      win = 1

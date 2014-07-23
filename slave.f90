@@ -252,6 +252,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: nbasisfuncs_per_elem
     integer                             :: iclockold
     integer                             :: ndim
+    integer, parameter                  :: taper_length = 2 ! This is the bare minimum. It does 
+                                                            ! not produce artifacts yet, at least 
+                                                            ! no obvious ones
     
     iclockold = tick()
 
@@ -328,7 +331,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            iclockold = tick(id=id_fwd, since=iclockold)
            
            ! FFT of forward field
-           call fft_data%rfft( taperandzeropad(fw_field, ntimes), fw_field_fd )
+           call fft_data%rfft( taperandzeropad(fw_field, ntimes, taper_length), fw_field_fd )
            iclockold = tick(id=id_fft, since=iclockold)
 
            ! Timeshift forward field
@@ -353,7 +356,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               iclockold = tick(id=id_bwd, since=iclockold)
 
               ! FFT of backward field
-              call fft_data%rfft( taperandzeropad(bw_field, ntimes), bw_field_fd )
+              call fft_data%rfft( taperandzeropad(bw_field, ntimes, taper_length), bw_field_fd )
               iclockold = tick(id=id_fft, since=iclockold)
 
               ! Timeshift backward field
