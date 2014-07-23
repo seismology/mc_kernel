@@ -17,7 +17,7 @@ subroutine do_master()
   integer               :: nslaves, rank, ierror
   integer, allocatable  :: output(:,:), sendrequest(:), work_done(:)
   integer               :: mpistatus(MPI_STATUS_SIZE)
-  integer               :: itask, ntasks, ioutput, iclock, ticks_per_sec
+  integer               :: itask, ntasks, ioutput, iclock, iclock_ref, ticks_per_sec
   real(kind=sp)         :: time
   character(len=64)     :: fmtstring
 
@@ -44,7 +44,7 @@ subroutine do_master()
      stop
   endif
 
-  call system_clock(count=iclock, count_rate=ticks_per_sec)
+  call system_clock(count=iclock_ref, count_rate=ticks_per_sec)
 
   itask = 0
   ! Seed the slaves; send one unit of work to each slave.
@@ -89,7 +89,7 @@ subroutine do_master()
      
      !Get time elapsed since start
      call system_clock(count=iclock)
-     time = real(iclock) / real(ticks_per_sec)
+     time = real(iclock-iclock_ref) / real(ticks_per_sec)
 
      write(6,fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
 
@@ -128,7 +128,7 @@ subroutine do_master()
      
      !Get time elapsed since start
      call system_clock(count=iclock)
-     time = real(iclock) / real(ticks_per_sec)
+     time = real(iclock-iclock_ref) / real(ticks_per_sec)
 
      write(6, fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
 
