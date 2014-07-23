@@ -36,7 +36,7 @@ contains
 
 !-------------------------------------------------------------------------------
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
-                seis, dt, timeshift_fwd, deconv_stf)
+                seis, dt, timeshift_fwd, deconv_stf, write_smgr)
    use fft,                           only  : rfft_type, taperandzeropad
    use filtering,                     only  : timeshift_type
 
@@ -50,6 +50,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    real(kind=dp), intent(in)               :: dt
    real(kind=dp), intent(in), optional     :: timeshift_fwd
    logical, intent(in), optional           :: deconv_stf
+   logical, intent(in), optional           :: write_smgr
    
    type(rfft_type)                         :: fft_data
    type(timeshift_type)                    :: timeshift
@@ -57,7 +58,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
    real(kind=dp),    allocatable           :: seis_filtered(:,:)
    character(len=32)                       :: fmtstring
-   logical                                 :: deconv_stf_loc
+   logical                                 :: deconv_stf_loc, write_smgr_loc
 
    integer                                 :: ntimes, ntimes_ft, nomega, isample
 
@@ -76,6 +77,11 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    deconv_stf_loc = .false.
    if (present(deconv_stf)) then
      deconv_stf_loc = deconv_stf
+   end if
+
+   write_smgr_loc = .false.
+   if (present(write_smgr)) then
+     write_smgr_loc = write_smgr
    end if
 
    if ( (.not.deconv_stf_loc).and.(.not.present(timeshift_fwd)) ) then
@@ -99,6 +105,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
         write(lu_out,'(A,F8.3)')       '   Time shift :  ', timeshift_fwd
       end if
       write(lu_out,'(A,L)')          '   Deconvolve :  ', deconv_stf_loc
+      write(lu_out,'(A,L)')          '   Write smgrs:  ', write_smgr_loc
    end if
 
 
@@ -163,7 +170,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(lu_out,*) ''
    end if
 
-   if (firstslave) then
+   if (firstslave.and.write_smgr_loc) then
       open(unit=100,file='seismogram_raw_'//trim(this%name), action='write')
       do isample = 1, size(seis,1)
          write(100,*) this%t(isample), seis(isample)

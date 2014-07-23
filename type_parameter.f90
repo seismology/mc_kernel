@@ -23,6 +23,7 @@ module type_parameter
         character(len=512)                   :: receiver_file
         character(len=512)                   :: filter_file
         character(len=512)                   :: mesh_file
+        character(len=512)                   :: output_file = 'kerner'
         character(len=1)                     :: component
         character(len=4)                     :: model_param
         character(len=32)                    :: whattodo
@@ -40,6 +41,7 @@ module type_parameter
         logical                              :: filter_read     = .false.
         logical                              :: kernel_read     = .false.
         logical                              :: deconv_stf      = .false.
+        logical                              :: write_smgr      = .true.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -111,6 +113,9 @@ subroutine read_parameters(this, input_file_in)
         case('MESH_FILE')
            this%mesh_file = keyvalue
 
+        case('OUTPUT_FILE')
+           this%output_file = keyvalue
+
         case('NETCDF_BUFFER_SIZE')
            read(keyvalue, *) this%buffer_size
 
@@ -135,6 +140,9 @@ subroutine read_parameters(this, input_file_in)
         case('INT_TYPE')
            this%inttype = keyvalue
 
+        case('WRITE_SEISMOGRAMS')
+           read(keyvalue, *) this%write_smgr
+
         end select parameter_to_read
         print "('  ', A32,' ',A)", keyword, trim(keyvalue)
      end do
@@ -154,11 +162,13 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%receiver_file, 0)
   call pbroadcast_char(this%filter_file, 0)
   call pbroadcast_char(this%mesh_file, 0)
+  call pbroadcast_char(this%output_file, 0)
   call pbroadcast_int(this%buffer_size, 0)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)
   call pbroadcast_log(this%deconv_stf, 0)
+  call pbroadcast_log(this%write_smgr, 0)
   call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
   call pbroadcast_char(this%inttype, 0)

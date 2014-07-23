@@ -164,7 +164,7 @@ subroutine plot_wavefields()
 
     write(*,*)
     write(*,*) ' Writing data to disk'
-    call inv_mesh%dump_node_data_xdmf('wavefield')
+    call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'wavefield')
     call inv_mesh%freeme()
 
     write(*,*)
