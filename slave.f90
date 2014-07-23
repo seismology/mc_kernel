@@ -280,14 +280,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(conv_field_fd     (nomega, nptperstep))
     allocate(conv_field_fd_filt(nomega, nptperstep))
 
-    !allocate(volume(nelements))
     volume = 0.0
 
     allocate(niterations(parameters%nkernel, nelements))
     niterations = 0
 
-    call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
-    call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+    if (.not.parameters%deconv_stf) then
+      call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
+      call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+    end if
     
 
     !write(*,*) '***************************************************************'
@@ -362,6 +363,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               end if
 
               ! Convolve forward and backward fields
+              ! The summation over dimension 2 is necessary for vs kernels
               conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
               iclockold = tick(id=id_filter_conv, since=iclockold)
 
