@@ -116,7 +116,8 @@ subroutine test_kernel_init
                     model_parameter = 'vp  ',            &
                     seis            = veloseis,          &
                     dt              = 0.1d0,             &
-                    timeshift_fwd   = 1.0d0   )
+                    timeshift_fwd   = 1.0d0,             &
+                    deconv_stf      = .false.)
 
    call assert_true(kernel%isinitialized(), 'Kernel initialized')
    call kernel%freeme()

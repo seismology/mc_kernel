@@ -8,6 +8,17 @@ RECEIVER_FILE        'receiver.dat'
 FILTER_FILE          'filters.dat'
 MESH_FILE            'unit_tests/flat_triangles.inp'
 
+# Prefix of output file names.
+# Kernel files are called $OUTPUT_FILE_kernel.xdmf
+# Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
+OUTPUT_FILE          'kerner'
+
+# Write out seismograms? (default: true)
+# Seismograms (raw full trace, filtered full trace and cut trace) can be 
+# written out. Produces three files per kernel. Disable to avoid congesting 
+# your rundir.
+WRITE_SEISMOGRAMS    true
+
 # Monte Carlo integration
 # Allowed absolute error per cell
 ALLOWED_ERROR        1e-4
@@ -15,10 +26,12 @@ ALLOWED_ERROR        1e-4
 # Number of points on which the kernel should be evaluated per MC iteration
 POINTS_PER_MC_STEP   20
 
-# Maximum number of iterations after which to cancel Monte Carlo integration in one cell, regardless of error.
+# Maximum number of iterations after which to cancel Monte Carlo integration 
+# in one cell, regardless of error.
 MAXIMUM_ITERATIONS   100
 
-# Size of reading buffer. 1000 is a good value, unless you run into memory problems. Higher values avoid repeated reading of the same point.
+# Size of reading buffer. 1000 is a good value, unless you run into memory 
+# problems. Higher values avoid repeated reading of the same point.
 NETCDF_BUFFER_SIZE   1000
 
 # Number of elements in each MPI task. 

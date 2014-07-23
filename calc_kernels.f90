@@ -56,7 +56,7 @@ program kerner_code
            ! Get type of mesh and number of vertices per element
            if (trim(parameters%mesh_file).eq.'Karin') then
                nvertices_per_elem = 4
-  			   nbasisfuncs_per_elem = 4
+               nbasisfuncs_per_elem = 4
            else
                call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%inttype)
                nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
@@ -138,20 +138,23 @@ subroutine start_clock
   call clocks_init(0)
 
   !id_read = clock_id('read_parameters')
-  id_fft         = clock_id('FFT routines')
-  id_bwd         = clock_id('Reading bwd field')
-  id_fwd         = clock_id('Reading fwd field')
-  id_kdtree      = clock_id(' - KD-tree lookup (only fwd)')
-  id_load_strain = clock_id(' - Load_strain (fwd and bwd)')
-  id_netcdf      = clock_id(' - - NetCDF routines')
-  id_rotate      = clock_id(' - - Rotate fields')
-  id_buffer      = clock_id(' - - Buffer routines')
-  id_mc          = clock_id('Monte Carlo routines')
-  id_filter_conv = clock_id('Filtering and convolution')
-  id_inv_mesh    = clock_id('Inversion mesh routines')
-  id_kernel      = clock_id('Kernel routines')
-  id_init        = clock_id('Initialization per task')
-  id_mpi         = clock_id('MPI communication with Master')
+  id_fft             = clock_id('FFT routines')
+  id_bwd             = clock_id('Reading bwd field')
+  id_fwd             = clock_id('Reading fwd field')
+  id_kdtree          = clock_id(' - KD-tree lookup (only fwd)')
+  id_find_point_fwd  = clock_id(' - Find next GLL point (only fwd)')
+  id_find_point_bwd  = clock_id(' - Find next GLL point (only bwd)')
+  id_load_strain     = clock_id(' - Load_strain (fwd and bwd)')
+  id_netcdf          = clock_id(' - - NetCDF routines')
+  id_rotate          = clock_id(' - - Rotate fields')
+  id_buffer          = clock_id(' - - Buffer routines')
+  id_calc_strain     = clock_id(' - - Calculate strain (disp_only mode)')
+  id_mc              = clock_id('Monte Carlo routines')
+  id_filter_conv     = clock_id('Filtering and convolution')
+  id_inv_mesh        = clock_id('Inversion mesh routines')
+  id_kernel          = clock_id('Kernel routines')
+  id_init            = clock_id('Initialization per task')
+  id_mpi             = clock_id('MPI communication with Master')
 
 
 end subroutine start_clock

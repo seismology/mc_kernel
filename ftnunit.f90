@@ -19,13 +19,15 @@
 module ftnunit
     implicit none
 
-    integer, private, save :: last_test           ! Last test that was started
-    integer, private, save :: testno              ! Current test number
-    integer, private, save :: nofails             ! Number of assertions that failed
-    integer, private, save :: noruns              ! Number of runs so far
-    logical, private, save :: call_final = .true. ! Call runtests_final implicitly?
+    integer, private, save       :: last_test            ! Last test that was started
+    integer, private, save       :: testno               ! Current test number
+    integer, private, save       :: nofails              ! Number of assertions that failed
+    integer, private, save       :: noruns               ! Number of runs so far
+    logical, private, save       :: call_final = .true.  ! Call runtests_final implicitly?
 
-    real, private, save :: infinity = huge(1.0)   ! used to test for infinite values
+    real, private, save          :: infinity = huge(1.0) ! used to test for infinite values
+    integer, private, parameter  :: sp = selected_real_kind(6, 37)
+    integer, private, parameter  :: dp = selected_real_kind(15, 307)
     
     interface assert_equal
         module procedure assert_equal_int
@@ -35,6 +37,8 @@ module ftnunit
     interface assert_comparable
         module procedure assert_comparable_real
         module procedure assert_comparable_real1d
+        module procedure assert_comparable_dble
+        module procedure assert_comparable_dble1d
     end interface
     
     interface assert_true
@@ -280,6 +284,103 @@ subroutine assert_equal_int1d( array1, array2, text )
         endif
     endif
 end subroutine assert_equal_int1d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! assert_comparable_dble --
+!     Subroutine to check if two double precision reals are approximately equal
+! Arguments:
+!     value1        First value
+!     value2        Second value
+!     margin        Allowed margin (relative)
+!     text          Text describing the assertion
+! Side effects:
+!     If the assertion fails, this is reported to standard
+!     output. Also, nofails is increased by one.
+subroutine assert_comparable_dble( value1, value2, margin, text )
+    real(kind=dp), intent(in)    :: value1
+    real(kind=dp), intent(in)    :: value2
+    real(kind=dp), intent(in)    :: margin
+    character(len=*), intent(in) :: text
+
+    if (value1 > infinity .or. -value1 > infinity) then
+        write(*,*) '   value1 is infinite - assertion failed'
+        nofails = nofails + 1
+    elseif (value2 > infinity .or. -value2 > infinity) then
+        write(*,*) '   value2 is infinite - assertion failed'
+        nofails = nofails + 1
+    elseif (isnan(value1)) then
+        write(*,*) '   value1 is NAN - assertion failed'
+        nofails = nofails + 1
+    elseif (isnan(value2)) then
+        write(*,*) '   value2 is NAN - assertion failed'
+        nofails = nofails + 1
+    endif
+
+    if ( abs(value1-value2) > 0.5d0 * margin * (abs(value1)+abs(value2)) ) then
+        nofails = nofails + 1
+        write(*,*) '    Values not comparable: "',trim(text), '" - assertion failed'
+        write(*,*) '    Values: ', value1, ' and ', value2
+    endif
+end subroutine assert_comparable_dble
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! assert_compatable_dble1d --
+!     Subroutine to check if two double precision arrays are comparable
+! Arguments:
+!     array1        First array
+!     array2        Second array
+!     margin        Allowed margin (relative)
+!     text          Text describing the assertion
+! Side effects:
+!     If the assertion fails, this is reported to standard
+!     output. Also, nofails is increased by one.
+subroutine assert_comparable_dble1d( array1, array2, margin, text )
+    real(kind=dp), dimension(:), intent(in)  :: array1
+    real(kind=dp), dimension(:), intent(in)  :: array2
+    real(kind=dp), intent(in)                :: margin
+    character(len=*), intent(in)             :: text
+
+    integer                                  :: i
+    integer                                  :: count
+
+    if ( size(array1) /= size(array2) ) then
+        nofails = nofails + 1
+        write(*,*) '    Arrays have different sizes: "',trim(text), '" - assertion failed'
+    else
+        if (any(array1 > infinity) .or. any(-array1 > infinity)) then
+            write(*,*) '   array1 contains infinite values - assertion failed'
+            nofails = nofails + 1
+        elseif (any(array2 > infinity) .or. any(-array2 > infinity)) then
+            write(*,*) '   array2 contains infinite values - assertion failed'
+            nofails = nofails + 1
+        elseif (any(isnan(array1))) then
+            write(*,*) '   array1 contains NAN values - assertion failed'
+            nofails = nofails + 1
+        elseif (any(isnan(array2))) then
+            write(*,*) '   array2 contains NAN values - assertion failed'
+            nofails = nofails + 1
+        endif
+
+        if ( any( abs(array1-array2) > 0.5d0 * margin * (abs(array1)+abs(array2)) ) ) then
+            nofails = nofails + 1
+            write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'
+            count = 0
+            do i = 1,size(array1)
+                if ( abs(array1(i)-array2(i)) > &
+                         0.5 * margin * (abs(array1(i))+abs(array2(i))) ) then
+                    count = count + 1
+                    write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
+                    if ( count < 50 ) then
+                        write(*,'(i10,e15.5,e15.5)')    i, array1(i), array2(i)
+                    endif
+                    write(*,*) 'Number of differences: ', count
+                endif
+            enddo
+        endif
+    endif
+end subroutine assert_comparable_dble1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

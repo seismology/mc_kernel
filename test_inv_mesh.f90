@@ -444,7 +444,7 @@ subroutine test_mesh_data_dump5
   open(newunit=myunit, file='unit_tests/testtetrahedronscell_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
+  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp', 'onvertices')
   call inv_mesh%init_node_data(3)
 
   npoints = inv_mesh%get_nvertices()
@@ -526,6 +526,50 @@ subroutine test_get_connected_elements
 
   call inv_mesh%freeme()
 end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_random_points_triangle_mesh
+  use tetrahedra, only        : point_in_triangle_3d
+  type(inversion_mesh_type)  :: inv_mesh
+  integer, parameter         :: ndim = 3, nvertices = 4
+  real(kind=dp)              :: vertices(ndim, nvertices), offset(ndim)
+  integer                    :: connectivity(3, 1)
+
+  integer, parameter         :: npoints = 1000, ntriangle = 10
+  integer                    :: nbasisfuncs_per_elem, itriangle, i
+  real(kind=dp)              :: points(ndim, npoints)
+  logical                    :: isintriangle(npoints)
+  logical                    :: isinplane(npoints)
+
+  do itriangle = 1, ntriangle
+
+      call random_number(vertices)
+      call random_number(offset)
+
+      do i = 1,3
+         vertices(1,:) = (vertices(1,:)-0.5)*2 + (offset(1)-0.5)*20
+         vertices(2,:) = (vertices(2,:)-0.5)*2 + (offset(2)-0.5)*20
+         vertices(3,:) = (vertices(3,:)-0.5)*2 + (offset(3)-0.5)*20
+      end do
+
+      connectivity(:,1) = [1, 2, 3]
+
+      nbasisfuncs_per_elem = 1
+      call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
+      
+      points = inv_mesh%generate_random_points(1, npoints)
+      
+      isintriangle = point_in_triangle_3d(vertices, points, isinplane)
+
+      call assert_true(isinplane,    'Points are in plane of triangle')
+      call assert_true(isintriangle, 'Points are in triangle')
+
+      call inv_mesh%freeme()
+  end do
+
+
+end subroutine test_random_points_triangle_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

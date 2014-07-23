@@ -17,6 +17,7 @@ module unit_tests
   use test_finite_elem_mapping
   use test_spectral_basis
   use test_sem_derivatives
+  use test_simple_routines
 
   implicit none
 
@@ -27,6 +28,16 @@ subroutine test_all
   verbose = 1
 
   call init_output()
+
+  ! test simple routines
+  write(6,'(/,a)') 'TEST SIMPLE ROUTINES MODULE'
+  call test(test_mult2d_1d, 'Multiply 2D array with 1D array')
+  call test(test_mult3d_1d, 'Multiply 3D array with 1D array')
+  call test(test_mult2d_1d_complex, 'Multiply complex 2D array with 1D array')
+  call test(test_mult3d_1d_complex, 'Multiply complex 3D array with 1D array')
+  call test(test_to_lower, 'Transform string to lowercase')
+  call test(test_absreldiff, 'Calculate absolute relative difference')
+  call test(test_cross, 'Cross product')
 
   ! test sem derivatives
   write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
@@ -140,6 +151,8 @@ subroutine test_all
   call test(test_tetra_volume_3d, 'Tetrahedron volume')
   call test(test_get_volume_poly_3, 'Triangle area')
   call test(test_get_volume_poly_4, 'Quadrilateral area')
+  call test(test_generate_random_point_triangle, 'Random points in reference triangle')
+  call test(test_point_in_triangle_3d, 'Test for test whether Point in triangle')
 
   ! test_voxel
   write(6,'(/,a)') 'TEST VOXEL MODULE'
@@ -164,6 +177,8 @@ subroutine test_all
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
   call test(test_initialize_mesh, 'initialize mesh')
+  call test(test_random_points_triangle_mesh, &
+            'generate random numbers on triangular mesh')
 
   ! test_buffer
   write(6,'(/,a)') 'TEST BUFFER MODULE'

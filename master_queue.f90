@@ -187,7 +187,7 @@ subroutine finalize()
              ikernel+parameters%nkernel,         &
              'Err_'//parameters%kernel(ikernel)%name )
      end do
-     call inv_mesh%dump_node_data_xdmf('gaborkernel')
+     call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
   case('volumetric')
      call inv_mesh%init_cell_data(parameters%nkernel*2)
      do ikernel = 1, parameters%nkernel
@@ -197,7 +197,7 @@ subroutine finalize()
              ikernel+parameters%nkernel,         &
              'Err_'//parameters%kernel(ikernel)%name )
      end do
-     call inv_mesh%dump_cell_data_xdmf('gaborkernel')
+     call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel')
   end select
 
   call inv_mesh%free_node_and_cell_data()
@@ -210,7 +210,7 @@ subroutine finalize()
       call inv_mesh%set_cell_data_snap(real(niterations(ikernel, :), kind=sp), 1+ikernel,&
                                        'nit_'//parameters%kernel(ikernel)%name)
   end do 
-  call inv_mesh%dump_cell_data_xdmf('gaborkernel_stat')
+  call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel_stat')
 
   call inv_mesh%freeme()
 
