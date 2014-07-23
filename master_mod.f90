@@ -2,6 +2,8 @@
 module master_module
   implicit none
   private
+  integer, parameter         :: sp = selected_real_kind(6, 37)
+  integer, parameter         :: dp = selected_real_kind(15, 307)
   public :: do_master
 contains
 
@@ -15,7 +17,8 @@ subroutine do_master()
   integer               :: nslaves, rank, ierror
   integer, allocatable  :: output(:,:), sendrequest(:), work_done(:)
   integer               :: mpistatus(MPI_STATUS_SIZE)
-  integer               :: itask, ntasks, ioutput
+  integer               :: itask, ntasks, ioutput, iclock, ticks_per_sec
+  real(kind=sp)         :: time
   character(len=64)     :: fmtstring
 
   call init_queue(ntasks)
@@ -31,7 +34,7 @@ subroutine do_master()
   ! Format string for plotting status of slaves
   allocate(work_done(nslaves))
   work_done = 0
-  write(fmtstring,"('(',I3,'('' '', I5),'' | '' F7.3''%'')')") nslaves + 1
+  write(fmtstring,"('(',I3,'('' '', I5),'' | '' F6.2,''%'', F10.1, ''sec'')')") nslaves + 1
 
   if (nslaves > ntasks) then
      write(6,*) 'ERROR: more slaves then tasks'
@@ -41,7 +44,7 @@ subroutine do_master()
      stop
   endif
 
- 
+  call system_clock(count=iclock, count_rate=ticks_per_sec)
 
   itask = 0
   ! Seed the slaves; send one unit of work to each slave.
@@ -83,7 +86,12 @@ subroutine do_master()
      
      ! Plot status of slaves
      work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
-     write(6,fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100.
+     
+     !Get time elapsed since start
+     call system_clock(count=iclock)
+     time = real(iclock) / real(ticks_per_sec)
+
+     write(6,fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
 
      ! fill sendbuffer
      call get_next_task(itask)
@@ -117,7 +125,12 @@ subroutine do_master()
      
      ! Plot status of slaves
      work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
-     write(6, fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100.
+     
+     !Get time elapsed since start
+     call system_clock(count=iclock)
+     time = real(iclock) / real(ticks_per_sec)
+
+     write(6, fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
 
   enddo
 
