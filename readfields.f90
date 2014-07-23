@@ -590,8 +590,10 @@ subroutine close_files(this)
 
     ! Destroy kdtree
 
-    call kdtree2_destroy(this%fwdtree)
-    call kdtree2_destroy(this%bwdtree)
+    if (this%kdtree_built) then
+      call kdtree2_destroy(this%fwdtree)
+      call kdtree2_destroy(this%bwdtree)
+    end if
 
     do isim = 1, this%nsim_fwd
        status = nf90_close(this%fwd(isim)%ncid)
