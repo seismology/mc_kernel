@@ -369,7 +369,9 @@ end subroutine timeshift_1d
 !> Delete this timeshift object
 subroutine freeme(this)
    class(timeshift_type)           :: this
-   deallocate(this%shift_fd)
+
+   if (allocated(this%shift_fd)) deallocate(this%shift_fd)
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 
