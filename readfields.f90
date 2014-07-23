@@ -588,6 +588,11 @@ subroutine close_files(this)
     class(semdata_type)   :: this
     integer              :: status, isim, istrainvar
 
+    ! Destroy kdtree
+
+    call kdtree2_destroy(this%fwdtree)
+    call kdtree2_destroy(this%bwdtree)
+
     do isim = 1, this%nsim_fwd
        status = nf90_close(this%fwd(isim)%ncid)
        if (verbose>0) then

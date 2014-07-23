@@ -121,7 +121,7 @@ function get_element(this, ielement)
      call pabort 
   end if
 
-  do ivert=1, this%nvertices_per_elem
+  do ivert= 1, this%nvertices_per_elem
      get_element(:,ivert) = this%vertices(:, this%connectivity(ivert,ielement)+1) 
   enddo
 end function

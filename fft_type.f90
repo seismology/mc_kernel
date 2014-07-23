@@ -416,6 +416,9 @@ subroutine freeme(this)
 
   call dfftw_destroy_plan(this%plan_fft)
   call dfftw_destroy_plan(this%plan_ifft)
+  
+  call dfftw_destroy_plan(this%plan_fft_1d)
+  call dfftw_destroy_plan(this%plan_ifft_1d)
   this%initialized = .false.
 end subroutine
 !-----------------------------------------------------------------------------------------
