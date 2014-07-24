@@ -27,7 +27,8 @@ module type_parameter
         character(len=1)                     :: component
         character(len=4)                     :: model_param
         character(len=32)                    :: whattodo
-        character(len=32)                    :: inttype
+        character(len=32)                    :: int_type
+        character(len=32)                    :: dump_type
         character(len=32)                    :: fftw_plan = 'MEASURE'
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
@@ -116,6 +117,9 @@ subroutine read_parameters(this, input_file_in)
         case('OUTPUT_FILE')
            this%output_file = keyvalue
 
+        case('DUMP_TYPE')
+           this%dump_type = keyvalue
+
         case('NETCDF_BUFFER_SIZE')
            read(keyvalue, *) this%buffer_size
 
@@ -138,7 +142,7 @@ subroutine read_parameters(this, input_file_in)
            this%whattodo = keyvalue
 
         case('INT_TYPE')
-           this%inttype = keyvalue
+           this%int_type = keyvalue
 
         case('WRITE_SEISMOGRAMS')
            read(keyvalue, *) this%write_smgr
@@ -163,6 +167,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%filter_file, 0)
   call pbroadcast_char(this%mesh_file, 0)
   call pbroadcast_char(this%output_file, 0)
+  call pbroadcast_char(this%dump_type, 0)
   call pbroadcast_int(this%buffer_size, 0)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
@@ -171,7 +176,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_log(this%write_smgr, 0)
   call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
-  call pbroadcast_char(this%inttype, 0)
+  call pbroadcast_char(this%int_type, 0)
 
   write(lu_out,*)
   call flush(lu_out)

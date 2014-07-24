@@ -140,16 +140,16 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-integer function get_nbasisfuncs(this, inttype)
+integer function get_nbasisfuncs(this, int_type)
   class(inversion_mesh_type)        :: this
-  character(len=32)                 :: inttype
+  character(len=32)                 :: int_type
   
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
   end if
 
-  select case(trim(inttype))
+  select case(trim(int_type))
   case('onvertices')
      get_nbasisfuncs = this%nvertices
   case('volumetric')
@@ -509,10 +509,10 @@ end subroutine initialize_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_abaqus_meshtype(this, filename, inttype)
+subroutine read_abaqus_meshtype(this, filename, int_type)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
-  character(len=*), intent(in)      :: inttype
+  character(len=*), intent(in)      :: int_type
   integer                           :: iinput
   integer                           :: ierr, ct
   character(len=128)                :: line
@@ -581,7 +581,7 @@ subroutine read_abaqus_meshtype(this, filename, inttype)
   close(iinput)
 
 
-  select case(trim(inttype))
+  select case(trim(int_type))
   case('onvertices')
      this%nbasisfuncs_per_elem = this%nvertices_per_elem    
   case('volumetric')
@@ -593,10 +593,10 @@ end subroutine read_abaqus_meshtype
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_abaqus_mesh(this, filename, inttype)
+subroutine read_abaqus_mesh(this, filename, int_type)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
-  character(len=*), intent(in)      :: inttype
+  character(len=*), intent(in)      :: int_type
   integer                           :: iinput
   integer                           :: i, ierr, ct
   character(len=128)                :: line, line_buff
@@ -738,7 +738,7 @@ subroutine read_abaqus_mesh(this, filename, inttype)
 
 
   ! how many basis functions per elem
-  select case(trim(inttype))
+  select case(trim(int_type))
   case('onvertices')
      this%nbasisfuncs_per_elem = this%nvertices_per_elem    
   case('volumetric')

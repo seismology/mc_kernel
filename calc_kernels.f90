@@ -58,7 +58,7 @@ program kerner_code
                nvertices_per_elem = 4
                nbasisfuncs_per_elem = 4
            else
-               call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%inttype)
+               call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%int_type)
                nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
                nvertices_per_elem = inv_mesh%nvertices_per_elem
                call inv_mesh%freeme()
