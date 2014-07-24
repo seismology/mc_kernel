@@ -1,7 +1,7 @@
 program kerner_code
 
     use mpi
-    use commpi,                      only: ppinit, pbroadcast_int
+    use commpi,                      only: ppinit, pbroadcast_int, ppend
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
                                            master, lu_out, myrank, id_fft, id_fwd, id_bwd
 
@@ -95,7 +95,7 @@ program kerner_code
            call do_slave()
         endif
  
-        call MPI_FINALIZE(ierror)
+        call ppend()
         if (.not.master) call end_clock()   
   
     case('plot_wavefield')
@@ -107,7 +107,6 @@ program kerner_code
             print *, 'Nothing to do on rank ', myrank
         end if
     end select
-
 
 
     write(lu_out,*)

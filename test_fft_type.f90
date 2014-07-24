@@ -183,7 +183,7 @@ subroutine test_fft_inverse
     datat_ref(:,:) = datat(:,:)
 
     call fftt%rfft(datat, dataf)
-    call fftt%irfft(dataf, datat_ref)
+    call fftt%irfft(dataf, datat)
 
     do i=1, ntraces
         call assert_comparable_real1d(real(datat(:,i), 4) + 1, &
@@ -192,7 +192,102 @@ subroutine test_fft_inverse
     enddo
 
     call fftt%freeme()
-end subroutine
+end subroutine test_fft_inverse
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_fft_inverse_md
+    integer     :: nomega, ntimes, ntraces
+    integer     :: i
+
+    type(rfft_type) :: fftt
+
+    real(kind=dp), dimension(:,:), allocatable       :: datat, datat_ref
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf
+
+    ntimes = 16
+    ntraces = 10
+
+    call fftt%init(ntimes, 1, ntraces)
+
+    ntimes = fftt%get_ntimes()
+    nomega = fftt%get_nomega()
+
+    allocate(datat(1:ntimes, 1:ntraces))
+    allocate(datat_ref(1:ntimes, 1:ntraces))
+    allocate(dataf(1:nomega, 1:ntraces))
+
+    ! some random data
+    datat = 0
+    datat(5,:)  = 1
+    datat(6,:)  = 2
+    datat(7,:)  = 0
+    datat(8,:)  = 1
+    datat(9,:)  = 1
+    datat(10,:) = 2
+    datat(11,:) = 0
+    datat(12,:) = 1
+
+    datat_ref(:,:) = datat(:,:)
+
+    call fftt%rfft(datat_ref, dataf)
+    call fftt%irfft(dataf, datat)
+
+    do i=1, ntraces
+        call assert_comparable(datat(:,i) + 1, &
+                               datat_ref(:,i) + 1, &
+                               1d-5, 'ifft(fft(datat)) = datat')
+    enddo
+
+    call fftt%freeme()
+end subroutine test_fft_inverse_md
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_fft_inverse_taz
+    integer             :: nomega, ntimes
+    integer, parameter  :: ntimes_orig = 16, ntraces = 10
+    integer             :: i
+
+    type(rfft_type) :: fftt
+
+    real(kind=dp), dimension(:,:), allocatable       :: datat, datat_ref
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf
+
+
+    call fftt%init(ntimes_orig, 1, ntraces)
+
+    ntimes = fftt%get_ntimes()
+    nomega = fftt%get_nomega()
+
+    allocate(datat_ref(1:ntimes_orig, 1:ntraces))
+    allocate(datat(1:ntimes, 1:ntraces))
+    allocate(dataf(1:nomega, 1:ntraces))
+
+    ! some random data
+    datat_ref = 0
+    datat_ref(5,:)  = 1
+    datat_ref(6,:)  = 1
+    datat_ref(7,:)  = 1
+    datat_ref(8,:)  = 1
+    datat_ref(9,:)  = 1
+    datat_ref(10,:) = 1
+    datat_ref(11,:) = 1
+    datat_ref(12,:) = 1
+
+    datat(1:ntimes_orig,:) = datat_ref(:,:)
+
+    call fftt%rfft(taperandzeropad(datat_ref, ntimes), dataf)
+    call fftt%irfft(dataf, datat)
+
+    do i=1, ntraces
+        call assert_comparable(datat(1:ntimes_orig,i) + 1, &
+                               datat_ref(:,i) + 1, &
+                               1d-5, 'ifft(fft(datat)) = datat')
+    enddo
+
+    call fftt%freeme()
+end subroutine test_fft_inverse_taz
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -254,6 +349,9 @@ subroutine test_fft_taperandzeropad
     data_orig = 1
 
     data_padded = taperandzeropad(data_orig, len_padded)
+
+    call assert_comparable(data_orig(9:24,1), data_padded(9:24,1), 1d-8, &
+                           'Central part of tapered signal remains the same')
 
     call assert_equal(len_orig/2, count(abs(data_padded-1)<1e-8), &
                      'length of flat part in tapering window is 50%')
