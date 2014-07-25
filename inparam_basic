@@ -1,6 +1,6 @@
 # directory of the forward and backward run
-FWD_DIR              './wavefield/fwd/'
-BWD_DIR              './wavefield/bwd/'
+FWD_DIR              './wavefield_10s/fwd/'
+BWD_DIR              './wavefield_10s/bwd/'
 
 # Paths of parameter files 
 SOURCE_FILE          'CMTSOLUTION'
@@ -13,18 +13,24 @@ MESH_FILE            'unit_tests/flat_triangles.inp'
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
 OUTPUT_FILE          'kerner'
 
+# Output format when dumping kernels and wavefields. Chose between xdmf and 
+# Yale-style csr binary format (compressed sparse row). Yet, the allowed
+# error below is assumed as the truncation threshold in csr storage
+DUMP_TYPE            'csr'
+
 # Write out seismograms? (default: true)
 # Seismograms (raw full trace, filtered full trace and cut trace) can be 
 # written out. Produces three files per kernel. Disable to avoid congesting 
 # your rundir.
-WRITE_SEISMOGRAMS    true
+WRITE_SEISMOGRAMS    false
 
 # Monte Carlo integration
-# Allowed absolute error per cell
+# Allowed absolute error per cell. Is also used as a threshold value below 
+# which values in csr type outpt will be neglegted
 ALLOWED_ERROR        1e-4
 
 # Number of points on which the kernel should be evaluated per MC iteration
-POINTS_PER_MC_STEP   20
+POINTS_PER_MC_STEP   100
 
 # Maximum number of iterations after which to cancel Monte Carlo integration 
 # in one cell, regardless of error.
@@ -35,7 +41,7 @@ MAXIMUM_ITERATIONS   100
 NETCDF_BUFFER_SIZE   1000
 
 # Number of elements in each MPI task. 
-ELEMENTS_PER_TASK    100 
+ELEMENTS_PER_TASK    10
 
 # FFTW Planning to use
 # Options: 
@@ -51,7 +57,7 @@ FFTW_PLAN              MEASURE
 WHAT_TO_DO           'integratekernel'
 
 # plot_wavefield has to be run in serial
-#WHAT_TO_DO           'plot_wavefield'
+#WHAT_TO_DO          'plot_wavefield'
 
 # Do you want your kernels to be given on the vertices ('onvertices') or
 # inside ('volumetric') each elements?
