@@ -433,7 +433,8 @@ subroutine read_kernel(this, sem_data, filter)
                                             model_parameter = this%model_param          , &
                                             seis            = sem_data%veloseis(:,irec) , &
                                             dt              = sem_data%dt               , &
-                                            timeshift_fwd   = sem_data%timeshift_fwd    )
+                                            timeshift_fwd   = sem_data%timeshift_fwd    , &
+                                            write_smgr      = this%write_smgr)
 
          else
              this%kernel(ikernel)%name = kernelname

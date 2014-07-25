@@ -25,7 +25,7 @@ module global_parameters
                                 id_filter_conv, id_inv_mesh, id_kernel, id_init, &
                                 id_buffer, id_netcdf, id_rotate, id_load_strain, &
                                 id_kdtree, id_calc_strain, id_find_point_fwd,    &
-                                id_find_point_bwd
+                                id_find_point_bwd, id_lagrange
   integer                    :: id_load, id_resamp, id_out
 
   contains

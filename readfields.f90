@@ -4,7 +4,7 @@ module readfields
     use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate,       &
                                              id_load_strain, id_kdtree, id_calc_strain,     &
-                                             id_find_point_fwd, id_find_point_bwd
+                                             id_find_point_fwd, id_find_point_bwd, id_lagrange
 #else
     use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
                                              myrank, id_buffer, id_netcdf, id_rotate
@@ -59,6 +59,8 @@ module readfields
         character(len=10)                  :: source_type
         character(len=10)                  :: excitation_type
         real(kind=sp), allocatable         :: stf(:)
+        type(buffer_type)                  :: buffer_strain
+        type(buffer_type)                  :: buffer_disp
         type(buffer_type)                  :: buffer
         real(kind=dp)                      :: dt
         real(kind=dp)                      :: amplitude
@@ -557,17 +559,45 @@ subroutine open_files(this)
     this%files_open = .true.
 
     !@TODO memory could be used more efficient for monopole sources in the buffers
-    if (trim(this%dump_type) == 'displ_only') then
+    !Initialize Buffers. 
+    select case(trim(this%dump_type))
+    case('displ_only')
        do isim = 1, this%nsim_fwd
-          status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, 3)
+          status = this%fwd(isim)%buffer_disp%init(this%buffer_size, this%fwd(isim)%ndumps, 3)
+          select case(this%model_param)
+          case('vp')
+            status = this%fwd(isim)%buffer_strain%init(this%buffer_size,      &
+                                                       this%fwd(isim)%ndumps, &
+                                                       this%fwd(isim)%npol+1,   &
+                                                       this%fwd(isim)%npol+1)
+          case('vs')
+            status = this%fwd(isim)%buffer_strain%init(this%buffer_size,      &
+                                                       this%fwd(isim)%ndumps, &
+                                                       this%fwd(isim)%npol+1,   &
+                                                       this%fwd(isim)%npol+1,   &
+                                                       6)
+          end select
           this%fwd(isim)%count_error_pointoutside = 0
        end do
 
        do isim = 1, this%nsim_bwd
-          status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, 3)
+          status = this%bwd(isim)%buffer_disp%init(this%buffer_size, this%bwd(isim)%ndumps, 3)
+          select case(this%model_param)
+          case('vp')
+            status = this%bwd(isim)%buffer_strain%init(this%buffer_size,      &
+                                                       this%bwd(isim)%ndumps, &
+                                                       this%bwd(isim)%npol+1,   &
+                                                       this%bwd(isim)%npol+1)
+          case('vs')
+            status = this%bwd(isim)%buffer_strain%init(this%buffer_size,      &
+                                                       this%bwd(isim)%ndumps, &
+                                                       this%bwd(isim)%npol+1,   &
+                                                       this%bwd(isim)%npol+1,   &
+                                                       6)
+          end select
           this%bwd(isim)%count_error_pointoutside = 0
        end do
-    else
+    case('fullfields')
        do isim = 1, this%nsim_fwd
           status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, this%ndim)
        end do
@@ -575,7 +605,10 @@ subroutine open_files(this)
        do isim = 1, this%nsim_bwd
           status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, this%ndim)
        end do
-    endif
+    case default
+       print *, 'Unknown dump type in solver'
+       call pabort()
+    end select
 
 
     call flush(lu_out)
@@ -589,33 +622,61 @@ subroutine close_files(this)
     integer              :: status, isim, istrainvar
 
     ! Destroy kdtree
-
     if (this%kdtree_built) then
       call kdtree2_destroy(this%fwdtree)
       call kdtree2_destroy(this%bwdtree)
     end if
 
-    do isim = 1, this%nsim_fwd
-       status = nf90_close(this%fwd(isim)%ncid)
-       if (verbose>0) then
-          write(lu_out,'(A,I1,A,F9.6)') ' Buffer efficiency fwd(', isim, '): ',  &
-                                   this%fwd(isim)%buffer%efficiency()
-       end if
-       status = this%fwd(isim)%buffer%freeme()
-       print *, this%fwd(isim)%count_error_pointoutside
-    end do
-    write(lu_out,'(A,I8)') ' Points outside of element: ', this%fwd(1)%count_error_pointoutside
-    deallocate(this%fwd)
+    ! Free buffers
+    select case(trim(this%dump_type))
+    case('fullfields')
+      do isim = 1, this%nsim_fwd
+         status = nf90_close(this%fwd(isim)%ncid)
+         if (verbose>0) then
+            write(lu_out,'(A,I1,A,F9.6)') ' Buffer efficiency fwd(', isim, '): ',  &
+                                     this%fwd(isim)%buffer%efficiency()
+         end if
+         status = this%fwd(isim)%buffer%freeme()
+      end do
 
-    do isim = 1, this%nsim_bwd
-       status = nf90_close(this%bwd(isim)%ncid)
-       if (verbose>0) then
-          write(lu_out,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
-                              this%bwd(isim)%buffer%efficiency()
-       end if
-       status = this%bwd(isim)%buffer%freeme()
-    end do
-    write(lu_out,'(A,I8)') ' Points outside of element: ', this%bwd(1)%count_error_pointoutside
+      do isim = 1, this%nsim_bwd
+         status = nf90_close(this%bwd(isim)%ncid)
+         if (verbose>0) then
+            write(lu_out,'(A,F9.6)') ' Buffer efficiency bwd   : ', & 
+                                this%bwd(isim)%buffer%efficiency()
+         end if
+         status = this%bwd(isim)%buffer%freeme()
+      end do
+
+    case('displ_only')
+      do isim = 1, this%nsim_fwd
+         status = nf90_close(this%fwd(isim)%ncid)
+         if (verbose>0) then
+            write(lu_out,'(A,I1,A,F9.6)') ' Strain buffer efficiency fwd(', isim, '): ',  &
+                                     this%fwd(isim)%buffer_strain%efficiency()
+            write(lu_out,'(A,I1,A,F9.6)') ' Displ. buffer efficiency fwd(', isim, '): ',  &
+                                     this%fwd(isim)%buffer_disp%efficiency()
+         end if
+         status = this%fwd(isim)%buffer_strain%freeme()
+         status = this%fwd(isim)%buffer_disp%freeme()
+      end do
+      write(lu_out,'(A,I8)') ' Points outside of element: ', this%fwd(1)%count_error_pointoutside
+
+      do isim = 1, this%nsim_bwd
+         status = nf90_close(this%bwd(isim)%ncid)
+         if (verbose>0) then
+            write(lu_out,'(A,I1,A,F9.6)') ' Strain buffer efficiency bwd(', isim, '): ',  &
+                                     this%bwd(isim)%buffer_strain%efficiency()
+            write(lu_out,'(A,I1,A,F9.6)') ' Displ. buffer efficiency bwd(', isim, '): ',  &
+                                     this%bwd(isim)%buffer_disp%efficiency()
+         end if
+         status = this%bwd(isim)%buffer_strain%freeme()
+         status = this%bwd(isim)%buffer_disp%freeme()
+      end do
+      write(lu_out,'(A,I8)') ' Points outside of element: ', this%bwd(1)%count_error_pointoutside
+    end select
+
+    deallocate(this%fwd)
     deallocate(this%bwd)
 
     call flush(lu_out)
@@ -826,6 +887,7 @@ function load_fw_points(this, coordinates, source_params)
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
+    integer                           :: id_elem
     real(kind=dp)                     :: corner_points(4,2)
     real(kind=dp)                     :: cps(1), cpz(1)
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
@@ -915,13 +977,15 @@ function load_fw_points(this, coordinates, source_params)
                cycle
             endif
 
+            id_elem = nextpoint(inext_point)%idx
+
             ! get gll points of spectral element
             gll_point_ids = -1
             if (verbose > 1) &
-                write(6,*) 'element id = ', nextpoint(inext_point)%idx
+                write(6,*) 'element id = ', id_elem !nextpoint(inext_point)%idx
             call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
                                     varid  = this%fwd(1)%sem_mesh_varid, &
-                                    start  = [1, 1, nextpoint(inext_point)%idx], &
+                                    start  = [1, 1, id_elem], &
                                     count  = [this%npol+1, this%npol+1, 1], &
                                     values = gll_point_ids))
             if (verbose > 1) &
@@ -929,7 +993,7 @@ function load_fw_points(this, coordinates, source_params)
 
             call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
                                     varid  = this%fwd(1)%axis_varid, &
-                                    start  = [nextpoint(inext_point)%idx], &
+                                    start  = [id_elem], &
                                     count  = [1], &
                                     values = axis_int))
 
@@ -953,7 +1017,8 @@ function load_fw_points(this, coordinates, source_params)
             if (trim(this%dump_type) == 'displ_only') then
                utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                                                 xi, eta, this%model_param, &
-                                                corner_points, eltype(1), axis)
+                                                corner_points, eltype(1), axis, &
+                                                id_elem = id_elem)
             else
                utemp = load_strain_point(this%fwd(isim),      &
                                          pointid(ipoint),     &
@@ -1118,7 +1183,7 @@ function load_bw_points(this, coordinates, receiver)
                                                          size(coordinates,2))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
-    integer                           :: npoints, nnext_points
+    integer                           :: npoints, nnext_points, id_elem
     integer                           :: pointid(size(coordinates,2))
     integer                           :: ipoint, inext_point, isim, iclockold, icp
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
@@ -1205,6 +1270,8 @@ function load_bw_points(this, coordinates, receiver)
                !call pabort
             endif
 
+            id_elem = nextpoint(inext_point)%idx
+
             ! get gll points of spectral element
             gll_point_ids = -1
             if (verbose > 1) &
@@ -1242,9 +1309,10 @@ function load_bw_points(this, coordinates, receiver)
         select case(receiver%component)
         case('Z')
             if (trim(this%dump_type) == 'displ_only') then
-               utemp = load_strain_point_interp(this%bwd(1), gll_point_ids, &
-                                                xi, eta, this%model_param, &
-                                                corner_points, eltype(1), axis)
+               utemp = load_strain_point_interp(this%bwd(1), gll_point_ids,     &
+                                                xi, eta, this%model_param,      &
+                                                corner_points, eltype(1), axis, &
+                                                id_elem = id_elem)
             else
                utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%model_param)
             endif
@@ -1762,29 +1830,45 @@ end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes, element_type, axis)
-
+function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes, element_type, axis, id_elem)
+    !< Calculates strain in element given by pointids, nodes. 
+    !! Strain is then interpolated to the point defined by xi, eta.
+    !! If parameter id_elem is present, it checks strain buffer, whether strain for this element 
+    !! has been calculated before. In this case, only the interpolation is done (order of 
+    !! magnitude faster)
     use sem_derivatives
     use spectral_basis, only : lagrange_interpol_2D_td
 
     type(ncparamtype), intent(in)   :: sem_obj
-    integer, intent(in)             :: pointids(0:sem_obj%npol,0:sem_obj%npol)
-    real(kind=dp), intent(in)       :: xi, eta
-    character(len=*), intent(in)    :: model_param
-    real(kind=dp), allocatable      :: load_strain_point_interp(:,:)
-    real(kind=dp), intent(in)       :: nodes(4,2)
-    integer, intent(in)             :: element_type
-    logical, intent(in)             :: axis
+    integer,           intent(in)   :: pointids(0:sem_obj%npol, &
+                                                0:sem_obj%npol) !< ID of GLL/GLI points in element of interest
+    real(kind=dp),     intent(in)   :: xi, eta      !< Coordinates at which to interpolate strain
+    character(len=*),  intent(in)   :: model_param  !< Model parameter (decides on 
+                                                    !!straintrace (vp) or full tensor (vs).
+    real(kind=dp),     intent(in)   :: nodes(4,2)   !< Coordinates of element corner points
+    integer,           intent(in)   :: element_type !< Element type in the solver
+    logical,           intent(in)   :: axis         !< Axis element or not 
+    integer, optional, intent(in)   :: id_elem   !< ID of element to interpolate strain in
+                                                 !! Giving this argument activates the strain 
+                                                 !! buffer. Omitting it restores classic behaviour
+                                                 !! (needed for RDBM)
+    real(kind=dp),     allocatable  :: load_strain_point_interp(:,:)
 
+    logical                         :: use_strainbuffer = .false.
     integer                         :: start_chunk, iread, gll_to_read
     integer                         :: iclockold, status, idisplvar
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
     real(kind=sp), allocatable      :: ubuff(:,:)
-    real(kind=sp)                   :: utemp(1:sem_obj%ndumps, 0:sem_obj%npol, &
-                                             0:sem_obj%npol, 3)
-    real(kind=sp)                   :: strain(1:sem_obj%ndumps, 0:sem_obj%npol, &
-                                              0:sem_obj%npol, 6)
-    real(kind=sp)                   :: straintrace(1:sem_obj%ndumps, 0:sem_obj%npol, &
+    real(kind=sp)                   :: utemp(1:sem_obj%ndumps, &
+                                             0:sem_obj%npol,   &
+                                             0:sem_obj%npol,   &
+                                             3)
+    real(kind=sp)                   :: strain(1:sem_obj%ndumps, &
+                                              0:sem_obj%npol,   &
+                                              0:sem_obj%npol,   &
+                                              6)
+    real(kind=sp)                   :: straintrace(1:sem_obj%ndumps, &
+                                                   0:sem_obj%npol,   &
                                                    0:sem_obj%npol)
     real(kind=dp), allocatable      :: G(:,:), GT(:,:)
     real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
@@ -1794,79 +1878,18 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
     iclockold_total = tick()
 #   endif
 
+    if (present(id_elem)) then
+      use_strainbuffer = .true.
+    else
+      use_strainbuffer = .false.
+    end if
+
     if (trim(sem_obj%dump_type) /= 'displ_only') then
         write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
         write(6,*) '       written with dump_type "displ_only"'
         call pabort
     endif
 
-    allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
-    allocate(ubuff(sem_obj%ndumps, 3))
-
-    ! load displacements from all GLL points
-    do ipol = 0, sem_obj%npol
-       do jpol = 0, sem_obj%npol
-
-#         ifdef flag_kerner
-          iclockold = tick()
-#         endif
-          status = sem_obj%buffer%get(pointids(ipol,jpol), ubuff(:,:))
-#         ifdef flag_kerner
-          iclockold = tick(id=id_buffer, since=iclockold)
-#         endif
-          if (status.ne.0) then
-             start_chunk = ((pointids(ipol,jpol)) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-             ! Only read to last point, not further
-             gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
-             do idisplvar = 1, 3
-
-                 if (sem_obj%displvarid(idisplvar).eq.-1) then
-                     utemp(:, ipol, jpol, idisplvar) = 0
-                     cycle ! For monopole source which does not have this component.
-                 endif
-
-#                ifdef flag_kerner
-                 iclockold = tick()
-#                endif
-                 call check(nf90_get_var( ncid   = sem_obj%snap,           & 
-                                          varid  = sem_obj%displvarid(idisplvar), &
-                                          start  = [start_chunk, 1],       &
-                                          count  = [gll_to_read, sem_obj%ndumps], &
-                                          values = utemp_chunk(1:gll_to_read, :, idisplvar)))
-
-#                ifdef flag_kerner
-                 iclockold = tick(id=id_netcdf, since=iclockold)
-#                endif
-                 utemp(:,ipol,jpol, idisplvar) = utemp_chunk(pointids(ipol,jpol)-start_chunk + 2, :, idisplvar)
-             enddo
-             do iread = 0, sem_obj%chunk_gll - 1
-                 status = sem_obj%buffer%put(start_chunk + iread - 1, utemp_chunk(iread+1,:,:))
-             end do
-          else
-             utemp(:,ipol,jpol,:) = ubuff(:,:)
-          endif
-       enddo
-    enddo
-
-    !do ipol = 0, sem_obj%npol
-    !   do jpol = 0, sem_obj%npol
-
-    !      do idisplvar = 1, 3
-
-    !          if (sem_obj%displvarid(idisplvar).eq.-1) then
-    !              utemp(:, ipol, jpol, idisplvar) = 0
-    !         cycle ! For monopole source which does not have this component.
-    !          endif
-
-    !          call check(nf90_get_var( ncid   = sem_obj%snap,           & 
-    !                                   varid  = sem_obj%displvarid(idisplvar), &
-    !                                   start  = [pointids(ipol,jpol) + 1, 1],       &
-    !                                   count  = [1, sem_obj%ndumps], &
-    !                                   values = utemp(:, ipol, jpol, idisplvar)))
-    !      enddo
-    !   enddo
-    !enddo
-   
     if (axis) then
         G  = sem_obj%G2
         GT = sem_obj%G1T
@@ -1877,75 +1900,184 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
         GT = sem_obj%G2T
         col_points_xi  = sem_obj%gll_points
         col_points_eta = sem_obj%gll_points
-    endif
-#   ifdef flag_kerner
-    iclockold = tick()
-#   endif
+    endif 
+
+
+    if (use_strainbuffer) then
+
+      if(id_elem<=0) then
+        print *, 'id_elem is zero or smaller: ', id_elem
+        call pabort()
+      end if
+
+#     ifdef flag_kerner
+      iclockold = tick()
+#     endif
+
+      select case(model_param)
+      case('vp')
+        status = sem_obj%buffer_strain%get(id_elem, straintrace)
+      case('vs')
+        status = sem_obj%buffer_strain%get(id_elem, strain)
+      end select
+#     ifdef flag_kerner
+      iclockold = tick(id=id_buffer, since=iclockold)
+#     endif
+
+    else
+      status = - 1
+
+    end if
+
+
+    if (status.ne.0) then
+
+      allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
+      allocate(ubuff(sem_obj%ndumps, 3))
+
+      ! load displacements from all GLL points
+      do ipol = 0, sem_obj%npol
+         do jpol = 0, sem_obj%npol
+
+#         ifdef flag_kerner
+            iclockold = tick()
+#         endif
+            status = sem_obj%buffer_disp%get(pointids(ipol,jpol), ubuff(:,:))
+#         ifdef flag_kerner
+            iclockold = tick(id=id_buffer, since=iclockold)
+#         endif
+            if (status.ne.0) then
+               start_chunk = ((pointids(ipol,jpol)) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+               ! Only read to last point, not further
+               gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+               do idisplvar = 1, 3
+
+                   if (sem_obj%displvarid(idisplvar).eq.-1) then
+                       utemp(:, ipol, jpol, idisplvar) = 0
+                       cycle ! For monopole source which does not have this component.
+                   endif
+
+#                ifdef flag_kerner
+                   iclockold = tick()
+#                endif
+                   call check(nf90_get_var( ncid   = sem_obj%snap,           & 
+                                            varid  = sem_obj%displvarid(idisplvar), &
+                                            start  = [start_chunk, 1],       &
+                                            count  = [gll_to_read, sem_obj%ndumps], &
+                                            values = utemp_chunk(1:gll_to_read, :, idisplvar)))
+
+#                ifdef flag_kerner
+                   iclockold = tick(id=id_netcdf, since=iclockold)
+#                endif
+                   utemp(:,ipol,jpol, idisplvar) = utemp_chunk(  pointids(ipol,jpol) &
+                                                                 - start_chunk + 2,  &
+                                                               :, idisplvar)
+               enddo
+               do iread = 0, sem_obj%chunk_gll - 1
+                   status = sem_obj%buffer_disp%put(start_chunk + iread - 1, &
+                                                    utemp_chunk(iread+1,:,:) )
+               end do
+            else
+               utemp(:,ipol,jpol,:) = ubuff(:,:)
+            endif
+         enddo
+      enddo
+
+#     ifdef flag_kerner
+      iclockold = tick()
+#     endif
+      select case(model_param)
+      case('vp')
+          ! compute straintrace
+          if (sem_obj%excitation_type == 'monopole') then
+              straintrace = straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                                 col_points_eta, sem_obj%npol, &
+                                                 sem_obj%ndumps, nodes, element_type, axis)
+
+          elseif (sem_obj%excitation_type == 'dipole') then
+              straintrace = straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                               col_points_eta, sem_obj%npol, sem_obj%ndumps, &
+                                               nodes, element_type, axis)
+
+          elseif (sem_obj%excitation_type == 'quadpole') then
+              straintrace = straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                                 col_points_eta, sem_obj%npol, &
+                                                 sem_obj%ndumps, nodes, element_type, axis)
+          else
+              print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+              call pabort
+          endif
+
+#         ifdef flag_kerner
+          iclockold = tick(id=id_calc_strain, since=iclockold)
+#         endif
+          if (use_strainbuffer) & 
+              status = sem_obj%buffer_strain%put(id_elem, straintrace)
+
+      case('vs')
+          ! compute full strain tensor
+          if (sem_obj%excitation_type == 'monopole') then
+              strain = strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                       col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                       element_type, axis)
+
+          elseif (sem_obj%excitation_type == 'dipole') then
+              strain = strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                     col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                     element_type, axis)
+
+          elseif (sem_obj%excitation_type == 'quadpole') then
+              strain = strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+                                       col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                       element_type, axis)
+          else
+              print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+              call pabort
+          endif
+          
+#         ifdef flag_kerner
+          iclockold = tick(id=id_calc_strain, since=iclockold)
+#         endif
+
+          if (use_strainbuffer) & 
+              status = sem_obj%buffer_strain%put(id_elem, strain)
+
+      end select
+    
+    endif ! Element not found in buffer
+    
     select case(model_param)
     case('vp')
         allocate(load_strain_point_interp(sem_obj%ndumps, 1))
-        ! compute straintrace
-        if (sem_obj%excitation_type == 'monopole') then
-            straintrace = straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
-                                               col_points_eta, sem_obj%npol, &
-                                               sem_obj%ndumps, nodes, element_type, axis)
-
-        elseif (sem_obj%excitation_type == 'dipole') then
-            straintrace = straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
-                                             col_points_eta, sem_obj%npol, sem_obj%ndumps, &
-                                             nodes, element_type, axis)
-
-        elseif (sem_obj%excitation_type == 'quadpole') then
-            straintrace = straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
-                                               col_points_eta, sem_obj%npol, &
-                                               sem_obj%ndumps, nodes, element_type, axis)
-        else
-            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
-            call pabort
-        endif
         load_strain_point_interp(:, 1) &
             = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
                                       real(straintrace(:,:,:), kind=dp), xi, eta)
 
+#       ifdef flag_kerner
+        iclockold = tick(id=id_lagrange, since=iclockold)
+#       endif
+
     case('vs')
         allocate(load_strain_point_interp(sem_obj%ndumps, 6))
-        ! compute full strain tensor
-        if (sem_obj%excitation_type == 'monopole') then
-            strain = strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
-                                     col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                     element_type, axis)
-
-        elseif (sem_obj%excitation_type == 'dipole') then
-            strain = strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
-                                   col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                   element_type, axis)
-
-        elseif (sem_obj%excitation_type == 'quadpole') then
-            strain = strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
-                                     col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                     element_type, axis)
-        else
-            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
-            call pabort
-        endif
-        
         do i = 1, 6
             load_strain_point_interp(:, i) &
                 = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
                                           real(strain(:,:,:,i), kind=dp), xi, eta)
         enddo
 
+#       ifdef flag_kerner
+        iclockold = tick(id=id_lagrange, since=iclockold)
+#       endif
+
         !@TODO for consitency with SOLVER output
         load_strain_point_interp(:, 4) = - load_strain_point_interp(:, 4) 
         load_strain_point_interp(:, 6) = - load_strain_point_interp(:, 6) 
 
     end select
-#   ifdef flag_kerner
-    iclockold = tick(id=id_calc_strain, since=iclockold)
-#   endif
+
 
 #   ifdef flag_kerner
-    iclockold_total = tick(id=id_load_strain, since=iclockold)
+    iclockold_total = tick(id=id_load_strain, since=iclockold_total)
 #   endif
 
 end function load_strain_point_interp
