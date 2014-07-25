@@ -528,6 +528,77 @@ subroutine test_get_connected_elements
 end subroutine
 !-----------------------------------------------------------------------------------------
 
+
+!-----------------------------------------------------------------------------------------
+subroutine test_voxel_mesh_io
+  type(inversion_mesh_data_type)    :: inv_mesh
+  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
+  integer                           :: npoints, nelements, myunit, ierr, i
+
+  ! tidy up
+  open(newunit=myunit, file='unit_tests/testvoxeldata.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  open(newunit=myunit, file='unit_tests/testvoxeldata_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  open(newunit=myunit, file='unit_tests/testvoxeldata_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  open(newunit=myunit, file='unit_tests/testvoxeldata_data.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  open(newunit=myunit, file='unit_tests/testvoxelcelldata.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  open(newunit=myunit, file='unit_tests/testvoxelcelldata_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  open(newunit=myunit, file='unit_tests/testvoxelcelldata_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  open(newunit=myunit, file='unit_tests/testvoxelcelldata_data.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  call inv_mesh%read_abaqus_mesh('unit_tests/vox_15l_5deg.dat','onvertices')
+  call inv_mesh%init_node_data(3)
+
+  npoints = inv_mesh%get_nvertices()
+  allocate(datat_node(3,npoints))
+
+  datat_node(:,:) = inv_mesh%get_vertices()
+  call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
+  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
+  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
+
+  call inv_mesh%dump_node_data_xdmf('unit_tests/testvoxeldata')
+
+  call assert_file_exists('unit_tests/testvoxeldata.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests/testvoxeldata_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests/testvoxeldata_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests/testvoxeldata_data.dat', 'test xdmf data dump')
+
+  call inv_mesh%init_cell_data(3)
+
+  nelements = inv_mesh%get_nelements()
+  allocate(datat_cell(3,nelements))
+
+  do i=1, nelements
+    datat_cell(:,i) = inv_mesh%get_volume(i)
+  enddo
+  datat_cell(2,:) = datat_cell(2,:) + 1
+  datat_cell(3,:) = datat_cell(3,:) + 2
+
+  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
+  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
+
+  call inv_mesh%dump_cell_data_xdmf('unit_tests/testvoxelcelldata')
+
+  call assert_file_exists('unit_tests/testvoxelcelldata.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testvoxelcelldata_points.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testvoxelcelldata_grid.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testvoxelcelldata_data.dat', 'test xdmf cell data dump')
+
+  call inv_mesh%freeme()
+
+end subroutine test_voxel_mesh_io
+!-----------------------------------------------------------------------------------------
+
+
 !-----------------------------------------------------------------------------------------
 subroutine test_random_points_triangle_mesh
   use tetrahedra, only        : point_in_triangle_3d
