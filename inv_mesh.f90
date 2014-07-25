@@ -55,20 +55,33 @@ module inversion_mesh
 
   type, extends(inversion_mesh_type)    :: inversion_mesh_data_type
      private
-     integer                            :: ntimes_node, ntimes_cell
-     real(kind=sp), allocatable         :: datat_node(:,:), datat_cell(:,:)
-     integer, allocatable               :: group_id_node(:), group_id_cell(:)
-     character(len=32), allocatable     :: data_group_names_node(:), data_group_names_cell(:)
-     integer                            :: ngroups_node, ngroups_cell
+     integer                            :: ntimes_node
+     integer                            :: ntimes_cell
+     real(kind=sp), allocatable         :: datat_node(:,:)
+     real(kind=sp), allocatable         :: datat_cell(:,:)
+     integer, allocatable               :: group_id_node(:)
+     integer, allocatable               :: group_id_cell(:)
+     character(len=32), allocatable     :: data_group_names_node(:)
+     character(len=32), allocatable     :: data_group_names_cell(:)
+     integer                            :: ngroups_node
+     integer                            :: ngroups_cell
+
      contains
      procedure, pass :: get_ntimes_node
      procedure, pass :: get_ntimes_cell
-     procedure, pass :: set_node_data_snap
-     procedure, pass :: set_cell_data_snap
+
+     ! for xdmf format dumps
      procedure, pass :: init_node_data
      procedure, pass :: init_cell_data
+     procedure, pass :: set_node_data_snap
+     procedure, pass :: set_cell_data_snap
      procedure, pass :: dump_node_data_xdmf
      procedure, pass :: dump_cell_data_xdmf
+
+     ! for csr format dumps
+     procedure, pass :: dump_node_data_csr
+     procedure, pass :: dump_cell_data_csr
+
   end type
 
 contains
@@ -1006,8 +1019,8 @@ subroutine free_node_and_cell_data(this)
 
   select type (this)
   type is (inversion_mesh_data_type)
-     if (allocated(this%datat_node))       deallocate(this%datat_node)
-     if (allocated(this%datat_cell))       deallocate(this%datat_cell)
+     if (allocated(this%datat_node))            deallocate(this%datat_node)
+     if (allocated(this%datat_cell))            deallocate(this%datat_cell)
      if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
      if (allocated(this%group_id_node))         deallocate(this%group_id_node)
      if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
@@ -1029,15 +1042,15 @@ subroutine freeme(this)
   this%nvertices_per_elem = -1
   this%nbasisfuncs_per_elem = -1
   this%element_type = ''
+
   if (allocated(this%v_2d)) deallocate(this%v_2d)
   if (allocated(this%p_2d)) deallocate(this%p_2d)
   if (allocated(this%abinv)) deallocate(this%abinv)
 
-
   select type (this)
   type is (inversion_mesh_data_type)
-     if (allocated(this%datat_node))       deallocate(this%datat_node)
-     if (allocated(this%datat_cell))       deallocate(this%datat_cell)
+     if (allocated(this%datat_node))            deallocate(this%datat_node)
+     if (allocated(this%datat_cell))            deallocate(this%datat_cell)
      if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
      if (allocated(this%group_id_node))         deallocate(this%group_id_node)
      if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
@@ -1092,6 +1105,78 @@ subroutine init_cell_data(this, ntimes_cell)
 
 end subroutine
 !-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine dump_cell_data_csr( this, data_kernel, nkernels, threshold, filename)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_kernel(:,:)
+  character(len=*), intent(in)              :: filename
+  integer, intent(in)                       :: nkernels
+  real(kind=dp)                             :: threshold
+  integer                                   :: iinput_ind
+  integer                                   :: iinput_val
+  integer                                   :: iinput_pnt
+  integer                                   :: ielement
+  integer                                   :: ikernel
+  integer                                   :: ientry
+
+  open(newunit=iinput_val,file=trim(filename)//'.val',&
+       access='direct',recl=4,form='unformatted')
+  open(newunit=iinput_ind,file=trim(filename)//'.ind',&
+       access='direct',recl=4,form='unformatted')
+  open(newunit=iinput_pnt,file=trim(filename)//'.pnt')
+
+  ientry = 0
+  do ikernel=1,nkernels
+     do ielement=1,this%nelements
+        if ( abs(data_kernel(ielement,ikernel)).gt.threshold ) then
+           ientry = ientry + 1
+           write(iinput_val,rec=ientry) data_kernel(ielement,ikernel)
+           write(iinput_ind,rec=ientry) ielement
+        end if
+     end do
+     write(iinput_pnt,*) ientry
+  end do
+
+end subroutine dump_cell_data_csr
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine dump_node_data_csr( this, data_kernel, nkernels, threshold, filename)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_kernel(:,:)
+  character(len=*), intent(in)              :: filename
+  integer, intent(in)                       :: nkernels
+  real(kind=dp)                             :: threshold
+  integer                                   :: iinput_ind
+  integer                                   :: iinput_val
+  integer                                   :: iinput_pnt
+  integer                                   :: ikernel
+  integer                                   :: ivertex
+  integer                                   :: ientry
+
+  open(newunit=iinput_val,file=trim(filename)//'.val',&
+       access='direct',recl=4,form='unformatted')
+  open(newunit=iinput_ind,file=trim(filename)//'.ind',&
+       access='direct',recl=4,form='unformatted')
+  open(newunit=iinput_pnt,file=trim(filename)//'.pnt')
+
+  ientry = 0
+  do ikernel=1,nkernels
+     do ivertex=1,this%nvertices
+        if ( abs(data_kernel(ivertex,ikernel)).gt.threshold ) then
+           ientry = ientry + 1
+           write(iinput_val,rec=ientry) data_kernel(ivertex,ikernel)
+           write(iinput_ind,rec=ientry) ivertex
+        end if
+     end do
+     write(iinput_pnt) ientry
+  end do
+
+
+end subroutine dump_node_data_csr
+!-----------------------------------------------------------------------------------------
+
 
 
 !-----------------------------------------------------------------------------------------
