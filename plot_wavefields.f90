@@ -143,7 +143,7 @@ subroutine plot_wavefields()
             !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
             !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
             call inv_mesh%set_node_data_snap(real(bw_field(idump,1,:), kind=sp), &
-                                             idump+(ndumps*irec), &
+                                             idump + ndumps + ndumps*(irec-1), &
                                              'bwd_'//trim(parameters%receiver(irec)%name))
         end do
         deallocate(bw_field)
@@ -160,7 +160,7 @@ subroutine plot_wavefields()
         do idump = 1, ndumps
            if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
            call inv_mesh%set_node_data_snap(real(conv_field(idump,1,:), kind=sp), &
-                                            idump + ndumps*2 + (irec-1)*ndumps, &
+                                            idump + (irec-1)*ndumps + (nrec+1) * ndumps, &
                                             'convolved_'//trim(parameters%receiver(irec)%name))
         end do 
         deallocate(conv_field)

@@ -17,6 +17,7 @@ module type_parameter
         integer                              :: nrec
 
         real(kind=dp)                        :: allowed_error
+        real(kind=dp)                        :: allowed_relative_error = 1d-10
         character(len=512)                   :: fwd_dir
         character(len=512)                   :: bwd_dir
         character(len=512)                   :: source_file
@@ -96,6 +97,9 @@ subroutine read_parameters(this, input_file_in)
         case('ALLOWED_ERROR')
            read(keyvalue, *) this%allowed_error
 
+        case('ALLOWED_RELATIVE_ERROR')
+           read(keyvalue, *) this%allowed_relative_error
+
         case('FWD_DIR')
            this%fwd_dir = keyvalue
 
@@ -162,6 +166,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%fwd_dir, 0) 
   call pbroadcast_char(this%bwd_dir, 0) 
   call pbroadcast_dble(this%allowed_error, 0)
+  call pbroadcast_dble(this%allowed_relative_error, 0)
   call pbroadcast_char(this%source_file, 0) 
   call pbroadcast_char(this%receiver_file, 0)
   call pbroadcast_char(this%filter_file, 0)

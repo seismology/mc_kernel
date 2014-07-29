@@ -10,6 +10,7 @@ module montecarlo
         real(kind=dp), dimension(:), allocatable :: fsum, f2sum
         real(kind=dp), dimension(:), allocatable :: integral
         real(kind=dp), dimension(:), allocatable :: allowed_variance
+        real(kind=dp), dimension(:), allocatable :: allowed_relerror
         real(kind=dp), dimension(:), allocatable :: variance
         real(kind=dp)                            :: volume
         logical, dimension(:), allocatable       :: converged
@@ -65,20 +66,27 @@ subroutine check_montecarlo_integral(this, func_values)
            print *, 'f2sum: ', this%f2sum(ifuncs)
            call pabort
         end if
+        ! Check absolute error
         if (this%variance(ifuncs) < this%allowed_variance(ifuncs)) then
            this%converged(ifuncs) = .true.
+        ! Check relative error
+        elseif (this%variance(ifuncs) < &
+                this%allowed_relerror(ifuncs)*this%integral(ifuncs)) then
+           this%converged(ifuncs) = .true.
         end if
+
     end do
 
 end subroutine check_montecarlo_integral
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error)
+subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_relerror)
     class(integrated_type), intent(inout) :: this 
     integer, intent(in)                   :: nfuncs
     real(kind=dp), intent(in)             :: volume
     real(kind=dp), intent(in)             :: allowed_error
+    real(kind=dp), intent(in), optional   :: allowed_relerror
 
     if(allocated(this%fsum)) deallocate(this%fsum)
     if(allocated(this%f2sum)) deallocate(this%f2sum)
@@ -86,6 +94,7 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error)
     if(allocated(this%integral)) deallocate(this%integral)
     if(allocated(this%variance)) deallocate(this%variance)
     if(allocated(this%allowed_variance)) deallocate(this%allowed_variance)
+    if(allocated(this%allowed_relerror)) deallocate(this%allowed_relerror)
     
     allocate(this%fsum(nfuncs))
     allocate(this%f2sum(nfuncs))
@@ -93,6 +102,7 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error)
     allocate(this%integral(nfuncs))
     allocate(this%variance(nfuncs))
     allocate(this%allowed_variance(nfuncs))
+    allocate(this%allowed_relerror(nfuncs))
 
     this%volume           = volume
     this%nfuncs           = nfuncs
@@ -101,6 +111,12 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error)
     this%allowed_variance = allowed_error ** 2
     this%converged        = .false.
     this%nmodels          = 0
+    if(present(allowed_relerror)) then
+       this%allowed_relerror = allowed_relerror**2
+    else
+       this%allowed_relerror = 1d-100
+    end if
+
     this%isinitialized    = .true.
 
 end subroutine initialize_montecarlo
