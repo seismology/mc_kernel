@@ -411,20 +411,22 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            end do        
               
            ! Print convergence info
-           write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
-                           parameters%nkernel, parameters%nkernel 
-           write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
-                                   int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
-                                   int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
+           if (parameters%detailed_convergence) then
+              write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
+                              parameters%nkernel, parameters%nkernel 
+              write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
+                                      int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
+                                      int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
+           end if
 
         end do ! End of Monte Carlo loop
     
         if (any(niterations(:, ielement)>parameters%max_iter)) then
-           fmtstring = "('Max number of iterations reached. ', I5 , ' kernels were not converged.')"
-           write(lu_out, fmtstring) parameters%nkernel - int_kernel(1)%countconverged()
+           fmtstring = "('Element', I6, ': Max number of iterations reached. ', I5 , ' kernels were not converged.')"
+           write(lu_out, fmtstring) ielement, parameters%nkernel - int_kernel(1)%countconverged()
         else
-           fmtstring = "('All kernels converged after', I5, ' iterations')"
-           write(lu_out, fmtstring) maxval(niterations(:, ielement))
+           fmtstring = "('Element', I6, ': All kernels converged after', I5, ' iterations')"
+           write(lu_out, fmtstring) ielement, maxval(niterations(:, ielement))
         end if
 
 

@@ -34,6 +34,14 @@ POINTS_PER_MC_STEP   20
 # in one cell, regardless of error.
 MAXIMUM_ITERATIONS   100
 
+# Write detailed convergence of elements (default: false)
+# Every slave writes out the values of all the kernels and their respective 
+# estimated errors into his OUTPUT_??? file after each MC step. This can lead 
+# to huge ASCII files (>1GB) with inane line lengths (approx. 20 x nkernel).
+# However, it might be interesting to study the convergence behaviour. 
+# When set to false, only one summary per cell is written out.
+WRITE_DETAILED_CONVERGENCE  false
+
 # Size of reading buffer. 1000 is a good value, unless you run into memory 
 # problems. Higher values avoid repeated reading of the same point.
 NETCDF_BUFFER_SIZE   1000
