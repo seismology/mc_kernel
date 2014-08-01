@@ -8,7 +8,7 @@ module slave_mod
 
     type slave_result_type  
       real(kind=dp), allocatable :: kernel_values(:,:,:)
-      real(kind=dp), allocatable :: kernel_errors(:,:,:)
+      real(kind=dp), allocatable :: kernel_variance(:,:,:)
       integer,       allocatable :: niterations(:,:)
     end type
 
@@ -134,9 +134,9 @@ subroutine do_slave()
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
 
-       wt%kernel_values = slave_result%kernel_values
-       wt%kernel_errors = slave_result%kernel_errors
-       wt%niterations   = slave_result%niterations
+       wt%kernel_values   = slave_result%kernel_values
+       wt%kernel_variance = slave_result%kernel_variance
+       wt%niterations     = slave_result%niterations
 
 
        !! Write out my part of the mesh
@@ -252,7 +252,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: nbasisfuncs_per_elem
     integer                             :: iclockold
     integer                             :: ndim
-    integer, parameter                  :: taper_length = 2 ! This is the bare minimum. It does 
+    integer, parameter                  :: taper_length = 10! This is the bare minimum. It does 
                                                             ! not produce artifacts yet, at least 
                                                             ! no obvious ones
     
@@ -268,7 +268,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
 
     allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
-    allocate(slave_result%kernel_errors(parameters%nkernel, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%niterations(parameters%nkernel, nelements))
 
     allocate(kernelvalue_weighted(nptperstep, parameters%nkernel))
@@ -432,9 +432,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
         do ibasisfunc = 1, nbasisfuncs_per_elem
            
-           slave_result%kernel_values(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getintegral()
-           slave_result%kernel_errors(:, ibasisfunc, ielement) = sqrt(int_kernel(ibasisfunc)%getvariance())
-           slave_result%niterations(:,ielement)             = niterations(:,ielement)
+           slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
+           slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
+           slave_result%niterations(:,ielement)                  = niterations(:,ielement)
 
            call int_kernel(ibasisfunc)%freeme()
         end do
