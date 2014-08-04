@@ -127,7 +127,7 @@ subroutine def_rot_matrix(this)
 
    fmtstring = '("  Source colatitude: ", F8.3, "; source longitude: ", F8.3)'
   
-   if (verbose>0) write(lu_out,fmtstring) srccolat/deg2rad, srclon/deg2rad
+   if (verbose > 1) write(lu_out,fmtstring) srccolat/deg2rad, srclon/deg2rad
    
 
    ! This is the rotation matrix of Nissen-Meyer, Dahlen, Fournier, GJI 2007.
@@ -143,7 +143,7 @@ subroutine def_rot_matrix(this)
 
    this%trans_rot_mat = transpose(this%rot_mat)
 
-   if (verbose>0) then
+   if (verbose > 1) then
       write(lu_out,*)             '  Rotation matrix:'
       write(lu_out,'(3("  ", 3(ES11.3)/))') this%rot_mat
       write(lu_out,*)             '  Rotation matrix, transposed:'
