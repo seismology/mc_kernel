@@ -321,6 +321,8 @@ subroutine init(this, freq, dtshift)
                                                    !! Dimension: nfreq
    real(kind=dp),    intent(in)     :: dtshift     !< Time shift to apply (in seconds)
 
+   if (verbose>1) &
+      write(lu_out, *) 'Initializing timeshift object with ', dtshift, ' sec'
    allocate(this%shift_fd(size(freq,1)) )
    this%shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
    this%isinitialized = .true.
@@ -367,7 +369,9 @@ end subroutine timeshift_1d
 !> Delete this timeshift object
 subroutine freeme(this)
    class(timeshift_type)           :: this
-   deallocate(this%shift_fd)
+
+   if (allocated(this%shift_fd)) deallocate(this%shift_fd)
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 

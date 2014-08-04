@@ -6,8 +6,9 @@ module tetrahedra
   private
 
   public :: generate_random_points_tet, generate_random_points_poly
+  public :: generate_random_points_ref_tri
   public :: get_volume_tet, get_volume_poly
-  public :: rmat4_det, point_in_triangle
+  public :: rmat4_det, point_in_triangle, point_in_triangle_3d
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -66,6 +67,32 @@ function generate_random_points_tet(v, n)
 
 end function generate_random_points_tet
 !-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function generate_random_points_ref_tri( npoints ) result(x)
+!< Generate random points in the reference triangle (0,0), (0,1), (1,0)
+
+  implicit none
+
+  integer, parameter           :: dim_num = 2
+  integer, intent(in)          :: npoints  ! Number of points
+  real(kind=dp)                :: x(dim_num, npoints)
+  real(kind=dp)                :: r(dim_num)
+  integer                      :: ipoint
+
+
+  do ipoint = 1, npoints
+    call random_number(r)
+
+    if ( 1 < sum (r(:)) ) then
+      x(:, ipoint) = 1 - (r(:)*0.999+0.0005)
+    else
+      x(:, ipoint) = r(:)*0.999+0.0005
+    end if
+  end do
+end function generate_random_points_ref_tri
+!-----------------------------------------------------------------------------------------
+
 
 !-----------------------------------------------------------------------------------------
 function generate_random_points_poly( nv, v, n ) result(x)
@@ -367,7 +394,9 @@ function get_volume_poly(n, v) result(area)
 !    The polygon does not have to be "regular", that is, neither its
 !    sides nor its angles need to be equal.
 !
+  use simple_routines, only  : cross
   implicit none
+
 
   integer, parameter        :: dim_num = 3  !< Dimension of the space we're
                                             !! living in
@@ -394,21 +423,9 @@ function get_volume_poly(n, v) result(area)
   area = 0.5D+00 * sqrt(sum(normal(:)**2))
 
 end function get_volume_poly
+!------------------------------------------------------------------------------
 
-
-
-function cross(a,b)
-! Compute the cross product between vectors a and b
-  real(kind=dp)             :: cross(3)
-  real(kind=dp), intent(in) :: a(3), b(3)
-           
-  cross(1) = a(2)*b(3) - a(3)*b(2)
-  cross(2) = a(3)*b(1) - a(1)*b(3)
-  cross(3) = a(1)*b(2) - b(1)*a(2)
-
-end function cross
-
-
+!------------------------------------------------------------------------------
 function point_in_triangle(r, x)
 ! Checks whether point x is in the triangle between r1, r2, r3
    real(kind=dp), intent(in)  :: r(2,3)
@@ -437,5 +454,57 @@ function point_in_triangle(r, x)
 !           return 0 <= a && a <= 1 && 0 <= b && b <= 1 && 0 <= c && c <= 1;
 !
 end function point_in_triangle
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+function point_in_triangle_3d(r, p, isinplane)
+  use simple_routines, only  : absreldiff, cross
+! Using barycentric coordinates, following 
+! http://math.stackexchange.com/questions/4322/check-whether-a-point-is-within-a-3d-triangle
+ integer, parameter             :: ndim = 3
+ real(kind=dp), intent(in)      :: r(ndim,3)  !< Vertices of the triangle
+ real(kind=dp), intent(in)      :: p(:,:)     !< Set of points to check
+ logical, intent(out), optional :: isinplane(size(p,2))
+ 
+ real(kind=dp)                  :: a, b, c
+ real(kind=dp)                  :: x(3), y(3), k(3), area
+ integer                        :: ipoint, npoints
+ logical                        :: point_in_triangle_3d(size(p,2))
+
+
+ point_in_triangle_3d = .false.
+ if (present(isinplane)) isinplane = .false.
+ npoints = size(p,2)
+ area = norm2(cross( r(:,2)-r(:,1), r(:,3)-r(:,1) )) / 2
+ do ipoint = 1, npoints
+   ! Step 1:
+   ! Check whether point is in the plane spanned by the triangle, by comparing
+   ! normal vectors of planes spanned by r1r2 and r1r3 with the one spanned by
+   ! Pr2 and Pr3.
+   x = cross(r(:,2)-r(:,1),      r(:,3)-r(:,1)      )
+   y = cross(r(:,2)-p(:,ipoint), r(:,3)-p(:,ipoint) ) 
+
+   ! Check whether x and y are parallel
+   k = x/y
+   if ((absreldiff(k(1),k(2))>1e-8) .or. absreldiff(k(1),k(3))>1e-8) cycle
+   
+   if (present(isinplane)) isinplane(ipoint) = .true.
+
+   ! Step 2:
+   ! Check whether point is within triangle, based on barycentric coordinates
+   ! a,b,c
+   a = norm2(cross( r(:,2)-p(:,ipoint), r(:,3)-p(:,ipoint) )) / (2*area)
+   b = norm2(cross( r(:,3)-p(:,ipoint), r(:,1)-p(:,ipoint) )) / (2*area)
+   c = norm2(cross( r(:,1)-p(:,ipoint), r(:,2)-p(:,ipoint) )) / (2*area) !1 - a - b
+
+   if ((0 <= a).and.(a <= 1).and.(0 <= b).and.(b <= 1).and.(0 <= c).and.(c <= 1)) &
+     point_in_triangle_3d(ipoint) = .true.
+
+ end do
+
+end function point_in_triangle_3d
+
+! Da hab ich mich gestern hingestellt und die Eier gekocht. Un heute werd ich faul genannt.
+
 end module
 !=========================================================================================

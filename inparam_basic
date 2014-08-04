@@ -1,29 +1,53 @@
 # directory of the forward and backward run
-FWD_DIR              './wavefield_10s/fwd/'
-BWD_DIR              './wavefield_10s/bwd/'
+FWD_DIR              './wavefield/fwd/'
+BWD_DIR              './wavefield/bwd/'
 
 # Paths of parameter files 
 SOURCE_FILE          'CMTSOLUTION'
 RECEIVER_FILE        'receiver.dat'
 FILTER_FILE          'filters.dat'
-#MESH_FILE            'unit_tests/flat_triangles.inp'
-MESH_FILE            'unit_tests/vox_30l_1.25deg.dat'
+MESH_FILE            'unit_tests/flat_triangles.inp'
+
+# Prefix of output file names.
+# Kernel files are called $OUTPUT_FILE_kernel.xdmf
+# Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
+OUTPUT_FILE          'kerner'
+
+# Write out seismograms? (default: true)
+# Seismograms (raw full trace, filtered full trace and cut trace) can be 
+# written out. Produces three files per kernel. Disable to avoid congesting 
+# your rundir.
+WRITE_SEISMOGRAMS    true
 
 # Monte Carlo integration
+# Absolute and relative error limits can be defined separately. The convergence
+# conditions are connected by OR
 # Allowed absolute error per cell
 ALLOWED_ERROR        1e-4
+# Allowed relative error per cell
+ALLOWED_RELATIVE_ERROR 2e-2
 
 # Number of points on which the kernel should be evaluated per MC iteration
-POINTS_PER_MC_STEP   1
+POINTS_PER_MC_STEP   20
 
-# Maximum number of iterations after which to cancel Monte Carlo integration in one cell, regardless of error.
-MAXIMUM_ITERATIONS   1
+# Maximum number of iterations after which to cancel Monte Carlo integration 
+# in one cell, regardless of error.
+MAXIMUM_ITERATIONS   100
 
-# Size of reading buffer. 1000 is a good value, unless you run into memory problems. Higher values avoid repeated reading of the same point.
-NETCDF_BUFFER_SIZE   50000
+# Write detailed convergence of elements (default: false)
+# Every slave writes out the values of all the kernels and their respective 
+# estimated errors into his OUTPUT_??? file after each MC step. This can lead 
+# to huge ASCII files (>1GB) with inane line lengths (approx. 20 x nkernel).
+# However, it might be interesting to study the convergence behaviour. 
+# When set to false, only one summary per cell is written out.
+WRITE_DETAILED_CONVERGENCE  false
+
+# Size of reading buffer. 1000 is a good value, unless you run into memory 
+# problems. Higher values avoid repeated reading of the same point.
+NETCDF_BUFFER_SIZE   1000
 
 # Number of elements in each MPI task. 
-ELEMENTS_PER_TASK    100
+ELEMENTS_PER_TASK    100 
 
 # FFTW Planning to use
 # Options: 
@@ -43,5 +67,5 @@ WHAT_TO_DO           'integratekernel'
 
 # Do you want your kernels to be given on the vertices ('onvertices') or
 # inside ('volumetric') each elements?
-INT_TYPE             'onvertices'
+INT_TYPE             'volumetric'
 

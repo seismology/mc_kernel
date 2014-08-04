@@ -11,7 +11,7 @@ module master_queue
   type(inversion_mesh_data_type)      :: inv_mesh
   type(parameter_type)                :: parameters
   integer, allocatable                :: tasks(:), elems_in_task(:,:)
-  real(kind=dp), allocatable          :: K_x(:,:), Err(:,:)
+  real(kind=dp), allocatable          :: K_x(:,:), Var(:,:)
   integer,       allocatable          :: connectivity(:,:)
   integer,       allocatable          :: niterations(:,:), element_proc(:)
 
@@ -86,16 +86,19 @@ subroutine init_queue(ntasks)
      end do
   enddo
   
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Allocate variables to store result'
+  write(lu_out,'(A)') '***************************************************************'
   allocate(K_x(inv_mesh%get_nbasisfuncs(parameters%inttype), parameters%nkernel))
   K_x = 0.0
-  allocate(Err(inv_mesh%get_nbasisfuncs(parameters%inttype), parameters%nkernel))
-  Err = 0.0
+  allocate(Var(inv_mesh%get_nbasisfuncs(parameters%inttype), parameters%nkernel))
+  Var = 0.0
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Starting to distribute the work'
   write(lu_out,'(A)') '***************************************************************'
   
-end subroutine
+end subroutine init_queue
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -143,15 +146,15 @@ subroutine extract_receive_buffer(itask, irank)
          case('onvertices')         
             K_x(connectivity(ibasisfunc, ielement),:) = K_x(connectivity(ibasisfunc, ielement),:) &
                                                         + wt%kernel_values(:, ibasisfunc, iel)
-            Err(connectivity(ibasisfunc, ielement),:) = Err(connectivity(ibasisfunc, ielement),:) &
-                                                        + wt%kernel_errors(:, ibasisfunc, iel)    &
-                                                        / abs(wt%kernel_values(:, ibasisfunc, iel))
+            Var(connectivity(ibasisfunc, ielement),:) = Var(connectivity(ibasisfunc, ielement),:) &
+                                                        + wt%kernel_variance(:, ibasisfunc, iel) !    &
+                                                        !/ abs(wt%kernel_values(:, ibasisfunc, iel))
          case('volumetric')
             K_x(ielement,:) = K_x(ielement,:) &
                               + wt%kernel_values(:, ibasisfunc, iel) 
-            Err(ielement,:) = Err(ielement,:) &
-                              + wt%kernel_errors(:, ibasisfunc, iel)    &
-                              / abs(wt%kernel_values(:, ibasisfunc, iel))
+            Var(ielement,:) = Var(ielement,:) &
+                              + wt%kernel_variance(:, ibasisfunc, iel)   ! &
+                              !/ abs(wt%kernel_values(:, ibasisfunc, iel))
          end select
 
 
@@ -171,8 +174,6 @@ subroutine finalize()
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
   write(lu_out,'(A)') '***************************************************************'
-  
-
 
   ! Save big kernel variable to disk
   write(lu_out,*) 'Write Kernel to disk'
@@ -182,35 +183,43 @@ subroutine finalize()
      call inv_mesh%init_node_data(parameters%nkernel*2)
      do ikernel = 1, parameters%nkernel
         call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
-             ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
-        call inv_mesh%set_node_data_snap(real(Err(:,ikernel), kind=sp), &
-             ikernel+parameters%nkernel,         &
-             'Err_'//parameters%kernel(ikernel)%name )
+                                         ikernel,                       &
+                                         'K_x_'//parameters%kernel(ikernel)%name )
+        call inv_mesh%set_node_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
+                                              kind=sp),                                 &
+                                         ikernel+parameters%nkernel,                    &
+                                         'err_'//parameters%kernel(ikernel)%name )
      end do
-     call inv_mesh%dump_node_data_xdmf('gaborkernel')
+     call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
   case('volumetric')
      call inv_mesh%init_cell_data(parameters%nkernel*2)
      do ikernel = 1, parameters%nkernel
         call inv_mesh%set_cell_data_snap(real(K_x(:,ikernel), kind=sp), &
-             ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
-        call inv_mesh%set_cell_data_snap(real(Err(:,ikernel), kind=sp), &
-             ikernel+parameters%nkernel,         &
-             'Err_'//parameters%kernel(ikernel)%name )
+                                         ikernel,                       &
+                                         'K_x_'//parameters%kernel(ikernel)%name )
+        call inv_mesh%set_cell_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
+                                              kind=sp),                                 &
+                                         ikernel+parameters%nkernel,                    &
+                                         'err_'//parameters%kernel(ikernel)%name )
      end do
-     call inv_mesh%dump_cell_data_xdmf('gaborkernel')
+     call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel')
   end select
 
   call inv_mesh%free_node_and_cell_data()
 
   ! Save mesh partition and convergence information
+  write(lu_out,*) 'Write mesh partition and convergence to disk'
   call inv_mesh%init_cell_data(parameters%nkernel + 1)
-  call inv_mesh%set_cell_data_snap(real(element_proc, kind=sp), 1,  &
+  call inv_mesh%set_cell_data_snap(real(element_proc, kind=sp), &
+                                   1,                           &
                                    'element_proc')
+
   do ikernel = 1, parameters%nkernel
-      call inv_mesh%set_cell_data_snap(real(niterations(ikernel, :), kind=sp), 1+ikernel,&
+      call inv_mesh%set_cell_data_snap(real(niterations(ikernel, :), kind=sp), &
+                                       1+ikernel,                              &
                                        'nit_'//parameters%kernel(ikernel)%name)
   end do 
-  call inv_mesh%dump_cell_data_xdmf('gaborkernel_stat')
+  call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel_stat')
 
   call inv_mesh%freeme()
 

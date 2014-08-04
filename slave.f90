@@ -8,7 +8,7 @@ module slave_mod
 
     type slave_result_type  
       real(kind=dp), allocatable :: kernel_values(:,:,:)
-      real(kind=dp), allocatable :: kernel_errors(:,:,:)
+      real(kind=dp), allocatable :: kernel_variance(:,:,:)
       integer,       allocatable :: niterations(:,:)
     end type
 
@@ -134,9 +134,9 @@ subroutine do_slave()
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
 
-       wt%kernel_values = slave_result%kernel_values
-       wt%kernel_errors = slave_result%kernel_errors
-       wt%niterations   = slave_result%niterations
+       wt%kernel_values   = slave_result%kernel_values
+       wt%kernel_variance = slave_result%kernel_variance
+       wt%niterations     = slave_result%niterations
 
 
        !! Write out my part of the mesh
@@ -252,6 +252,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: nbasisfuncs_per_elem
     integer                             :: iclockold
     integer                             :: ndim
+    integer, parameter                  :: taper_length = 10! This is the bare minimum. It does 
+                                                            ! not produce artifacts yet, at least 
+                                                            ! no obvious ones
     
     iclockold = tick()
 
@@ -265,7 +268,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
 
     allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
-    allocate(slave_result%kernel_errors(parameters%nkernel, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%niterations(parameters%nkernel, nelements))
 
     allocate(kernelvalue_weighted(nptperstep, parameters%nkernel))
@@ -280,14 +283,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(conv_field_fd     (nomega, nptperstep))
     allocate(conv_field_fd_filt(nomega, nptperstep))
 
-    !allocate(volume(nelements))
     volume = 0.0
 
     allocate(niterations(parameters%nkernel, nelements))
     niterations = 0
 
-    call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
-    call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+    if (.not.parameters%deconv_stf) then
+      call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
+      call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+    end if
     
 
     !write(*,*) '***************************************************************'
@@ -307,9 +311,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         ! Initialize Monte Carlo integral for this element
         iclockold = tick(id=id_inv_mesh)
         do ibasisfunc = 1, nbasisfuncs_per_elem
-            call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel, &
-                                                           volume,   &
-                                                           parameters%allowed_error) 
+            call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel,       &
+                                                              volume,                   &
+                                                              parameters%allowed_error, &
+                                                              parameters%allowed_relative_error) 
         end do
       
         do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
@@ -327,7 +332,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            iclockold = tick(id=id_fwd, since=iclockold)
            
            ! FFT of forward field
-           call fft_data%rfft( taperandzeropad(fw_field, ntimes), fw_field_fd )
+           call fft_data%rfft( taperandzeropad(fw_field, ntimes, taper_length), fw_field_fd )
            iclockold = tick(id=id_fft, since=iclockold)
 
            ! Timeshift forward field
@@ -352,7 +357,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               iclockold = tick(id=id_bwd, since=iclockold)
 
               ! FFT of backward field
-              call fft_data%rfft( taperandzeropad(bw_field, ntimes), bw_field_fd )
+              call fft_data%rfft( taperandzeropad(bw_field, ntimes, taper_length), bw_field_fd )
               iclockold = tick(id=id_fft, since=iclockold)
 
               ! Timeshift backward field
@@ -362,6 +367,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               end if
 
               ! Convolve forward and backward fields
+              ! The summation over dimension 2 is necessary for vs kernels
               conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
               iclockold = tick(id=id_filter_conv, since=iclockold)
 
@@ -405,28 +411,30 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            end do        
               
            ! Print convergence info
-           write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
-                           parameters%nkernel, parameters%nkernel 
-           write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
-                                   int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
-                                   int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
+           if (parameters%detailed_convergence) then
+              write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
+                              parameters%nkernel, parameters%nkernel 
+              write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
+                                      int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
+                                      int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
+           end if
 
         end do ! End of Monte Carlo loop
     
         if (any(niterations(:, ielement)>parameters%max_iter)) then
-           fmtstring = "('Max number of iterations reached. ', I5 , ' kernels were not converged.')"
-           write(lu_out, fmtstring) parameters%nkernel - int_kernel(1)%countconverged()
+           fmtstring = "('Element', I6, ': Max number of iterations reached. ', I5 , ' kernels were not converged.')"
+           write(lu_out, fmtstring) ielement, parameters%nkernel - int_kernel(1)%countconverged()
         else
-           fmtstring = "('All kernels converged after', I5, ' iterations')"
-           write(lu_out, fmtstring) maxval(niterations(:, ielement))
+           fmtstring = "('Element', I6, ': All kernels converged after', I5, ' iterations')"
+           write(lu_out, fmtstring) ielement, maxval(niterations(:, ielement))
         end if
 
 
         do ibasisfunc = 1, nbasisfuncs_per_elem
            
-           slave_result%kernel_values(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getintegral()
-           slave_result%kernel_errors(:, ibasisfunc, ielement) = sqrt(int_kernel(ibasisfunc)%getvariance())
-           slave_result%niterations(:,ielement)             = niterations(:,ielement)
+           slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
+           slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
+           slave_result%niterations(:,ielement)                  = niterations(:,ielement)
 
            call int_kernel(ibasisfunc)%freeme()
         end do

@@ -162,6 +162,88 @@ end subroutine test_generate_random_point_triangle_space
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_generate_random_point_triangle
+  integer, parameter    :: npoints = 1000
+  real(kind=dp)         :: x(2, npoints)
+  logical               :: isintriangle(npoints)
+
+  x =  generate_random_points_ref_tri(npoints)
+
+
+  isintriangle = all(x>=0) .and. &
+                 all(x<=1) .and. &
+                 all((x(1,:)+x(2,:))<1)
+
+  call assert_true(isintriangle, 'All points in reference triangle')
+
+end subroutine test_generate_random_point_triangle
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_point_in_triangle_3d
+  use simple_routines, only : cross
+  integer, parameter       :: npoints = 10
+  real(kind=dp)            :: x_ref_tri(2, npoints), x(3, npoints)
+  real(kind=dp)            :: vertices(3,3), normal(3), a, b, c
+  logical                  :: isintriangle(npoints), isinplane(npoints)
+  integer                  :: ipoint
+
+
+  vertices(:,1) = [ 0, 7, 2]
+  vertices(:,2) = [-4, 0, 1]
+  vertices(:,3) = [-5, 1, 0]
+
+  x_ref_tri = generate_random_points_ref_tri(npoints)
+
+  do ipoint = 1, npoints
+      x(:,ipoint) =  vertices(:,1)                                  &
+                  + (vertices(:,2)-vertices(:,1)) * x_ref_tri(1,ipoint)  &
+                  + (vertices(:,3)-vertices(:,1)) * x_ref_tri(2,ipoint)
+  end do
+
+  isintriangle = point_in_triangle_3d(vertices, x, isinplane)
+
+  call assert_true(isinplane,    'isintriangle recognizes points correctly as '// &
+                                 'being in plane')
+  call assert_true(isintriangle, 'isintriangle recognizes points correctly as '// &
+                                 'being inside triangle')
+
+  normal = cross((vertices(:,2)-vertices(:,1)), (vertices(:,3)-vertices(:,1)))
+
+  do ipoint = 1, npoints
+      x(:,ipoint) = x(:,ipoint) + normal
+  end do
+
+  isintriangle = point_in_triangle_3d(vertices, x, isinplane)
+
+  call assert_false(isinplane,    'isintriangle recognizes points correctly as '// &
+                                  'being outside plane')
+  call assert_false(isintriangle, 'isintriangle recognizes points correctly as '// &
+                                  'being outside triangle (out of plane)')
+
+
+  do ipoint = 1, npoints
+      x(:,ipoint) =  vertices(:,1)                                  &
+                  + (vertices(:,2)-vertices(:,1)) *         x_ref_tri(1,ipoint)  &
+                  + (vertices(:,3)-vertices(:,1)) * (1.01 + x_ref_tri(2,ipoint))
+  end do
+
+  isintriangle = point_in_triangle_3d(vertices, x, isinplane)
+
+  call assert_true(isinplane,    'isintriangle recognizes points correctly as '// &
+                                 'being in plane')
+  call assert_false(isintriangle, 'isintriangle recognizes points correctly as '// &
+                                  'being outside triangle (in plane)')
+  !do ipoint = 1, npoints
+  !   if (isintriangle(ipoint)) then 
+  !      write(1001, *) x(:,ipoint), a, b, c
+  !   end if
+  !end do
+
+end subroutine test_point_in_triangle_3d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_rmat4_det
   real(kind=dp), dimension(4,4)    :: matrix
   real(kind=sp)                    :: determinant

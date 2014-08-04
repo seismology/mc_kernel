@@ -17,12 +17,14 @@ module type_parameter
         integer                              :: nrec
 
         real(kind=dp)                        :: allowed_error
+        real(kind=dp)                        :: allowed_relative_error = 1d-10
         character(len=512)                   :: fwd_dir
         character(len=512)                   :: bwd_dir
         character(len=512)                   :: source_file
         character(len=512)                   :: receiver_file
         character(len=512)                   :: filter_file
         character(len=512)                   :: mesh_file
+        character(len=512)                   :: output_file = 'kerner'
         character(len=1)                     :: component
         character(len=4)                     :: model_param
         character(len=32)                    :: whattodo
@@ -34,12 +36,14 @@ module type_parameter
         integer                              :: npoints_per_step
         integer                              :: max_iter
         integer                              :: buffer_size
-        logical                              :: parameters_read = .false.
-        logical                              :: receiver_read   = .false.
-        logical                              :: source_read     = .false.
-        logical                              :: filter_read     = .false.
-        logical                              :: kernel_read     = .false.
-        logical                              :: deconv_stf      = .false.
+        logical                              :: parameters_read      = .false.
+        logical                              :: receiver_read        = .false.
+        logical                              :: source_read          = .false.
+        logical                              :: filter_read          = .false.
+        logical                              :: kernel_read          = .false.
+        logical                              :: detailed_convergence = .false.
+        logical                              :: deconv_stf           = .false.
+        logical                              :: write_smgr           = .true.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -93,6 +97,9 @@ subroutine read_parameters(this, input_file_in)
         case('ALLOWED_ERROR')
            read(keyvalue, *) this%allowed_error
 
+        case('ALLOWED_RELATIVE_ERROR')
+           read(keyvalue, *) this%allowed_relative_error
+
         case('FWD_DIR')
            this%fwd_dir = keyvalue
 
@@ -111,6 +118,9 @@ subroutine read_parameters(this, input_file_in)
         case('MESH_FILE')
            this%mesh_file = keyvalue
 
+        case('OUTPUT_FILE')
+           this%output_file = keyvalue
+
         case('NETCDF_BUFFER_SIZE')
            read(keyvalue, *) this%buffer_size
 
@@ -123,6 +133,9 @@ subroutine read_parameters(this, input_file_in)
         case('POINTS_PER_MC_STEP')
            read(keyvalue, *) this%npoints_per_step
 
+        case('WRITE_DETAILED_CONVERGENCE')
+           read(keyvalue, *) this%detailed_convergence
+
         case('DECONVOLVE_STF')
            read(keyvalue, *) this%deconv_stf
 
@@ -134,6 +147,9 @@ subroutine read_parameters(this, input_file_in)
 
         case('INT_TYPE')
            this%inttype = keyvalue
+
+        case('WRITE_SEISMOGRAMS')
+           read(keyvalue, *) this%write_smgr
 
         end select parameter_to_read
         print "('  ', A32,' ',A)", keyword, trim(keyvalue)
@@ -150,15 +166,19 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%fwd_dir, 0) 
   call pbroadcast_char(this%bwd_dir, 0) 
   call pbroadcast_dble(this%allowed_error, 0)
+  call pbroadcast_dble(this%allowed_relative_error, 0)
   call pbroadcast_char(this%source_file, 0) 
   call pbroadcast_char(this%receiver_file, 0)
   call pbroadcast_char(this%filter_file, 0)
   call pbroadcast_char(this%mesh_file, 0)
+  call pbroadcast_char(this%output_file, 0)
   call pbroadcast_int(this%buffer_size, 0)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)
+  call pbroadcast_log(this%detailed_convergence, 0)
   call pbroadcast_log(this%deconv_stf, 0)
+  call pbroadcast_log(this%write_smgr, 0)
   call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
   call pbroadcast_char(this%inttype, 0)
@@ -418,7 +438,8 @@ subroutine read_kernel(this, sem_data, filter)
                                             model_parameter = this%model_param          , &
                                             seis            = sem_data%veloseis(:,irec) , &
                                             dt              = sem_data%dt               , &
-                                            timeshift_fwd   = sem_data%timeshift_fwd    )
+                                            timeshift_fwd   = sem_data%timeshift_fwd    , &
+                                            write_smgr      = this%write_smgr)
 
          else
              this%kernel(ikernel)%name = kernelname

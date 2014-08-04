@@ -6,17 +6,19 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine plot_wavefields()
 
-    use global_parameters,  only : sp, dp, pi, deg2rad, verbose, init_random_seed
-    use inversion_mesh,     only : inversion_mesh_data_type
-    use readfields,         only : semdata_type
-    use type_parameter,     only : parameter_type
-    use fft,                only : rfft_type, taperandzeropad
+    use global_parameters,          only : sp, dp, pi, deg2rad, verbose, init_random_seed
+    use inversion_mesh,             only : inversion_mesh_data_type
+    use readfields,                 only : semdata_type
+    use type_parameter,             only : parameter_type
+    use fft,                        only : rfft_type, taperandzeropad
+    use filtering,                  only : timeshift_type
 
     implicit none
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
     type(semdata_type)                  :: sem_data
     type(rfft_type)                     :: fft_data
+    type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
 
     integer                             :: nelems, ntimes, nomega, nrec
     integer                             :: idump, ndumps, irec
@@ -92,21 +94,28 @@ subroutine plot_wavefields()
     allocate(fw_field(ndumps, 1, nvertices))
     fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source)
 
-    
-    ! Dump forward field to XDMF file
+    write(*,*) ' FFT forward field'
+    allocate(fw_field_fd(nomega, 1, nvertices))
+    call fft_data%rfft(taperandzeropad(fw_field, ntimes, 2), fw_field_fd)
+    deallocate(fw_field)
+
+    write(*,*) ' Timeshift forward field'
+    call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
+    call timeshift_fwd%apply(fw_field_fd)
+    allocate(fw_field(ntimes, 1, nvertices))
+    call fft_data%irfft(fw_field_fd, fw_field)
+    call timeshift_fwd%freeme()
+
+    write(*,*) ' Dump forward field to XDMF file'
     do idump = 1, ndumps
         if (mod(idump, 100)==0) &
-            write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
+            write(*,*) '  Passing dump ', idump, ' to inversion mesh datatype'
         !Test of planar wave , works
         !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
         !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
         call inv_mesh%set_node_data_snap(real(fw_field(idump,1,:), kind=sp), &
                                          idump, 'fwd_wavefield')
     end do
-
-    write(*,*) ' FFT forward field'
-    allocate(fw_field_fd(nomega, 1, nvertices))
-    call fft_data%rfft(taperandzeropad(fw_field, ntimes), fw_field_fd)
     deallocate(fw_field)
 
     do irec = 1, nrec
@@ -114,57 +123,55 @@ subroutine plot_wavefields()
         allocate(bw_field(ndumps, 1, nvertices))
         bw_field(:,:,:) = sem_data%load_bw_points(dble(co_points), &
                                                   parameters%receiver(irec))
-        ! Dump backward field to XDMF file
+        write(*,*) ' FFT backward field'
+        allocate(bw_field_fd  (nomega, 1, nvertices))
+        call fft_data%rfft(taperandzeropad(bw_field, ntimes, 2), bw_field_fd)
+        deallocate(bw_field)
+        
+        write(*,*) ' Timeshift backward field'
+        call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+        call timeshift_bwd%apply(bw_field_fd)
+        allocate(bw_field(ntimes, 1, nvertices))
+        call fft_data%irfft(bw_field_fd, bw_field)
+        call timeshift_bwd%freeme()
+
+        write(*,*) ' Dump backward field to XDMF file'
         do idump = 1, ndumps
             if (mod(idump, 100)==0) &
-                write(*,*) ' Passing dump ', idump, ' to inversion mesh datatype'
+                write(*,*) '  Passing dump ', idump, ' to inversion mesh datatype'
             !Test of planar wave , works
             !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
             !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
             call inv_mesh%set_node_data_snap(real(bw_field(idump,1,:), kind=sp), &
-                                             idump+(ndumps*irec), &
+                                             idump + ndumps + ndumps*(irec-1), &
                                              'bwd_'//trim(parameters%receiver(irec)%name))
         end do
-        write(*,*) ' FFT backward field'
-        allocate(bw_field_fd  (nomega, 1, nvertices))
-        call fft_data%rfft(taperandzeropad(bw_field, ntimes), bw_field_fd)
         deallocate(bw_field)
 
         write(*,*) ' Convolve wavefields'
-        allocate(conv_field(ntimes, 1, nvertices))
         allocate(conv_field_fd(nomega, 1, nvertices))
         conv_field_fd = fw_field_fd * bw_field_fd
-        call fft_data%irfft(conv_field_fd, conv_field)
         deallocate(bw_field_fd)
+        
+        allocate(conv_field(ntimes, 1, nvertices))
+        call fft_data%irfft(conv_field_fd, conv_field)
         deallocate(conv_field_fd)
-
-    !   write(*,*) ' Apply filter'
-    !   fw_field_fd = gabor20%apply_2d(fw_field_fd)
-
-    !   write(*,*) ' iFFT product of fields'
-    !   allocate(conv_field   (ntimes, nptperstep))
-    !   call fft_data%irfft(fw_field_fd*bw_field_fd, conv_field)
-    !
-    !   !write(*,*) ' Write pickpoint to disc'
-    !   !write(41,*) fw_field(:,10000)
-    !   !write(42,*) bw_field(:,10000)
-    !   !write(43,*) conv_field(:,10000)
-    !   !read(*,*)
-
 
         do idump = 1, ndumps
            if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
            call inv_mesh%set_node_data_snap(real(conv_field(idump,1,:), kind=sp), &
-                                            idump + ndumps*2 + (irec-1)*ndumps, &
+                                            idump + (irec-1)*ndumps + (nrec+1) * ndumps, &
                                             'convolved_'//trim(parameters%receiver(irec)%name))
         end do 
         deallocate(conv_field)
 
     end do ! irec
 
+    deallocate(fw_field_fd)
+
     write(*,*)
     write(*,*) ' Writing data to disk'
-    call inv_mesh%dump_node_data_xdmf('wavefield')
+    call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'wavefield')
     call inv_mesh%freeme()
 
     write(*,*)
