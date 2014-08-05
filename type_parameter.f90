@@ -37,13 +37,14 @@ module type_parameter
         integer                              :: npoints_per_step
         integer                              :: max_iter
         integer                              :: buffer_size
-        logical                              :: parameters_read = .false.
-        logical                              :: receiver_read   = .false.
-        logical                              :: source_read     = .false.
-        logical                              :: filter_read     = .false.
-        logical                              :: kernel_read     = .false.
-        logical                              :: deconv_stf      = .false.
-        logical                              :: write_smgr      = .true.
+        logical                              :: parameters_read      = .false.
+        logical                              :: receiver_read        = .false.
+        logical                              :: source_read          = .false.
+        logical                              :: filter_read          = .false.
+        logical                              :: kernel_read          = .false.
+        logical                              :: detailed_convergence = .false.
+        logical                              :: deconv_stf           = .false.
+        logical                              :: write_smgr           = .true.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -136,6 +137,9 @@ subroutine read_parameters(this, input_file_in)
         case('POINTS_PER_MC_STEP')
            read(keyvalue, *) this%npoints_per_step
 
+        case('WRITE_DETAILED_CONVERGENCE')
+           read(keyvalue, *) this%detailed_convergence
+
         case('DECONVOLVE_STF')
            read(keyvalue, *) this%deconv_stf
 
@@ -177,6 +181,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)
+  call pbroadcast_log(this%detailed_convergence, 0)
   call pbroadcast_log(this%deconv_stf, 0)
   call pbroadcast_log(this%write_smgr, 0)
   call pbroadcast_char(this%fftw_plan, 0)
