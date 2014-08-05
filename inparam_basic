@@ -16,7 +16,7 @@ OUTPUT_FILE          'kerner'
 # Output format when dumping kernels and wavefields. Chose between xdmf and 
 # Yale-style csr binary format (compressed sparse row). Yet, the allowed
 # error below is assumed as the truncation threshold in csr storage
-DUMP_TYPE            'csr'
+DUMP_TYPE            'xdmf'
 
 # Write out seismograms? (default: true)
 # Seismograms (raw full trace, filtered full trace and cut trace) can be 
@@ -29,6 +29,7 @@ WRITE_SEISMOGRAMS    true
 # conditions are connected by OR
 # Allowed absolute error per cell
 ALLOWED_ERROR        1e-4
+
 # Allowed relative error per cell
 ALLOWED_RELATIVE_ERROR 2e-2
 
