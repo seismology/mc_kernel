@@ -3,11 +3,16 @@ module voxel
 
   use global_parameters
   implicit none
-  private
 
+  private
   public :: generate_random_points_vox
   public :: get_volume_vox
   public :: point_in_voxel
+
+
+  public :: spherical_to_cartesian_point
+  public :: cartesian_to_spherical_range
+  public :: cartesian_to_spherical_points
 
 contains
 
@@ -39,9 +44,9 @@ function generate_random_points_vox(v, n)
      ! random points in a spherical segment
      sph_pnt(1) = (rvec(1,i) * (sph_rng(2)**3-sph_rng(1)**3) &
                   + sph_rng(1)**3)**(1./3.)     
-     sph_pnt(2) = acos(cos(sph_rng(3))+(cos(sph_rng(4))& 
-                  - cos(sph_rng(3)))*rvec(2,i))
-     sph_pnt(3) = sph_rng(5)+abs(sph_rng(6)-sph_rng(5))&
+     sph_pnt(2) = dacos(dcos(sph_rng(3))+(dcos(sph_rng(4))& 
+                  - dcos(sph_rng(3)))*rvec(2,i))
+     sph_pnt(3) = sph_rng(5)+dabs(sph_rng(6)-sph_rng(5))&
                   * rvec(3,i)
 
 		  
@@ -78,17 +83,17 @@ function get_volume_vox(v)
   call cartesian_to_spherical_range(v,sph_rng)
 
   ! We need latitude instead of colatitude
-  sph_rng(3)=pi/2.-sph_rng(3)
-  sph_rng(4)=pi/2.-sph_rng(4)
+  sph_rng(3)=pi/2.d0-sph_rng(3)
+  sph_rng(4)=pi/2.d0-sph_rng(4)
 
   ! Compute volume of spherical shell and latitude-longitude quadrilateral
   ! The volume can be computed by multiplying the both
-  vol_shell = (4/3) * pi * ( sph_rng(2)**3 &
+  vol_shell = (4.d0/3.d0) * pi * ( sph_rng(2)**3 &
               - sph_rng(1)**3 )
 
   frac = dabs(sph_rng(5)-sph_rng(6)) &
        * dabs(dsin(sph_rng(3))-dsin(sph_rng(4))) &
-       / (4*pi);
+       / (4.d0*pi);
 
   get_volume_vox = vol_shell * frac
 
@@ -97,7 +102,7 @@ end function get_volume_vox
 
 
 !-----------------------------------------------------------------------------------------
-pure subroutine cartesian_to_spherical_range ( v, spherical_range )
+subroutine cartesian_to_spherical_range ( v, spherical_range )
 !
 ! Converts a voxel given in terms of its 8 vertices in cartesian
 ! coordinates, to a spherical range, given as minimum and maximum
@@ -129,7 +134,7 @@ end subroutine cartesian_to_spherical_range
 
 
 !-----------------------------------------------------------------------------------------
-pure subroutine cartesian_to_spherical_points ( v, s )
+subroutine cartesian_to_spherical_points ( v, s )
 !
 ! Converts an arbitray number of points given in cartesian
 ! coordinates to spherical coordinates 
@@ -150,7 +155,7 @@ end subroutine cartesian_to_spherical_points
 
 
 !-----------------------------------------------------------------------------------------
-pure subroutine spherical_to_cartesian_point ( v, u )
+subroutine spherical_to_cartesian_point ( v, u )
 !
 ! Converts a point in spherical coordinates to a
 ! point in cartesian coordinates
