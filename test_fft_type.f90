@@ -70,7 +70,7 @@ subroutine test_fft_sine
     type(rfft_type) :: fftt
 
     real(kind=dp), dimension(:,:), allocatable       :: datat
-    complex(kind=dp), dimension(:,:), allocatable    :: dataf, dataf_ref
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf
     real(kind=dp), dimension(:,:), allocatable       :: T
     real(kind=dp), dimension(:), allocatable         :: F
     real(kind=dp)                                    :: dt, df
@@ -95,11 +95,6 @@ subroutine test_fft_sine
        T(i,1) = dt * i
     end do
 
-    !df = 1. / (dt*fftt%get_ntimes())
-
-    !do i = 1, nomega
-    !   F(i) = df * (i-1)
-    !end do
     df = fftt%get_df()
     F = fftt%get_f()
 
@@ -109,7 +104,7 @@ subroutine test_fft_sine
 
     call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
 
-    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+    f_max = real(F( maxloc( abs(dataf(:,1)), 1 ) ), kind=sp)
 
     call assert_comparable_real(f_max, f_ref, &
                                 real(dF/2), 'Maximum amplitude at 1 Hz (Sine)')
@@ -120,7 +115,7 @@ subroutine test_fft_sine
 
     call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
 
-    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+    f_max = real(F( maxloc( abs(dataf(:,1)), 1 ) ), kind=sp)
 
     call assert_comparable_real(f_max, f_ref, &
                                 real(dF/2), 'Maximum amplitude at 1 Hz (Cosine)')
@@ -131,7 +126,7 @@ subroutine test_fft_sine
 
     call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
 
-    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+    f_max = real(F( maxloc( abs(dataf(:,1)), 1 ) ), kind=sp)
 
     call assert_comparable_real(f_max, f_ref, &
                                 real(dF/2), 'Maximum amplitude at 0.5 Hz')
@@ -142,7 +137,7 @@ subroutine test_fft_sine
 
     call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
 
-    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+    f_max = real(F( maxloc( abs(dataf(:,1)), 1 ) ), kind=sp)
 
     call assert_comparable_real(f_max, f_ref, &
                                 real(dF/2), 'Maximum amplitude at 2 Hz')
