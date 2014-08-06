@@ -660,7 +660,9 @@ subroutine close_files(this)
          status = this%fwd(isim)%buffer_strain%freeme()
          status = this%fwd(isim)%buffer_disp%freeme()
       end do
-      write(lu_out,'(A,I8)') ' Points outside of element: ', this%fwd(1)%count_error_pointoutside
+      if (this%nsim_fwd > 0) &
+         write(lu_out,'(A,I8)') ' Points outside of element (fwd): ', &
+                                this%fwd(1)%count_error_pointoutside
 
       do isim = 1, this%nsim_bwd
          status = nf90_close(this%bwd(isim)%ncid)
@@ -673,7 +675,9 @@ subroutine close_files(this)
          status = this%bwd(isim)%buffer_strain%freeme()
          status = this%bwd(isim)%buffer_disp%freeme()
       end do
-      write(lu_out,'(A,I8)') ' Points outside of element: ', this%bwd(1)%count_error_pointoutside
+      if (this%nsim_bwd > 0) &
+         write(lu_out,'(A,I8)') ' Points outside of element (bwd): ', &
+                                this%bwd(1)%count_error_pointoutside
     end select
 
     deallocate(this%fwd)
