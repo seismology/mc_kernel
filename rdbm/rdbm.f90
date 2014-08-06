@@ -20,7 +20,6 @@ program rdbm
 
   character(len=512)                  :: bwd_dir
   character(len=4)                    :: model_param
-  real(kind=dp)                       :: x, y, r, th
   real(kind=dp), allocatable          :: fw_field(:,:,:)
   integer                             :: i, j
   integer                             :: lu_seis
