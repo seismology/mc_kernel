@@ -257,7 +257,7 @@ subroutine read_receiver(this)
    integer, parameter            :: lu_receiver = 1001
    integer                       :: irec, firstkernel, lastkernel
    integer                       :: ikernel, recnkernel
-   real(kind=dp)                 :: timewindow(2), reclatd, reclond
+   real(kind=dp)                 :: reclatd, reclond
    character(len=16)             :: recname
    character(len=80)             :: fmtstring
 
@@ -404,6 +404,8 @@ subroutine read_kernel(this, sem_data, filter)
               call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
           end do
        end if
+   else
+       nfilter = 0
    end if
 
    do irec = 1, this%nrec
