@@ -169,7 +169,7 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine finalize()
-  integer       :: ikernel, ivertex
+  integer       :: ikernel
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
@@ -191,7 +191,7 @@ subroutine finalize()
         do ikernel = 1, parameters%nkernel
            call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
                 ikernel, 'K_x_'//parameters%kernel(ikernel)%name )        
-     	   call inv_mesh%set_node_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
+           call inv_mesh%set_node_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
                                          kind=sp),                                 &
                                          ikernel+parameters%nkernel,                    &
                                          'err_'//parameters%kernel(ikernel)%name )
