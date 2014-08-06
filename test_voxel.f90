@@ -17,7 +17,6 @@ subroutine test_generate_random_points_vox
 
   real(kind=dp), dimension(3,1000)  :: points
   real(kind=dp), dimension(3,8)     :: vertices_A,vertices_B,vertices_C
-  real(kind=dp)                     :: ratio_subvoxel(8)
 
   ! "Weird" test voxel A (1 in vox_15l_5deg.dat), at the north pole
   ! Connectivity 1: 1, 2, 3, 4, 5, 6, 7, 8
