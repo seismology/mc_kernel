@@ -184,7 +184,7 @@ subroutine test_point_in_triangle_3d
   use simple_routines, only : cross
   integer, parameter       :: npoints = 10
   real(kind=dp)            :: x_ref_tri(2, npoints), x(3, npoints)
-  real(kind=dp)            :: vertices(3,3), normal(3), a, b, c
+  real(kind=dp)            :: vertices(3,3), normal(3)
   logical                  :: isintriangle(npoints), isinplane(npoints)
   integer                  :: ipoint
 
@@ -234,11 +234,6 @@ subroutine test_point_in_triangle_3d
                                  'being in plane')
   call assert_false(isintriangle, 'isintriangle recognizes points correctly as '// &
                                   'being outside triangle (in plane)')
-  !do ipoint = 1, npoints
-  !   if (isintriangle(ipoint)) then 
-  !      write(1001, *) x(:,ipoint), a, b, c
-  !   end if
-  !end do
 
 end subroutine test_point_in_triangle_3d
 !-----------------------------------------------------------------------------------------
@@ -303,10 +298,10 @@ subroutine test_get_volume_poly_4
   vertices_rot(2,:) = [0.6165487444, 0.0851452750, 0.2744938058, 0.5305435831]
   vertices_rot(3,:) = [0.0262420220, 0.1061754819, -0.0187917249, 0.0500267944]
   
-  area = get_volume_poly(4,vertices)
+  area = real(get_volume_poly(4,vertices), kind=sp)
   call assert_comparable_real(area, area_ref, 1e-7, 'Area of planar quadrilateral')
   
-  area = get_volume_poly(4,vertices_rot)
+  area = real(get_volume_poly(4,vertices_rot), kind=sp)
   call assert_comparable_real(area, area_ref, 1e-7, 'Area of rotated quadrilateral')
   
 end subroutine test_get_volume_poly_4
