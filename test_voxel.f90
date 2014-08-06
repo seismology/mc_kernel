@@ -15,7 +15,6 @@ subroutine test_generate_random_points_vox
   
   real(kind=dp), dimension(3,1000)  :: points
   real(kind=dp), dimension(3,8)     :: vertices_A,vertices_B
-  real(kind=sp)                     :: ratio_subvoxel(8)
 
   ! Strangely shaped test voxel A at the north pole
   vertices_A(:,1) = [-5.291225e+02, -6.479882e-14, 6.047898e+03]
