@@ -1364,7 +1364,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     real(kind=dp)                     :: rotmesh_phi(size(source_params))
     real(kind=dp)                     :: rotmesh_z(size(source_params))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
-    real(kind=dp)                     :: coordinates(size(source_params),3)
+    real(kind=dp)                     :: coordinates(3,size(source_params))
     real(kind=dp)                     :: mij_buff(6)
     real(kind=dp)                     :: xi, eta
 
@@ -1380,15 +1380,14 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     npoints = size(source_params)
 
     do ipoint = 1, npoints
-        coordinates(ipoint,1) = source_params(ipoint)%x
-        coordinates(ipoint,2) = source_params(ipoint)%y
-        coordinates(ipoint,3) = source_params(ipoint)%z
+        coordinates(1,ipoint) = source_params(ipoint)%x
+        coordinates(2,ipoint) = source_params(ipoint)%y
+        coordinates(3,ipoint) = source_params(ipoint)%z
     enddo
-    
+
     ! Rotate points to FWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates * 1d3, &
                           reci_source_params%lon, reci_source_params%colat)
-
 
     allocate(nextpoint(nnext_points))
     do ipoint = 1, npoints
@@ -1405,7 +1404,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                        (this%fwdmesh%s_mp(pointid(ipoint))**2  &
                             + this%fwdmesh%z_mp(pointid(ipoint))**2)**.5 
 
-        
         if (trim(this%dump_type) == 'displ_only') then
             do inext_point = 1, nnext_points
                 ! get cornerpoints of finite element
