@@ -2,6 +2,8 @@
 module rotations
 
     use global_parameters
+    use commpi, only: pabort
+
     implicit none
     private
     
@@ -80,7 +82,9 @@ function azim_factor(phi, mij, isim, ikind)
        end if
 
     case default
+       azim_factor = 0
        write(6,*) myrank,': unknown number of simulations',isim
+       call pabort
     end select
 
 end function
@@ -112,7 +116,9 @@ function azim_factor_bw(phi, fi, isim, ikind)
        end if
        
     case default
+       azim_factor_bw = 0
        write(6,*) myrank,': unknown number of simulations',isim
+       call pabort
     end select
 
 end function
