@@ -160,6 +160,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST VOXEL MODULE'
   call test(test_generate_random_points_vox, 'Random points in Voxel')
   call test(test_get_volume_vox, 'Volume of voxel')
+  call test(test_coordinate_transformations_vox, 'Voxel related coordinate transformations')
 
   ! test_inversion_mesh
   write(6,'(/,a)') 'TEST INVERSION MESH MODULE'
