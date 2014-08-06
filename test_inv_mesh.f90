@@ -163,7 +163,7 @@ subroutine test_mesh_data_dump
   allocate(datat_cell(3,nelements))
 
   do i=1, nelements
-    datat_cell(:,i) = inv_mesh%get_volume(i)
+    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
   enddo
   datat_cell(2,:) = datat_cell(2,:) + 1
   datat_cell(3,:) = datat_cell(3,:) + 2
@@ -239,7 +239,7 @@ subroutine test_mesh_data_dump2
   allocate(datat_cell(3,nelements))
 
   do i=1, nelements
-    datat_cell(:,i) = inv_mesh%get_volume(i)
+    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
   enddo
   datat_cell(2,:) = datat_cell(2,:) + 1
   datat_cell(3,:) = datat_cell(3,:) + 2
@@ -316,7 +316,7 @@ subroutine test_mesh_data_dump3
   allocate(datat_cell(3,nelements))
 
   do i=1, nelements
-    datat_cell(:,i) = inv_mesh%get_volume(i)
+    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
   enddo
   datat_cell(2,:) = datat_cell(2,:) + 1
   datat_cell(3,:) = datat_cell(3,:) + 2
@@ -392,7 +392,7 @@ subroutine test_mesh_data_dump4
   allocate(datat_cell(3,nelements))
 
   do i=1, nelements
-    datat_cell(:,i) = inv_mesh%get_volume(i)
+    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
   enddo
   datat_cell(2,:) = datat_cell(2,:) + 1
   datat_cell(3,:) = datat_cell(3,:) + 2
@@ -469,7 +469,7 @@ subroutine test_mesh_data_dump5
   allocate(datat_cell(3,nelements))
 
   do i=1, nelements
-    datat_cell(:,i) = inv_mesh%get_volume(i)
+    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
   enddo
   datat_cell(2,:) = datat_cell(2,:) + 1
   datat_cell(3,:) = datat_cell(3,:) + 2
@@ -577,7 +577,7 @@ subroutine test_voxel_mesh_io
   allocate(datat_cell(3,nelements))
 
   do i=1, nelements
-    datat_cell(:,i) = inv_mesh%get_volume(i)
+    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
   enddo
   datat_cell(2,:) = datat_cell(2,:) + 1
   datat_cell(3,:) = datat_cell(3,:) + 2
