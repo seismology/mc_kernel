@@ -80,7 +80,7 @@ function get_volume_vox(v)
 
   ! Compute volume of spherical shell and latitude-longitude quadrilateral
   ! The volume can be computed by multiplying the both
-  vol_shell = (4d/3d0) * pi * ( sph_rng(2)**3 - sph_rng(1)**3 )
+  vol_shell = (4d0/3d0) * pi * ( sph_rng(2)**3 - sph_rng(1)**3 )
 
   frac = dabs(sph_rng(5) - sph_rng(6)) &
          * dabs(dsin(sph_rng(3)) - dsin(sph_rng(4))) / (4d0 * pi)
