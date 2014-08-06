@@ -51,14 +51,18 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 !> This routine initializes the source object
-subroutine read_cmtsolution(this)
+subroutine read_cmtsolution(this, fname)
    class(src_param_type)      :: this
 
+   character(len=*), intent(in), optional :: fname
    integer                    :: lu_cmtsolution, ioerr
    character(len=256)         :: cmtsolution_file, junk
 
-   !@TODO: hardcoded for now, should be intent(in) at some point
-   cmtsolution_file = 'CMTSOLUTION'
+   if (present(fname)) then
+      cmtsolution_file = trim(fname)
+   else
+      cmtsolution_file = 'CMTSOLUTION'
+   endif
 
    open(newunit=lu_cmtsolution, file=trim(cmtsolution_file), status='old', &
         action='read', iostat=ioerr)
