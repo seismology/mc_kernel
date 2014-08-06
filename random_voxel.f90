@@ -9,6 +9,10 @@ module voxel
   public :: get_volume_vox
   public :: point_in_voxel
 
+  public :: spherical_to_cartesian_point
+  public :: cartesian_to_spherical_range
+  public :: cartesian_to_spherical_points
+
 contains
 
 !-----------------------------------------------------------------------------------------
