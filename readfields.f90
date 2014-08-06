@@ -142,7 +142,6 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
     integer,            intent(in) :: buffer_size
     character(len=4),   intent(in), optional :: model_param
     character(len=512)             :: dirnam
-    integer                        :: isim
     logical                        :: moment=.false., force=.false., single=.false.
 
     this%buffer_size = buffer_size
@@ -619,7 +618,7 @@ end subroutine open_files
 !-----------------------------------------------------------------------------------------
 subroutine close_files(this)
     class(semdata_type)   :: this
-    integer              :: status, isim, istrainvar
+    integer              :: status, isim
 
     ! Destroy kdtree
     if (this%kdtree_built) then
@@ -660,7 +659,9 @@ subroutine close_files(this)
          status = this%fwd(isim)%buffer_strain%freeme()
          status = this%fwd(isim)%buffer_disp%freeme()
       end do
-      write(lu_out,'(A,I8)') ' Points outside of element: ', this%fwd(1)%count_error_pointoutside
+      if (this%nsim_fwd > 0) &
+         write(lu_out,'(A,I8)') ' Points outside of element (fwd): ', &
+                                this%fwd(1)%count_error_pointoutside
 
       do isim = 1, this%nsim_bwd
          status = nf90_close(this%bwd(isim)%ncid)
@@ -673,7 +674,9 @@ subroutine close_files(this)
          status = this%bwd(isim)%buffer_strain%freeme()
          status = this%bwd(isim)%buffer_disp%freeme()
       end do
-      write(lu_out,'(A,I8)') ' Points outside of element: ', this%bwd(1)%count_error_pointoutside
+      if (this%nsim_bwd > 0) &
+         write(lu_out,'(A,I8)') ' Points outside of element (bwd): ', &
+                                this%bwd(1)%count_error_pointoutside
     end select
 
     deallocate(this%fwd)
@@ -889,7 +892,6 @@ function load_fw_points(this, coordinates, source_params)
     integer, allocatable              :: gll_point_ids(:,:)
     integer                           :: id_elem
     real(kind=dp)                     :: corner_points(4,2)
-    real(kind=dp)                     :: cps(1), cpz(1)
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
@@ -1185,12 +1187,11 @@ function load_bw_points(this, coordinates, receiver)
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points, id_elem
     integer                           :: pointid(size(coordinates,2))
-    integer                           :: ipoint, inext_point, isim, iclockold, icp
+    integer                           :: ipoint, inext_point, iclockold, icp
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
     real(kind=dp)                     :: corner_points(4,2)
-    real(kind=dp)                     :: cps(1), cpz(1)
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
@@ -1347,15 +1348,13 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     type(src_param_type), intent(in)  :: source_params(:)
     type(src_param_type), intent(in)  :: reci_source_params
     character(len=1), intent(in)      :: component
-    !real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, this%ndim, &
-    !                                                         size(source_params))
     real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, 1, &
                                                              size(source_params))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points
     integer                           :: pointid(size(source_params))
-    integer                           :: ipoint, inext_point, isim, iclockold, i, icp
+    integer                           :: ipoint, inext_point, isim, i, icp
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
@@ -1905,30 +1904,30 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
 
     if (use_strainbuffer) then
 
-      if(id_elem<=0) then
-        print *, 'id_elem is zero or smaller: ', id_elem
-        call pabort()
-      end if
+        if(id_elem<=0) then
+            print *, 'id_elem is zero or smaller: ', id_elem
+            call pabort()
+        end if
 
-#     ifdef flag_kerner
-      iclockold = tick()
-#     endif
+#       ifdef flag_kerner
+        iclockold = tick()
+#       endif
 
-      select case(model_param)
-      case('vp')
-        status = sem_obj%buffer_strain%get(id_elem, straintrace)
-      case('vs')
-        status = sem_obj%buffer_strain%get(id_elem, strain)
-      end select
-#     ifdef flag_kerner
-      iclockold = tick(id=id_buffer, since=iclockold)
-#     endif
+        select case(model_param)
+        case('vp')
+            status = sem_obj%buffer_strain%get(id_elem, straintrace)
+        case('vs')
+            status = sem_obj%buffer_strain%get(id_elem, strain)
+        case default
+            status = - 1
+        end select
+#       ifdef flag_kerner
+        iclockold = tick(id=id_buffer, since=iclockold)
+#       endif
 
     else
-      status = - 1
-
+        status = - 1
     end if
-
 
     if (status.ne.0) then
 
@@ -1990,19 +1989,19 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
       case('vp')
           ! compute straintrace
           if (sem_obj%excitation_type == 'monopole') then
-              straintrace = straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = real(straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                                  col_points_eta, sem_obj%npol, &
-                                                 sem_obj%ndumps, nodes, element_type, axis)
+                                                 sem_obj%ndumps, nodes, element_type, axis), kind=sp)
 
           elseif (sem_obj%excitation_type == 'dipole') then
-              straintrace = straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = real(straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                                col_points_eta, sem_obj%npol, sem_obj%ndumps, &
-                                               nodes, element_type, axis)
+                                               nodes, element_type, axis), kind=sp)
 
           elseif (sem_obj%excitation_type == 'quadpole') then
-              straintrace = straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = real(straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                                  col_points_eta, sem_obj%npol, &
-                                                 sem_obj%ndumps, nodes, element_type, axis)
+                                                 sem_obj%ndumps, nodes, element_type, axis), kind=sp)
           else
               print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
               call pabort
@@ -2017,19 +2016,19 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
       case('vs')
           ! compute full strain tensor
           if (sem_obj%excitation_type == 'monopole') then
-              strain = strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = real(strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                        col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                       element_type, axis)
+                                       element_type, axis), kind=sp)
 
           elseif (sem_obj%excitation_type == 'dipole') then
-              strain = strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = real(strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                      col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                     element_type, axis)
+                                     element_type, axis), kind=sp)
 
           elseif (sem_obj%excitation_type == 'quadpole') then
-              strain = strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = real(strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                        col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                       element_type, axis)
+                                       element_type, axis), kind=sp)
           else
               print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
               call pabort
@@ -2087,7 +2086,6 @@ end function load_strain_point_interp
 subroutine build_kdtree(this)
     class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
-    integer                    :: npoints
 
     if (.not.this%meshes_read) then
         print *, 'ERROR in build_kdtree(): Meshes have not been read yet'

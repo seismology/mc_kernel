@@ -10,8 +10,8 @@ module inversion_mesh
                                generate_random_points_vox
 
   use commpi,            only: pabort
-  implicit none
 
+  implicit none
 
   private
   public :: inversion_mesh_type
@@ -106,6 +106,9 @@ integer function get_element_type(this)
      get_element_type = 4
   case('vox')
      get_element_type = 5
+  case default
+     get_element_type = -1
+     call pabort
   end select
 end function
 !-----------------------------------------------------------------------------------------
@@ -113,6 +116,7 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_nelements(this)
   class(inversion_mesh_type)        :: this
+
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -143,6 +147,7 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_nvertices(this)
   class(inversion_mesh_type)        :: this
+
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -167,6 +172,9 @@ integer function get_nbasisfuncs(this, int_type)
      get_nbasisfuncs = this%nvertices
   case('volumetric')
      get_nbasisfuncs = this%nelements
+  case default
+     get_nbasisfuncs = -1
+     call pabort
   end select
 
 end function
@@ -175,6 +183,7 @@ end function
 !-----------------------------------------------------------------------------------------
 function get_vertices(this)
   class(inversion_mesh_type)        :: this
+  !TODO: why single precision here? MvD
   real(kind=sp)                     :: get_vertices(3,this%nvertices)
 
   if (.not. this%initialized) then
@@ -232,7 +241,8 @@ end function
 !-----------------------------------------------------------------------------------------
 function get_connectivity(this)
   class(inversion_mesh_type)        :: this
-  integer                           :: get_connectivity(this%nvertices_per_elem, this%nelements)
+  integer                           :: get_connectivity(this%nvertices_per_elem, &
+                                                        this%nelements)
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -244,6 +254,7 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntimes_node(this)
   class(inversion_mesh_data_type)        :: this
+
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -255,6 +266,7 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntimes_cell(this)
   class(inversion_mesh_data_type)        :: this
+
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -309,42 +321,20 @@ function weights(this, ielem, ivertex, points)
   select case(this%element_type) 
 
   case('tet')
+     do ipoint = 1, size(points, 2)
+        dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
+        dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
+        dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
 
-  !    ! Version from Karin's code
-
-  !    ivert = vertices(1,itetr)          ! first vertex in this tetrahedron
-  !    dx = x - points(1,ivert)           ! location of (x,y,z) wrt first vertex
-  !    dy = y - points(2,ivert)
-  !    dz = z - points(3,ivert)
-
-  do ipoint = 1, size(points, 2)
-     dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
-     dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
-     dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
-
-     weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
-                       + this%abinv(ivertex, 2, ielem) * dy &
-                       + this%abinv(ivertex, 3, ielem) * dz
-  end do
-
-
-
-  !    ! compute interpolation coefficient for each vertex
-  !    pointweights(1)=abinv(1,1,itetr)*dx+abinv(1,2,itetr)*dy+ &
-  !          abinv(1,3,itetr)*dz + abinv(1,4,itetr)
-  !    pointweights(2)=abinv(2,1,itetr)*dx+abinv(2,2,itetr)*dy+ &
-  !          abinv(2,3,itetr)*dz + abinv(2,4,itetr)
-  !    pointweights(3)=abinv(3,1,itetr)*dx+abinv(3,2,itetr)*dy+ &
-  !          abinv(3,3,itetr)*dz + abinv(3,4,itetr)
-  !    pointweights(4)=abinv(4,1,itetr)*dx+abinv(4,2,itetr)*dy+ &
-  !          abinv(4,3,itetr)*dz + abinv(4,4,itetr)
-  !    ivertices = vertices(:,itetr)
-
+        weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
+                          + this%abinv(ivertex, 2, ielem) * dy &
+                          + this%abinv(ivertex, 3, ielem) * dz
+     end do
   case default
       ! Least sophisticated version possible
       weights = 1
-
   end select
+
 end function weights
 !-----------------------------------------------------------------------------------------
 
@@ -360,6 +350,7 @@ function generate_random_points(this, ielement, npoints) result(points)
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
   end if
+
   select case(this%element_type)
   case('tet')
      points = generate_random_points_tet(this%get_element(ielement), npoints)
@@ -450,20 +441,17 @@ end subroutine read_tet_mesh
 !-----------------------------------------------------------------------------------------
 subroutine initialize_mesh(this, ielem_type, vertices, connectivity, nbasisfuncs_per_elem) 
   class(inversion_mesh_type)        :: this
-  !character(len=*), intent(in)     :: elem_type
   integer                          :: ielem_type !1-tet, 2-quad, 3-tri, 4-hex
   integer                          :: nbasisfuncs_per_elem
   real(kind=dp),    intent(in)     :: vertices(:,:)
   integer,          intent(in)     :: connectivity(:,:)
   character(len=255)               :: fmtstring
 
-
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
      call pabort 
   end if
   
-
   this%nvertices = size(vertices,2)
   this%nelements = size(connectivity,2)
 
@@ -515,7 +503,6 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity, nbasisfuncs
      call this%init_weight_tet_mesh()
   end if
 
-
   this%initialized = .true.
 
 end subroutine initialize_mesh
@@ -535,7 +522,6 @@ subroutine read_abaqus_meshtype(this, filename, int_type)
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
      call pabort 
   end if
-
 
   ! open file 
   open(newunit=iinput, file=trim(filename), status='old', &
@@ -593,14 +579,12 @@ subroutine read_abaqus_meshtype(this, filename, int_type)
   end select
   close(iinput)
 
-
   select case(trim(int_type))
   case('onvertices')
      this%nbasisfuncs_per_elem = this%nvertices_per_elem    
   case('volumetric')
      this%nbasisfuncs_per_elem = 1     
   end select
-
 
 end subroutine read_abaqus_meshtype
 !-----------------------------------------------------------------------------------------
@@ -614,7 +598,6 @@ subroutine read_abaqus_mesh(this, filename, int_type)
   integer                           :: i, ierr, ct
   character(len=128)                :: line, line_buff
   character(len=16)                 :: elem_type, elem_type_buff
-
 
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
@@ -736,7 +719,6 @@ subroutine read_abaqus_mesh(this, filename, int_type)
 
   ! abaqus starts counting at 1
   this%connectivity(:,:) = this%connectivity(:,:) - 1
-
   
   if (this%element_type.eq.'tri'.or.this%element_type.eq.'quad') then
      call this%make_2d_vectors
@@ -744,11 +726,9 @@ subroutine read_abaqus_mesh(this, filename, int_type)
      call this%init_weight_tet_mesh()
   end if
 
-
   write(lu_out, '("  Mesh type: ", A)')  trim(this%element_type)
   write(lu_out, '("  nvertices: ", I8)') this%nvertices
   write(lu_out, '("  nelements: ", I8)') this%nelements
-
 
   ! how many basis functions per elem
   select case(trim(int_type))
@@ -844,7 +824,6 @@ subroutine make_2d_vectors(this)
     
      this%p_2d = 0
 
-
   case('quad') 
      nvec = 3
   
@@ -859,16 +838,15 @@ subroutine make_2d_vectors(this)
                             p_2d    = this%p_2d(:,:,ielem),                                   &
                             vec     = this%v_2d(:,1:2,ielem))
      end do
+  case default
+     call pabort
   end select
 end subroutine make_2d_vectors
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
-
-!*****************************************************************************80
-!
-!! PLANE_EXP_PRO2 produces 2D coordinates of points that lie in a plane, in 3D.
+! PLANE_EXP_PRO2 produces 2D coordinates of points that lie in a plane, in 3D.
 !
 !  Discussion:
 !
@@ -897,9 +875,7 @@ subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
 !
 !    Output, real ( kind = 8 ) PP(2,N), the "in-plane"
 !    coordinates of the points.  
-!
-  implicit none
-  
+
   integer, parameter         :: dim_num = 3
   integer, intent(in)        :: npoints
   real(kind=dp), intent(in)  :: p_3d(dim_num,npoints)
@@ -909,25 +885,17 @@ subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
   
   real(kind=dp)              :: dot
   integer                    :: i
-  !
-  !  Compute the two basis vectors for the affine plane.
-  !
+
+  !Compute the two basis vectors for the affine plane.
   vec(:,1) = p_ref(:,2) - p_ref(:,1)
-  
-  !call vector_unit_nd ( dim_num, v1 )
   vec(:,1) = vec(:,1) / norm2(vec(:,1))
   
   vec(:,2) = p_ref(:,3) - p_ref(:,1)
-  
   dot = dot_product ( vec(:,1), vec(:,2) )
-  
   vec(:,2) = vec(:,2) - dot * vec(:,1)
-  
-  !call vector_unit_nd ( dim_num, v2 )
   vec(:,2) = vec(:,2) / norm2(vec(:,2))
-  !
-  !  Now decompose each point.
-  !
+  
+  !Now decompose each point.
   do i = 1, npoints
      p_2d(1,i) = dot_product ( p_3d(:,i) - p_ref(:,1), vec(:,1) )
      p_2d(2,i) = dot_product ( p_3d(:,i) - p_ref(:,2), vec(:,2) )
@@ -941,7 +909,6 @@ subroutine dump_mesh_xdmf(this, filename)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput_xdmf, iinput_heavy_data
-  integer                           :: i
   character(len=16)                 :: xdmf_elem_type
   character(len=512)                :: filename_np
 
@@ -1062,7 +1029,6 @@ subroutine freeme(this)
 end subroutine freeme
 !-----------------------------------------------------------------------------------------
 
-
 !-----------------------------------------------------------------------------------------
 subroutine init_node_data(this, ntimes_node)
   class(inversion_mesh_data_type)   :: this
@@ -1083,7 +1049,6 @@ subroutine init_node_data(this, ntimes_node)
 
 end subroutine
 !-----------------------------------------------------------------------------------------
-
 
 !-----------------------------------------------------------------------------------------
 subroutine init_cell_data(this, ntimes_cell)
@@ -1176,8 +1141,6 @@ subroutine dump_node_data_csr( this, data_kernel, nkernels, threshold, filename)
 
 end subroutine dump_node_data_csr
 !-----------------------------------------------------------------------------------------
-
-
 
 !-----------------------------------------------------------------------------------------
 subroutine set_node_data_snap(this, data_snap, isnap, data_name)
@@ -1395,7 +1358,6 @@ subroutine dump_cell_data_xdmf(this, filename)
     '</Domain>',/&
     '</Xdmf>')
 
-
   ! VERTEX data
   open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
@@ -1571,5 +1533,6 @@ subroutine dump_node_data_xdmf(this, filename)
 
 end subroutine
 !-----------------------------------------------------------------------------------------
+
 end module
 !=========================================================================================

@@ -109,7 +109,7 @@ function init(this, nbuffer, nvalues_dim1, nvalues_dim2, nvalues_dim3, nvalues_d
        write(lu_out, '(A,I5,A,I5,I5,I5,I5,A)') ' Initialize buffer with ', nbuffer, &
                     ' memories for (', this%nvalues_dim1, this%nvalues_dim2, &
                     this%nvalues_dim3, this%nvalues_dim4, ') values'
-       write(lu_out,'(A,I7,A,F8.1,A)') 'this is a total of ', buffer_size, ' numbers and uses a size of', &
+       write(lu_out,'(A,I12,A,F8.1,A)') 'this is a total of ', buffer_size, ' numbers and uses a size of', &
                                         buffer_size * 4d0 / 1024d0**2, ' MB in memory'
     endif
     

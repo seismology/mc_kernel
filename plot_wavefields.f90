@@ -1,19 +1,20 @@
 !=========================================================================================
 module plot_wavefields_mod
 
+    implicit none
+
 contains
 
 !-----------------------------------------------------------------------------------------
 subroutine plot_wavefields()
 
-    use global_parameters,          only : sp, dp, pi, deg2rad, verbose, init_random_seed
+    use global_parameters,          only : sp, dp, pi, deg2rad, init_random_seed
     use inversion_mesh,             only : inversion_mesh_data_type
     use readfields,                 only : semdata_type
     use type_parameter,             only : parameter_type
     use fft,                        only : rfft_type, taperandzeropad
     use filtering,                  only : timeshift_type
 
-    implicit none
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
     type(semdata_type)                  :: sem_data

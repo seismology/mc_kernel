@@ -26,9 +26,9 @@ subroutine test_mc_meanandvariance
     call mc_integral%initialize_montecarlo(1, volume, 1d-3)
     call mc_integral%check_montecarlo_integral(values)
 
-    integral = mc_integral%getintegral()
+    integral = real(mc_integral%getintegral(), kind=sp)
     call assert_comparable_real1d(integral, [5.0], 1.e-7, 'Mean == 5.0')
-    variance = mc_integral%getvariance()
+    variance = real(mc_integral%getvariance(), kind=sp)
     call assert_comparable_real1d(variance, [0.0], 1.e-7, 'Variance == 0.0')
 
     call mc_integral%freeme()
@@ -45,14 +45,14 @@ subroutine test_mc_meanandvariance
     call mc_integral%initialize_montecarlo(1, volume, 1d-3)
     call mc_integral%check_montecarlo_integral(values)
 
-    mean_an = sum(values) / N
-    variance_an = sum((values-mean_an)**2) / (N-1)
+    mean_an = real(sum(values) / N, kind=sp)
+    variance_an = real(sum((values-mean_an)**2) / (N-1), kind=sp)
     !print *, 'Analytical mean     : ', mean_an
     !print *, 'Analytical variance : ', variance_an
 
-    integral = mc_integral%getintegral()
+    integral = real(mc_integral%getintegral(), kind=sp)
     call assert_comparable_real1d(integral, [mean_an], 1.e-4, 'Mean == 1.0')
-    variance = mc_integral%getvariance()
+    variance = real(mc_integral%getvariance(), kind=sp)
     call assert_comparable_real1d(sqrt(variance), [sqrt(variance_an/N)], 1.e-4, 'Error == 2/sqrt(N)')
 
     call mc_integral%freeme()
@@ -90,7 +90,7 @@ subroutine test_mc_unit_hexagon
     end do
  
 
-    integral = mc_integral%getintegral()
+    integral = real(mc_integral%getintegral(), kind=sp)
     call assert_comparable_real1d(1+integral, 1+[3.98343E-003], 1e-4, 'Integral == reference value')
 end subroutine test_mc_unit_hexagon
 !-----------------------------------------------------------------------------------------
@@ -132,7 +132,7 @@ subroutine test_mc_sphere_in_tetrahedron
     end do
  
 
-    integral = mc_integral%getintegral()
+    integral = real(mc_integral%getintegral(), kind=sp)
     call assert_comparable_real1d(1+integral, 1+[pi*(1./3.)**(1.5)*real(volume)], &
                                   1e-3, 'Integral == 1.10076')
 end subroutine test_mc_sphere_in_tetrahedron

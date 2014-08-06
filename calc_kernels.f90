@@ -3,7 +3,7 @@ program kerner_code
     use mpi
     use commpi,                      only: ppinit, pbroadcast_int, ppend
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           master, lu_out, myrank, id_fft, id_fwd, id_bwd
+                                           master, lu_out, myrank
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use type_parameter,              only: parameter_type
@@ -22,8 +22,6 @@ program kerner_code
     integer                             :: nvertices_per_task
     integer                             :: nbasisfuncs_per_elem
     integer                             :: nbasisfuncs_per_task
-    integer                             :: ierror
-    
 
     verbose = 0
 
