@@ -1989,19 +1989,19 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
       case('vp')
           ! compute straintrace
           if (sem_obj%excitation_type == 'monopole') then
-              straintrace = straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = real(straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                                  col_points_eta, sem_obj%npol, &
-                                                 sem_obj%ndumps, nodes, element_type, axis)
+                                                 sem_obj%ndumps, nodes, element_type, axis), kind=sp)
 
           elseif (sem_obj%excitation_type == 'dipole') then
-              straintrace = straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = real(straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                                col_points_eta, sem_obj%npol, sem_obj%ndumps, &
-                                               nodes, element_type, axis)
+                                               nodes, element_type, axis), kind=sp)
 
           elseif (sem_obj%excitation_type == 'quadpole') then
-              straintrace = straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = real(straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                                  col_points_eta, sem_obj%npol, &
-                                                 sem_obj%ndumps, nodes, element_type, axis)
+                                                 sem_obj%ndumps, nodes, element_type, axis), kind=sp)
           else
               print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
               call pabort
@@ -2016,19 +2016,19 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
       case('vs')
           ! compute full strain tensor
           if (sem_obj%excitation_type == 'monopole') then
-              strain = strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = real(strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                        col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                       element_type, axis)
+                                       element_type, axis), kind=sp)
 
           elseif (sem_obj%excitation_type == 'dipole') then
-              strain = strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = real(strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                      col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                     element_type, axis)
+                                     element_type, axis), kind=sp)
 
           elseif (sem_obj%excitation_type == 'quadpole') then
-              strain = strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = real(strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
                                        col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                       element_type, axis)
+                                       element_type, axis), kind=sp)
           else
               print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
               call pabort
