@@ -1,7 +1,8 @@
+!=========================================================================================
 module slave_mod
 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           myrank, lu_out
+    use global_parameters,           only: sp, dp, pi, deg2rad, &
+                                           init_random_seed, myrank, lu_out
     use work_type_mod
     use mpi
     implicit none
@@ -14,10 +15,9 @@ module slave_mod
 
 contains
 
-!=========================================================================================
+!-----------------------------------------------------------------------------------------
 subroutine do_slave() 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, &
-                                           init_random_seed, DIETAG, id_mpi
+    use global_parameters,           only: DIETAG, id_mpi
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
@@ -36,9 +36,8 @@ subroutine do_slave()
     integer                             :: ikernel, ierror, iclockold
     integer                             :: mpistatus(MPI_STATUS_SIZE)
     real(kind=dp)                       :: df
-    real(kind=dp), allocatable          :: K_x(:,:)
-    integer                             :: ielement, itask
-    character(len=255)                  :: fmtstring, fnam
+    integer                             :: itask
+    character(len=255)                  :: fmtstring
     integer                             :: nptperstep
 
     write(lu_out,'(A)') '***************************************************************'
@@ -138,29 +137,6 @@ subroutine do_slave()
        wt%kernel_variance = slave_result%kernel_variance
        wt%niterations     = slave_result%niterations
 
-
-       !! Write out my part of the mesh
-       !call inv_mesh%init_node_data(parameters%nkernel)
-       !
-       !if (.not.allocated(K_x)) allocate(K_x(inv_mesh%get_nvertices(), parameters%nkernel))
-       !K_x = 0
-       !do iel = 1, parameters%nelems_per_task
-       !    ielement = iel  
-       !    if (ielement.eq.-1) cycle
-       !    do ivertex = 1, inv_mesh%nvertices_per_elem
-       !       K_x(wt%connectivity(ivertex, ielement),:) = K_x(wt%connectivity(ivertex, ielement),:) &
-       !                                                + wt%kernel_values(:, ivertex, iel)
-       !    end do
-       !end do
-
-       !write(fnam, "('partial_kernels/kernel_part_data_', I5.5)") wt%itask
-       !do ikernel = 1, parameters%nkernel
-       !   call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
-       !                               ikernel, parameters%kernel(ikernel)%name )
-       !end do
-
-       !call inv_mesh%dump_node_data_xdmf(fnam)
-
        ! Finished writing my part of the mesh
        call inv_mesh%freeme
 
@@ -208,13 +184,12 @@ subroutine do_slave()
     call fft_data%freeme()
 
 end subroutine do_slave
-!=========================================================================================
+!-----------------------------------------------------------------------------------------
 
-
-!=========================================================================================
+!-----------------------------------------------------------------------------------------
 function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_result)
 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, myrank, &
+    use global_parameters,           only: sp, dp, pi, deg2rad, myrank, &
                                            id_fwd, id_bwd, id_fft, id_mc, id_filter_conv, &
                                            id_inv_mesh, id_kernel, id_init
 
@@ -246,9 +221,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     real(kind=dp)                       :: volume
 
     character(len=256)                  :: fmtstring
-    integer                             :: ielement, irec, ivertex, ikernel, ibasisfunc
+    integer                             :: ielement, irec, ikernel, ibasisfunc
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
-    integer                             :: nvertices_per_elem
     integer                             :: nbasisfuncs_per_elem
     integer                             :: iclockold
     integer                             :: ndim
@@ -444,9 +418,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     call timeshift_fwd%freeme()
     call timeshift_bwd%freeme()
 end function slave_work
-!=========================================================================================
-
-
-
+!-----------------------------------------------------------------------------------------
 
 end module
+!=========================================================================================
