@@ -274,7 +274,7 @@ subroutine test_resampling_timeshift_triangle
 
   call resamp%init(ntimes_in, ntimes_out, ntraces)
 
-  call resamp%resample_timeshift(data_in, data_out, 5d0 / dt_in)
+  call resamp%resample_timeshift(data_in, data_out, [5d0 / dt_in])
 
   do i=1, ntraces
      call assert_comparable_real1d(real(data_out(:,i), sp) + 10, &

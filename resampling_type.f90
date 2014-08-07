@@ -112,7 +112,7 @@ subroutine resample_timeshift(this, data_in, data_out, delta_t)
 
   class(resampling_type)            :: this
   real(kind=dp), intent(in)         :: data_in(:,:)
-  real(kind=dp), intent(in)         :: delta_t          ! in number of samples!
+  real(kind=dp), intent(in)         :: delta_t(:)          ! in number of samples!
   real(kind=dp), intent(out)        :: data_out(:,:)
 
   complex(kind=dp), allocatable     :: dataf_in(:,:), dataf_out(:,:)
@@ -141,6 +141,11 @@ subroutine resample_timeshift(this, data_in, data_out, delta_t)
      call pabort
   end if
 
+  if (size(delta_t) /= this%ntraces) then
+     write(*,*) 'ERROR: shape mismatch for argument delta_t'
+     call pabort
+  end if
+
   allocate(dataf_in(1:this%fft_in%get_nomega(), 1:this%fft_in%get_ntraces()))
   allocate(dataf_out(1:this%fft_out%get_nomega(), 1:this%fft_out%get_ntraces()))
   allocate(shift_fd(1:this%fft_in%get_nomega()))
@@ -148,8 +153,8 @@ subroutine resample_timeshift(this, data_in, data_out, delta_t)
   call this%fft_in%rfft(taperandzeropad(data_in, this%fft_in%get_ntimes(), ntaper=0), dataf_in)
   
   ! time shift (dt in fft is 1!!)
-  shift_fd = exp(this%fft_in%get_f() * 2 * pi * delta_t * cmplx(0, 1))
   do i = 1, this%fft_in%get_ntraces()
+     shift_fd = exp(this%fft_in%get_f() * 2 * pi * delta_t(i) * cmplx(0, 1))
      dataf_in(:,i) = dataf_in(:,i) * shift_fd
   enddo
 
