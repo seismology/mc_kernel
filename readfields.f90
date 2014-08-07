@@ -1352,7 +1352,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                                              size(source_params))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
-    integer                           :: npoints, nnext_points
+    integer                           :: npoints, nnext_points, id_elem
     integer                           :: pointid(size(source_params))
     integer                           :: ipoint, inext_point, isim, i, icp
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
@@ -1454,6 +1454,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                call pabort
             endif
 
+            id_elem = nextpoint(inext_point)%idx
+
             ! get gll points of spectral element
             gll_point_ids = -1
             if (verbose > 1) &
@@ -1492,7 +1494,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                                                       xi, eta, this%model_param, &
-                                                      corner_points, eltype(1), axis)
+                                                      corner_points, eltype(1), axis, &
+                                                      id_elem=id_elem)
                  else
                      utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                  endif
@@ -1503,7 +1506,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                                                       xi, eta, this%model_param, &
-                                                      corner_points, eltype(1), axis)
+                                                      corner_points, eltype(1), axis, &
+                                                      id_elem=id_elem)
                  else
                      utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                  endif
@@ -1517,7 +1521,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                                                       xi, eta, this%model_param, &
-                                                      corner_points, eltype(1), axis)
+                                                      corner_points, eltype(1), axis, &
+                                                      id_elem=id_elem)
                  else
                      utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                  endif
@@ -1530,7 +1535,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                                                       xi, eta, this%model_param, &
-                                                      corner_points, eltype(1), axis)
+                                                      corner_points, eltype(1), axis, &
+                                                      id_elem=id_elem)
                  else
                      utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                  endif
@@ -1549,7 +1555,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                                                       xi, eta, this%model_param, &
-                                                      corner_points, eltype(1), axis)
+                                                      corner_points, eltype(1), axis, &
+                                                      id_elem=id_elem)
                  else
                      utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                  endif
@@ -1587,7 +1594,9 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                                                       xi, eta, this%model_param, &
-                                                      corner_points, eltype(1), axis)
+                                                      corner_points, eltype(1), axis, &
+                                                      id_elem=id_elem)
+
                  else
                      utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                  endif
@@ -1637,7 +1646,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                                                       xi, eta, this%model_param, &
-                                                      corner_points, eltype(1), axis)
+                                                      corner_points, eltype(1), axis, &
+                                                      id_elem=id_elem)
                  else
                      utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
                  endif
