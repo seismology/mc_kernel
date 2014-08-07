@@ -18,6 +18,7 @@ module resampling
      contains
      procedure, pass            :: init
      procedure, pass            :: resample
+     procedure, pass            :: resample_timeshift
      procedure, pass            :: freeme
      procedure, pass            :: get_ntraces
      procedure, pass            :: get_ntimes_in
@@ -91,6 +92,69 @@ subroutine resample(this, data_in, data_out)
   
   nomega_min = min(this%fft_in%get_nomega(), this%fft_out%get_nomega())
 
+  dataf_out(1:nomega_min,:) = dataf_in(1:nomega_min,:)
+
+  if (nomega_min < this%fft_out%get_nomega()) &
+     dataf_out(nomega_min+1:,:) = 0
+
+  call this%fft_out%irfft(dataf_out, this%data_out_buf)
+
+  data_out(:,:) = this%data_out_buf(1:this%ntimes_out,:) &
+                    * real(this%ntimes_out, kind=dp) / real(this%ntimes_in, kind=dp)
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> resampling routine for rational number resampling, inspriation taken from
+!! scipy.signal.resample
+subroutine resample_timeshift(this, data_in, data_out, delta_t)
+
+  class(resampling_type)            :: this
+  real(kind=dp), intent(in)         :: data_in(:,:)
+  real(kind=dp), intent(in)         :: delta_t          ! in number of samples!
+  real(kind=dp), intent(out)        :: data_out(:,:)
+
+  complex(kind=dp), allocatable     :: dataf_in(:,:), dataf_out(:,:)
+  complex(kind=dp), allocatable     :: shift_fd(:)
+  integer                           :: nomega_min, i
+
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing resampling type that is not initialized'
+     call pabort 
+  end if
+
+  if (any(shape(data_in) /= [this%ntimes_in, this%ntraces])) then
+     write(*,*) 'ERROR: shape mismatch in first argument - ' &
+                    // 'shape does not match the plan for resampling'
+     write(*,*) 'is: ', shape(data_in), '; should be: [', this%ntimes_in, &
+                    ', ', this%ntraces, ']'
+     call pabort
+  end if
+
+  if (any(shape(data_out) &
+        /= [this%ntimes_out, this%ntraces])) then
+     write(*,*) 'ERROR: shape mismatch in second argument - ' &
+                    // 'shape does not match the plan for resampling'
+     write(*,*) 'is: ', shape(data_out), '; should be: [', this%ntimes_out, &
+                    ', ', this%ntraces, ']'
+     call pabort
+  end if
+
+  allocate(dataf_in(1:this%fft_in%get_nomega(), 1:this%fft_in%get_ntraces()))
+  allocate(dataf_out(1:this%fft_out%get_nomega(), 1:this%fft_out%get_ntraces()))
+  allocate(shift_fd(1:this%fft_in%get_nomega()))
+
+  call this%fft_in%rfft(taperandzeropad(data_in, this%fft_in%get_ntimes(), ntaper=0), dataf_in)
+  
+  ! time shift (dt in fft is 1!!)
+  shift_fd = exp(this%fft_in%get_f() * 2 * pi * delta_t * cmplx(0, 1))
+  do i = 1, this%fft_in%get_ntraces()
+     dataf_in(:,i) = dataf_in(:,i) * shift_fd
+  enddo
+
+  ! resample
+  nomega_min = min(this%fft_in%get_nomega(), this%fft_out%get_nomega())
   dataf_out(1:nomega_min,:) = dataf_in(1:nomega_min,:)
 
   if (nomega_min < this%fft_out%get_nomega()) &

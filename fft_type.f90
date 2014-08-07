@@ -30,6 +30,7 @@ module fft
      procedure, pass            :: get_f
      procedure, pass            :: get_df
      procedure, pass            :: get_t
+     procedure, pass            :: get_dt
      procedure, pass            :: init
      procedure, pass            :: rfft_md
      procedure, pass            :: irfft_md
@@ -118,6 +119,18 @@ function get_f(this)
      call pabort 
   end if
   get_f(:) = this%f(:)
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_dt(this)
+  class(rfft_type) :: this
+  real(kind=dp)    :: get_dt
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
+  get_dt = this%dt
 end function
 !-----------------------------------------------------------------------------------------
 

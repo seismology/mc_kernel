@@ -132,6 +132,7 @@ subroutine test_all
   call test(test_resampling_const, 'RESAMPLING_const')
   call test(test_resampling_const_ntraces, 'RESAMPLING_const_ntraces')
   call test(test_resampling_triangle, 'RESAMPLING_triangle')
+  call test(test_resampling_timeshift_triangle, 'RESAMPLING_triangle with timeshift')
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
