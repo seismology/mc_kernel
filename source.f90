@@ -13,6 +13,7 @@ module source_class
         real(kind=dp)                        :: x, y, z             ! cartesian 
                                                                     ! coordinates in km
         real(kind=dp)                        :: depth, radius       ! in km
+        real(kind=dp)                        :: time_shift          ! in seconds
         real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
         contains
            procedure, pass                   :: init
@@ -35,6 +36,8 @@ subroutine init(this, lat, lon, mij, depth)
    this%colat  = this%colatd * deg2rad
    this%lon    = this%lond   * deg2rad
    this%lat    = this%latd   * deg2rad
+
+   this%time_shift = 0
 
    !TODO hardcoded radius for now until I know where to get earth's radius from (MvD)
    this%radius = 6371 - depth
@@ -74,7 +77,7 @@ subroutine read_cmtsolution(this, fname)
 
    read(lu_cmtsolution,*) junk ! first crap line
    read(lu_cmtsolution,*) junk ! event name
-   read(lu_cmtsolution,*) junk ! time shift
+   read(lu_cmtsolution,*) junk, junk, this%time_shift
    read(lu_cmtsolution,*) junk ! half duration
    read(lu_cmtsolution,*) junk, this%latd
    read(lu_cmtsolution,*) junk, this%lond

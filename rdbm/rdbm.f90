@@ -27,6 +27,7 @@ program rdbm
 
   type(resampling_type)               :: resamp
   real(kind=dp), allocatable          :: fw_field_res(:,:)
+  real(kind=dp), allocatable          :: shift_time_sample(:)
 
   integer                             :: iclockold
 
@@ -64,20 +65,22 @@ program rdbm
   call sem_data%build_kdtree()
 
   ! initialize resampling
-  if (.not. parameters%resample) then
-     parameters%nsamp = sem_data%ndumps
-     allocate(fw_field_res(parameters%nsamp, parameters%nsources))
-  else
+  if (parameters%resample .or. parameters%time_shift) then
      allocate(fw_field_res(parameters%nsamp * 2, parameters%nsources))
      call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, parameters%nsources)
+  else
+     parameters%nsamp = sem_data%ndumps
+     allocate(fw_field_res(parameters%nsamp, parameters%nsources))
   endif
 
   allocate(fw_field(sem_data%ndumps, 1, parameters%nsources))
 
   ! initialize sources
   allocate(sources(parameters%nsources))
+  allocate(shift_time_sample(parameters%nsources))
   do i = 1, parameters%nsources
      call sources(i)%read_cmtsolution(fname=trim(parameters%source_files(i)))
+     shift_time_sample(i) = sources(i)%time_shift / sem_data%dt
   enddo
 
   ! initialize time traces
@@ -99,11 +102,17 @@ program rdbm
      iclockold = tick(id=id_load, since=iclockold)
 
      ! resample
-     if (parameters%resample) then
+     if (parameters%resample .and. .not. parameters%time_shift) then
         iclockold = tick()
         call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
                                              ntimes=sem_data%ndumps * 2), &
                              fw_field_res)
+        iclockold = tick(id=id_resamp, since=iclockold)
+     elseif (parameters%time_shift) then
+        iclockold = tick()
+        call resamp%resample_timeshift(taperandzeropad(fw_field(:,1,:), ntaper=0, &
+                                                       ntimes=sem_data%ndumps * 2), &
+                                       fw_field_res, delta_t=shift_time_sample)
         iclockold = tick(id=id_resamp, since=iclockold)
      else
         fw_field_res = fw_field(:,1,:)

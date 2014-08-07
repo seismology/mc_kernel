@@ -14,6 +14,7 @@ module type_parameter
       integer                               :: nsrc, nrec
 
       character(len=512)                    :: sim_dir
+      character(len=16)                     :: mode
       character(len=16)                     :: source_file_type
       character(len=512)                    :: source_file_wildcard
       character(len=512), allocatable       :: source_files(:)
@@ -25,6 +26,7 @@ module type_parameter
       integer                               :: nsim_fwd
       logical                               :: resample
       integer                               :: nsamp
+      logical                               :: time_shift
       integer                               :: buffer_size
       integer                               :: verbose
       logical                               :: parameters_read = .false.
@@ -77,14 +79,17 @@ subroutine read_parameters(this, input_file_in)
      case('SIM_DIR')
         this%sim_dir = keyvalue
 
-     ! TODO: to be implemented
      case('MODE')
+        this%mode = keyvalue
 
      case('RESAMPLE')
         read(keyvalue, *) this%resample
 
      case('NSAMP')
         read(keyvalue, *) this%nsamp
+
+     case('TIMESHIFT')
+        read(keyvalue, *) this%time_shift
 
      case('SRCFILE_TYPE')
         this%source_file_type = keyvalue

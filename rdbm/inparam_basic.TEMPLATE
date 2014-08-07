@@ -4,7 +4,7 @@ SIM_DIR                 '../../axisem/SOLVER/20s_kernel_output'
 # mode: 
 # tomography        one seismogram per source receiver pair
 # finitesource      one seismogram per receiver, summed over all sources
-MODE                    tomo
+MODE                    tomography
 
 # Receiver file type, allowed options:
 # colatlon          Colatitude and Longitude for each station.
@@ -38,6 +38,9 @@ RESAMPLE                T
 # number of samples in the seismograms, resampling is done in the frequency domain, 
 # length of the traces in seconds depends on the forward run
 NSAMP                   3600
+
+# Time Shift 
+TIMESHIFT               T
 
 # Size of reading buffer. 1000 is a good value, unless you run into memory problems.
 # Higher values avoid repeated reading of the same point.
