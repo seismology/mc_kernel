@@ -10,6 +10,7 @@ program rdbm
   use receivers_rdbm
   use fft, only : taperandzeropad
   use clocks_mod
+  use progressbar_mod
 
   implicit none
 
@@ -17,6 +18,7 @@ program rdbm
   type(parameter_type)                :: parameters
   type(receivers_rdbm_type)           :: receivers
   type(src_param_type), allocatable   :: sources(:)
+  type(progressbar)                   :: bar
 
   character(len=512)                  :: bwd_dir
   character(len=4)                    :: model_param
@@ -94,6 +96,9 @@ program rdbm
   ! initialization done
   iclockold = tick(id=id_init, since=iclockold)
 
+  write(6,*) 'Initiatlization Done.'
+  write(6,*) 'Working on ', receivers%num_rec, ' receivers'
+
   do i=1, receivers%num_rec
      ! load data from file
      iclockold = tick()
@@ -127,6 +132,8 @@ program rdbm
      enddo
      close(lu_seis)
      iclockold = tick(id=id_out, since=iclockold)
+
+     call bar%printbar(100 * i / receivers%num_rec)
   enddo
 
   ! finish
