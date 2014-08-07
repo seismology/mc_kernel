@@ -15,7 +15,14 @@ RECFILE_TYPE            stations
 # Source file type, allowed options:
 # cmtsolution       standard cmtsolution file as available form globalcmt.org (allows only
 #                     one source per run)
+# cmtsolutions      use multiple cmtsolution files
 SRCFILE_TYPE            cmtsolution
+
+# bash wildcard expression for cmtsolution files to be used.
+# details can be found in the manpages: 'man 7 glob'
+# only used if SRCFILE_TYPE is 'cmtsolutions', quotation marks are essential
+# example to use all files in subfolder CMT: 'CMT/*'
+SRCFILE_WILDCARD        'CMT/CMTSOLUTION?'
 
 # source type, should be one of [moment, explosion]
 # in case of exlosion, only the straintrace needs to be read from file instead of the

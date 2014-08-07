@@ -27,7 +27,6 @@ program rdbm
 
   type(resampling_type)               :: resamp
   real(kind=dp), allocatable          :: fw_field_res(:,:)
-  integer                             :: nsources
 
   integer                             :: iclockold
 
@@ -37,6 +36,7 @@ program rdbm
   call start_clock()
   iclockold = tick()
 
+  ! read input files
   call parameters%read_parameters('inparam_basic')
 
   if (parameters%receiver_file_type == 'stations') then
@@ -48,12 +48,7 @@ program rdbm
      call pabort
   endif
 
-  nsources = 1
-
-  write(*,*) '***************************************************************'
-  write(*,*) ' Initialize and open AxiSEM wavefield files'
-  write(*,*) '***************************************************************'
-
+  ! open heavy data files and initialize meshes
   bwd_dir = ''
 
   if (trim(parameters%source_type) == 'explosion') then
@@ -62,42 +57,48 @@ program rdbm
      model_param = 'vs'
   endif
 
-  call sem_data%set_params(parameters%sim_dir, bwd_dir, parameters%buffer_size, model_param)
+  call sem_data%set_params(parameters%sim_dir, bwd_dir, &
+                           parameters%buffer_size, model_param)
   call sem_data%open_files()
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
+  ! initialize resampling
   if (.not. parameters%resample) then
      parameters%nsamp = sem_data%ndumps
-     allocate(fw_field_res(parameters%nsamp, nsources))
+     allocate(fw_field_res(parameters%nsamp, parameters%nsources))
   else
-     allocate(fw_field_res(parameters%nsamp * 2, nsources))
+     allocate(fw_field_res(parameters%nsamp * 2, parameters%nsources))
+     call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, parameters%nsources)
   endif
 
-  allocate(fw_field(sem_data%ndumps, 1, nsources))
-  allocate(sources(nsources))
+  allocate(fw_field(sem_data%ndumps, 1, parameters%nsources))
 
-  call sources(1)%read_cmtsolution()
+  ! initialize sources
+  allocate(sources(parameters%nsources))
+  do i = 1, parameters%nsources
+     call sources(i)%read_cmtsolution(fname=trim(parameters%source_files(i)))
+  enddo
 
+  ! initialize time traces
   allocate(T(1:parameters%nsamp))
-
   dt_out = sem_data%dt * sem_data%ndumps / parameters%nsamp
 
   do i = 1, parameters%nsamp
      T(i) = dt_out * (i - 1)
   end do
 
-  if (parameters%resample) &
-     call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, nsources)
+  ! initialization done
   iclockold = tick(id=id_init, since=iclockold)
 
   do i=1, receivers%num_rec
+     ! load data from file
      iclockold = tick()
      fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
                                              parameters%component)
      iclockold = tick(id=id_load, since=iclockold)
 
-
+     ! resample
      if (parameters%resample) then
         iclockold = tick()
         call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
@@ -108,6 +109,7 @@ program rdbm
         fw_field_res = fw_field(:,1,:)
      endif
 
+     ! ouput to file
      iclockold = tick()
      write(fname,'("seis_",I0.3)') i
      open(newunit=lu_seis, file=fname)
@@ -118,6 +120,7 @@ program rdbm
      iclockold = tick(id=id_out, since=iclockold)
   enddo
 
+  ! finish
   call sem_data%close_files
   call end_clock()
 
@@ -141,7 +144,6 @@ subroutine start_clock
   write(lu_out,11) mydate(5:6), mydate(7:8), mydate(1:4), mytime(1:2), mytime(3:4)
 
 11 format('     Kerner started on ', A2,'/',A2,'/',A4,' at ', A2,'h ',A2,'min',/)
-
 
   call clocks_init(0)
 

@@ -14,7 +14,10 @@ module type_parameter
       integer                               :: nsrc, nrec
 
       character(len=512)                    :: sim_dir
-      character(len=512)                    :: source_file
+      character(len=16)                     :: source_file_type
+      character(len=512)                    :: source_file_wildcard
+      character(len=512), allocatable       :: source_files(:)
+      integer                               :: nsources
       character(len=10)                     :: source_type
       character(len=512)                    :: receiver_file
       character(len=8)                      :: receiver_file_type
@@ -37,9 +40,10 @@ subroutine read_parameters(this, input_file_in)
   class(parameter_type)           :: this
   character(len=*), intent(in), optional :: input_file_in
   character(len=256)              :: input_file
-  integer                         :: lu_inparam_basic, ioerr, narg
+  integer                         :: lu_inparam_basic, ioerr, narg, lu, i
   character(len=256)              :: line
   character(len=256)              :: keyword, keyvalue
+  character(len=512)              :: fname_buf
 
 
   if (present(input_file_in)) then
@@ -73,6 +77,9 @@ subroutine read_parameters(this, input_file_in)
      case('SIM_DIR')
         this%sim_dir = keyvalue
 
+     ! TODO: to be implemented
+     case('MODE')
+
      case('RESAMPLE')
         read(keyvalue, *) this%resample
 
@@ -80,7 +87,10 @@ subroutine read_parameters(this, input_file_in)
         read(keyvalue, *) this%nsamp
 
      case('SRCFILE_TYPE')
-        this%source_file = keyvalue
+        this%source_file_type = keyvalue
+
+     case('SRCFILE_WILDCARD')
+        this%source_file_wildcard = keyvalue
 
      case('SRC_TYPE')
         this%source_type = keyvalue
@@ -97,12 +107,48 @@ subroutine read_parameters(this, input_file_in)
      case('VERBOSITY')
         read(keyvalue, *) this%verbose
 
+     case default
+        write(6,*) 'ERROR: unknown keyword in inparam_basic "', trim(keyword), '"' 
+        call pabort
+
      end select parameter_to_read
      print "('  ', A32,' ',A)", keyword, trim(keyvalue)
   end do
   close(lu_inparam_basic)
 
   verbose = this%verbose
+
+  if (trim(this%source_file_type) == 'cmtsolutions') then
+
+     ! write filenames of CMTSOLUTION files to cmtsolutions.tmp
+     call system('ls '//this%source_file_wildcard//' > cmtsolutions.tmp')
+
+     ! count number of sources
+     this%nsources = 0
+     open(newunit=lu, file='cmtsolutions.tmp', action="read")
+     do
+        read(lu, fmt='(a)', iostat=ioerr) fname_buf
+        if (ioerr/=0) exit
+        this%nsources = this%nsources + 1
+     end do
+
+     if (this%verbose > 0) then
+        write(6,*) '  '
+        write(6,*) "nsources: " , this%nsources
+     endif
+
+     ! read filenames
+     rewind(lu)
+     allocate(this%source_files(this%nsources))
+     if (this%verbose > 0) write(6,*) 'source files:'
+     do i=1, this%nsources
+        read(lu, fmt='(a)', iostat=ioerr) this%source_files(i)
+        if (this%verbose > 0) write(6,*) '  ', trim(this%source_files(i))
+     end do
+     if (this%verbose > 0) write(6,*) '  '
+
+     close(lu)
+  endif
 
   this%parameters_read = .true.
 
