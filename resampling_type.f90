@@ -154,7 +154,7 @@ subroutine resample_timeshift(this, data_in, data_out, delta_t)
   
   ! time shift (dt in fft is 1!!)
   do i = 1, this%fft_in%get_ntraces()
-     shift_fd = exp(this%fft_in%get_f() * 2 * pi * delta_t(i) * cmplx(0, 1))
+     shift_fd = exp(- this%fft_in%get_f() * 2 * pi * delta_t(i) * cmplx(0, 1))
      dataf_in(:,i) = dataf_in(:,i) * shift_fd
   enddo
 
