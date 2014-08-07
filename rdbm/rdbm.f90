@@ -127,9 +127,19 @@ program rdbm
      iclockold = tick()
      write(fname,'("seis_",I0.3)') i
      open(newunit=lu_seis, file=fname)
-     do j = 1, parameters%nsamp
-        write(lu_seis,*) T(j), fw_field_res(j,:)
-     enddo
+
+     if (trim(parameters%mode) == 'tomography') then
+        do j = 1, parameters%nsamp
+           write(lu_seis,*) T(j), fw_field_res(j,:)
+        enddo
+     elseif (trim(parameters%mode) == 'finitesource') then
+        do j = 1, parameters%nsamp
+           write(lu_seis,*) T(j), sum(fw_field_res(j,:))
+        enddo
+     else
+        write(6,*) 'ERROR: unknown mode "', trim(parameters%mode), '"'
+        call pabort
+     endif
      close(lu_seis)
      iclockold = tick(id=id_out, since=iclockold)
 
