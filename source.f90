@@ -225,5 +225,122 @@ subroutine def_rot_matrix(this)
 end subroutine def_rot_matrix
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine read_srf(srf_file, sources, npoints, nsources)
+   character(len=256), intent(in) :: srf_file
+   type(src_param_type), allocatable, intent(out) :: sources(:)
+
+   ! optional output for tests
+   integer, intent(out), optional :: npoints, nsources
+
+   integer                      :: lu_srf, ioerr, i
+   integer                      :: npoints_loc, nsources_loc, isource
+   character(len=256)           :: line, junk
+   real(kind=dp)                :: lon, lat, dep, stk, dip, area, tinit, dt, &
+                                   rake, slip1, slip2, slip3
+   integer                      :: nt1, nt2, nt3
+   real(kind=dp), allocatable   :: sv1(:), sv2(:), sv3(:)
+
+   open(newunit=lu_srf, file=trim(srf_file), status='old', &
+        action='read', iostat=ioerr)
+
+   if (ioerr /= 0) then
+      print *, 'ERROR: Check input file ''', trim(srf_file), '''! Is it still there?' 
+      call pabort
+   end if
+
+   ! go to POINTS block
+   do
+     read(lu_srf,'(a)') line
+     if (index(line, 'POINTS') == 1) exit
+   enddo
+
+   read(line,*) junk, npoints_loc
+
+   if (present(npoints)) npoints = npoints_loc
+
+   ! count number of sources
+   nsources_loc = 0
+
+   do i=1, npoints_loc
+      read(lu_srf,*) lon, lat, dep, stk, dip, area, tinit, dt
+      read(lu_srf,*) rake, slip1, nt1, slip2, nt2, slip3, nt3
+
+      if (nt1 > 0) then
+         nsources_loc = nsources_loc + 1
+         allocate(sv1(nt1))
+         read(lu_srf,*) sv1
+         deallocate(sv1)
+      endif
+
+      if (nt2 > 0) then
+         nsources_loc = nsources_loc + 1
+         allocate(sv2(nt2))
+         read(lu_srf,*) sv2
+         deallocate(sv2)
+      endif
+
+      ! TODO: Not using the u3 direction for now, as I don't now how that defines a
+      !       momenttensor (MvD)
+      if (nt3 > 0) then
+         !nsources_loc = nsources_loc + 1
+         allocate(sv3(nt3))
+         read(lu_srf,*) sv3
+         deallocate(sv3)
+      endif
+   enddo
+
+   if (present(nsources)) nsources = nsources_loc
+
+   ! now do the actual reading
+   allocate(sources(nsources_loc))
+   rewind(lu_srf)
+   isource = 0
+
+   ! go to POINTS block
+   do
+     read(lu_srf,'(a)') line
+     if (index(line, 'POINTS') == 1) exit
+   enddo
+
+   do i=1, npoints_loc
+      read(lu_srf,*) lon, lat, dep, stk, dip, area, tinit, dt
+      read(lu_srf,*) rake, slip1, nt1, slip2, nt2, slip3, nt3
+
+      if (nt1 > 0) then
+         isource = isource + 1
+         allocate(sv1(nt1))
+         read(lu_srf,*) sv1
+
+         ! TODO: use true shear modulus
+         ! TODO: use source time funtion
+         call sources(isource)%init_strike_dip_rake(lat, lon, dep, stk, dip, area, tinit, &
+                                                    rake, slip1, mu=32d9)
+         deallocate(sv1)
+      endif
+
+      if (nt2 > 0) then
+         isource = isource + 1
+         allocate(sv2(nt2))
+         read(lu_srf,*) sv2
+
+         ! TODO: use true shear modulus
+         ! TODO: use source time funtion
+         call sources(isource)%init_strike_dip_rake(lat, lon, dep, stk, dip, area, tinit, &
+                                                    rake + 90, slip2, mu=32d9)
+         deallocate(sv2)
+      endif
+
+      if (nt3 > 0) then
+         !isource = isource + 1
+         allocate(sv3(nt3))
+         read(lu_srf,*) sv3
+         deallocate(sv3)
+      endif
+   enddo
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
 end module
 !=========================================================================================

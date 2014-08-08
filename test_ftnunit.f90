@@ -3,6 +3,7 @@ module unit_tests
 
   use ftnunit, only: test
   use global_parameters, only: lu_out, verbose
+  use test_source
   use test_montecarlo
   use test_fft_type
   use test_tetrahedra
@@ -28,6 +29,10 @@ subroutine test_all
   verbose = 1
 
   call init_output()
+
+  ! test source routines
+  write(6,'(/,a)') 'TEST SOURCE MODULE'
+  call test(test_read_srf, 'read srf file')
 
   ! test simple routines
   write(6,'(/,a)') 'TEST SIMPLE ROUTINES MODULE'
