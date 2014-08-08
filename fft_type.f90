@@ -448,14 +448,16 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function taperandzeropad_1d(array, ntimes, ntaper)
+function taperandzeropad_1d(array, ntimes, ntaper, end_only)
   real(kind=dp), intent(in)     :: array(:,:)
   integer, intent(in)           :: ntimes
   integer, intent(in), optional :: ntaper ! Taper length in samples
+  logical, intent(in), optional :: end_only
   real(kind=dp)                 :: taperandzeropad_1d(ntimes, size(array,2))
   real(kind=dp), allocatable    :: win(:)
 
   integer                       :: ntaper_loc
+  logical                       :: end_only_loc
   real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
@@ -473,14 +475,25 @@ function taperandzeropad_1d(array, ntimes, ntaper)
     ntaper_loc = ntimes_in / 4
   endif
 
+  if (present(end_only)) then
+    end_only_loc = end_only
+  else
+    end_only_loc = .false.
+  endif
+
+
   taperandzeropad_1d(:,:) = 0
 
   if (ntaper_loc > 0) then
      allocate(win(ntimes_in))
      win = 1
-     do i = 1, ntaper_loc
-        win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
-     end do
+     
+     if (.not. end_only_loc) then
+        do i = 1, ntaper_loc
+           win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
+        end do
+     endif
+
      do i = 0, ntaper_loc-1
         win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
      end do
@@ -494,15 +507,17 @@ end function taperandzeropad_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function taperandzeropad_md(array, ntimes, ntaper)
+function taperandzeropad_md(array, ntimes, ntaper, end_only)
   real(kind=dp), intent(in)     :: array(:,:,:)
   integer,       intent(in)     :: ntimes
   integer, intent(in), optional :: ntaper ! Taper length in samples
+  logical, intent(in), optional :: end_only
   real(kind=dp)                 :: taperandzeropad_md(ntimes, size(array,2), &
                                                       size(array,3))
   real(kind=dp), allocatable    :: win(:)
 
   integer                       :: ntaper_loc
+  logical                       :: end_only_loc
   real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
@@ -520,16 +535,27 @@ function taperandzeropad_md(array, ntimes, ntaper)
     ntaper_loc = ntimes_in / 4
   endif
 
+  if (present(end_only)) then
+    end_only_loc = end_only
+  else
+    end_only_loc = .false.
+  endif
+
   taperandzeropad_md(:,:,:) = 0
   if (ntaper_loc > 0) then
      allocate(win(ntimes_in))
      win = 1
-     do i = 1, ntaper_loc
-        win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
-     end do
+
+     if (.not. end_only_loc) then
+        do i = 1, ntaper_loc
+           win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
+        end do
+     endif
+
      do i = 0, ntaper_loc-1
         win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
      end do
+
      taperandzeropad_md(1:size(array,1), :, :) = mult3d_1d(array, win)
   else
      taperandzeropad_md(1:size(array,1), :, :) = array(:,:,:)

@@ -109,14 +109,16 @@ program rdbm
      ! resample
      if (parameters%resample .and. .not. parameters%time_shift) then
         iclockold = tick()
-        call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=0, &
-                                             ntimes=sem_data%ndumps * 2), &
+        call resamp%resample(taperandzeropad(fw_field(:,1,:), ntaper=10, &
+                                             ntimes=sem_data%ndumps * 2, &
+                                             end_only=.true.), &
                              fw_field_res)
         iclockold = tick(id=id_resamp, since=iclockold)
      elseif (parameters%time_shift) then
         iclockold = tick()
-        call resamp%resample_timeshift(taperandzeropad(fw_field(:,1,:), ntaper=0, &
-                                                       ntimes=sem_data%ndumps * 2), &
+        call resamp%resample_timeshift(taperandzeropad(fw_field(:,1,:), ntaper=10, &
+                                                       ntimes=sem_data%ndumps * 2, &
+                                                       end_only=.true.), &
                                        fw_field_res, delta_t=shift_time_sample)
         iclockold = tick(id=id_resamp, since=iclockold)
      else
