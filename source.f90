@@ -93,24 +93,24 @@ subroutine init_strike_dip_rake(this, lat, lon, depth, strike, dip, area, tinit,
    ! voigt in tpr: Mtt Mpp Mrr Mrp Mrt Mtp
 
    ! M11
-   this%mij(1) = - dsin(delta) * dcos(lambda) * dsin(2 * phi) &
-                 - dsin(2 * delta) * dsin(phi)**2 * dsin(lambda)
+   this%mij_voigt(1) = - dsin(delta) * dcos(lambda) * dsin(2 * phi) &
+                       - dsin(2 * delta) * dsin(phi)**2 * dsin(lambda)
    ! M22
-   this%mij(2) =   dsin(delta) * dcos(lambda) * dsin(2 * phi) &
-                 - dsin(2 * delta) * dcos(phi)**2 * dsin(lambda)
+   this%mij_voigt(2) =   dsin(delta) * dcos(lambda) * dsin(2 * phi) &
+                       - dsin(2 * delta) * dcos(phi)**2 * dsin(lambda)
    ! M33
-   this%mij(3) =   dsin(2 * delta) * dsin(lambda)
+   this%mij_voigt(3) =   dsin(2 * delta) * dsin(lambda)
    ! -M23
-   this%mij(4) = - dcos(phi) * dsin(lambda) * dcos(2 * delta) &
-                 + dcos(delta) * dcos(lambda) * dsin(phi)
+   this%mij_voigt(4) = - dcos(phi) * dsin(lambda) * dcos(2 * delta) &
+                       + dcos(delta) * dcos(lambda) * dsin(phi)
    ! M13
-   this%mij(5) = - dsin(lambda) * dsin(phi) * dcos(2 * delta) &
-                 - dcos(delta) * dcos(lambda) * dcos(phi)
+   this%mij_voigt(5) = - dsin(lambda) * dsin(phi) * dcos(2 * delta) &
+                       - dcos(delta) * dcos(lambda) * dcos(phi)
    ! -M12
-   this%mij(6) = - dsin(delta) * dcos(lambda) * dcos(2 * phi) &
-                 - dsin(2 * delta) * dsin(2* phi) * dsin(lambda) / 2
+   this%mij_voigt(6) = - dsin(delta) * dcos(lambda) * dcos(2 * phi) &
+                       - dsin(2 * delta) * dsin(2* phi) * dsin(lambda) / 2
 
-   this%mij = this%mij * M0
+   this%mij_voigt = this%mij_voigt * M0
 
    call this%def_rot_matrix()
 
