@@ -17,6 +17,7 @@ module source_class
         real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
         contains
            procedure, pass                   :: init
+           procedure, pass                   :: init_strike_dip_rake
            procedure, pass                   :: read_cmtsolution
            procedure, pass                   :: def_rot_matrix
     end type
@@ -47,6 +48,70 @@ subroutine init(this, lat, lon, mij, depth)
    this%z = dsin(this%lat) * this%radius
 
    this%mij    = mij
+   call this%def_rot_matrix()
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> This routine initializes the source object
+subroutine init_strike_dip_rake(this, lat, lon, depth, strike, dip, area, tinit, rake, &
+                                slip, mu)
+   class(src_param_type)      :: this
+
+   real(kind=dp), intent(in)  :: lat, lon, depth, strike, dip, area, tinit, rake, &
+                                 slip, mu ! all in SI units, angles in degree
+   real(kind=dp)              :: M0, phi, delta, lambda
+
+   this%latd   = lat
+   this%lond   = lon
+   this%colatd = 90 - this%latd
+
+   this%colat  = this%colatd * deg2rad
+   this%lon    = this%lond   * deg2rad
+   this%lat    = this%latd   * deg2rad
+
+   this%time_shift = tinit
+
+   !TODO hardcoded radius for now until I know where to get earth's radius from (MvD)
+   this%radius = 6371 - depth
+
+   this%x = dcos(this%lat) * dcos(this%lon) * this%radius
+   this%y = dcos(this%lat) * dsin(this%lon) * this%radius
+   this%z = dsin(this%lat) * this%radius
+
+   M0 = slip * mu * area
+
+   phi    = strike * deg2rad
+   delta  = dip    * deg2rad
+   lambda = rake   * deg2rad
+
+   ! formulas in Udias (17.24) are in geographic system North, East, Down, which
+   ! transforms to the geocentric as:
+   ! Mtt =  Mxx, Mpp = Myy, Mrr =  Mzz
+   ! Mrp = -Myz, Mrt = Mxz, Mtp = -Mxy
+   ! voigt in tpr: Mtt Mpp Mrr Mrp Mrt Mtp
+
+   ! M11
+   this%mij(1) = - dsin(delta) * dcos(lambda) * dsin(2 * phi) &
+                 - dsin(2 * delta) * dsin(phi)**2 * dsin(lambda)
+   ! M22
+   this%mij(2) =   dsin(delta) * dcos(lambda) * dsin(2 * phi) &
+                 - dsin(2 * delta) * dcos(phi)**2 * dsin(lambda)
+   ! M33
+   this%mij(3) =   dsin(2 * delta) * dsin(lambda)
+   ! -M23
+   this%mij(4) = - dcos(phi) * dsin(lambda) * dcos(2 * delta) &
+                 + dcos(delta) * dcos(lambda) * dsin(phi)
+   ! M13
+   this%mij(5) = - dsin(lambda) * dsin(phi) * dcos(2 * delta) &
+                 - dcos(delta) * dcos(lambda) * dcos(phi)
+   ! -M12
+   this%mij(6) = - dsin(delta) * dcos(lambda) * dcos(2 * phi) &
+                 - dsin(2 * delta) * dsin(2* phi) * dsin(lambda) / 2
+
+   this%mij = this%mij * M0
+
    call this%def_rot_matrix()
 
 end subroutine
