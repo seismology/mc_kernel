@@ -82,7 +82,7 @@ program rdbm
   allocate(shift_time_sample(parameters%nsources))
   do i = 1, parameters%nsources
      call sources(i)%read_cmtsolution(fname=trim(parameters%source_files(i)))
-     shift_time_sample(i) = sources(i)%time_shift / sem_data%dt
+     shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
   enddo
 
   ! initialize time traces
