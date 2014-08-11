@@ -7,16 +7,44 @@ module receivers_rdbm
 
   implicit none
 
+  private
+  public   :: receivers_rdbm_type
+
   type receivers_rdbm_type
      type(src_param_type), allocatable      :: reci_sources(:)
      integer                                :: num_rec
      logical                                :: initialized = .false.
      contains
+     procedure, pass                        :: init_xyz
      procedure, pass                        :: read_stations_file
      procedure, pass                        :: read_receiver_dat
   end type
 
 contains
+
+!-----------------------------------------------------------------------------------------
+subroutine init_xyz(this, xyz)
+  class(receivers_rdbm_type)    :: this
+  real(kind=dp), intent(in)     :: xyz(:,:)
+
+  integer                       :: i
+
+  if (this%initialized) then
+     write(6,*) 'ERROR: trying to initialize aleady initalized rdbm receiver object'
+     call pabort
+  endif
+
+  this%num_rec = size(xyz, dim=2)
+
+  do i=1, this%num_rec
+     call this%reci_sources(i)%init_xyz(xyz(1,i), xyz(2,i), xyz(3,i), &
+                                        (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
+  enddo
+
+  this%initialized = .true.
+
+end subroutine
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine read_stations_file(this)

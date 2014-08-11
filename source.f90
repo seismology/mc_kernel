@@ -6,6 +6,10 @@ module source_class
     use commpi,                          only : pabort
     implicit none
 
+    private
+    public   :: src_param_type
+    public   :: read_srf
+
     type src_param_type
         real(kind=dp)                        :: mij(6)              ! Mrr Mtt Mpp Mrt Mrp Mtp
         real(kind=dp)                        :: mij_voigt(6)        ! Mtt Mpp Mrr Mrp Mrt Mtp
