@@ -28,6 +28,7 @@ subroutine init_xyz(this, xyz)
   real(kind=dp), intent(in)     :: xyz(:,:)
 
   integer                       :: i
+  real(kind=dp)                 :: x, y, z
 
   if (this%initialized) then
      write(6,*) 'ERROR: trying to initialize aleady initalized rdbm receiver object'
@@ -35,14 +36,17 @@ subroutine init_xyz(this, xyz)
   endif
 
   this%num_rec = size(xyz, dim=2)
+  
+  allocate(this%reci_sources(this%num_rec))
 
   do i=1, this%num_rec
-     call this%reci_sources(i)%init_xyz(xyz(1,i), xyz(2,i), xyz(3,i), &
-                                        (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
+     x = xyz(1,i)
+     y = xyz(2,i)
+     z = xyz(3,i)
+     call this%reci_sources(i)%init_xyz(x, y, z, (/1d0, 1d0, 1d0, 0d0, 0d0, 0d0 /))
   enddo
 
   this%initialized = .true.
-
 end subroutine
 !-----------------------------------------------------------------------------------------
 
