@@ -20,6 +20,7 @@ program rdbm
   type(receivers_rdbm_type)           :: receivers
   type(src_param_type), allocatable   :: sources(:)
   type(progressbar)                   :: bar
+  type(inversion_mesh_data_type)      :: mesh
 
   character(len=512)                  :: bwd_dir
   character(len=4)                    :: model_param
@@ -47,6 +48,9 @@ program rdbm
      call receivers%read_stations_file(fname=parameters%receiver_file)
   else if (parameters%receiver_file_type == 'colatlon') then
      call receivers%read_receiver_dat(fname=parameters%receiver_file)
+  else if (parameters%receiver_file_type == 'abaqus') then
+     call mesh%read_abaqus_mesh(parameters%receiver_file, 'onvertices')
+     call receivers%init_xyz(mesh%get_vertices_dp())
   else
      write(6,*) 'ERROR: unknown receiver file type'
      call pabort
@@ -74,6 +78,10 @@ program rdbm
   else
      parameters%nsamp = sem_data%ndumps
      allocate(fw_field_res(parameters%nsamp, parameters%nsources))
+  endif
+
+  if (parameters%receiver_file_type == 'abaqus') then
+     call mesh%init_node_data(parameters%nsamp)
   endif
 
   allocate(fw_field(sem_data%ndumps, 1, parameters%nsources))
@@ -144,10 +152,21 @@ program rdbm
         call pabort
      endif
      close(lu_seis)
+
+     if (parameters%receiver_file_type == 'abaqus') then
+        !TODO: for now summing over all sources, would it be useful not to?
+        call mesh%set_node_data_trace(real(sum(fw_field_res(1:parameters%nsamp,:), dim=2), kind=sp), i)
+     endif
+
      iclockold = tick(id=id_out, since=iclockold)
 
      call bar%printbar(100 * i / receivers%num_rec)
   enddo
+
+  if (parameters%receiver_file_type == 'abaqus') then
+     !TODO: read filename from inparam
+     call mesh%dump_node_data_xdmf('testdata')
+  endif
 
   ! finish
   call sem_data%close_files
