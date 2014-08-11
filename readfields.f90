@@ -1348,8 +1348,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     type(src_param_type), intent(in)  :: source_params(:)
     type(src_param_type), intent(in)  :: reci_source_params
     character(len=1), intent(in)      :: component
-    real(kind=dp)                     :: load_fw_points_rdbm(this%ndumps, 1, &
-                                                             size(source_params))
+    real(kind=dp), allocatable        :: load_fw_points_rdbm(:,:,:)
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points, id_elem
@@ -1375,6 +1374,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
         nnext_points = 1
     endif
 
+    allocate(load_fw_points_rdbm(this%ndumps, 1, size(source_params)))
     load_fw_points_rdbm(:,:,:) = 0.0
     
     npoints = size(source_params)
