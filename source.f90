@@ -42,7 +42,7 @@ subroutine init(this, lat, lon, mij, depth)
 
    this%time_shift = 0
 
-   !TODO hardcoded radius for now until I know where to get earth's radius from (MvD)
+   !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
    this%radius = 6371 - depth
 
    this%x = dcos(this%lat) * dcos(this%lon) * this%radius
@@ -76,6 +76,8 @@ subroutine init_xyz(this, x, y, z, mij)
    this%colat  = this%colatd * deg2rad
 
    this%radius = dsqrt(x**2 + y**2 + z**2)
+   !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
+   this%depth  = 6371 - this%radius
 
    this%time_shift = 0
 
@@ -105,7 +107,7 @@ subroutine init_strike_dip_rake(this, lat, lon, depth, strike, dip, area, tinit,
 
    this%time_shift = tinit
 
-   !TODO hardcoded radius for now until I know where to get earth's radius from (MvD)
+   !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
    this%radius = 6371 - depth
 
    this%x = dcos(this%lat) * dcos(this%lon) * this%radius
@@ -186,7 +188,7 @@ subroutine read_cmtsolution(this, fname)
    this%lon    = this%lond   * deg2rad
    this%lat    = this%latd   * deg2rad
 
-   !TODO hardcoded radius for now until I know where to get earth's radius from (MvD)
+   !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
    this%radius = 6371 - this%depth
 
    this%x = dcos(this%lat) * dcos(this%lon) * this%radius
