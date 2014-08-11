@@ -36,6 +36,7 @@ module inversion_mesh
      procedure, pass :: get_nvertices
      procedure, pass :: get_nbasisfuncs
      procedure, pass :: get_vertices
+     procedure, pass :: get_vertices_dp
      procedure, pass :: get_valence
      procedure, pass :: get_connected_elements
      procedure, pass :: get_connectivity
@@ -183,7 +184,6 @@ end function
 !-----------------------------------------------------------------------------------------
 function get_vertices(this)
   class(inversion_mesh_type)        :: this
-  !TODO: why single precision here? MvD
   real(kind=sp)                     :: get_vertices(3,this%nvertices)
 
   if (.not. this%initialized) then
@@ -192,6 +192,20 @@ function get_vertices(this)
   end if
 
   get_vertices = this%vertices
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_vertices_dp(this)
+  class(inversion_mesh_type)        :: this
+  real(kind=dp)                     :: get_vertices_dp(3,this%nvertices)
+
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
+  get_vertices_dp = this%vertices
 end function
 !-----------------------------------------------------------------------------------------
 
@@ -1224,6 +1238,58 @@ subroutine set_cell_data_snap(this, data_snap, isnap, data_name)
         this%data_group_names_cell(this%ngroups_cell) = data_name
      endif
   endif
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine set_node_data_trace(this, data_trace, itrace)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_trace(:)
+  integer, intent(in)                       :: itrace
+
+  if (.not. allocated(this%datat_node)) then
+     write(*,*) 'ERROR: trying to write node data without initialization!'
+     call pabort 
+  end if
+
+  if (size(data_trace) /= this%ntimes_node) then
+     write(*,*) 'ERROR: wrong dimensions of input data_trace for writing vertex data'
+     call pabort 
+  end if
+
+  if (itrace < 1 .or. itrace > this%nvertices) then
+     write(*,*) 'ERROR: index "itrace" out of bounds'
+     call pabort 
+  end if
+
+  this%datat_node(itrace,:) = data_trace(:)
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine set_cell_data_trace(this, data_trace, itrace)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_trace(:)
+  integer, intent(in)                       :: itrace
+
+  if (.not. allocated(this%datat_node)) then
+     write(*,*) 'ERROR: trying to write node data without initialization!'
+     call pabort 
+  end if
+
+  if (size(data_trace) /= this%ntimes_cell) then
+     write(*,*) 'ERROR: wrong dimensions of input data_trace for writing cell data'
+     call pabort 
+  end if
+
+  if (itrace < 1 .or. itrace > this%nelements) then
+     write(*,*) 'ERROR: index "itrace" out of bounds'
+     call pabort 
+  end if
+
+  this%datat_cell(itrace,:) = data_trace(:)
 
 end subroutine
 !-----------------------------------------------------------------------------------------
