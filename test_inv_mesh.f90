@@ -175,7 +175,8 @@ subroutine test_mesh_data_dump
   call inv_mesh%dump_cell_data_xdmf('unit_tests/testcelldata')
 
   call assert_file_exists('unit_tests/testcelldata.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcelldata_points.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcelldata_points.dat', &
+                          'test xdmf cell data dump')
   call assert_file_exists('unit_tests/testcelldata_grid.dat', 'test xdmf cell data dump')
   call assert_file_exists('unit_tests/testcelldata_data.dat', 'test xdmf cell data dump')
 
@@ -251,9 +252,12 @@ subroutine test_mesh_data_dump2
   call inv_mesh%dump_cell_data_xdmf('unit_tests/testcellcircle')
 
   call assert_file_exists('unit_tests/testcellcircle.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_points.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_grid.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_data.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_points.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_grid.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_data.dat', &
+                          'test xdmf cell data dump')
 
   call inv_mesh%freeme()
 end subroutine
@@ -327,10 +331,14 @@ subroutine test_mesh_data_dump3
 
   call inv_mesh%dump_cell_data_xdmf('unit_tests/testcellcircle_quad')
 
-  call assert_file_exists('unit_tests/testcellcircle_quad.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_points.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_grid.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_data.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_quad.xdmf', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_quad_points.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_quad_grid.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testcellcircle_quad_data.dat', &
+                          'test xdmf cell data dump')
 
   call inv_mesh%freeme()
 end subroutine
@@ -404,9 +412,12 @@ subroutine test_mesh_data_dump4
   call inv_mesh%dump_cell_data_xdmf('unit_tests/testspherecell')
 
   call assert_file_exists('unit_tests/testspherecell.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_points.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_grid.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_data.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testspherecell_points.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testspherecell_grid.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testspherecell_data.dat', &
+                          'test xdmf cell data dump')
 
 
   call inv_mesh%freeme()
@@ -480,10 +491,14 @@ subroutine test_mesh_data_dump5
 
   call inv_mesh%dump_cell_data_xdmf('unit_tests/testtetrahedronscell')
 
-  call assert_file_exists('unit_tests/testtetrahedronscell.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_points.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_grid.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_data.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testtetrahedronscell.xdmf', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testtetrahedronscell_points.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testtetrahedronscell_grid.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testtetrahedronscell_data.dat', &
+                          'test xdmf cell data dump')
 
   call inv_mesh%freeme()
 end subroutine
@@ -520,14 +535,14 @@ subroutine test_get_connected_elements
   call assert_true(.not. any(cn_elems == -1), 'get connected elements')
   call assert_true(cn_elems /= -1, 'get connected elements')
 
-  call assert_equal(inv_mesh%get_connected_elements(1), (/1 ,2/), 'get connected elements')
+  call assert_equal(inv_mesh%get_connected_elements(1), (/1 ,2/), &
+                    'get connected elements')
   call assert_equal(inv_mesh%get_connected_elements(4), (/1/), 'get connected elements')
   call assert_equal(inv_mesh%get_connected_elements(5), (/2/), 'get connected elements')
 
   call inv_mesh%freeme()
 end subroutine
 !-----------------------------------------------------------------------------------------
-
 
 !-----------------------------------------------------------------------------------------
 subroutine test_voxel_mesh_io
@@ -589,15 +604,17 @@ subroutine test_voxel_mesh_io
   call inv_mesh%dump_cell_data_xdmf('unit_tests/testvoxelcelldata')
 
   call assert_file_exists('unit_tests/testvoxelcelldata.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_points.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_grid.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_data.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testvoxelcelldata_points.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testvoxelcelldata_grid.dat', &
+                          'test xdmf cell data dump')
+  call assert_file_exists('unit_tests/testvoxelcelldata_data.dat', &
+                          'test xdmf cell data dump')
 
   call inv_mesh%freeme()
 
 end subroutine test_voxel_mesh_io
 !-----------------------------------------------------------------------------------------
-
 
 !-----------------------------------------------------------------------------------------
 subroutine test_random_points_triangle_mesh
