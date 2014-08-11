@@ -76,6 +76,8 @@ module inversion_mesh
      procedure, pass :: init_cell_data
      procedure, pass :: set_node_data_snap
      procedure, pass :: set_cell_data_snap
+     procedure, pass :: set_node_data_trace
+     procedure, pass :: set_cell_data_trace
      procedure, pass :: dump_node_data_xdmf
      procedure, pass :: dump_cell_data_xdmf
 
@@ -1059,7 +1061,7 @@ subroutine init_node_data(this, ntimes_node)
   allocate(this%group_id_node(ntimes_node))
   this%group_id_node = 1
 
-  this%ngroups_node = 0
+  this%ngroups_node = 1
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -1080,7 +1082,7 @@ subroutine init_cell_data(this, ntimes_cell)
   allocate(this%group_id_cell(ntimes_cell))
   this%group_id_cell = 1
 
-  this%ngroups_cell = 0
+  this%ngroups_cell = 1
 
 end subroutine
 !-----------------------------------------------------------------------------------------
