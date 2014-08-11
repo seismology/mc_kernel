@@ -8,6 +8,7 @@ program rdbm
   use resampling
   use type_parameter
   use receivers_rdbm
+  use inversion_mesh
   use fft, only : taperandzeropad
   use clocks_mod
   use progressbar_mod
@@ -43,9 +44,9 @@ program rdbm
   call parameters%read_parameters('inparam_basic')
 
   if (parameters%receiver_file_type == 'stations') then
-     call receivers%read_stations_file()
+     call receivers%read_stations_file(fname=parameters%receiver_file)
   else if (parameters%receiver_file_type == 'colatlon') then
-     call receivers%read_receiver_dat()
+     call receivers%read_receiver_dat(fname=parameters%receiver_file)
   else
      write(6,*) 'ERROR: unknown receiver file type'
      call pabort

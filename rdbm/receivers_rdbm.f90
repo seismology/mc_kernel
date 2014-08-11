@@ -47,9 +47,12 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_stations_file(this)
-  class(receivers_rdbm_type)    :: this
+subroutine read_stations_file(this, fname)
+  class(receivers_rdbm_type)                :: this
+  character(len=*), intent(in), optional    :: fname
+
   integer                       :: ierror, lu_stations
+  character(len=512)            :: stations_file
   integer                       :: i
   character(len=128)            :: junk
   character(len=4)              :: station_name
@@ -61,11 +64,17 @@ subroutine read_stations_file(this)
      call pabort
   endif
 
+  if (present(fname)) then
+     stations_file = trim(fname)
+  else
+     stations_file = 'STATIONS'
+  endif
+
   if (verbose > 1) &
      write(6,*) '  reading receiver latitudes and longitudes from STATIONS...'
 
   ! count number of receivers first
-  open(newunit=lu_stations, file='STATIONS', iostat=ierror, status='old', &
+  open(newunit=lu_stations, file=trim(stations_file), iostat=ierror, status='old', &
        action='read', position='rewind')
 
   this%num_rec = 0
@@ -74,15 +83,12 @@ subroutine read_stations_file(this)
      if(ierror == 0) this%num_rec = this%num_rec + 1
   enddo
 
-  close(lu_stations)
-
   if (verbose > 0) &
      write(6,*)'  ...counted number of stations:', this%num_rec
 
   allocate(this%reci_sources(this%num_rec))
 
-  open(newunit=lu_stations, file='STATIONS', iostat=ierror, status='old', &
-       action='read', position='rewind')
+  rewind(lu_stations)
 
   do i=1, this%num_rec
      read(lu_stations,*) station_name, network_name, reclat, reclon, recelevation, recbury
@@ -105,9 +111,12 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_receiver_dat(this)
-  class(receivers_rdbm_type)    :: this
+subroutine read_receiver_dat(this, fname)
+  class(receivers_rdbm_type)                :: this
+  character(len=*), intent(in), optional    :: fname
+
   integer                       :: ierror, lu_stations
+  character(len=512)            :: receivers_file
   integer                       :: i
   real(kind=dp)                 :: reccolat, reclon
 
@@ -116,11 +125,17 @@ subroutine read_receiver_dat(this)
      call pabort
   endif
 
+  if (present(fname)) then
+     receivers_file = trim(fname)
+  else
+     receivers_file = 'receivers.dat'
+  endif
+
   if (verbose > 1) &
      write(6,*) '  reading receiver latitudes and longitudes from receivers.dat...'
 
   ! count number of receivers first
-  open(newunit=lu_stations, file='receivers.dat', iostat=ierror, status='old', &
+  open(newunit=lu_stations, file=trim(receivers_file), iostat=ierror, status='old', &
        action='read', position='rewind')
 
   read(lu_stations, *, iostat=ierror) this%num_rec

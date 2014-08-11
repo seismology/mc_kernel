@@ -10,7 +10,12 @@ MODE                    tomography
 # colatlon          Colatitude and Longitude for each station.
 # stations          SPECFEM-style stations file with latitude, longitude and station name
 #                     (default)
+# abaqus            abaqus mesh (radius is ignored and only lon/lat used)
 RECFILE_TYPE            stations 
+
+# Filename of the receiver file
+#RECFILE_NAME            'receivers.dat'    # default filename for RECFILE_TYPE colatlon
+RECFILE_NAME            'STATIONS'          # default filename for RECFILE_TYPE stations
 
 # Source file type, allowed options:
 # cmtsolution       standard cmtsolution file as available form globalcmt.org (allows only

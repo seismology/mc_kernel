@@ -20,8 +20,8 @@ module type_parameter
       character(len=512), allocatable       :: source_files(:)
       integer                               :: nsources
       character(len=10)                     :: source_type
-      character(len=512)                    :: receiver_file
       character(len=8)                      :: receiver_file_type
+      character(len=512)                    :: receiver_file
       character(len=1)                      :: component
       integer                               :: nsim_fwd
       logical                               :: resample
@@ -102,6 +102,9 @@ subroutine read_parameters(this, input_file_in)
      
      case('RECFILE_TYPE')
          this%receiver_file_type = keyvalue
+
+     case('RECFILE_NAME')
+        this%receiver_file = keyvalue
 
      case('NETCDF_BUFFER_SIZE')
         read(keyvalue, *) this%buffer_size
