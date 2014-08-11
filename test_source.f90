@@ -36,6 +36,11 @@ subroutine test_read_srf
                                  [0., 0., 0., 0., -0.64e22, 0.] + 1e22, 1e-5, &
                                  'strike = 0, rake = 0, dip = 0')
 
+   do i=1, nsources
+      call assert_comparable(real(sum(sources(i)%mij_voigt(1:3)), sp) + 1e22, 1e22, 1e-5, &
+                             'trace of DC is zero')
+   enddo
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 
