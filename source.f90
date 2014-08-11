@@ -1,7 +1,8 @@
 !=========================================================================================
 module source_class
 
-    use global_parameters,               only : sp, dp, pi, deg2rad, verbose, lu_out
+    use global_parameters,               only : sp, dp, pi, deg2rad, rad2deg, verbose, &
+                                                lu_out
     use commpi,                          only : pabort
     implicit none
 
@@ -17,6 +18,7 @@ module source_class
         real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
         contains
            procedure, pass                   :: init
+           procedure, pass                   :: init_xyz
            procedure, pass                   :: init_strike_dip_rake
            procedure, pass                   :: read_cmtsolution
            procedure, pass                   :: def_rot_matrix
@@ -46,6 +48,36 @@ subroutine init(this, lat, lon, mij, depth)
    this%x = dcos(this%lat) * dcos(this%lon) * this%radius
    this%y = dcos(this%lat) * dsin(this%lon) * this%radius
    this%z = dsin(this%lat) * this%radius
+
+   this%mij    = mij
+   call this%def_rot_matrix()
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> This routine initializes the source object with cartesian coordinates
+subroutine init_xyz(this, x, y, z, mij)
+   class(src_param_type)      :: this
+
+   real(kind=dp), intent(in)  :: x, y, z, mij(6)
+
+   this%x = x
+   this%y = y
+   this%z = z
+
+   this%lat   = datan2(z, dsqrt(x**2 + y**2))
+   this%lon   = datan2(y, x)
+
+   this%lond    = this%lon * rad2deg
+   this%latd    = this%lat * rad2deg
+
+   this%colatd = 90 - this%latd
+   this%colat  = this%colatd * deg2rad
+
+   this%radius = dsqrt(x**2 + y**2 + z**2)
+
+   this%time_shift = 0
 
    this%mij    = mij
    call this%def_rot_matrix()
