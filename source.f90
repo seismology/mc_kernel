@@ -276,6 +276,7 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
    character(len=256)           :: line, junk
    real(kind=dp)                :: lon, lat, dep, stk, dip, area, tinit, dt, &
                                    rake, slip1, slip2, slip3
+   real(kind=dp)                :: minlond, maxlond, minlatd, maxlatd, mindep, maxdep
    integer                      :: nt1, nt2, nt3
    real(kind=dp), allocatable   :: sv1(:), sv2(:), sv3(:)
 
@@ -286,6 +287,13 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
       print *, 'ERROR: Check input file ''', trim(srf_file), '''! Is it still there?' 
       call pabort
    end if
+
+   minlond =  180
+   maxlond = -180
+   minlatd =  90
+   maxlatd = -90
+   mindep =    0
+   maxdep = 6371
 
    ! go to POINTS block
    do
@@ -345,6 +353,13 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
       read(lu_srf,*) lon, lat, dep, stk, dip, area, tinit, dt
       read(lu_srf,*) rake, slip1, nt1, slip2, nt2, slip3, nt3
 
+      if (lon < minlond) minlond = lon
+      if (lon > maxlond) maxlond = lon
+      if (lat < minlatd) minlatd = lat
+      if (lat > maxlatd) maxlatd = lat
+      if (dep < mindep) mindep = dep
+      if (dep > maxdep) maxdep = dep
+
       if (nt1 > 0) then
          isource = isource + 1
          allocate(sv1(nt1))
@@ -376,6 +391,15 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
          deallocate(sv3)
       endif
    enddo
+
+   if (verbose > 0) then
+      write(6,*) 'minlond', minlond
+      write(6,*) 'maxlond', maxlond
+      write(6,*) 'minlatd', minlatd
+      write(6,*) 'maxlatd', maxlatd
+      write(6,*) 'mindep ', mindep
+      write(6,*) 'maxdep ', maxdep
+   endif
 
 end subroutine
 !-----------------------------------------------------------------------------------------

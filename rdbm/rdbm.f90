@@ -83,6 +83,8 @@ program rdbm
      enddo
   else if (trim(parameters%source_file_type) == 'srf') then
 
+     write(6,*) 'reading srf file'
+
      call read_srf(parameters%source_file_name, sources, nsources=parameters%nsources)
 
      write(6,*) parameters%nsources
@@ -90,9 +92,9 @@ program rdbm
      do i = 1, parameters%nsources
         shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
      enddo
-     write(6,*) shift_time_sample
-     write(6,*) sem_data%timeshift_fwd
-     write(6,*) sem_data%dt
+     !write(6,*) shift_time_sample
+     !write(6,*) sem_data%timeshift_fwd
+     !write(6,*) sem_data%dt
   else
      write(6,*) 'ERROR: unkown source file type ', parameters%source_file_type
      call pabort
@@ -129,6 +131,11 @@ program rdbm
   write(6,*) 'Working on ', receivers%num_rec, ' receivers'
 
   do i=1, receivers%num_rec
+
+     !if (receivers%reci_sources(i)%lond < -130 .or. receivers%reci_sources(i)%lond > -110 &
+     !      .or. receivers%reci_sources(i)%latd < 30 .or. receivers%reci_sources(i)%latd > 40) then
+     !   cycle
+     !endif
      ! load data from file
      iclockold = tick()
      fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
