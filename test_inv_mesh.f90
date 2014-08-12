@@ -537,7 +537,7 @@ subroutine test_mesh_tracedata_dump
   
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
 
-  call inv_mesh%init_node_data(3)
+  call inv_mesh%init_node_data(3, 'tracedata')
 
   npoints = inv_mesh%get_nvertices()
   allocate(datat_node(3,npoints))
@@ -559,7 +559,7 @@ subroutine test_mesh_tracedata_dump
                           'test xdmf tracedata dump')
 
 
-  call inv_mesh%init_cell_data(3)
+  call inv_mesh%init_cell_data(3, 'tracedata')
 
   nelements = inv_mesh%get_nelements()
   allocate(datat_cell(3,nelements))

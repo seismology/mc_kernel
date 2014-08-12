@@ -1046,9 +1046,10 @@ end subroutine freeme
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init_node_data(this, ntimes_node)
-  class(inversion_mesh_data_type)   :: this
-  integer, intent(in)               :: ntimes_node
+subroutine init_node_data(this, ntimes_node, default_name)
+  class(inversion_mesh_data_type)        :: this
+  integer, intent(in)                    :: ntimes_node
+  character(len=*), intent(in), optional :: default_name
 
   this%ntimes_node = ntimes_node
 
@@ -1056,7 +1057,12 @@ subroutine init_node_data(this, ntimes_node)
   this%datat_node = 0
 
   allocate(this%data_group_names_node(ntimes_node))
-  this%data_group_names_node = 'node_data'
+
+  if (present(default_name)) then
+     this%data_group_names_node = trim(default_name)
+  else
+     this%data_group_names_node = 'node_data'
+  endif
 
   allocate(this%group_id_node(ntimes_node))
   this%group_id_node = 1
@@ -1067,9 +1073,10 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init_cell_data(this, ntimes_cell)
-  class(inversion_mesh_data_type)   :: this
-  integer, intent(in)               :: ntimes_cell
+subroutine init_cell_data(this, ntimes_cell, default_name)
+  class(inversion_mesh_data_type)        :: this
+  integer, intent(in)                    :: ntimes_cell
+  character(len=*), intent(in), optional :: default_name
 
   this%ntimes_cell = ntimes_cell
 
@@ -1077,7 +1084,12 @@ subroutine init_cell_data(this, ntimes_cell)
   this%datat_cell = 0
 
   allocate(this%data_group_names_cell(ntimes_cell))
-  this%data_group_names_cell = 'cell_data'
+
+  if (present(default_name)) then
+     this%data_group_names_cell = trim(default_name)
+  else
+     this%data_group_names_cell = 'cell_data'
+  endif
 
   allocate(this%group_id_cell(ntimes_cell))
   this%group_id_cell = 1
