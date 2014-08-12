@@ -505,6 +505,91 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_mesh_tracedata_dump
+  type(inversion_mesh_data_type)    :: inv_mesh
+  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
+  integer                           :: npoints, nelements, myunit, ierr, i
+
+  ! tidy up
+  open(newunit=myunit, file='unit_tests/testtracedata.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testtracedata_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testtracedata_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  open(newunit=myunit, file='unit_tests/testtracedata_tracedata.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  open(newunit=myunit, file='unit_tests/testcelltracedata.xdmf', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testcelltracedata_points.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+
+  open(newunit=myunit, file='unit_tests/testcelltracedata_grid.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  open(newunit=myunit, file='unit_tests/testcelltracedata_tracedata.dat', iostat=ierr)
+  if (ierr == 0) close(myunit, status='delete')
+  
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+
+  call inv_mesh%init_node_data(3)
+
+  npoints = inv_mesh%get_nvertices()
+  allocate(datat_node(3,npoints))
+
+  datat_node(:,:) = inv_mesh%get_vertices()
+  do i=1, npoints
+     call inv_mesh%set_node_data_trace(datat_node(:,i), i)
+  enddo
+
+  call inv_mesh%dump_node_data_xdmf('unit_tests/testtracedata')
+
+  call assert_file_exists('unit_tests/testtracedata.xdmf', &
+                          'test xdmf tracedata dump')
+  call assert_file_exists('unit_tests/testtracedata_points.dat', &
+                          'test xdmf tracedata dump')
+  call assert_file_exists('unit_tests/testtracedata_grid.dat', &
+                          'test xdmf tracedata dump')
+  call assert_file_exists('unit_tests/testtracedata_data.dat', &
+                          'test xdmf tracedata dump')
+
+
+  call inv_mesh%init_cell_data(3)
+
+  nelements = inv_mesh%get_nelements()
+  allocate(datat_cell(3,nelements))
+
+  do i=1, nelements
+    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
+  enddo
+  datat_cell(2,:) = datat_cell(2,:) + 1
+  datat_cell(3,:) = datat_cell(3,:) + 2
+
+  do i=1, nelements
+     call inv_mesh%set_cell_data_trace(datat_cell(:,i), i)
+  enddo
+
+  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcelltracedata')
+
+  call assert_file_exists('unit_tests/testcelltracedata.xdmf', &
+                          'test xdmf cell tracedata dump')
+  call assert_file_exists('unit_tests/testcelltracedata_points.dat', &
+                          'test xdmf cell tracedata dump')
+  call assert_file_exists('unit_tests/testcelltracedata_grid.dat', &
+                          'test xdmf cell tracedata dump')
+  call assert_file_exists('unit_tests/testcelltracedata_data.dat', &
+                          'test xdmf cell tracedata dump')
+
+  call inv_mesh%freeme()
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_valence
   type(inversion_mesh_type)    :: inv_mesh
 
