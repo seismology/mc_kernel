@@ -17,6 +17,7 @@ module type_parameter
       character(len=16)                     :: mode
       character(len=16)                     :: source_file_type
       character(len=512)                    :: source_file_wildcard
+      character(len=512)                    :: source_file_name
       character(len=512), allocatable       :: source_files(:)
       integer                               :: nsources
       character(len=10)                     :: source_type
@@ -93,6 +94,9 @@ subroutine read_parameters(this, input_file_in)
 
      case('SRCFILE_TYPE')
         this%source_file_type = keyvalue
+
+     case('SRCFILE_NAME')
+        this%source_file_name = keyvalue
 
      case('SRCFILE_WILDCARD')
         this%source_file_wildcard = keyvalue

@@ -27,7 +27,7 @@ program rdbm
   real(kind=dp), allocatable          :: fw_field(:,:,:)
   integer                             :: i, j
   integer                             :: lu_seis
-  character(len=8)                    :: fname
+  character(len=10)                    :: fname
 
   type(resampling_type)               :: resamp
   real(kind=dp), allocatable          :: fw_field_res(:,:)
@@ -71,6 +71,35 @@ program rdbm
   call sem_data%read_meshes()
   call sem_data%build_kdtree()
 
+
+  ! initialize sources
+  if (trim(parameters%source_file_type) == 'cmtsolution' &
+        .or. trim(parameters%source_file_type) == 'cmtsolutions') then
+     allocate(sources(parameters%nsources))
+     allocate(shift_time_sample(parameters%nsources))
+     do i = 1, parameters%nsources
+        call sources(i)%read_cmtsolution(fname=trim(parameters%source_files(i)))
+        shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
+     enddo
+  else if (trim(parameters%source_file_type) == 'srf') then
+
+     call read_srf(parameters%source_file_name, sources, nsources=parameters%nsources)
+
+     write(6,*) parameters%nsources
+     allocate(shift_time_sample(parameters%nsources))
+     do i = 1, parameters%nsources
+        shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
+     enddo
+     write(6,*) shift_time_sample
+     write(6,*) sem_data%timeshift_fwd
+     write(6,*) sem_data%dt
+     call pabort
+  else
+     write(6,*) 'ERROR: unkown source file type ', parameters%source_file_type
+     call pabort
+  endif
+
+
   ! initialize resampling
   if (parameters%resample .or. parameters%time_shift) then
      allocate(fw_field_res(parameters%nsamp * 2, parameters%nsources))
@@ -85,14 +114,6 @@ program rdbm
   endif
 
   allocate(fw_field(sem_data%ndumps, 1, parameters%nsources))
-
-  ! initialize sources
-  allocate(sources(parameters%nsources))
-  allocate(shift_time_sample(parameters%nsources))
-  do i = 1, parameters%nsources
-     call sources(i)%read_cmtsolution(fname=trim(parameters%source_files(i)))
-     shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
-  enddo
 
   ! initialize time traces
   allocate(T(1:parameters%nsamp))
@@ -134,24 +155,24 @@ program rdbm
         fw_field_res = fw_field(:,1,:)
      endif
 
-     ! ouput to file
-     iclockold = tick()
-     write(fname,'("seis_",I0.3)') i
-     open(newunit=lu_seis, file=fname)
+     !! ouput to file
+     !iclockold = tick()
+     !write(fname,'("seis_",I0.5)') i
+     !open(newunit=lu_seis, file=fname)
 
-     if (trim(parameters%mode) == 'tomography') then
-        do j = 1, parameters%nsamp
-           write(lu_seis,*) T(j), fw_field_res(j,:)
-        enddo
-     elseif (trim(parameters%mode) == 'finitesource') then
-        do j = 1, parameters%nsamp
-           write(lu_seis,*) T(j), sum(fw_field_res(j,:))
-        enddo
-     else
-        write(6,*) 'ERROR: unknown mode "', trim(parameters%mode), '"'
-        call pabort
-     endif
-     close(lu_seis)
+     !if (trim(parameters%mode) == 'tomography') then
+     !   do j = 1, parameters%nsamp
+     !      write(lu_seis,*) T(j), fw_field_res(j,:)
+     !   enddo
+     !elseif (trim(parameters%mode) == 'finitesource') then
+     !   do j = 1, parameters%nsamp
+     !      write(lu_seis,*) T(j), sum(fw_field_res(j,:))
+     !   enddo
+     !else
+     !   write(6,*) 'ERROR: unknown mode "', trim(parameters%mode), '"'
+     !   call pabort
+     !endif
+     !close(lu_seis)
 
      if (parameters%receiver_file_type == 'abaqus') then
         !TODO: for now summing over all sources, would it be useful not to?

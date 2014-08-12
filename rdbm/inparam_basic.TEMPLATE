@@ -21,7 +21,11 @@ RECFILE_NAME            'STATIONS'          # default filename for RECFILE_TYPE 
 # cmtsolution       standard cmtsolution file as available form globalcmt.org (allows only
 #                     one source per run)
 # cmtsolutions      use multiple cmtsolution files
+# srf               standard rupture format
 SRCFILE_TYPE            cmtsolution
+
+# Source file name, used for SRCFILE_TYPE = cmtsolution or srf
+SRCFILE_NAME        'nr6.70-s0000-h0000.srf'
 
 # bash wildcard expression for cmtsolution files to be used.
 # details can be found in the manpages: 'man 7 glob'

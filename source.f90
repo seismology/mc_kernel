@@ -265,7 +265,7 @@ end subroutine def_rot_matrix
 
 !-----------------------------------------------------------------------------------------
 subroutine read_srf(srf_file, sources, npoints, nsources)
-   character(len=256), intent(in) :: srf_file
+   character(len=*), intent(in)                   :: srf_file
    type(src_param_type), allocatable, intent(out) :: sources(:)
 
    ! optional output for tests
