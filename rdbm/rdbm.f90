@@ -27,7 +27,7 @@ program rdbm
   real(kind=dp), allocatable          :: fw_field(:,:,:)
   integer                             :: i, j
   integer                             :: lu_seis
-  character(len=10)                    :: fname
+  character(len=10)                   :: fname
 
   type(resampling_type)               :: resamp
   real(kind=dp), allocatable          :: fw_field_res(:,:)
@@ -93,7 +93,6 @@ program rdbm
      write(6,*) shift_time_sample
      write(6,*) sem_data%timeshift_fwd
      write(6,*) sem_data%dt
-     call pabort
   else
      write(6,*) 'ERROR: unkown source file type ', parameters%source_file_type
      call pabort
@@ -156,29 +155,28 @@ program rdbm
      endif
 
      !! ouput to file
-     !iclockold = tick()
-     !write(fname,'("seis_",I0.5)') i
-     !open(newunit=lu_seis, file=fname)
-
-     !if (trim(parameters%mode) == 'tomography') then
-     !   do j = 1, parameters%nsamp
-     !      write(lu_seis,*) T(j), fw_field_res(j,:)
-     !   enddo
-     !elseif (trim(parameters%mode) == 'finitesource') then
-     !   do j = 1, parameters%nsamp
-     !      write(lu_seis,*) T(j), sum(fw_field_res(j,:))
-     !   enddo
-     !else
-     !   write(6,*) 'ERROR: unknown mode "', trim(parameters%mode), '"'
-     !   call pabort
-     !endif
-     !close(lu_seis)
-
+     iclockold = tick()
      if (parameters%receiver_file_type == 'abaqus') then
         !TODO: for now summing over all sources, would it be useful not to?
         call mesh%set_node_data_trace(real(sum(fw_field_res(1:parameters%nsamp,:), dim=2), kind=sp), i)
-     endif
+     else
+        write(fname,'("seis_",I0.5)') i
+        open(newunit=lu_seis, file=fname)
 
+        if (trim(parameters%mode) == 'tomography') then
+           do j = 1, parameters%nsamp
+              write(lu_seis,*) T(j), fw_field_res(j,:)
+           enddo
+        elseif (trim(parameters%mode) == 'finitesource') then
+           do j = 1, parameters%nsamp
+              write(lu_seis,*) T(j), sum(fw_field_res(j,:))
+           enddo
+        else
+           write(6,*) 'ERROR: unknown mode "', trim(parameters%mode), '"'
+           call pabort
+        endif
+        close(lu_seis)
+     endif
      iclockold = tick(id=id_out, since=iclockold)
 
      call bar%printbar(100 * i / receivers%num_rec)
