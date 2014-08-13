@@ -160,6 +160,8 @@ subroutine read_parameters(this, input_file_in)
      if (this%verbose > 0) write(6,*) '  '
 
      close(lu)
+  else if (trim(this%source_file_type) == 'cmtsolution') then
+     this%nsources = 1
   endif
 
   this%parameters_read = .true.
