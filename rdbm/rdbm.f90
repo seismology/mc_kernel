@@ -73,14 +73,22 @@ program rdbm
 
 
   ! initialize sources
-  if (trim(parameters%source_file_type) == 'cmtsolution' &
-        .or. trim(parameters%source_file_type) == 'cmtsolutions') then
+  if (trim(parameters%source_file_type) == 'cmtsolution') then
+
+     allocate(sources(1))
+     allocate(shift_time_sample(1))
+     call sources(1)%read_cmtsolution(fname=trim(parameters%source_file_name))
+     shift_time_sample(1) = (sources(1)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
+
+  else if (trim(parameters%source_file_type) == 'cmtsolutions') then
+
      allocate(sources(parameters%nsources))
      allocate(shift_time_sample(parameters%nsources))
      do i = 1, parameters%nsources
         call sources(i)%read_cmtsolution(fname=trim(parameters%source_files(i)))
         shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
      enddo
+
   else if (trim(parameters%source_file_type) == 'srf') then
 
      write(6,*) 'reading srf file'
@@ -90,11 +98,9 @@ program rdbm
      write(6,*) parameters%nsources
      allocate(shift_time_sample(parameters%nsources))
      do i = 1, parameters%nsources
-        shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
+        !shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
+        shift_time_sample(i) = sources(i)%time_shift / sem_data%dt
      enddo
-     !write(6,*) shift_time_sample
-     !write(6,*) sem_data%timeshift_fwd
-     !write(6,*) sem_data%dt
   else
      write(6,*) 'ERROR: unkown source file type ', parameters%source_file_type
      call pabort
@@ -132,10 +138,11 @@ program rdbm
 
   do i=1, receivers%num_rec
 
-     !if (receivers%reci_sources(i)%lond < -130 .or. receivers%reci_sources(i)%lond > -110 &
-     !      .or. receivers%reci_sources(i)%latd < 30 .or. receivers%reci_sources(i)%latd > 40) then
+     !if (receivers%reci_sources(i)%lond < -30 .or. receivers%reci_sources(i)%lond > 30 &
+     !      .or. receivers%reci_sources(i)%latd < -30 .or. receivers%reci_sources(i)%latd > 30) then
      !   cycle
      !endif
+
      ! load data from file
      iclockold = tick()
      fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
