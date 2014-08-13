@@ -1437,7 +1437,8 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                 enddo                        
                 ! test point to be inside, if so, exit
                 if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
-                                   corner_points, eltype(1), xi=xi, eta=eta)) then
+                                   corner_points, eltype(1), xi=xi, eta=eta, &
+                                   tolerance=1d-3)) then
                     if (verbose > 1) then
                        write(6,*) 'eltype     = ', eltype
                        write(6,*) 'xi, eta    = ', xi, eta
@@ -1451,6 +1452,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                write(6,*) 'ERROR: element not found. '
                write(6,*) '       Probably outside depth/distance range in the netcdf file?'
                write(6,*) '       Try increasing nnext_points in case this problem persists'
+               write(6,*) rotmesh_s(ipoint), rotmesh_z(ipoint)
                call pabort
             endif
 
