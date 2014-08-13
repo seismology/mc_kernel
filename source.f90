@@ -292,8 +292,8 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
    maxlond = -180
    minlatd =  90
    maxlatd = -90
-   mindep =    0
-   maxdep = 6371
+   mindep = 6371
+   maxdep =    0
 
    ! go to POINTS block
    do
