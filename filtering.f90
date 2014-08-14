@@ -80,6 +80,8 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     select case(trim(filterclass))
     case('Gabor')
        this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2))
+    case('Butterw_LP_O2')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 2)
     case default
        print *, 'ERROR: Unknown filter type: ', trim(filterclass)
        call pabort
@@ -392,14 +394,43 @@ function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by 
                                          !! narrower bandwidth sigmaIfc = .5 means the
                                          !! one-sigma interval i equals one octave
 
-    real(kind=dp)                   :: loggabor(size(f))
-    real(kind=dp)                   :: f_c
+    real(kind=dp)               :: loggabor(size(f))
+    real(kind=dp)               :: f_c
 
     f_c = 1 / p_c
     loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )
     ! G(f,k) = exp( -(ln(f/f_k))^2 / (2*ln(sigmaIfc)^2)  )
 
 end function loggabor
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function butterworth_lowpass(f, p_c, n)
+    !http://en.wikipedia.org/wiki/Butterworth_filter
+
+    real(kind=dp), intent(in)   :: f(:)  !< Frequency array
+    real(kind=dp), intent(in)   :: p_c   !< cutoff period of the filter
+    integer, intent(in)         :: n     !< order
+
+    complex(kind=dp)            :: butterworth_lowpass(size(f))
+    real(kind=dp)               :: omega_c
+    complex(kind=dp)            :: s(1:n), j
+    integer                     :: k
+
+    omega_c = 2 * pi / p_c
+    j = cmplx(0, 1)
+
+    do k=1, n
+        s(k) = omega_c * exp(j * (2 * k + n - 1) * pi / (2 * n))
+    enddo
+
+    butterworth_lowpass = 1
+
+    do k=1, n
+        butterworth_lowpass = butterworth_lowpass / ((2 * pi * j * f - s(k)) / omega_c)
+    enddo
+
+end function butterworth_lowpass
 !-----------------------------------------------------------------------------------------
 
 end module
