@@ -45,7 +45,7 @@ subroutine test_resampling_const
   data_in = 1
   data_ref = 1
 
-  fnam = 'test_resampling_const_in'
+  fnam = 'unit_tests/test_resampling_const_in'
   open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_in
@@ -64,7 +64,7 @@ subroutine test_resampling_const
                                    1e-5, 'resampling constant function')
   enddo
 
-  fnam = 'test_resampling_const_out'
+  fnam = 'unit_tests/test_resampling_const_out'
   open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_out
@@ -117,7 +117,7 @@ subroutine test_resampling_const_ntraces
      data_ref(:,i) = i
   enddo
 
-  fnam = 'test_resampling_const_ntraces_in'
+  fnam = 'unit_tests/test_resampling_const_ntraces_in'
   open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_in
@@ -136,7 +136,7 @@ subroutine test_resampling_const_ntraces
                                    'resampling constant function with multiple traces')
   enddo
 
-  fnam = 'test_resampling_const_ntraces_out'
+  fnam = 'unit_tests/test_resampling_const_ntraces_out'
   open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_out
@@ -191,7 +191,7 @@ subroutine test_resampling_triangle
   data_ref(ntimes_out/2+1:,1) = T_out(ntimes_out/2:1:-1,1)
 
 
-  fnam = 'test_resampling_triangle_in'
+  fnam = 'unit_tests/test_resampling_triangle_in'
   open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_in
@@ -210,7 +210,7 @@ subroutine test_resampling_triangle
                                    1e-2, 'resampling triangle function')
   enddo
 
-  fnam = 'test_resampling_triangle_out'
+  fnam = 'unit_tests/test_resampling_triangle_out'
   open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_out
@@ -263,7 +263,7 @@ subroutine test_resampling_timeshift_triangle
 
   data_ref = 4.9d0 - data_in
 
-  fnam = 'test_resampling_timeshift_triangle_in'
+  fnam = 'unit_tests/test_resampling_timeshift_triangle_in'
   open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_in
@@ -282,7 +282,7 @@ subroutine test_resampling_timeshift_triangle
                                    1e-2, 'timeshifting triangle function')
   enddo
 
-  fnam = 'test_resampling_timeshift_triangle_out'
+  fnam = 'unit_tests/test_resampling_timeshift_triangle_out'
   open(newunit=myunit, file=fnam, status='replace')
 
   do i = 1, ntimes_out
