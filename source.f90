@@ -392,7 +392,7 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
       endif
    enddo
 
-   if (verbose > 0) then
+   if (verbose > 1) then
       write(6,*) 'minlond', minlond
       write(6,*) 'maxlond', maxlond
       write(6,*) 'minlatd', minlatd
