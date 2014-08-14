@@ -114,7 +114,7 @@ end subroutine
 subroutine test_filter_butterworth_lp_response
    use fft, only: rfft_type, taperandzeropad
    
-   ! reference data was produces with the same code, because a comparison to obspy.lowpass
+   ! reference data was produced with the same code, because a comparison to obspy.lowpass
    ! revealed some Gibbs effect for the input dirac but otherwise good agreement
 
    type(filter_type)             :: butter
@@ -162,6 +162,66 @@ subroutine test_filter_butterworth_lp_response
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
                                  real(data_filtered_ref(:,1) + 0.1d0), 1e-7, &
                                  'Butterworth LP filter with 5s cutoff period')
+
+   call butter%deleteme()
+
+   call assert_true(.not.butter%isinitialized(), 'filter is not initialized after deletion')
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_filter_butterworth_hp_response
+   use fft, only: rfft_type, taperandzeropad
+   
+   ! reference data was produced with the same code, because a comparison to obspy.highpass
+   ! revealed some Gibbs effect for the input dirac but otherwise good agreement
+
+   type(filter_type)             :: butter
+   type(rfft_type)               :: fft_data
+   integer, parameter            :: ntimes = 1000, npoints = 1
+   integer                       :: ntimes_ft, nomega
+   real(kind=dp)                 :: data_in(ntimes,1)
+   real(kind=dp), allocatable    :: data_filtered_ref(:,:), data_filtered(:,:)
+   complex(kind=dp), allocatable :: data_fd(:,:)
+   real(kind=dp)                 :: df
+   real(kind=dp), parameter      :: dt = 0.1d0
+   character(len=32)             :: filtername, filterclass
+
+   call fft_data%init(ntimes, 1, npoints, dt)
+   ntimes_ft = fft_data%get_ntimes()
+   nomega = fft_data%get_nomega()
+
+   call assert_equal(ntimes_ft, 2048, 'ntimes==expected value')
+
+   open(100, file='unit_tests/gaborinput.txt')
+   read(100,*) data_in
+   close(100)
+
+   allocate(data_filtered(ntimes_ft,1))
+   allocate(data_filtered_ref(ntimes_ft,1))
+   allocate(data_fd(nomega,1))
+
+   open(100, file='unit_tests/butterresponse_hp.txt')
+   read(100,*) data_filtered_ref
+   close(100)
+   
+   df = fft_data%get_df()
+
+   ! Test filter with 5s period
+   filterclass = 'Butterw_HP_O2'
+   filtername  = 'Butterw test'
+   call butter%create(filtername, df, nomega, filterclass, [5.0d0, 0.d0, 0.d0, 0.d0])
+
+   call assert_true(butter%isinitialized(), 'filter is initialized after creation')
+
+   call fft_data%rfft(taperandzeropad(data_in, ntimes_ft, ntaper=0), data_fd)
+   data_fd = butter%apply_2d(data_fd)
+   call fft_data%irfft(data_fd, data_filtered)
+
+   call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
+                                 real(data_filtered_ref(:,1) + 0.1d0), 1e-7, &
+                                 'Butterworth HP filter with 5s cutoff period')
 
    call butter%deleteme()
 

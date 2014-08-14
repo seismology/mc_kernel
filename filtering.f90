@@ -82,6 +82,8 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2))
     case('Butterw_LP_O2')
        this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 2)
+    case('Butterw_HP_O2')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2)
     case default
        print *, 'ERROR: Unknown filter type: ', trim(filterclass)
        call pabort
@@ -431,6 +433,38 @@ function butterworth_lowpass(f, p_c, n)
     enddo
 
 end function butterworth_lowpass
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function butterworth_highpass(f, p_c, n)
+    !http://en.wikipedia.org/wiki/Butterworth_filter
+    !http://en.wikipedia.org/wiki/Prototype_filter#Lowpass_to_highpass
+
+    real(kind=dp), intent(in)   :: f(:)  !< Frequency array
+    real(kind=dp), intent(in)   :: p_c   !< cutoff period of the filter
+    integer, intent(in)         :: n     !< order
+
+    complex(kind=dp)            :: butterworth_highpass(size(f))
+    real(kind=dp)               :: omega_c
+    complex(kind=dp)            :: s(1:n), j
+    integer                     :: k
+
+    omega_c = 2 * pi / p_c
+    j = cmplx(0, 1)
+
+    do k=1, n
+        s(k) = omega_c * exp(j * (2 * k + n - 1) * pi / (2 * n))
+    enddo
+
+    butterworth_highpass = 1
+
+    do k=1, n
+        butterworth_highpass(2:) &
+            = butterworth_highpass(2:) / (omega_c / (2 * pi * j * f(2:)) - s(k) / omega_c)
+    enddo
+    butterworth_highpass(1) = 0
+
+end function butterworth_highpass
 !-----------------------------------------------------------------------------------------
 
 end module
