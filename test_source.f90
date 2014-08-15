@@ -14,7 +14,7 @@ subroutine test_read_srf
    integer              :: npoints, nsources, i
    type(src_param_type), allocatable :: sources(:)
 
-   srf_file = 'standard_rupture_fomat_testfile.srf'
+   srf_file = 'unit_tests/standard_rupture_fomat_testfile.srf'
    call read_srf(srf_file, sources, npoints=npoints, nsources=nsources)
 
    call assert_equal(npoints, 10, 'Number of points')
