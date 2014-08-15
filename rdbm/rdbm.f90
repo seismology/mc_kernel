@@ -1,11 +1,12 @@
 !=========================================================================================
 program rdbm
 
-  use readfields, only : semdata_type
+  use readfields,           only : semdata_type
   use commpi
   use global_parameters
   use source_class
   use resampling
+  use filtering,            only : filter_type
   use type_parameter
   use receivers_rdbm
   use inversion_mesh
@@ -30,6 +31,10 @@ program rdbm
   character(len=10)                   :: fname
 
   type(resampling_type)               :: resamp
+  type(filter_type)                   :: filter
+  character(len=32)                   :: filtername, filterclass
+  real(kind=dp)                       :: filter_df
+  integer                             :: filter_nomega
   real(kind=dp), allocatable          :: fw_field_res(:,:)
   real(kind=dp), allocatable          :: shift_time_sample(:)
 
@@ -98,18 +103,25 @@ program rdbm
      write(6,*) parameters%nsources
      allocate(shift_time_sample(parameters%nsources))
      do i = 1, parameters%nsources
-        !shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
-        shift_time_sample(i) = sources(i)%time_shift / sem_data%dt
+        shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
+        !shift_time_sample(i) = sources(i)%time_shift / sem_data%dt
      enddo
   else
      write(6,*) 'ERROR: unkown source file type ', parameters%source_file_type
      call pabort
   endif
 
+  ! initialize filter
+  filtername = 'filter1'
+  filterclass = 'Butterw_LP_O6'
+  filter_nomega = sem_data%ndumps + 1
+  filter_df = 0.5d0 / sem_data%dt / filter_nomega
+  call filter%create(filtername, filter_df, filter_nomega, filterclass, [2d0, 0d0, 0d0, 0d0])
 
   ! initialize resampling
   if (parameters%resample .or. parameters%time_shift) then
      allocate(fw_field_res(parameters%nsamp * 2, parameters%nsources))
+     !call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, parameters%nsources, filter=filter)
      call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, parameters%nsources)
   else
      parameters%nsamp = sem_data%ndumps

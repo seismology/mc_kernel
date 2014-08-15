@@ -3,6 +3,7 @@ module resampling
   use global_parameters
   use commpi,               only : pabort
   use fft,                  only : rfft_type, taperandzeropad
+  use filtering,            only : filter_type
 
   implicit none
 
@@ -15,6 +16,8 @@ module resampling
      logical                    :: initialized = .false.
      integer                    :: ntimes_in, ntimes_out, ntraces
      real(kind=dp), allocatable :: data_out_buf(:,:)
+     logical                    :: apply_filter = .false.
+     type(filter_type)          :: filter
      contains
      procedure, pass            :: init
      procedure, pass            :: resample
@@ -28,10 +31,11 @@ module resampling
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine init(this, ntimes_in, ntimes_out, ntraces)!, measure)
+subroutine init(this, ntimes_in, ntimes_out, ntraces, filter)!, measure)
 
-  class(resampling_type)    :: this
-  integer, intent(in)       :: ntimes_in, ntimes_out, ntraces
+  class(resampling_type)        :: this
+  integer, intent(in)           :: ntimes_in, ntimes_out, ntraces
+  type(filter_type), optional   :: filter
   !logical, intent(in)       :: measure
 
   ! hardcoding ndim=1 for now, may be dummy variable in the future
@@ -47,6 +51,13 @@ subroutine init(this, ntimes_in, ntimes_out, ntraces)!, measure)
 
   allocate(this%data_out_buf(this%fft_out%get_ntimes(), ntraces))
 
+  if(present(filter)) then
+     this%filter = filter
+     this%apply_filter = .true.
+  else
+     this%apply_filter = .false.
+  endif
+
   this%initialized = .true.
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -61,7 +72,7 @@ subroutine resample(this, data_in, data_out)
   real(kind=dp), intent(out)        :: data_out(:,:)
 
   complex(kind=dp), allocatable     :: dataf_in(:,:), dataf_out(:,:)
-  integer                           :: nomega_min
+  integer                           :: nomega_min, i
 
   if (.not. this%initialized) then
      write(*,*) 'ERROR: accessing resampling type that is not initialized'
@@ -91,6 +102,12 @@ subroutine resample(this, data_in, data_out)
   call this%fft_in%rfft(taperandzeropad(data_in, this%fft_in%get_ntimes(), ntaper=0), dataf_in)
   
   nomega_min = min(this%fft_in%get_nomega(), this%fft_out%get_nomega())
+
+  if (this%apply_filter) then
+     do i = 1, this%fft_in%get_ntraces()
+        dataf_in(:,i) = dataf_in(:,i) * this%filter%transferfunction
+     enddo
+  endif
 
   dataf_out(1:nomega_min,:) = dataf_in(1:nomega_min,:)
 
@@ -156,6 +173,8 @@ subroutine resample_timeshift(this, data_in, data_out, delta_t)
   do i = 1, this%fft_in%get_ntraces()
      shift_fd = exp(- this%fft_in%get_f() * 2 * pi * delta_t(i) * cmplx(0, 1))
      dataf_in(:,i) = dataf_in(:,i) * shift_fd
+     if (this%apply_filter) &
+        dataf_in(:,i) = dataf_in(:,i) * this%filter%transferfunction
   enddo
 
   ! resample
