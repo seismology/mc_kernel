@@ -48,7 +48,14 @@ RESAMPLE                T
 # length of the traces in seconds depends on the forward run
 NSAMP                   3600
 
-# Time Shift 
+# filter the seismograms? done during resampling, so only possible if resampling is
+# activated
+FILTER                  F
+
+# filter definition
+FILTER_DEF              'Butterw_LP_O4 2. 0. 0. 0.'
+
+# Time Shift? done during resampling, so only possible if resampling is activated
 TIMESHIFT               T
 
 # Size of reading buffer. 1000 is a good value, unless you run into memory problems.

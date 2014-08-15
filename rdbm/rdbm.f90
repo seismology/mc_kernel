@@ -32,7 +32,7 @@ program rdbm
 
   type(resampling_type)               :: resamp
   type(filter_type)                   :: filter
-  character(len=32)                   :: filtername, filterclass
+  character(len=32)                   :: filtername
   real(kind=dp)                       :: filter_df
   integer                             :: filter_nomega
   real(kind=dp), allocatable          :: fw_field_res(:,:)
@@ -113,16 +113,18 @@ program rdbm
 
   ! initialize filter
   filtername = 'filter1'
-  filterclass = 'Butterw_LP_O6'
   filter_nomega = sem_data%ndumps + 1
   filter_df = 0.5d0 / sem_data%dt / filter_nomega
-  call filter%create(filtername, filter_df, filter_nomega, filterclass, [2d0, 0d0, 0d0, 0d0])
+  call filter%create(filtername, filter_df, filter_nomega, parameters%filterclass, parameters%filterfreqs)
 
   ! initialize resampling
   if (parameters%resample .or. parameters%time_shift) then
      allocate(fw_field_res(parameters%nsamp * 2, parameters%nsources))
-     !call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, parameters%nsources, filter=filter)
-     call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, parameters%nsources)
+     if (parameters%apply_filter) then
+        call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, parameters%nsources, filter=filter)
+     else
+        call resamp%init(sem_data%ndumps * 2, parameters%nsamp * 2, parameters%nsources)
+     endif
   else
      parameters%nsamp = sem_data%ndumps
      allocate(fw_field_res(parameters%nsamp, parameters%nsources))

@@ -27,6 +27,9 @@ module type_parameter
       integer                               :: nsim_fwd
       logical                               :: resample
       integer                               :: nsamp
+      logical                               :: apply_filter
+      character(len=32)                     :: filterclass
+      real(kind=dp)                         :: filterfreqs(4)
       logical                               :: time_shift
       integer                               :: buffer_size
       integer                               :: verbose
@@ -82,15 +85,12 @@ subroutine read_parameters(this, input_file_in)
 
      case('MODE')
         this%mode = keyvalue
+     
+     case('RECFILE_TYPE')
+         this%receiver_file_type = keyvalue
 
-     case('RESAMPLE')
-        read(keyvalue, *) this%resample
-
-     case('NSAMP')
-        read(keyvalue, *) this%nsamp
-
-     case('TIMESHIFT')
-        read(keyvalue, *) this%time_shift
+     case('RECFILE_NAME')
+        this%receiver_file = keyvalue
 
      case('SRCFILE_TYPE')
         this%source_file_type = keyvalue
@@ -104,18 +104,27 @@ subroutine read_parameters(this, input_file_in)
      case('SRC_TYPE')
         this%source_type = keyvalue
      
-     case('RECFILE_TYPE')
-         this%receiver_file_type = keyvalue
+     case('COMPONENT')
+        read(keyvalue, *) this%component
 
-     case('RECFILE_NAME')
-        this%receiver_file = keyvalue
+     case('RESAMPLE')
+        read(keyvalue, *) this%resample
+
+     case('FILTER')
+        read(keyvalue, *) this%apply_filter
+
+     case('FILTER_DEF')
+        read(keyvalue, *) this%filterclass, this%filterfreqs
+
+     case('NSAMP')
+        read(keyvalue, *) this%nsamp
+
+     case('TIMESHIFT')
+        read(keyvalue, *) this%time_shift
 
      case('NETCDF_BUFFER_SIZE')
         read(keyvalue, *) this%buffer_size
      
-     case('COMPONENT')
-        read(keyvalue, *) this%component
-
      case('VERBOSITY')
         read(keyvalue, *) this%verbose
 
