@@ -94,6 +94,20 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     case('Butterw_BP_O4')
        this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4) &
                              * butterworth_lowpass(this%f, frequencies(2), 4)
+    case('Butterw_LP_O6')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 6)
+    case('Butterw_HP_O6')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6)
+    case('Butterw_BP_O6')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6) &
+                             * butterworth_lowpass(this%f, frequencies(2), 6)
+    case('Butterw_LP_O8')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 8)
+    case('Butterw_HP_O8')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8)
+    case('Butterw_BP_O8')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8) &
+                             * butterworth_lowpass(this%f, frequencies(2), 8)
     case default
        print *, 'ERROR: Unknown filter type: ', trim(filterclass)
        call pabort

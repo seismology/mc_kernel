@@ -165,7 +165,8 @@ subroutine test_filter_butterworth_lp_response
 
    call butter%deleteme()
 
-   call assert_true(.not.butter%isinitialized(), 'filter is not initialized after deletion')
+   call assert_true(.not.butter%isinitialized(), &
+                    'filter is not initialized after deletion')
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -225,7 +226,8 @@ subroutine test_filter_butterworth_hp_response
 
    call butter%deleteme()
 
-   call assert_true(.not.butter%isinitialized(), 'filter is not initialized after deletion')
+   call assert_true(.not.butter%isinitialized(), &
+                    'filter is not initialized after deletion')
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -285,11 +287,11 @@ subroutine test_filter_butterworth_bp_response
 
    call butter%deleteme()
 
-   call assert_true(.not.butter%isinitialized(), 'filter is not initialized after deletion')
+   call assert_true(.not.butter%isinitialized(), &
+                    'filter is not initialized after deletion')
 
 end subroutine
 !-----------------------------------------------------------------------------------------
-
 
 !-----------------------------------------------------------------------------------------
 subroutine test_filter_timeshift()
