@@ -144,6 +144,7 @@ subroutine test_all
   call test(test_filter_gabor_response, 'Test Gabor filter')
   call test(test_filter_butterworth_lp_response, 'Test Butterworth LP filter')
   call test(test_filter_butterworth_hp_response, 'Test Butterworth HP filter')
+  call test(test_filter_butterworth_bp_response, 'Test Butterworth BP filter')
   call test(test_filter_timeshift, 'Test time shifting routine')
   
   ! test kernel
