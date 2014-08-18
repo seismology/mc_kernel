@@ -1863,7 +1863,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                                                  !! (needed for RDBM)
     real(kind=dp),     allocatable  :: load_strain_point_interp(:,:)
 
-    logical                         :: use_strainbuffer = .false.
+    logical                         :: use_strainbuffer
     integer                         :: start_chunk, iread, gll_to_read
     integer                         :: iclockold, status, idisplvar
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
@@ -1887,11 +1887,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
     iclockold_total = tick()
 #   endif
 
-    if (present(id_elem)) then
-      use_strainbuffer = .true.
-    else
-      use_strainbuffer = .false.
-    end if
+    use_strainbuffer = present(id_elem)
 
     if (trim(sem_obj%dump_type) /= 'displ_only') then
         write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
