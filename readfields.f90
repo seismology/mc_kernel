@@ -1344,14 +1344,15 @@ end function load_bw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points_rdbm(this, source_params, reci_source_params, component)
-    use finite_elem_mapping, only      : inside_element
+function load_fw_points_rdbm(this, source_params, reci_source_params, component, mu)
+    use finite_elem_mapping, only       : inside_element
 
-    class(semdata_type)               :: this
-    type(src_param_type), intent(in)  :: source_params(:)
-    type(src_param_type), intent(in)  :: reci_source_params
-    character(len=1), intent(in)      :: component
-    real(kind=dp), allocatable        :: load_fw_points_rdbm(:,:,:)
+    class(semdata_type)                     :: this
+    type(src_param_type), intent(in)        :: source_params(:)
+    type(src_param_type), intent(in)        :: reci_source_params
+    character(len=1), intent(in)            :: component
+    real(kind=dp), intent(out), optional    :: mu(size(source_params))
+    real(kind=dp), allocatable              :: load_fw_points_rdbm(:,:,:)
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points, id_elem
@@ -1367,7 +1368,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     real(kind=dp)                     :: rotmesh_z(size(source_params))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
     real(kind=dp)                     :: coordinates(3,size(source_params))
-    real(kind=dp)                     :: mij_buff(6)
+    real(kind=dp)                     :: mij_buff(6), mu_buff(1)
     real(kind=dp)                     :: xi, eta
 
     if (trim(this%dump_type) == 'displ_only') then
@@ -1478,6 +1479,17 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
                                     start  = [nextpoint(inext_point)%idx], &
                                     count  = [1], &
                                     values = axis_int))
+
+            if (present(mu)) then
+                ! TODO: for now return the value of mu at the midpoint. Might be useful to
+                !       interpolate in case of long period meshes (MvD)
+                call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+                                        varid  = this%fwd(1)%mesh_mu_varid, &
+                                        start  = [gll_point_ids(this%npol/2, this%npol/2)], &
+                                        count  = [1], &
+                                        values = mu_buff))
+                mu(ipoint) = mu_buff(1)
+            endif
 
             if (axis_int(1) == 1) then
                axis = .true.
