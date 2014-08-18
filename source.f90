@@ -353,6 +353,12 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
       read(lu_srf,*) lon, lat, dep, stk, dip, area, tinit, dt
       read(lu_srf,*) rake, slip1, nt1, slip2, nt2, slip3, nt3
 
+      ! go to SI units
+      area = area * 1d-4    ! cm^2 > m^2
+      slip1 = slip1 * 1d-2  ! cm   > m
+      slip2 = slip2 * 1d-2  ! cm   > m
+      slip3 = slip3 * 1d-2  ! cm   > m
+
       if (lon < minlond) minlond = lon
       if (lon > maxlond) maxlond = lon
       if (lat < minlatd) minlatd = lat
@@ -365,7 +371,7 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
          allocate(sv1(nt1))
          read(lu_srf,*) sv1
 
-         ! TODO: use true shear modulus
+         ! true shear modulus is read later when loading the wavefields
          ! TODO: use source time funtion
          call sources(isource)%init_strike_dip_rake(lat, lon, dep, stk, dip, area, tinit, &
                                                     rake, slip1, mu=32d9)
@@ -377,7 +383,7 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
          allocate(sv2(nt2))
          read(lu_srf,*) sv2
 
-         ! TODO: use true shear modulus
+         ! true shear modulus is read later when loading the wavefields
          ! TODO: use source time funtion
          call sources(isource)%init_strike_dip_rake(lat, lon, dep, stk, dip, area, tinit, &
                                                     rake + 90, slip2, mu=32d9)

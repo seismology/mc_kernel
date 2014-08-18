@@ -24,16 +24,16 @@ subroutine test_read_srf
    !   write(6,'(6e10.2)') sources(i)%mij_voigt(:)
    !enddo
 
-   call assert_comparable_real1d(real(sources(1)%mij_voigt, sp) + 1e22, &
-                                 [0., 0., 0., 0., 0., -0.64e22] + 1e22, 1e-5, &
+   call assert_comparable_real1d(real(sources(1)%mij_voigt, sp) + 1e16, &
+                                 [0., 0., 0., 0., 0., -0.64e16] + 1e16, 1e-5, &
                                  'strike = 0, rake = 0, dip = 90')
 
-   call assert_comparable_real1d(real(sources(2)%mij_voigt, sp) + 1e22, &
-                                 [0.64e22, -0.64e22, 0., 0., 0., 0.] + 1e22, 1e-5, &
+   call assert_comparable_real1d(real(sources(2)%mij_voigt, sp) + 1e16, &
+                                 [0.64e16, -0.64e16, 0., 0., 0., 0.] + 1e16, 1e-5, &
                                  'strike = 0, rake = -45, dip = 90')
 
-   call assert_comparable_real1d(real(sources(3)%mij_voigt, sp) + 1e22, &
-                                 [0., 0., 0., 0., -0.64e22, 0.] + 1e22, 1e-5, &
+   call assert_comparable_real1d(real(sources(3)%mij_voigt, sp) + 1e16, &
+                                 [0., 0., 0., 0., -0.64e16, 0.] + 1e16, 1e-5, &
                                  'strike = 0, rake = 0, dip = 0')
 
    do i=1, nsources
