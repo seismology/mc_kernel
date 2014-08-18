@@ -44,5 +44,34 @@ subroutine test_read_srf
 end subroutine
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_resample_stf
+   character(len=256)   :: srf_file
+   integer              :: npoints, nsources, i, lu
+   type(src_param_type), allocatable :: sources(:)
+
+   srf_file = 'unit_tests/standard_rupture_fomat_testfile.srf'
+   call read_srf(srf_file, sources, npoints=npoints, nsources=nsources)
+
+   !write(6,*) sources(1)%stf
+
+   !open(newunit=lu, file='unit_tests/srf_stf_in')
+   !write(lu,'(2E20.10)') (sources(1)%stf_dt * (i-1), sources(1)%stf(i), i=1, size(sources(1)%stf))
+   !close(lu)
+
+   call sources(1)%resample_stf(sources(1)%stf_dt, size(sources(1)%stf))
+
+   call assert_comparable_real1d(real(sources(1)%stf, sp) + 1, &
+                                 real(sources(1)%stf_resampled, sp) + 1, 1e-5, &
+                                 'in = out')
+
+   !open(newunit=lu, file='unit_tests/srf_stf_res')
+   !write(lu,'(2E20.10)') (sources(1)%stf_dt_resampled * (i-1), sources(1)%stf_resampled(i), i=1, size(sources(1)%stf_resampled))
+   !close(lu)
+
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
 end module
 !=========================================================================================

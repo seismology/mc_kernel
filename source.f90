@@ -19,6 +19,8 @@ module source_class
                                                                     ! coordinates in km
         real(kind=dp)                        :: depth, radius       ! in km
         real(kind=dp)                        :: time_shift          ! in seconds
+        real(kind=dp), allocatable           :: stf(:), stf_resampled(:)
+        real(kind=dp)                        :: stf_dt, stf_dt_resampled
         real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
         contains
            procedure, pass                   :: init
@@ -26,6 +28,7 @@ module source_class
            procedure, pass                   :: init_strike_dip_rake
            procedure, pass                   :: read_cmtsolution
            procedure, pass                   :: def_rot_matrix
+           procedure, pass                   :: resample_stf
     end type
 contains
 
@@ -264,6 +267,59 @@ end subroutine def_rot_matrix
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine resample_stf(this, dt, nsamp)
+   class(src_param_type)          :: this
+   real(kind=dp), intent(in)      :: dt
+   integer, intent(in)            :: nsamp
+
+   real(kind=dp), allocatable     :: time_orig(:), time_new(:)
+   real(kind=dp)                  :: dt_orig
+   integer                        :: nsamp_orig
+   integer                        :: i, j
+
+
+   nsamp_orig = size(this%stf)
+   dt_orig = this%stf_dt
+
+   allocate(time_orig(nsamp_orig))
+   allocate(time_new(nsamp))
+   allocate(this%stf_resampled(nsamp))
+
+   this%stf_dt_resampled = dt
+
+   do i = 1, nsamp_orig
+      time_orig(i) = (i-1) * dt_orig
+   enddo
+
+   do i = 1, nsamp
+      time_new(i) = (i-1) * dt
+   enddo
+
+   this%stf_resampled(:) = 0
+   outer: do i = 1, nsamp
+      inner: do j = 1, nsamp_orig
+         if (time_new(i) <= time_orig(j)) then
+            if (j < 2) then
+               this%stf_resampled(i) = 0
+            else
+               this%stf_resampled(i) = &
+                       this%stf(j-1) * (time_orig(j) - time_new(i))      / dt_orig &
+                     + this%stf(j)   * (time_new(i)  - time_orig(j - 1)) / dt_orig 
+            endif
+
+            if (j == nsamp_orig) then
+               exit outer
+            else
+               cycle outer
+            endif
+         endif
+      enddo inner
+   enddo outer
+
+end subroutine resample_stf
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine read_srf(srf_file, sources, npoints, nsources)
    character(len=*), intent(in)                   :: srf_file
    type(src_param_type), allocatable, intent(out) :: sources(:)
@@ -368,26 +424,26 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
 
       if (nt1 > 0) then
          isource = isource + 1
-         allocate(sv1(nt1))
-         read(lu_srf,*) sv1
 
          ! true shear modulus is read later when loading the wavefields
-         ! TODO: use source time funtion
          call sources(isource)%init_strike_dip_rake(lat, lon, dep, stk, dip, area, tinit, &
                                                     rake, slip1, mu=32d9)
-         deallocate(sv1)
+         allocate(sources(isource)%stf(nt1))
+         read(lu_srf,*) sources(isource)%stf
+
+         sources(isource)%stf_dt = dt
       endif
 
       if (nt2 > 0) then
          isource = isource + 1
-         allocate(sv2(nt2))
-         read(lu_srf,*) sv2
 
          ! true shear modulus is read later when loading the wavefields
-         ! TODO: use source time funtion
          call sources(isource)%init_strike_dip_rake(lat, lon, dep, stk, dip, area, tinit, &
                                                     rake + 90, slip2, mu=32d9)
-         deallocate(sv2)
+         allocate(sources(isource)%stf(nt2))
+         read(lu_srf,*) sources(isource)%stf
+
+         sources(isource)%stf_dt = dt
       endif
 
       if (nt3 > 0) then
@@ -395,8 +451,12 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
          allocate(sv3(nt3))
          read(lu_srf,*) sv3
          deallocate(sv3)
+         ! TODO: Not using the u3 direction for now, as I don't now how that defines a
+         !       momenttensor (MvD)
       endif
    enddo
+
+   close(lu_srf)
 
    if (verbose > 1) then
       write(6,*) 'minlond', minlond
