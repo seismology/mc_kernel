@@ -49,6 +49,9 @@ module readfields
         integer                            :: axis_varid              ! Variable IDs
         integer                            :: mesh_s_varid            ! Variable IDs
         integer                            :: mesh_z_varid            ! Variable IDs
+        integer                            :: mesh_rho_varid          ! Variable IDs
+        integer                            :: mesh_lambda_varid       ! Variable IDs
+        integer                            :: mesh_mu_varid           ! Variable IDs
         integer                            :: chunk_gll
         integer                            :: count_error_pointoutside
         character(len=200)                 :: meshdir
@@ -1839,28 +1842,32 @@ end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes, element_type, axis, id_elem)
+function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes, &
+                                  element_type, axis, id_elem)
     !< Calculates strain in element given by pointids, nodes. 
     !! Strain is then interpolated to the point defined by xi, eta.
-    !! If parameter id_elem is present, it checks strain buffer, whether strain for this element 
-    !! has been calculated before. In this case, only the interpolation is done (order of 
-    !! magnitude faster)
+    !! If parameter id_elem is present, it checks strain buffer, whether strain for this
+    !! element has been calculated before. In this case, only the interpolation is done
+    !! (order of magnitude faster)
     use sem_derivatives
     use spectral_basis, only : lagrange_interpol_2D_td
 
     type(ncparamtype), intent(in)   :: sem_obj
-    integer,           intent(in)   :: pointids(0:sem_obj%npol, &
-                                                0:sem_obj%npol) !< ID of GLL/GLI points in element of interest
-    real(kind=dp),     intent(in)   :: xi, eta      !< Coordinates at which to interpolate strain
+    integer,           intent(in)   :: pointids(0:sem_obj%npol, 0:sem_obj%npol) 
+                                                    !< ID of GLL/GLI points in element of
+                                                    !! interest
+    real(kind=dp),     intent(in)   :: xi, eta      !< Coordinates at which to interpolate
+                                                    !! strain
     character(len=*),  intent(in)   :: model_param  !< Model parameter (decides on 
-                                                    !!straintrace (vp) or full tensor (vs).
-    real(kind=dp),     intent(in)   :: nodes(4,2)   !< Coordinates of element corner points
+                                                    !! straintrace (vp) or full tensor (vs)
+    real(kind=dp),     intent(in)   :: nodes(4,2)   !< Coordinates of element corner
+                                                    !! points
     integer,           intent(in)   :: element_type !< Element type in the solver
     logical,           intent(in)   :: axis         !< Axis element or not 
     integer, optional, intent(in)   :: id_elem   !< ID of element to interpolate strain in
-                                                 !! Giving this argument activates the strain 
-                                                 !! buffer. Omitting it restores classic behaviour
-                                                 !! (needed for RDBM)
+                                                 !! Giving this argument activates the
+                                                 !! strain buffer. Omitting it restores
+                                                 !! classic behaviour 
     real(kind=dp),     allocatable  :: load_strain_point_interp(:,:)
 
     logical                         :: use_strainbuffer
@@ -1944,17 +1951,19 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
       do ipol = 0, sem_obj%npol
          do jpol = 0, sem_obj%npol
 
-#         ifdef flag_kerner
+#           ifdef flag_kerner
             iclockold = tick()
-#         endif
+#           endif
             status = sem_obj%buffer_disp%get(pointids(ipol,jpol), ubuff(:,:))
-#         ifdef flag_kerner
+#           ifdef flag_kerner
             iclockold = tick(id=id_buffer, since=iclockold)
-#         endif
+#           endif
             if (status.ne.0) then
-               start_chunk = ((pointids(ipol,jpol)) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+               start_chunk &
+                    = (pointids(ipol,jpol) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
                ! Only read to last point, not further
                gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+
                do idisplvar = 1, 3
 
                    if (sem_obj%displvarid(idisplvar).eq.-1) then
@@ -1962,21 +1971,20 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                        cycle ! For monopole source which does not have this component.
                    endif
 
-#                ifdef flag_kerner
+#                  ifdef flag_kerner
                    iclockold = tick()
-#                endif
+#                  endif
                    call check(nf90_get_var( ncid   = sem_obj%snap,           & 
                                             varid  = sem_obj%displvarid(idisplvar), &
                                             start  = [start_chunk, 1],       &
                                             count  = [gll_to_read, sem_obj%ndumps], &
                                             values = utemp_chunk(1:gll_to_read, :, idisplvar)))
 
-#                ifdef flag_kerner
+#                  ifdef flag_kerner
                    iclockold = tick(id=id_netcdf, since=iclockold)
-#                endif
-                   utemp(:,ipol,jpol, idisplvar) = utemp_chunk(  pointids(ipol,jpol) &
-                                                                 - start_chunk + 2,  &
-                                                               :, idisplvar)
+#                  endif
+                   utemp(:,ipol,jpol, idisplvar) &
+                        = utemp_chunk(pointids(ipol,jpol) - start_chunk + 2,:,idisplvar)
                enddo
                do iread = 0, sem_obj%chunk_gll - 1
                    status = sem_obj%buffer_disp%put(start_chunk + iread - 1, &
@@ -2074,12 +2082,11 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
         iclockold = tick(id=id_lagrange, since=iclockold)
 #       endif
 
-        !@TODO for consitency with SOLVER output
+        !@TODO for consistency with SOLVER output
         load_strain_point_interp(:, 4) = - load_strain_point_interp(:, 4) 
         load_strain_point_interp(:, 6) = - load_strain_point_interp(:, 6) 
 
     end select
-
 
 #   ifdef flag_kerner
     iclockold_total = tick(id=id_load_strain, since=iclockold_total)
@@ -2207,6 +2214,18 @@ subroutine read_meshes(this)
         call getvarid(ncid  = this%fwd(1)%mesh,   &
                       name  = "mesh_Z",              &
                       varid = this%fwd(1)%mesh_z_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_rho",              &
+                      varid = this%fwd(1)%mesh_rho_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_lambda",              &
+                      varid = this%fwd(1)%mesh_lambda_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_mu",              &
+                      varid = this%fwd(1)%mesh_mu_varid)
            
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mp_mesh_S", &
@@ -2321,7 +2340,18 @@ subroutine read_meshes(this)
             call getvarid(ncid  = this%bwd(1)%mesh,   &
                           name  = "mesh_Z",              &
                           varid = this%bwd(1)%mesh_z_varid)
-           
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_rho",              &
+                          varid = this%bwd(1)%mesh_rho_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_lambda",              &
+                          varid = this%bwd(1)%mesh_lambda_varid)
+
+            call getvarid(ncid  = this%bwd(1)%mesh,   &
+                          name  = "mesh_mu",              &
+                          varid = this%bwd(1)%mesh_mu_varid)
             
             call  getvarid( ncid  = this%bwd(1)%mesh, &
                             name  = "mp_mesh_S", &
