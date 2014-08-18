@@ -37,6 +37,7 @@ program rdbm
   integer                             :: filter_nomega
   real(kind=dp), allocatable          :: fw_field_res(:,:)
   real(kind=dp), allocatable          :: shift_time_sample(:)
+  real(kind=dp), allocatable          :: mu(:)
 
   integer                             :: iclockold
 
@@ -106,6 +107,7 @@ program rdbm
         shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
         !shift_time_sample(i) = sources(i)%time_shift / sem_data%dt
      enddo
+     allocate(mu(parameters%nsources))
   else
      write(6,*) 'ERROR: unkown source file type ', parameters%source_file_type
      call pabort
@@ -159,8 +161,17 @@ program rdbm
 
      ! load data from file
      iclockold = tick()
-     fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
-                                             parameters%component)
+     if (trim(parameters%source_file_type) == 'srf') then
+        fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
+                                                parameters%component, mu=mu)
+        do j = 1, parameters%nsources
+           ! correcting shear modulus used during reading the source
+           fw_field(:,:,j) = fw_field(:,:,j) * mu(j) / 32d9
+        enddo
+     else
+        fw_field = sem_data%load_fw_points_rdbm(sources, receivers%reci_sources(i), &
+                                                parameters%component)
+     endif
      iclockold = tick(id=id_load, since=iclockold)
 
      ! resample
