@@ -283,6 +283,8 @@ subroutine resample_stf(this, dt, nsamp)
 
    allocate(time_orig(nsamp_orig))
    allocate(time_new(nsamp))
+
+   if (allocated(this%stf_resampled)) deallocate(this%stf_resampled)
    allocate(this%stf_resampled(nsamp))
 
    this%stf_dt_resampled = dt
@@ -296,6 +298,7 @@ subroutine resample_stf(this, dt, nsamp)
    enddo
 
    this%stf_resampled(:) = 0
+
    outer: do i = 1, nsamp
       inner: do j = 1, nsamp_orig
          if (time_new(i) <= time_orig(j)) then
@@ -307,11 +310,7 @@ subroutine resample_stf(this, dt, nsamp)
                      + this%stf(j)   * (time_new(i)  - time_orig(j - 1)) / dt_orig 
             endif
 
-            if (j == nsamp_orig) then
-               exit outer
-            else
-               cycle outer
-            endif
+            cycle outer
          endif
       enddo inner
    enddo outer
