@@ -174,7 +174,7 @@ end subroutine create
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-!> Multiplies the transferfunction of the filter with the complex spectra of 
+!> Devides the transferfunction of the filter with the complex spectra of 
 !! the Source time functions of the SEM simulation, to cancel its effect.
 !! The filter is multiplied with the square root of the STF spectra, since it is
 !! applied twice later. (We could get around this by having separate filters for 
