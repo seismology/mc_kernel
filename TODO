@@ -1,0 +1,7 @@
+
+ - fft type should be generic
+
+ - normalization of fft with sampling rate dt do avoid problems when using fft for
+   convolutions
+
+ - tidy up specialized npol=4 functions if not used
