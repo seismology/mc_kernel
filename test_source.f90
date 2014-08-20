@@ -96,6 +96,10 @@ subroutine test_fft_stf
    ! only fft and compare to ref data
    call fft_stf(sources)
 
+   !open(newunit=lu, file='unit_tests/test_stf_fft')
+   !write(lu,*) abs(sources(1)%stf_fd)
+   !close(lu)
+
    allocate(stf_ref(17))
    open(newunit=lu, file='unit_tests/test_stf_fft')
    read(lu,*) stf_ref
@@ -108,12 +112,12 @@ subroutine test_fft_stf
    ! stf_fwd = dirac should have no effect in deconvolution
    allocate(stf_fwd(16))
    stf_fwd = 0
-   stf_fwd(1) = 1
+   stf_fwd(1) = 1d0 / sources(1)%stf_dt_resampled
 
    call fft_stf(sources, stf_fwd)
 
    call assert_comparable_real1d(real(abs(sources(1)%stf_reconv_fd), sp), &
-                                 real(stf_ref, sp), 1e-5, &
+                                 real(stf_ref, sp), 1e-4, &
                                  'stf fft dirac')
 
    ! stf_fwd = desired stf -> reconv stf = 1

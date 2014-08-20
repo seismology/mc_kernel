@@ -333,7 +333,7 @@ subroutine resample_stf(this, dt, nsamp)
       allocate(this%stf_resampled(nsamp))
 
       this%stf_resampled = 0
-      this%stf_resampled(1) = 1
+      this%stf_resampled(1) = 1d0 / dt
    endif
 
 end subroutine resample_stf
@@ -501,6 +501,7 @@ subroutine fft_stf(sources, stf_fwd)
 
    type(rfft_type)                  :: fftt
    integer                          :: nsources, nsamp
+   real(kind=dp)                    :: dt
    integer                          :: isource
    real(kind=dp), allocatable       :: stf_buf(:,:)
    complex(kind=dp), allocatable    :: stf_buf_fd(:,:)
@@ -516,10 +517,16 @@ subroutine fft_stf(sources, stf_fwd)
    enddo
 
    nsamp = size(sources(1)%stf_resampled)
+   dt = sources(1)%stf_dt_resampled
 
    do isource=2, nsources
       if (size(sources(isource)%stf_resampled) /= nsamp) then
          write(6,*) 'ERROR: stfs have incompatible number of samples'
+         call pabort
+      endif
+
+      if (sources(isource)%stf_dt_resampled /= dt) then
+         write(6,*) 'ERROR: stfs have incompatible dt'
          call pabort
       endif
    enddo
@@ -531,7 +538,7 @@ subroutine fft_stf(sources, stf_fwd)
       endif
    endif
     
-   call fftt%init(ntimes_in=nsamp*2, ndim=1, ntraces=1, nfft=nsamp*2)
+   call fftt%init(ntimes_in=nsamp*2, ndim=1, ntraces=1, dt=dt, nfft=nsamp*2)
 
    allocate(stf_buf(nsamp*2,1))
    allocate(stf_buf_fd(fftt%get_nomega(),1))
@@ -542,6 +549,7 @@ subroutine fft_stf(sources, stf_fwd)
        stf_buf(1:nsamp,1) = stf_fwd
 
        call fftt%rfft(stf_buf, stf_fwd_fd)
+       stf_fwd_fd = stf_fwd_fd * dt
    endif
 
    do isource=1, nsources
@@ -552,14 +560,14 @@ subroutine fft_stf(sources, stf_fwd)
       stf_buf(1:nsamp,1) = sources(isource)%stf_resampled
 
       call fftt%rfft(stf_buf, stf_buf_fd)
-      sources(isource)%stf_fd = stf_buf_fd(:,1)
+      sources(isource)%stf_fd = stf_buf_fd(:,1) * dt
 
       if (present(stf_fwd)) then
          if (allocated(sources(isource)%stf_reconv_fd)) &
              deallocate(sources(isource)%stf_reconv_fd)
          allocate(sources(isource)%stf_reconv_fd(fftt%get_nomega()))
 
-         sources(isource)%stf_reconv_fd = stf_buf_fd(:,1) / stf_fwd_fd(:,1)
+         sources(isource)%stf_reconv_fd = sources(isource)%stf_fd / stf_fwd_fd(:,1)
       endif
    enddo
 
