@@ -9,6 +9,7 @@ module source_class
     private
     public   :: src_param_type
     public   :: read_srf
+    public   :: fft_stf
 
     type src_param_type
         real(kind=dp)   :: mij(6)              ! Mrr Mtt Mpp Mrt Mrp Mtp
@@ -22,6 +23,7 @@ module source_class
                                                ! netcdf file)
         real(kind=dp), allocatable           :: stf(:), stf_resampled(:)
         real(kind=dp)                        :: stf_dt, stf_dt_resampled
+        complex(kind=dp), allocatable        :: stf_fd(:)
         real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
         contains
            procedure, pass                   :: init
@@ -465,6 +467,55 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
       write(6,*) 'mindep ', mindep
       write(6,*) 'maxdep ', maxdep
    endif
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine fft_stf(sources)
+
+   use fft, only : rfft_type
+   type(src_param_type), intent(inout) :: sources(:)
+
+   type(rfft_type)                  :: fftt
+   integer                          :: nsources, nsamp
+   integer                          :: isource
+   real(kind=dp), allocatable       :: stf_buf(:,:)
+   complex(kind=dp), allocatable    :: stf_buf_fd(:,:)
+
+   nsources = size(sources)
+
+   do isource=1, nsources
+      if (.not. allocated(sources(isource)%stf_resampled)) then
+         write(6,*) 'ERROR: stf needs to be resampled before fft'
+         call pabort
+      endif
+   enddo
+
+   nsamp = size(sources(1)%stf_resampled)
+
+   do isource=2, nsources
+      if (size(sources(isource)%stf_resampled) /= nsamp) then
+         write(6,*) 'ERROR: stfs have incompatible number of samples'
+         call pabort
+      endif
+   enddo
+    
+   call fftt%init(ntimes_in=nsamp*2, ndim=1, ntraces=1, nfft=nsamp*2)
+
+   allocate(stf_buf(nsamp*2,1))
+   allocate(stf_buf_fd(fftt%get_nomega(),1))
+
+   do isource=1, nsources
+      if (allocated(sources(isource)%stf_fd)) deallocate(sources(isource)%stf_fd)
+      allocate(sources(isource)%stf_fd(fftt%get_nomega()))
+
+      stf_buf = 0
+      stf_buf(1:nsamp,1) = sources(isource)%stf_resampled
+
+      call fftt%rfft(stf_buf, stf_buf_fd)
+      sources(isource)%stf_fd = stf_buf_fd(:,1)
+   enddo
 
 end subroutine
 !-----------------------------------------------------------------------------------------
