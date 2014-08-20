@@ -108,6 +108,14 @@ program rdbm
      call pabort
   endif
 
+  ! fill resampled stfs in source types. if no stf is available, defaults to dirac
+  do i = 1, parameters%nsources
+     call sources(i)%resample_stf(sem_data%dt, sem_data%ndumps)
+  enddo
+
+  ! prepare stf deconvolution
+  call fft_stf(sources, sem_data%stf_fwd)
+
   ! initialize filter
   if (parameters%apply_filter) then
      filtername = 'filter1'
