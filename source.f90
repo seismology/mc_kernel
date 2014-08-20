@@ -21,6 +21,7 @@ module source_class
         real(kind=dp)   :: shift_time          ! in seconds
         real(kind=dp)   :: shift_time_sample   ! in samples (based on sampling rate of the
                                                ! netcdf file)
+        logical                              :: have_stf = .false.
         real(kind=dp), allocatable           :: stf(:), stf_resampled(:)
         real(kind=dp)                        :: stf_dt, stf_dt_resampled
         complex(kind=dp), allocatable        :: stf_fd(:), stf_reconv_fd(:)
@@ -63,6 +64,8 @@ subroutine init(this, lat, lon, mij, depth)
    this%mij    = mij
    call this%def_rot_matrix()
 
+   this%have_stf = .false.
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 
@@ -94,6 +97,7 @@ subroutine init_xyz(this, x, y, z, mij)
 
    this%mij    = mij
    call this%def_rot_matrix()
+   this%have_stf = .false.
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -158,6 +162,7 @@ subroutine init_strike_dip_rake(this, lat, lon, depth, strike, dip, area, tinit,
    this%mij_voigt = this%mij_voigt * M0
 
    call this%def_rot_matrix()
+   this%have_stf = .false.
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -226,6 +231,8 @@ subroutine read_cmtsolution(this, fname)
 
    call this%def_rot_matrix()
 
+   this%have_stf = .false.
+
    close(lu_cmtsolution)
 
 end subroutine
@@ -281,42 +288,53 @@ subroutine resample_stf(this, dt, nsamp)
    integer                        :: nsamp_orig
    integer                        :: i, j
 
-   nsamp_orig = size(this%stf)
-   dt_orig = this%stf_dt
+   if (this%have_stf) then
 
-   allocate(time_orig(nsamp_orig))
-   allocate(time_new(nsamp))
+      nsamp_orig = size(this%stf)
+      dt_orig = this%stf_dt
 
-   if (allocated(this%stf_resampled)) deallocate(this%stf_resampled)
-   allocate(this%stf_resampled(nsamp))
+      allocate(time_orig(nsamp_orig))
+      allocate(time_new(nsamp))
 
-   this%stf_dt_resampled = dt
+      if (allocated(this%stf_resampled)) deallocate(this%stf_resampled)
+      allocate(this%stf_resampled(nsamp))
 
-   do i = 1, nsamp_orig
-      time_orig(i) = (i-1) * dt_orig
-   enddo
+      this%stf_dt_resampled = dt
 
-   do i = 1, nsamp
-      time_new(i) = (i-1) * dt
-   enddo
+      do i = 1, nsamp_orig
+         time_orig(i) = (i-1) * dt_orig
+      enddo
 
-   this%stf_resampled(:) = 0
+      do i = 1, nsamp
+         time_new(i) = (i-1) * dt
+      enddo
 
-   outer: do i = 1, nsamp
-      inner: do j = 1, nsamp_orig
-         if (time_new(i) <= time_orig(j)) then
-            if (j < 2) then
-               this%stf_resampled(i) = 0
-            else
-               this%stf_resampled(i) = &
-                       this%stf(j-1) * (time_orig(j) - time_new(i))      / dt_orig &
-                     + this%stf(j)   * (time_new(i)  - time_orig(j - 1)) / dt_orig 
+      this%stf_resampled(:) = 0
+
+      outer: do i = 1, nsamp
+         inner: do j = 1, nsamp_orig
+            if (time_new(i) <= time_orig(j)) then
+               if (j < 2) then
+                  this%stf_resampled(i) = 0
+               else
+                  this%stf_resampled(i) = &
+                          this%stf(j-1) * (time_orig(j) - time_new(i))      / dt_orig &
+                        + this%stf(j)   * (time_new(i)  - time_orig(j - 1)) / dt_orig 
+               endif
+
+               cycle outer
             endif
+         enddo inner
+      enddo outer
 
-            cycle outer
-         endif
-      enddo inner
-   enddo outer
+   else
+      ! no stf provided, so we assume a dirac
+      if (allocated(this%stf_resampled)) deallocate(this%stf_resampled)
+      allocate(this%stf_resampled(nsamp))
+
+      this%stf_resampled = 0
+      this%stf_resampled(1) = 1
+   endif
 
 end subroutine resample_stf
 !-----------------------------------------------------------------------------------------
@@ -434,6 +452,7 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
          read(lu_srf,*) sources(isource)%stf
 
          sources(isource)%stf_dt = dt
+         sources(isource)%have_stf = .true.
       endif
 
       if (nt2 > 0) then
@@ -446,6 +465,7 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
          read(lu_srf,*) sources(isource)%stf
 
          sources(isource)%stf_dt = dt
+         sources(isource)%have_stf = .true.
       endif
 
       if (nt3 > 0) then
