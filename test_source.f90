@@ -120,6 +120,7 @@ subroutine test_fft_stf
                                  real(stf_ref, sp), 1e-4, &
                                  'stf fft dirac')
 
+
    ! stf_fwd = desired stf -> reconv stf = 1
    stf_fwd = sources(1)%stf_resampled
 
@@ -129,6 +130,22 @@ subroutine test_fft_stf
    call assert_comparable_real1d(real(abs(sources(1)%stf_reconv_fd), sp), &
                                  real(stf_ref, sp), 1e-5, &
                                  'stf fft, fwd = desired')
+
+   ! stf_fwd = dirac + have_stf = false -> no effect
+   stf_fwd = 0
+   stf_fwd(1) = 1d0 / sources(1)%stf_dt_resampled
+
+   do i=1, nsources
+      sources(1)%have_stf = .false.
+      call sources(i)%resample_stf(sources(i)%stf_dt, 16)
+   enddo
+
+   call fft_stf(sources, stf_fwd)
+   stf_ref = 1
+
+   call assert_comparable_real1d(real(abs(sources(1)%stf_reconv_fd), sp), &
+                                 real(stf_ref, sp), 1e-5, &
+                                 'stf_fwd = dirac, have_stf = .false.')
 
 end subroutine
 !-----------------------------------------------------------------------------------------
