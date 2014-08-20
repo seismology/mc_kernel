@@ -36,7 +36,6 @@ program rdbm
   real(kind=dp)                       :: filter_df
   integer                             :: filter_nomega
   real(kind=dp), allocatable          :: fw_field_res(:,:)
-  real(kind=dp), allocatable          :: shift_time_sample(:)
   real(kind=dp), allocatable          :: mu(:)
 
   integer                             :: iclockold
@@ -82,17 +81,15 @@ program rdbm
   if (trim(parameters%source_file_type) == 'cmtsolution') then
 
      allocate(sources(1))
-     allocate(shift_time_sample(1))
      call sources(1)%read_cmtsolution(fname=trim(parameters%source_file_name))
-     shift_time_sample(1) = (sources(1)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
+     sources(1)%shift_time_sample = (sources(1)%shift_time - sem_data%timeshift_fwd) / sem_data%dt
 
   else if (trim(parameters%source_file_type) == 'cmtsolutions') then
 
      allocate(sources(parameters%nsources))
-     allocate(shift_time_sample(parameters%nsources))
      do i = 1, parameters%nsources
         call sources(i)%read_cmtsolution(fname=trim(parameters%source_files(i)))
-        shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
+        sources(i)%shift_time_sample = (sources(i)%shift_time - sem_data%timeshift_fwd) / sem_data%dt
      enddo
 
   else if (trim(parameters%source_file_type) == 'srf') then
@@ -102,10 +99,8 @@ program rdbm
      call read_srf(parameters%source_file_name, sources, nsources=parameters%nsources)
 
      write(6,*) parameters%nsources
-     allocate(shift_time_sample(parameters%nsources))
      do i = 1, parameters%nsources
-        shift_time_sample(i) = (sources(i)%time_shift - sem_data%timeshift_fwd) / sem_data%dt
-        !shift_time_sample(i) = sources(i)%time_shift / sem_data%dt
+        sources(i)%shift_time_sample = (sources(i)%shift_time - sem_data%timeshift_fwd) / sem_data%dt
      enddo
      allocate(mu(parameters%nsources))
   else
@@ -114,10 +109,12 @@ program rdbm
   endif
 
   ! initialize filter
-  filtername = 'filter1'
-  filter_nomega = sem_data%ndumps + 1
-  filter_df = 0.5d0 / sem_data%dt / filter_nomega
-  call filter%create(filtername, filter_df, filter_nomega, parameters%filterclass, parameters%filterfreqs)
+  if (parameters%apply_filter) then
+     filtername = 'filter1'
+     filter_nomega = sem_data%ndumps + 1
+     filter_df = 0.5d0 / sem_data%dt / filter_nomega
+     call filter%create(filtername, filter_df, filter_nomega, parameters%filterclass, parameters%filterfreqs)
+  endif
 
   ! initialize resampling
   if (parameters%resample .or. parameters%time_shift) then
@@ -187,7 +184,7 @@ program rdbm
         call resamp%resample_timeshift(taperandzeropad(fw_field(:,1,:), ntaper=10, &
                                                        ntimes=sem_data%ndumps * 2, &
                                                        end_only=.true.), &
-                                       fw_field_res, delta_t=shift_time_sample)
+                                       fw_field_res, sources=sources)
         iclockold = tick(id=id_resamp, since=iclockold)
      else
         fw_field_res = fw_field(:,1,:)

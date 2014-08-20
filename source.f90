@@ -11,14 +11,15 @@ module source_class
     public   :: read_srf
 
     type src_param_type
-        real(kind=dp)                        :: mij(6)              ! Mrr Mtt Mpp Mrt Mrp Mtp
-        real(kind=dp)                        :: mij_voigt(6)        ! Mtt Mpp Mrr Mrp Mrt Mtp
-        real(kind=dp)                        :: colat, lat, lon     ! in radians
-        real(kind=dp)                        :: colatd, latd, lond  ! in degrees
-        real(kind=dp)                        :: x, y, z             ! cartesian 
-                                                                    ! coordinates in km
-        real(kind=dp)                        :: depth, radius       ! in km
-        real(kind=dp)                        :: time_shift          ! in seconds
+        real(kind=dp)   :: mij(6)              ! Mrr Mtt Mpp Mrt Mrp Mtp
+        real(kind=dp)   :: mij_voigt(6)        ! Mtt Mpp Mrr Mrp Mrt Mtp
+        real(kind=dp)   :: colat, lat, lon     ! in radians
+        real(kind=dp)   :: colatd, latd, lond  ! in degrees
+        real(kind=dp)   :: x, y, z             ! cartesian coordinates in km
+        real(kind=dp)   :: depth, radius       ! in km
+        real(kind=dp)   :: shift_time          ! in seconds
+        real(kind=dp)   :: shift_time_sample   ! in samples (based on sampling rate of the
+                                               ! netcdf file)
         real(kind=dp), allocatable           :: stf(:), stf_resampled(:)
         real(kind=dp)                        :: stf_dt, stf_dt_resampled
         real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
@@ -47,7 +48,7 @@ subroutine init(this, lat, lon, mij, depth)
    this%lon    = this%lond   * deg2rad
    this%lat    = this%latd   * deg2rad
 
-   this%time_shift = 0
+   this%shift_time = 0
 
    !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
    this%radius = 6371 - depth
@@ -86,7 +87,7 @@ subroutine init_xyz(this, x, y, z, mij)
    !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
    this%depth  = 6371 - this%radius
 
-   this%time_shift = 0
+   this%shift_time = 0
 
    this%mij    = mij
    call this%def_rot_matrix()
@@ -112,7 +113,7 @@ subroutine init_strike_dip_rake(this, lat, lon, depth, strike, dip, area, tinit,
    this%lon    = this%lond   * deg2rad
    this%lat    = this%latd   * deg2rad
 
-   this%time_shift = tinit
+   this%shift_time = tinit
 
    !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
    this%radius = 6371 - depth
@@ -183,7 +184,7 @@ subroutine read_cmtsolution(this, fname)
 
    read(lu_cmtsolution,*) junk ! first crap line
    read(lu_cmtsolution,*) junk ! event name
-   read(lu_cmtsolution,*) junk, junk, this%time_shift
+   read(lu_cmtsolution,*) junk, junk, this%shift_time
    read(lu_cmtsolution,*) junk ! half duration
    read(lu_cmtsolution,*) junk, this%latd
    read(lu_cmtsolution,*) junk, this%lond
@@ -276,7 +277,6 @@ subroutine resample_stf(this, dt, nsamp)
    real(kind=dp)                  :: dt_orig
    integer                        :: nsamp_orig
    integer                        :: i, j
-
 
    nsamp_orig = size(this%stf)
    dt_orig = this%stf_dt

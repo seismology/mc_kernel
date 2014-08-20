@@ -227,7 +227,10 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_resampling_timeshift_triangle
   
+  use source_class
   type(resampling_type)                         :: resamp
+
+  type(src_param_type)                          :: source(1)
 
   integer                                       :: ntimes_in, ntimes_out, ntraces
   integer                                       :: i
@@ -272,9 +275,12 @@ subroutine test_resampling_timeshift_triangle
 
   close(myunit)
 
+  call source(1)%init(0d0, 0d0, [0d0, 0d0, 0d0, 0d0, 0d0, 0d0], 0d0)
+  source(1)%shift_time_sample = 5d0 / dt_in
+
   call resamp%init(ntimes_in, ntimes_out, ntraces)
 
-  call resamp%resample_timeshift(data_in, data_out, [5d0 / dt_in])
+  call resamp%resample_timeshift(data_in, data_out, source)
 
   do i=1, ntraces
      call assert_comparable_real1d(real(data_out(:,i), sp) + 10, &

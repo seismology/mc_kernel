@@ -125,12 +125,14 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 !> resampling routine for rational number resampling, inspriation taken from
 !! scipy.signal.resample
-subroutine resample_timeshift(this, data_in, data_out, delta_t)
+subroutine resample_timeshift(this, data_in, data_out, sources)
+
+  use source_class
 
   class(resampling_type)            :: this
   real(kind=dp), intent(in)         :: data_in(:,:)
-  real(kind=dp), intent(in)         :: delta_t(:)          ! in number of samples!
   real(kind=dp), intent(out)        :: data_out(:,:)
+  class(src_param_type)             :: sources(:)
 
   complex(kind=dp), allocatable     :: dataf_in(:,:), dataf_out(:,:)
   complex(kind=dp), allocatable     :: shift_fd(:)
@@ -158,8 +160,8 @@ subroutine resample_timeshift(this, data_in, data_out, delta_t)
      call pabort
   end if
 
-  if (size(delta_t) /= this%ntraces) then
-     write(*,*) 'ERROR: shape mismatch for argument delta_t'
+  if (size(sources) /= this%ntraces) then
+     write(*,*) 'ERROR: shape mismatch for argument sources'
      call pabort
   end if
 
@@ -171,7 +173,7 @@ subroutine resample_timeshift(this, data_in, data_out, delta_t)
   
   ! time shift (dt in fft is 1!!)
   do i = 1, this%fft_in%get_ntraces()
-     shift_fd = exp(- this%fft_in%get_f() * 2 * pi * delta_t(i) * cmplx(0, 1))
+     shift_fd = exp(- this%fft_in%get_f() * 2 * pi * sources(i)%shift_time_sample * cmplx(0, 1))
      dataf_in(:,i) = dataf_in(:,i) * shift_fd
      if (this%apply_filter) &
         dataf_in(:,i) = dataf_in(:,i) * this%filter%transferfunction
