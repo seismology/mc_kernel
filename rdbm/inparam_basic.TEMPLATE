@@ -56,6 +56,7 @@ FILTER                  F
 FILTER_DEF              'Butterw_LP_O4 2. 0. 0. 0.'
 
 # Time Shift? done during resampling, so only possible if resampling is activated
+# uses timeshift from the source and the forward simulation
 TIMESHIFT               T
 
 # Size of reading buffer. 1000 is a good value, unless you run into memory problems.

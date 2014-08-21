@@ -125,14 +125,15 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 !> resampling routine for rational number resampling, inspriation taken from
 !! scipy.signal.resample
-subroutine resample_timeshift(this, data_in, data_out, sources)
+subroutine resample_timeshift(this, data_in, data_out, sources, ts_fwd_sample)
 
   use source_class
 
-  class(resampling_type)            :: this
-  real(kind=dp), intent(in)         :: data_in(:,:)
-  real(kind=dp), intent(out)        :: data_out(:,:)
-  class(src_param_type)             :: sources(:)
+  class(resampling_type)                :: this
+  real(kind=dp), intent(in)             :: data_in(:,:)
+  real(kind=dp), intent(out)            :: data_out(:,:)
+  class(src_param_type)                 :: sources(:)
+  real(kind=dp), intent(in), optional   :: ts_fwd_sample
 
   complex(kind=dp), allocatable     :: dataf_in(:,:), dataf_out(:,:)
   complex(kind=dp), allocatable     :: shift_fd(:)
@@ -173,7 +174,13 @@ subroutine resample_timeshift(this, data_in, data_out, sources)
   
   ! time shift (dt in fft is 1!!)
   do i = 1, this%fft_in%get_ntraces()
-     shift_fd = exp(- this%fft_in%get_f() * 2 * pi * sources(i)%shift_time_sample * cmplx(0, 1))
+     if (present(ts_fwd_sample)) then
+        shift_fd = exp(- this%fft_in%get_f() * 2 * pi &
+                       * (sources(i)%shift_time_sample - ts_fwd_sample) * cmplx(0, 1))
+     else
+        shift_fd = exp(- this%fft_in%get_f() * 2 * pi &
+                       * sources(i)%shift_time_sample * cmplx(0, 1))
+     endif
      dataf_in(:,i) = dataf_in(:,i) * shift_fd
      if (this%apply_filter) &
         dataf_in(:,i) = dataf_in(:,i) * this%filter%transferfunction

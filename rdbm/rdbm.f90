@@ -151,6 +151,7 @@ program rdbm
 
   write(6,*) 'Initiatlization Done.'
   write(6,*) 'Working on ', receivers%num_rec, ' receivers'
+  write(6,*) 'TS:', sem_data%timeshift_fwd
 
   do i=1, receivers%num_rec
 
@@ -187,7 +188,8 @@ program rdbm
         call resamp%resample_timeshift(taperandzeropad(fw_field(:,1,:), ntaper=10, &
                                                        ntimes=sem_data%ndumps * 2, &
                                                        end_only=.true.), &
-                                       fw_field_res, sources=sources)
+                                       fw_field_res, sources=sources, &
+                                       ts_fwd_sample=sem_data%timeshift_fwd / sem_data%dt)
         iclockold = tick(id=id_resamp, since=iclockold)
      else
         fw_field_res = fw_field(:,1,:)
