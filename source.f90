@@ -12,15 +12,15 @@ module source_class
     public   :: fft_stf
 
     type src_param_type
-        real(kind=dp)   :: mij(6)              ! Mrr Mtt Mpp Mrt Mrp Mtp
-        real(kind=dp)   :: mij_voigt(6)        ! Mtt Mpp Mrr Mrp Mrt Mtp
-        real(kind=dp)   :: colat, lat, lon     ! in radians
-        real(kind=dp)   :: colatd, latd, lond  ! in degrees
-        real(kind=dp)   :: x, y, z             ! cartesian coordinates in km
-        real(kind=dp)   :: depth, radius       ! in km
-        real(kind=dp)   :: shift_time          ! in seconds
-        real(kind=dp)   :: shift_time_sample   ! in samples (based on sampling rate of the
-                                               ! netcdf file)
+        real(kind=dp)               :: mij(6)              ! Mrr Mtt Mpp Mrt Mrp Mtp
+        real(kind=dp)               :: mij_voigt(6)        ! Mtt Mpp Mrr Mrp Mrt Mtp
+        real(kind=dp)               :: colat, lat, lon     ! in radians
+        real(kind=dp)               :: colatd, latd, lond  ! in degrees
+        real(kind=dp)               :: x, y, z             ! cartesian coordinates in km
+        real(kind=dp)               :: depth, radius       ! in km
+        real(kind=dp)               :: shift_time          ! in seconds
+        real(kind=dp), allocatable  :: shift_time_sample   ! in samples (based on sampling
+                                                           ! rate of the netcdf file)
         logical                              :: have_stf = .false.
         real(kind=dp), allocatable           :: stf(:), stf_resampled(:)
         real(kind=dp)                        :: stf_dt, stf_dt_resampled
@@ -33,6 +33,7 @@ module source_class
            procedure, pass                   :: init_strike_dip_rake
            procedure, pass                   :: read_cmtsolution
            procedure, pass                   :: def_rot_matrix
+           procedure, pass                   :: set_shift_time_sample
            procedure, pass                   :: resample_stf
     end type
 contains
@@ -275,6 +276,17 @@ subroutine def_rot_matrix(this)
    end if
 
 end subroutine def_rot_matrix
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine set_shift_time_sample(this, dt)
+   class(src_param_type)          :: this
+   real(kind=dp), intent(in)      :: dt
+
+   allocate(this%shift_time_sample)
+   this%shift_time_sample = this%shift_time / dt
+
+end subroutine 
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

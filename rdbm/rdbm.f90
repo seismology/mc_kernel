@@ -82,35 +82,30 @@ program rdbm
 
      allocate(sources(1))
      call sources(1)%read_cmtsolution(fname=trim(parameters%source_file_name))
-     sources(1)%shift_time_sample = (sources(1)%shift_time - sem_data%timeshift_fwd) / sem_data%dt
 
   else if (trim(parameters%source_file_type) == 'cmtsolutions') then
 
      allocate(sources(parameters%nsources))
      do i = 1, parameters%nsources
         call sources(i)%read_cmtsolution(fname=trim(parameters%source_files(i)))
-        sources(i)%shift_time_sample = (sources(i)%shift_time - sem_data%timeshift_fwd) / sem_data%dt
      enddo
 
   else if (trim(parameters%source_file_type) == 'srf') then
 
      write(6,*) 'reading srf file'
-
      call read_srf(parameters%source_file_name, sources, nsources=parameters%nsources)
-
-     write(6,*) parameters%nsources
-     do i = 1, parameters%nsources
-        sources(i)%shift_time_sample = (sources(i)%shift_time - sem_data%timeshift_fwd) / sem_data%dt
-     enddo
      allocate(mu(parameters%nsources))
+
   else
      write(6,*) 'ERROR: unkown source file type ', parameters%source_file_type
      call pabort
   endif
 
   ! fill resampled stfs in source types. if no stf is available, defaults to dirac
+  ! compute time shift in number of samples (does not include timeshift from the fwd_stf!)
   do i = 1, parameters%nsources
      call sources(i)%resample_stf(sem_data%dt, sem_data%ndumps)
+     call sources(i)%set_shift_time_sample(sem_data%dt)
   enddo
 
   ! prepare stf deconvolution
