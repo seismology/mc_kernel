@@ -43,6 +43,7 @@ module readfields
         integer                            :: displvarid(3)           ! Variable IDs
         integer                            :: seis_disp, seis_velo    ! Variable IDs
         integer                            :: stf_varid               ! Variable IDs
+        integer                            :: stf_d_varid             ! Variable IDs
         integer                            :: fem_mesh_varid          ! Variable IDs
         integer                            :: sem_mesh_varid          ! Variable IDs
         integer                            :: eltype_varid            ! Variable IDs
@@ -61,7 +62,7 @@ module readfields
         real(kind=dp)                      :: source_shift_t
         character(len=10)                  :: source_type
         character(len=10)                  :: excitation_type
-        real(kind=sp), allocatable         :: stf(:)
+        real(kind=sp), allocatable         :: stf(:), stf_d(:)
         type(buffer_type)                  :: buffer_strain
         type(buffer_type)                  :: buffer_disp
         type(buffer_type)                  :: buffer
@@ -102,8 +103,10 @@ module readfields
         real(kind=dp), public, allocatable :: gll_points(:), glj_points(:)
         real(kind=dp), public              :: windowlength
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
+        real(kind=dp), public              :: amplitude_fwd, amplitude_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
         real(kind=dp), public, allocatable :: stf_fwd(:), stf_bwd(:)
+        real(kind=dp), public, allocatable :: stf_d_fwd(:), stf_d_bwd(:)
         integer                            :: buffer_size
         character(len=12)                  :: dump_type
          
@@ -420,11 +423,20 @@ subroutine open_files(this)
         call getvarid(            ncid     = this%fwd(isim)%surf,   &
                                   name     = "stf_dump",            &
                                   varid    = this%fwd(isim)%stf_varid)
+
+        call getvarid(            ncid     = this%fwd(isim)%surf,   &
+                                  name     = "stf_d_dump",            &
+                                  varid    = this%fwd(isim)%stf_d_varid)
         
         allocate( this%fwd(isim)%stf( this%fwd(isim)%ndumps ) )
         call check(nf90_get_var(  ncid   = this%fwd(isim)%surf,   &
                                   varid  = this%fwd(isim)%stf_varid, &
                                   values = this%fwd(isim)%stf  ))
+
+        allocate( this%fwd(isim)%stf_d( this%fwd(isim)%ndumps ) )
+        call check(nf90_get_var(  ncid   = this%fwd(isim)%surf,   &
+                                  varid  = this%fwd(isim)%stf_d_varid, &
+                                  values = this%fwd(isim)%stf_d  ))
         
     end do
         
@@ -700,14 +712,17 @@ subroutine check_consistency(this)
     character(len=12)      :: dump_type_agreed
     integer                :: ndumps_agreed, nseis_agreed, npol_agreed
     real(kind=dp)          :: source_shift_agreed_fwd, source_shift_agreed_bwd
-    real(kind=dp), allocatable  :: stf_agreed_fwd(:)
-    real(kind=dp), allocatable  :: stf_agreed_bwd(:)
+    real(kind=dp)          :: amplitude_agreed_fwd, amplitude_agreed_bwd
+    real(kind=dp), allocatable  :: stf_agreed_fwd(:), stf_d_agreed_fwd(:)
+    real(kind=dp), allocatable  :: stf_agreed_bwd(:), stf_d_agreed_bwd(:)
 
     if (this%nsim_fwd > 0) then
        allocate(stf_agreed_fwd(this%fwd(1)%ndumps))
+       allocate(stf_d_agreed_fwd(this%fwd(1)%ndumps))
     endif
     if (this%nsim_bwd > 0) then
        allocate(stf_agreed_bwd(this%fwd(1)%ndumps))
+       allocate(stf_d_agreed_bwd(this%fwd(1)%ndumps))
     endif
 
     ! Check whether the dump_type is the same in all files
@@ -821,6 +836,8 @@ subroutine check_consistency(this)
     ! Check whether the source time shift and stf are the same in all files
     source_shift_agreed_fwd = this%fwd(1)%source_shift_t
     stf_agreed_fwd = this%fwd(1)%stf
+    stf_d_agreed_fwd = this%fwd(1)%stf_d
+    amplitude_agreed_fwd = this%fwd(1)%amplitude
 
     fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
                 '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
@@ -836,15 +853,30 @@ subroutine check_consistency(this)
            write(*,fmtstring) 'stf', isim
            call pabort
        end if
+       if (any(abs(stf_d_agreed_fwd - this%fwd(isim)%stf_d).gt.1e-10)) then
+           write(*,fmtstring) 'stf_d', isim
+           call pabort
+       end if
+       if (amplitude_agreed_fwd.ne.this%fwd(isim)%amplitude) then
+          write(*,fmtstring) 'source amplitude', isim, amplitude_agreed_fwd, &
+                             this%fwd(isim)%amplitude
+          call pabort
+       end if
     end do
 
     this%timeshift_fwd = real(source_shift_agreed_fwd, kind=dp)
     allocate(this%stf_fwd(ndumps_agreed))
+    allocate(this%stf_d_fwd(ndumps_agreed))
     this%stf_fwd = real(stf_agreed_fwd, kind=dp)
+    this%stf_d_fwd = real(stf_d_agreed_fwd, kind=dp)
+    this%amplitude_fwd = real(amplitude_agreed_fwd, kind=dp)
+
     
     if (this%nsim_bwd > 0) then
        source_shift_agreed_bwd = this%bwd(1)%source_shift_t
        stf_agreed_bwd = this%bwd(1)%stf
+       stf_d_agreed_bwd = this%bwd(1)%stf_d 
+       amplitude_agreed_bwd = this%bwd(1)%amplitude
        fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
                    '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
        fmtstring_stf = '("Inconsistency in backward simulations: ", A, " is different \'// &
@@ -860,10 +892,22 @@ subroutine check_consistency(this)
               write(*,fmtstring) 'stf', isim
               call pabort
           end if
+          if (any(abs(stf_d_agreed_bwd - this%bwd(isim)%stf_d).gt.1e-10)) then
+              write(*,fmtstring) 'stf_d', isim
+              call pabort
+          end if
+          if (amplitude_agreed_bwd.ne.this%bwd(isim)%amplitude) then
+             write(*,fmtstring) 'source amplitude', isim, amplitude_agreed_bwd, &
+                                this%bwd(isim)%amplitude
+             call pabort
+          end if
        end do
        this%timeshift_bwd = real(source_shift_agreed_bwd, kind=dp)
        allocate(this%stf_bwd(ndumps_agreed))
+       allocate(this%stf_d_bwd(ndumps_agreed))
        this%stf_bwd = real(stf_agreed_bwd, kind=dp)
+       this%stf_d_bwd = real(stf_d_agreed_bwd, kind=dp)
+       this%amplitude_bwd = real(amplitude_agreed_bwd, kind=dp)
     endif
 
 
