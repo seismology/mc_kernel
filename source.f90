@@ -354,14 +354,15 @@ end subroutine resample_stf
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_srf(srf_file, sources, npoints, nsources)
+subroutine read_srf(srf_file, sources, npoints, nsources, normalize_stf)
    character(len=*), intent(in)                   :: srf_file
    type(src_param_type), allocatable, intent(out) :: sources(:)
 
    ! optional output for tests
-   integer, intent(out), optional :: npoints, nsources
+   integer, intent(out), optional   :: npoints, nsources
+   logical, intent(in), optional    :: normalize_stf
 
-   integer                      :: lu_srf, ioerr, i
+   integer                      :: lu_srf, ioerr, i, it
    integer                      :: npoints_loc, nsources_loc, isource
    character(len=256)           :: line, junk
    real(kind=dp)                :: lon, lat, dep, stk, dip, area, tinit, dt, &
@@ -369,6 +370,14 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
    real(kind=dp)                :: minlond, maxlond, minlatd, maxlatd, mindep, maxdep
    integer                      :: nt1, nt2, nt3
    real(kind=dp), allocatable   :: sv1(:), sv2(:), sv3(:)
+   real(kind=dp)                :: integral
+   logical                      :: normalize_stf_loc
+
+   if (present(normalize_stf)) then
+      normalize_stf_loc = normalize_stf
+   else
+      normalize_stf_loc = .false.
+   endif
 
    open(newunit=lu_srf, file=trim(srf_file), status='old', &
         action='read', iostat=ioerr)
@@ -501,6 +510,19 @@ subroutine read_srf(srf_file, sources, npoints, nsources)
       write(6,*) 'maxlatd', maxlatd
       write(6,*) 'mindep ', mindep
       write(6,*) 'maxdep ', maxdep
+   endif
+
+   if (normalize_stf_loc) then
+      ! integrate using trapezoidal rule
+      do isource = 1, nsources_loc
+         if (sources(isource)%have_stf) then
+            integral = 2 * sum(sources(isource)%stf)
+            nt1 = size(sources(isource)%stf)
+            integral = integral - sources(isource)%stf(1) - sources(isource)%stf(nt1)
+            integral = integral * sources(isource)%stf_dt / 2
+            sources(isource)%stf = sources(isource)%stf / integral
+         endif
+      enddo
    endif
 
 end subroutine

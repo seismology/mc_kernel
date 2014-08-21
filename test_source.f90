@@ -11,11 +11,12 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine test_read_srf
    character(len=256)   :: srf_file
-   integer              :: npoints, nsources, i
+   integer              :: npoints, nsources, i, lu
    type(src_param_type), allocatable :: sources(:)
 
    srf_file = 'unit_tests/standard_rupture_fomat_testfile.srf'
-   call read_srf(srf_file, sources, npoints=npoints, nsources=nsources)
+   call read_srf(srf_file, sources, npoints=npoints, nsources=nsources, &
+                 normalize_stf=.true.)
 
    call assert_equal(npoints, 10, 'Number of points')
    call assert_equal(nsources, 8, 'Number of sources')
@@ -37,7 +38,7 @@ subroutine test_read_srf
                                  'strike = 0, rake = 0, dip = 0')
 
    do i=1, nsources
-      call assert_comparable(real(sum(sources(i)%mij_voigt(1:3)), sp) + 1e22, 1e22, 1e-5, &
+      call assert_comparable(real(sum(sources(i)%mij_voigt(1:3)), sp) + 1e22, 1e22, 1e-5,&
                              'trace of DC is zero')
    enddo
 
