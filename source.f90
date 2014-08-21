@@ -283,7 +283,8 @@ subroutine set_shift_time_sample(this, dt)
    class(src_param_type)          :: this
    real(kind=dp), intent(in)      :: dt
 
-   allocate(this%shift_time_sample)
+   if (.not. allocated(this%shift_time_sample)) &
+      allocate(this%shift_time_sample)
    this%shift_time_sample = this%shift_time / dt
 
 end subroutine 
