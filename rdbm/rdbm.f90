@@ -39,6 +39,7 @@ program rdbm
   real(kind=dp), allocatable          :: mu(:)
 
   integer                             :: iclockold
+  integer                             :: lu
 
   real(kind=dp), dimension(:), allocatable      :: T
   real(kind=dp)                                 :: dt_out
@@ -109,7 +110,16 @@ program rdbm
   enddo
 
   ! prepare stf deconvolution
-  call fft_stf(sources, sem_data%stf_fwd)
+  call fft_stf(sources, sem_data%stf_d_fwd / sem_data%amplitude_fwd)
+
+  ! dump stf + derivative
+  open(newunit=lu, file='stf')
+  write(lu,'(2E20.10)') (sem_data%dt * (i-1), sem_data%stf_fwd(i), i=1, sem_data%ndumps)
+  close(lu)
+  open(newunit=lu, file='stf_d')
+  write(lu,'(2E20.10)') (sem_data%dt * (i-1), sem_data%stf_d_fwd(i), i=1, sem_data%ndumps)
+  close(lu)
+
 
   ! initialize filter
   if (parameters%apply_filter) then
@@ -190,6 +200,11 @@ program rdbm
                                                        end_only=.true.), &
                                        fw_field_res, sources=sources, &
                                        ts_fwd_sample=sem_data%timeshift_fwd / sem_data%dt)
+        !call resamp%resample_reconv(taperandzeropad(fw_field(:,1,:), ntaper=10, &
+        !                                            ntimes=sem_data%ndumps * 2, &
+        !                                            end_only=.true.), &
+        !                            fw_field_res, sources=sources)
+
         iclockold = tick(id=id_resamp, since=iclockold)
      else
         fw_field_res = fw_field(:,1,:)
