@@ -347,6 +347,7 @@ subroutine resample_stf(this, dt, nsamp)
 
       this%stf_resampled = 0
       this%stf_resampled(1) = 1d0 / dt
+      this%stf_dt_resampled = dt
    endif
 
 end subroutine resample_stf
@@ -573,6 +574,7 @@ subroutine fft_stf(sources, stf_fwd)
       stf_buf(1:nsamp,1) = sources(isource)%stf_resampled
 
       call fftt%rfft(stf_buf, stf_buf_fd)
+
       sources(isource)%stf_fd = stf_buf_fd(:,1) * dt
 
       if (present(stf_fwd)) then
