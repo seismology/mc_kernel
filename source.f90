@@ -585,7 +585,6 @@ subroutine fft_stf(sources, stf_fwd)
        stf_buf(1:nsamp,1) = stf_fwd
 
        call fftt%rfft(stf_buf, stf_fwd_fd)
-       stf_fwd_fd = stf_fwd_fd * dt
    endif
 
    do isource=1, nsources
@@ -597,7 +596,7 @@ subroutine fft_stf(sources, stf_fwd)
 
       call fftt%rfft(stf_buf, stf_buf_fd)
 
-      sources(isource)%stf_fd = stf_buf_fd(:,1) * dt
+      sources(isource)%stf_fd = stf_buf_fd(:,1)
 
       if (present(stf_fwd)) then
          if (allocated(sources(isource)%stf_reconv_fd)) &
