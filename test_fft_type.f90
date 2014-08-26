@@ -371,7 +371,7 @@ subroutine test_fft_parseval
     ntimes = 8
     ntraces = 1
 
-    call fftt%init(ntimes, 1, ntraces)
+    call fftt%init(ntimes, 1, ntraces, nfft=ntimes)
 
     ntimes = fftt%get_ntimes()
     nomega = fftt%get_nomega()
@@ -392,11 +392,12 @@ subroutine test_fft_parseval
 
     call fftt%rfft(datat, dataf)
 
-    do i=1, ntraces
-        call assert_comparable(sum(abs(dataf(:,i))**2)/ntimes, &
-                               sum((datat(:,i)**2)), &
-                               1d-5, 'sum((fft(datat)^2)/N = sum(datat^2)')
-    enddo
+    call assert_comparable((sum(abs(dataf(2:nomega-1,1))**2) * 2 &
+                              + abs(dataf(1,1))**2 &
+                              + abs(dataf(nomega,1))**2 )&
+                           / ntimes, &
+                           sum((datat(:,1)**2)), &
+                           1d-5, 'sum((fft(datat)^2)/N = sum(datat^2)')
 
     call fftt%freeme()
 
