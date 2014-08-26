@@ -133,6 +133,7 @@ subroutine test_all
   call test(test_fft_inverse_taz, 'FFT_inverse_taperandzeropad')
   call test(test_fft_convolve, 'FFT_convolve')
   call test(test_fft_taperandzeropad, 'FFT_taperandzeropad')
+  call test(test_fft_parseval, 'FFT_Parseval_theorem')
 
   ! test_resampling
   write(6,'(/,a)') 'TEST RESAMPLING MODULE'
