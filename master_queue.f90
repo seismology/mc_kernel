@@ -192,9 +192,9 @@ subroutine finalize()
            call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
                 ikernel, 'K_x_'//parameters%kernel(ikernel)%name )        
            call inv_mesh%set_node_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
-                                         kind=sp),                                 &
-                                         ikernel+parameters%nkernel,                    &
-                                         'err_'//parameters%kernel(ikernel)%name )
+                kind=sp),                                 &
+                ikernel+parameters%nkernel,                    &
+                'err_'//parameters%kernel(ikernel)%name )
 
         end do
         call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
@@ -203,10 +203,10 @@ subroutine finalize()
         do ikernel = 1, parameters%nkernel
            call inv_mesh%set_cell_data_snap(real(K_x(:,ikernel), kind=sp), &
                 ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
-        call inv_mesh%set_cell_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
-                                              kind=sp),                                 &
-                                         ikernel+parameters%nkernel,                    &
-                                         'err_'//parameters%kernel(ikernel)%name )
+           call inv_mesh%set_cell_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
+                kind=sp),                                 &
+                ikernel+parameters%nkernel,                    &
+                'err_'//parameters%kernel(ikernel)%name )
         end do
         call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel')
      end select
