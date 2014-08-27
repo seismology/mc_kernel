@@ -1066,8 +1066,7 @@ subroutine init_node_data(this, ntimes_node, default_name)
 
   allocate(this%group_id_node(ntimes_node))
   this%group_id_node = 1
-
-  this%ngroups_node = 1
+  this%ngroups_node = 0
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -1093,8 +1092,7 @@ subroutine init_cell_data(this, ntimes_cell, default_name)
 
   allocate(this%group_id_cell(ntimes_cell))
   this%group_id_cell = 1
-
-  this%ngroups_cell = 1
+  this%ngroups_cell = 0
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -1359,12 +1357,13 @@ subroutine dump_cell_data_xdmf(this, filename)
 
   ! loop over all data
   do while(i <= this%ntimes_cell)
+
      ! create new snapshot in the temporal collection
      write(iinput_xdmf, 7341) 'grid', dble(itime), trim(xdmf_elem_type), this%nelements, &
                               "'", "'", "'", "'"
 
      igroup = 1
-     ! loop over groups, that have more items then itime
+     ! loop over groups, that have more items than itime
      do while(igroup <= this%ngroups_cell)
         if (count(this%group_id_cell == igroup) >= itime) then
            ! find the itime'th item in the group
@@ -1510,6 +1509,7 @@ subroutine dump_node_data_xdmf(this, filename)
   i = 1
   itime = 1
 
+  
   ! loop over all data
   do while(i <= this%ntimes_node)
      ! create new snapshot in the temporal collection

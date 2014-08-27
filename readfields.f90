@@ -296,6 +296,7 @@ subroutine open_files(this)
     format21 = "('  Succeded,  has NCID ', I6, ', Snapshots group NCID: ', I6)"
 
     do isim = 1, this%nsim_fwd
+
         ! Forward wavefield
         filename=trim(this%fwd(isim)%meshdir)//'/Data/ordered_output.nc4'
         
@@ -318,6 +319,7 @@ subroutine open_files(this)
         call getgrpid(  ncid     = this%fwd(isim)%ncid,   &
                         name     = "Snapshots",           &
                         grp_ncid = this%fwd(isim)%snap)
+
 
         
         if (trim(this%fwd(isim)%dump_type) == 'displ_only') then
@@ -342,6 +344,7 @@ subroutine open_files(this)
             call nc_read_att_int(this%fwd(isim)%npol, 'npol', this%fwd(isim))
 
 
+
         elseif (trim(this%fwd(isim)%dump_type) == 'fullfields') then
             do istrainvar = 1, 6
                 status = nf90_inq_varid(ncid  = this%fwd(isim)%snap,                  &
@@ -360,10 +363,14 @@ subroutine open_files(this)
                                              varid      = this%fwd(isim)%strainvarid(6), &
                                              chunksizes = chunks, &
                                              deflate_level = deflev) )
+
+
         else
            print *, 'ERROR: dump_type ', this%fwd(isim)%dump_type, ' not implemented!'
            call pabort
         endif
+
+
 
         write(lu_out, "('  FWD SIM:', I2, ', Chunksizes:', 2(I7), ', deflate level: ', I2)") &
               isim, chunks, deflev
@@ -426,8 +433,8 @@ subroutine open_files(this)
 
         call getvarid(            ncid     = this%fwd(isim)%surf,   &
                                   name     = "stf_d_dump",            &
-                                  varid    = this%fwd(isim)%stf_d_varid)
-        
+                                  varid    = this%fwd(isim)%stf_d_varid)        
+
         allocate( this%fwd(isim)%stf( this%fwd(isim)%ndumps ) )
         call check(nf90_get_var(  ncid   = this%fwd(isim)%surf,   &
                                   varid  = this%fwd(isim)%stf_varid, &
@@ -554,20 +561,39 @@ subroutine open_files(this)
                                  this%bwd(isim))
         this%bwd(isim)%amplitude = real(temp, kind=dp)
         
+        ! call getvarid(            ncid     = this%bwd(isim)%surf,   &
+        !                           name     = "stf_dump",            &
+        !                           varid    = this%bwd(isim)%stf_varid)
+
+
+
         call getvarid(            ncid     = this%bwd(isim)%surf,   &
                                   name     = "stf_dump",            &
                                   varid    = this%bwd(isim)%stf_varid)
+
+        call getvarid(            ncid     = this%bwd(isim)%surf,   &
+                                  name     = "stf_d_dump",            &
+                                  varid    = this%bwd(isim)%stf_d_varid)
+
+
         
         allocate( this%bwd(isim)%stf( this%bwd(isim)%ndumps ) )
         call check(nf90_get_var(  ncid   = this%bwd(isim)%surf,   &
                                   varid  = this%bwd(isim)%stf_varid, &
                                   values = this%bwd(isim)%stf  ))
+
+        allocate( this%bwd(isim)%stf_d( this%bwd(isim)%ndumps ) )
+        call check(nf90_get_var(  ncid   = this%bwd(isim)%surf,   &
+                                  varid  = this%bwd(isim)%stf_d_varid, &
+                                  values = this%bwd(isim)%stf_d  ))
+
         
     end do
 
 
     call flush(lu_out)
     call this%check_consistency()
+
 
     call flush(6) 
     this%files_open = .true.
@@ -728,6 +754,7 @@ subroutine check_consistency(this)
     ! Check whether the dump_type is the same in all files
     dump_type_agreed = this%fwd(1)%dump_type
     
+
     fmtstring = '("Inconsistency in forward simulations: ", A, " is different \'// &
                 '  in simulation ", I1)' 
     do isim = 1, this%nsim_fwd
@@ -735,7 +762,7 @@ subroutine check_consistency(this)
           write(*,fmtstring) 'dump_type', isim
           call pabort
        end if
-    end do
+    end do   
 
     fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
                 '  in simulation ", I1)' 
@@ -763,6 +790,7 @@ subroutine check_consistency(this)
     fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
                 '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the forward case")' 
 
+
     do isim = 1, this%nsim_bwd
        if (dt_agreed.ne.this%bwd(isim)%dt) then
           write(*,fmtstring) 'dt', isim, dt_agreed, this%bwd(isim)%dt
@@ -771,7 +799,7 @@ subroutine check_consistency(this)
     end do
 
     this%dt = dt_agreed
-
+ 
     ! Check whether npol is the same in all files
     if (trim(this%dump_type) == 'displ_only') then
         npol_agreed = this%fwd(1)%npol
@@ -798,6 +826,7 @@ subroutine check_consistency(this)
         this%npol = npol_agreed
     endif
 
+
     ! Check whether the number of dumps (time samples) is the same in all files
     ndumps_agreed = this%fwd(1)%ndumps
     nseis_agreed  = this%fwd(1)%nseis
@@ -814,7 +843,6 @@ subroutine check_consistency(this)
           call pabort
        end if
     end do
-
 
     fmtstring = '("Inconsistency in backward simulations: ", A, " is different \'// &
                 '  in simulation ", I1, "(",I7,"s) vs ", I7, " in the forward case")' 
@@ -871,8 +899,8 @@ subroutine check_consistency(this)
     this%stf_d_fwd = real(stf_d_agreed_fwd, kind=dp)
     this%amplitude_fwd = real(amplitude_agreed_fwd, kind=dp)
 
-    
     if (this%nsim_bwd > 0) then
+
        source_shift_agreed_bwd = this%bwd(1)%source_shift_t
        stf_agreed_bwd = this%bwd(1)%stf
        stf_d_agreed_bwd = this%bwd(1)%stf_d 
@@ -902,14 +930,15 @@ subroutine check_consistency(this)
              call pabort
           end if
        end do
+
        this%timeshift_bwd = real(source_shift_agreed_bwd, kind=dp)
        allocate(this%stf_bwd(ndumps_agreed))
        allocate(this%stf_d_bwd(ndumps_agreed))
        this%stf_bwd = real(stf_agreed_bwd, kind=dp)
        this%stf_d_bwd = real(stf_d_agreed_bwd, kind=dp)
        this%amplitude_bwd = real(amplitude_agreed_bwd, kind=dp)
-    endif
 
+    endif
 
     this%dt = dt_agreed
     this%decimate_factor = nseis_agreed / ndumps_agreed

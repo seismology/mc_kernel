@@ -303,6 +303,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            ! Load forward field
            iclockold = tick()
            fw_field = sem_data%load_fw_points( random_points, parameters%source )
+
            iclockold = tick(id=id_fwd, since=iclockold)
            
            ! FFT of forward field
@@ -328,6 +329,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
               ! Load backward field
               bw_field = sem_data%load_bw_points( random_points, parameters%receiver(irec) )
+           
               iclockold = tick(id=id_bwd, since=iclockold)
 
               ! FFT of backward field
@@ -364,6 +366,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  ! Calculate Scalar kernel from convolved time traces
                  kernelvalue(:,ikernel) = &
                      parameters%kernel(ikernel)%calc_misfit_kernel(conv_field)
+
                  iclockold = tick(id=id_kernel, since=iclockold)
               end do ! ikernel
               iclockold = tick(id=id_mc, since=iclockold)
@@ -378,6 +381,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               do ikernel = 1, parameters%nkernel
                  kernelvalue_weighted(:, ikernel) = kernelvalue(:, ikernel) &
                       * inv_mesh%weights(ielement, ibasisfunc, random_points)
+                 
               end do
               iclockold = tick(id=id_kernel, since=iclockold)
               call int_kernel(ibasisfunc)%check_montecarlo_integral(kernelvalue_weighted)
