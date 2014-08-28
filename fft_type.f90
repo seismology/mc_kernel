@@ -214,7 +214,7 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt, fftw_plan, nfft)
      this%dt = 1.0
   end if
 
-  this%df    = 1. / (this%dt*ntimes_np2)
+  this%df    = 1. / (this%dt*this%ntimes)
   allocate( this%f( this%nomega ) )
   allocate( this%t( this%ntimes ) )
   
@@ -302,6 +302,9 @@ subroutine rfft_1d(this, datat, dataf)
   ! compiler does not change the order of execution (stupid, but known issue)
   call dfftw_execute_dft_r2c(this%plan_fft_1d, datat, dataf)
 
+  ! Normalization
+  dataf = dataf * this%dt
+
 end subroutine rfft_1d
 !-----------------------------------------------------------------------------------------
 
@@ -338,8 +341,7 @@ subroutine irfft_1d(this, dataf, datat)
   call dfftw_execute_dft_c2r(this%plan_ifft_1d, dataf, datat)
   ! normalization, see
   ! http://www.fftw.org/doc/The-1d-Discrete-Fourier-Transform-_0028DFT_0029.html
-
-  datat = datat / this%ntimes
+  datat = datat * this%df
 
 end subroutine irfft_1d
 !-----------------------------------------------------------------------------------------
@@ -377,7 +379,11 @@ subroutine rfft_md(this, datat_in, dataf_out)
   ! compiler does not change the order of execution (stupid, but known issue)
   datat = reshape(datat_in, [this%ntimes, this%ntraces_fft])
   call dfftw_execute_dft_r2c(this%plan_fft, datat, dataf)
-  dataf_out = reshape(dataf, [this%nomega, this%ndim, this%ntraces])
+
+  ! Normalization
+  dataf = dataf * this%dt
+
+  dataf_out = reshape(dataf, [this%nomega, this%ndim, this%ntraces]) 
 
 end subroutine rfft_md
 !-----------------------------------------------------------------------------------------
@@ -412,14 +418,14 @@ subroutine irfft_md(this, dataf_in, datat_out)
      call pabort 
   end if
 
-
   ! use specific interfaces including the buffer arrays to make sure the
   ! compiler does not change the order of execution (stupid, but known issue)
   dataf = reshape(dataf_in, [this%nomega, this%ntraces_fft])
   call dfftw_execute_dft_c2r(this%plan_ifft, dataf, datat)
+
   ! normalization, see
   ! http://www.fftw.org/doc/The-1d-Discrete-Fourier-Transform-_0028DFT_0029.html
-  datat = datat / this%ntimes
+  datat = datat * this%df
 
   datat_out = reshape(datat, [this%ntimes, this%ndim, this%ntraces]) 
 
