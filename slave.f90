@@ -302,6 +302,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            
            ! Load forward field
            iclockold = tick()
+
            fw_field = sem_data%load_fw_points( random_points, parameters%source )
 
            iclockold = tick(id=id_fwd, since=iclockold)
@@ -329,11 +330,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
               ! Load backward field
               bw_field = sem_data%load_bw_points( random_points, parameters%receiver(irec) )
-           
               iclockold = tick(id=id_bwd, since=iclockold)
 
               ! FFT of backward field
               call fft_data%rfft( taperandzeropad(bw_field, ntimes, taper_length), bw_field_fd )
+
               iclockold = tick(id=id_fft, since=iclockold)
 
               ! Timeshift backward field
@@ -345,6 +346,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               ! Convolve forward and backward fields
               ! The summation over dimension 2 is necessary for vs kernels
               conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
+
               iclockold = tick(id=id_filter_conv, since=iclockold)
 
               do ikernel = parameters%receiver(irec)%firstkernel, &
@@ -359,7 +361,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
                  iclockold = tick(id=id_filter_conv, since=iclockold)
 
-                 ! iFFT of multiplied spectra
+                 ! iFFT of multiplied spectra                 
                  call fft_data%irfft(conv_field_fd_filt, conv_field)
                  iclockold = tick(id=id_fft, since=iclockold)
 
@@ -374,9 +376,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            end do ! irec
            iclockold = tick(id=id_mc, since=iclockold)
 
-
            ! Check for convergence           
-           do ibasisfunc = 1, nbasisfuncs_per_elem !inv_mesh%nvertices_per_elem
+           do ibasisfunc = 1, nbasisfuncs_per_elem
               iclockold = tick()
               do ikernel = 1, parameters%nkernel
                  kernelvalue_weighted(:, ikernel) = kernelvalue(:, ikernel) &
@@ -411,6 +412,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         do ibasisfunc = 1, nbasisfuncs_per_elem
            
            slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
+
            slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
            slave_result%niterations(:,ielement)                  = niterations(:,ielement)
 
