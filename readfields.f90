@@ -197,15 +197,15 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
 
     if (moment) then
        this%nsim_bwd = 4
-       write(lu_out,*) 'Backword simulation was ''moment'' source'
+       write(lu_out,*) 'Backward simulation was ''moment'' source'
        write(lu_out,*) 'This is not implemented yet!'
        call pabort()
     elseif (force) then
        this%nsim_bwd = 2
-       write(lu_out,*) 'Backword simulation was ''forces'' source'
+       write(lu_out,*) 'Backward simulation was ''forces'' source'
     elseif (single) then
        this%nsim_bwd = 1
-       write(lu_out,*) 'Backword simulation was ''single'' source'
+       write(lu_out,*) 'Backward simulation was ''single'' source'
     else 
        this%nsim_bwd = 0
        write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
@@ -1091,35 +1091,60 @@ function load_fw_points(this, coordinates, source_params)
 #           endif
         endif
     
-        do isim = 1, this%nsim_fwd
-            if (trim(this%dump_type) == 'displ_only') then
-               utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                                                xi, eta, this%model_param, &
-                                                corner_points, eltype(1), axis, &
-                                                id_elem = id_elem)
-            else
-               utemp = load_strain_point(this%fwd(isim),      &
-                                         pointid(ipoint),     &
-                                         this%model_param)
-            endif
 
-            iclockold = tick()
-            select case(trim(this%model_param))
-            case('vp')
-                load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)                   &
-                                             + utemp * azim_factor(rotmesh_phi(ipoint),     &
-                                                                   source_params%mij, isim, 1) 
-            case('vs')
-                !@TODO: utemp needs to be summed with azimfactors first before
-                !       beeing rotated. I'd suggest summation first, because
-                !       rotation is not for free.
-                load_fw_points(:, :, ipoint) = load_fw_points(:, :, ipoint)                 &
-                                             + rotate_straintensor(utemp,                   &
-                                                                   rotmesh_phi(ipoint),     &
-                                                                   source_params%mij, isim) 
-            end select
-            iclockold = tick(id=id_rotate, since=iclockold)
-        end do !isim
+        select case(trim(this%model_param))
+        case('vp')    
+           
+           do isim = 1, this%nsim_fwd
+              if (trim(this%dump_type) == 'displ_only') then
+                 utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                      xi, eta, this%model_param, &
+                      corner_points, eltype(1), axis, &
+                      id_elem = id_elem)
+              else
+                 utemp = load_strain_point(this%fwd(isim),      &
+                      pointid(ipoint),     &
+                      this%model_param)
+              endif
+              
+              iclockold = tick()
+              
+              load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)                   &
+                   + utemp * azim_factor(rotmesh_phi(ipoint),     &
+                   source_params%mij, isim, 1) 
+              iclockold = tick(id=id_rotate, since=iclockold)
+           end do !isim
+
+        case('vs')
+
+           do isim = 1, this%nsim_fwd
+
+              if (trim(this%dump_type) == 'displ_only') then
+                 utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
+                      xi, eta, this%model_param, &
+                      corner_points, eltype(1), axis, &
+                      id_elem = id_elem)
+              else
+                 utemp = load_strain_point(this%fwd(isim),      &
+                      pointid(ipoint),     &
+                      this%model_param)
+              endif
+              
+              iclockold = tick()
+
+              utemp &
+                   = rotate_straintensor(utemp, &
+                   rotmesh_phi(ipoint),        &
+                   source_params%mij, isim)
+              
+              load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)                   &
+                   + utemp * azim_factor(rotmesh_phi(ipoint),     &
+                   source_params%mij, isim, 1) 
+              
+              iclockold = tick(id=id_rotate, since=iclockold)
+              
+           end do !isim                    
+        end select
 
     end do !ipoint
 
@@ -1411,7 +1436,9 @@ function load_bw_points(this, coordinates, receiver)
                                       rotmesh_phi(ipoint),        &
                                       real([1, 1, 1, 0, 0, 0], kind=dp), 1)
         end if
+
     end do !ipoint
+
 
 end function load_bw_points
 !-----------------------------------------------------------------------------------------
@@ -1810,6 +1837,7 @@ function load_strain_point(sem_obj, pointid, model_param)
     if (trim(sem_obj%dump_type) /= 'fullfields') then
         write(6,*) 'ERROR: trying to read strain from a file that was not'
         write(6,*) '       written with dump_type "fullfields"'
+        write(6,*) sem_obj%dump_type
         call pabort
     endif
 
@@ -1917,8 +1945,8 @@ function load_strain_point(sem_obj, pointid, model_param)
         load_strain_point(:,4) = -strain_buff(:,5)
         load_strain_point(:,5) = strain_buff(:,2)
         load_strain_point(:,6) = -strain_buff(:,4)
-    end select
 
+    end select
 
 #   ifdef flag_kerner
     iclockold_total = tick(id=id_load_strain, since=iclockold)
