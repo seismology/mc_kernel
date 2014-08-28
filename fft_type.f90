@@ -334,9 +334,11 @@ subroutine irfft_1d(this, dataf, datat)
 
   ! use specific interfaces including the buffer arrays to make sure the
   ! compiler does not change the order of execution (stupid, but known issue)
-  call dfftw_execute_dft_c2r(this%plan_ifft, dataf, datat)
+
+  call dfftw_execute_dft_c2r(this%plan_ifft_1d, dataf, datat)
   ! normalization, see
   ! http://www.fftw.org/doc/The-1d-Discrete-Fourier-Transform-_0028DFT_0029.html
+
   datat = datat / this%ntimes
 
 end subroutine irfft_1d
@@ -409,6 +411,7 @@ subroutine irfft_md(this, dataf_in, datat_out)
                     this%ndim, ', ', this%ntraces, ']'
      call pabort 
   end if
+
 
   ! use specific interfaces including the buffer arrays to make sure the
   ! compiler does not change the order of execution (stupid, but known issue)
