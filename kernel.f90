@@ -222,18 +222,21 @@ function calc_misfit_kernel(this, timeseries)
 
    select case(trim(this%misfit_type))
    case('CC')
+
       do itrace = 1, ntrace
+
          call cut_timewindow(this%t,                 &
                              timeseries(:, itrace),  &
                              this%time_window,       &
                              cut_timeseries)
-         
+        
          calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
                                       * this%normalization
       end do
 
    case('AM')
       do itrace = 1, ntrace
+
          call cut_timewindow(this%t,                 &
                              timeseries(:, itrace),  &
                              this%time_window,       &

@@ -345,7 +345,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
               ! Convolve forward and backward fields
               ! The summation over dimension 2 is necessary for vs kernels
+
+
               conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
+
+
 
               iclockold = tick(id=id_filter_conv, since=iclockold)
 
@@ -360,6 +364,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  ! Apply Filter 
                  conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
                  iclockold = tick(id=id_filter_conv, since=iclockold)
+
 
                  ! iFFT of multiplied spectra                 
                  call fft_data%irfft(conv_field_fd_filt, conv_field)
@@ -413,6 +418,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            
            slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
 
+
+!!!           print*,slave_result%kernel_values(:,ibasisfunc,ielement)
            slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
            slave_result%niterations(:,ielement)                  = niterations(:,ielement)
 

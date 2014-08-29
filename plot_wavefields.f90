@@ -55,7 +55,6 @@ subroutine plot_wavefields()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
 
-
     call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
     ndumps = sem_data%ndumps
@@ -127,7 +126,6 @@ subroutine plot_wavefields()
         allocate(bw_field(ndumps, ndim, nvertices))
         bw_field(:,:,:) = sem_data%load_bw_points(dble(co_points), &
                                                   parameters%receiver(irec))
-
 
         allocate(bw_field_fd  (nomega, ndim, nvertices))
         call fft_data%rfft(taperandzeropad(bw_field, ntimes, 2), bw_field_fd)
