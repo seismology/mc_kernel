@@ -2,13 +2,18 @@
 module inversion_mesh
 
   use global_parameters, only: sp, dp, lu_out
-  use tetrahedra,        only: get_volume_tet, get_volume_poly, &
-                               generate_random_points_tet, &
-                               generate_random_points_poly, &
-                               generate_random_points_ref_tri
-  use voxel,             only: get_volume_vox, &
-                               generate_random_points_vox
 
+  use tetrahedra,        only: get_volume_tet,                  &
+                               get_volume_poly,                 &
+                               get_center_tet,                  &
+                               generate_random_points_tet,      &
+                               generate_random_points_poly,     &
+                               generate_random_points_ref_tri
+
+  use voxel,             only: get_volume_vox,                  &
+                               get_center_vox,                  &
+                               generate_random_points_vox
+                               
   use commpi,            only: pabort
 
   implicit none
@@ -46,7 +51,7 @@ module inversion_mesh
      procedure, pass :: dump_mesh_xdmf
      procedure, pass :: get_volume
      procedure, pass :: get_center
-     procedure, pass :: get_model_coeffs
+     procedure, pass :: get_model_coeff
      procedure, pass :: generate_random_points
      procedure, pass :: make_2d_vectors
      procedure, pass :: weights
@@ -350,41 +355,38 @@ end function get_center
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function get_model_coeffs(this, ielement, nmodelcoeffs, modelcoeffs_id, int_type)
+function get_model_coeff(this, ielement, modelcoeffid, int_type)
 !
 !< Depending on the int_type (volumetric or vertex based mode) returns
-! model coefficients at the center or the vertices of an element, respectively
+! model coefficient with id modelcoeffid at the center or the vertices of an element
 !
   class(inversion_mesh_type)        :: this
   integer, intent(in)               :: ielement
-  integer, intent(in)               :: nmodelcoeffs
-  character(len=*), intent(in)      :: modelcoeffs_id
+  character(len=*), intent(in)      :: modelcoeffid
   character(len=*), intent(in)      :: int_type
-  real(kind=dp), allocatable        :: get_model_coeffs(:,:)
+  real(kind=dp), allocatable        :: get_model_coeff(:)
   real(kind=dp), allocatable        :: vertices(:,:)
   real(kind=dp)                     :: center(3) 
-  integer                           :: icoeff
   integer                           :: ivertex
+
+  ! @ TODO: This routine is not quite finished but may become useful
+  ! if one wants to export model coefficients for plotting
 
   select case(trim(int_type))
   case('onvertices')  
-     allocate(get_model_coeffs(nmodelcoeffs,this%nvertices))
+     allocate(get_model_coeff(this%nvertices))
      allocate(vertices(3,this%nvertices))
      vertices = this%get_element(ielement)
-     do icoeff = 1, nmodelcoeffs       
-        do ivertex = 1,this%nvertices           
-           get_model_coeffs(icoeff) = load_coefficient(vertices(:,1),modelcoeffs_id(icoeff))
-        end do
+     do ivertex = 1,this%nvertices           
+        get_model_coeff(ivertex) = 0.d0 ! @ TODO: load_coefficient(vertices(:,1),modelcoeffs_id(icoeff))
      end do
   case('volumetric')
-     allocate(get_model_coeffs(nmodelcoeffs,1))
+     allocate(get_model_coeff(1))
      center = this%get_center(ielement)
-     do icoeff = 1, nmodelcoeffs
-        get_model_coeffs(icoeff) = load_coefficient(center,modelcoeffs_id(icoeff))        
-     end do
+     get_model_coeff(1) = 0.d0 ! @ TODO: load_coefficient(center,modelcoeffs_id(icoeff))
   end select
  
-end function get_model_coeffs
+end function get_model_coeff
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

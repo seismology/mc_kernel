@@ -223,7 +223,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:,:) 
     real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
     integer,          allocatable       :: niterations(:,:)
-    real(kind=dp),    allocatable       :: modelcoeffs(:)
+    real(kind=dp),    allocatable       :: modelcoeffs(:,:)
+
+    real(kind=dp),    allocatable       :: c_rho(:), c_eta(:)
+    real(kind=dp),    allocatable       :: c_vs(:),  c_vp(:)
+    real(kind=dp),    allocatable       :: c_vsh(:), c_vsv(:)
+    real(kind=dp),    allocatable       :: c_vph(:), c_vpv(:)
+
     real(kind=dp)                       :: volume
 
     character(len=256)                  :: fmtstring
@@ -235,9 +241,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer, parameter                  :: taper_length = 10! This is the bare minimum. It does 
                                                             ! not produce artifacts yet, at least 
                                                             ! no obvious ones
-
-
-    real :: rho,vs,vp,vsh,vsv,vph,vpv,eta
 
     iclockold = tick()
 
@@ -271,7 +274,16 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     volume = 0.0
 
-    allocate(modelcoeffs(parameters%nmodelcoeffs))
+    allocate(modelcoeffs(3, nptperstep)) ! for now just load vp, vs, rho
+    allocate(c_vp(nptperstep)) 
+    allocate(c_vs(nptperstep)) 
+    allocate(c_rho(nptperstep)) 
+    allocate(c_vsh(nptperstep)) 
+    allocate(c_vsv(nptperstep)) 
+    allocate(c_vph(nptperstep)) 
+    allocate(c_vpv(nptperstep)) 
+    allocate(c_eta(nptperstep)) 
+
     allocate(niterations(parameters%nkernel, nelements))
     niterations = 0
 
@@ -296,11 +308,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         ! Get volume of current element
         volume = inv_mesh%get_volume(ielement)
 
-        ! Get required model coefficients at element center OR vertices
-        modelcoeffs = inv_mesh%get_model_coeffs(parameters%nmodelcoeffs,  &
-                                                parameters%modelcoeff_id, &
-                                                parameters%int_type )
-
         ! Initialize basis kernel Monte Carlo integrals for current element
         iclockold = tick(id=id_inv_mesh)
         do ibasisfunc = 1, nbasisfuncs_per_elem
@@ -324,8 +331,22 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
            ! Load forward field
            iclockold = tick()
-           fw_field = sem_data%load_fw_points( random_points, parameters%source )
+           fw_field = sem_data%load_fw_points( random_points, parameters%source, & 
+                                               coeffs = modelcoeffs)
            iclockold = tick(id=id_fwd, since=iclockold)
+
+           ! Recombine model coefficients for chosen parameterization
+           c_vp  = modelcoeffs(1,:) ! contains velocities at each point in km/s
+           c_vs  = modelcoeffs(2,:) ! contains velocities at each point in km/s
+           c_rho = modelcoeffs(3,:) ! contains velocities at each point in kg/(km^3)
+
+           ! @ TODO : For now assume an isotropic background model
+           !          need to store xi in the netcdf files
+           c_vsh = c_vs
+           c_vsv = c_vs
+           c_vph = c_vp
+           c_vpv = c_vp
+           c_eta = 1.d0
 
            ! FFT of forward field
            call fft_data%rfft( taperandzeropad(fw_field, ntimes, taper_length), fw_field_fd )
@@ -427,9 +448,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                        iclockold = tick(id=id_fft, since=iclockold)
 
                        ! Calculate scalar base kernels from convolved time traces
-                       kernelvalue_basekers(:,ikernel,ibasekernel) =    &
-                                        parameters%kernel(ikernel)      &
-                                        %calc_misfit_kernel(conv_field)
+                       kernelvalue_basekers(:,ikernel,ibasekernel) =         &
+                                            parameters%kernel(ikernel)       &
+                                            %calc_misfit_kernel(conv_field)
                                                                                            
                        iclockold = tick(id=id_kernel, since=iclockold)
 
@@ -454,49 +475,39 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                          * inv_mesh%weights(ielement, ibasisfunc, random_points)                 
                  end do
                  
-                 ! @ TODO -> Read model coefficients from netcdf file                 
-                 rho=2000.d0
-                 vp=8000.d0
-                 vs=6000.d0
-                 vsh=6000.d0
-                 vsv=6000.d0
-                 vph=8000.d0
-                 vpv=8000.d0
-                 eta=1.0
-
                  ! See Fichtner p. 169 how kernels are defined and type_parameter.f90
                  ! how basekernels inside kernelvalue_weighted are ordered
                  select case(trim(parameters%model_param))
                  case('lambda')
-                    kernelvalue_physical(:, ikernel) =                             &
+                    kernelvalue_physical(:, ikernel) =                                 &
                            kernelvalue_weighted(:, ikernel, 1)
                  case('mu')
-                    kernelvalue_physical(:, ikernel) =                             & 
+                    kernelvalue_physical(:, ikernel) =                                 & 
                            kernelvalue_weighted(:, ikernel, 1)
                  case('vp')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * rho * vp *           &
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vp *           &
                            kernelvalue_weighted(:, ikernel, 1)
                  case('vs')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * rho * vs *           &
-                           kernelvalue_weighted(:, ikernel, 2) - 4.d0 * rho * vs * &
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vs *           &
+                           kernelvalue_weighted(:, ikernel, 2) - 4.d0 * c_rho * c_vs * &
                            kernelvalue_weighted(:, ikernel, 1)
                  case('vsh')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * rho * vsh *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) * 2 +               &
-                           kernelvalue_weighted(:, ikernel, 2) +                   &
-                           kernelvalue_weighted(:, ikernel, 3) +                   &
-                           kernelvalue_weighted(:, ikernel, 4) * 2*(1-eta))
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vsh *          &
+                         ( kernelvalue_weighted(:, ikernel, 1) * 2 +                   &
+                           kernelvalue_weighted(:, ikernel, 2) +                       &
+                           kernelvalue_weighted(:, ikernel, 3) +                       &
+                           kernelvalue_weighted(:, ikernel, 4) * 2*(1-c_eta))
                  case('vsv')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * rho * vsv *          &
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vsv *          &
                            kernelvalue_weighted(:, ikernel, 1)
                  case('vph')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * rho * vph *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) +                   &
-                           kernelvalue_weighted(:, ikernel, 2) * eta )
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vph *          &
+                         ( kernelvalue_weighted(:, ikernel, 1) +                       &
+                           kernelvalue_weighted(:, ikernel, 2) * c_eta )
                  case('vpv')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * rho * vpv *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) +                   &
-                           kernelvalue_weighted(:, ikernel, 2) +                   &
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vpv *          &
+                         ( kernelvalue_weighted(:, ikernel, 1) +                       &
+                           kernelvalue_weighted(:, ikernel, 2) +                       &
                            kernelvalue_weighted(:, ikernel, 3) )
                     stop
                  case('kappa')

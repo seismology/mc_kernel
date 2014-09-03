@@ -34,7 +34,6 @@ module type_parameter
         character(len=32)                    :: dump_type
         character(len=32)                    :: fftw_plan = 'MEASURE'
         character(len=16), allocatable       :: basekernel_id(:)
-        character(len=16), allocatable       :: modelcoeff_id(:)
         character(len=32)                    :: strain_type
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
@@ -43,7 +42,6 @@ module type_parameter
         integer                              :: max_iter
         integer                              :: buffer_size
         integer                              :: nbasekernels
-        integer                              :: nmodelcoeffs
         logical                              :: parameters_read      = .false.
         logical                              :: receiver_read        = .false.
         logical                              :: source_read          = .false.
@@ -299,12 +297,10 @@ subroutine read_receiver(this)
 
    ! As a default use the full 6-component strain tensor
    allocate(this%basekernel_id(6))
-   allocate(this%modelcoeff_id(6))
    this%strain_type   = 'straintensor_full'
 
-   ! Here the we tabulate the base kernels and model coefficients
-   ! required to assemble the physical kernels for a desired model
-   ! parameter
+   ! Here the we tabulate the base kernels required to assemble 
+   ! the physical kernels for a desired model parameter
    select case(trim(this%model_param))     
    case('lambda')
       this%nbasekernels  = 1
@@ -312,54 +308,33 @@ subroutine read_receiver(this)
       this%strain_type   = 'straintensor_trace'
    case('vp')
       this%nbasekernels  = 1
-      this%nmodelcoeffs  = 2
-      this%basekernel_id(1) = 'k_lambda'
-      this%modelcoeff_id(1) = 'c_rho'
-      this%modelcoeff_id(2) = 'c_vp'      
+      this%basekernel_id(1) = 'k_lambda'     
       this%strain_type   = 'straintensor_trace'
    case('vs')
       this%nbasekernels  = 2
-      this%nmodelcoeffs  = 2
       this%basekernel_id(1) = 'k_lambda'
-      this%basekernel_id(2) = 'k_mu' 
-      this%modelcoeff_id(1) = 'c_rho'
-      this%modelcoeff_id(2) = 'c_vs'      
+      this%basekernel_id(2) = 'k_mu'      
    case('mu')
       this%nbasekernels  = 1
-      this%nmodelcoeffs  = 0
       this%basekernel_id(1) = 'k_mu'
    case('vsh')
       this%nbasekernels  = 4
-      this%nmodelcoeffs  = 3
       this%basekernel_id(1) = 'k_lambda'
       this%basekernel_id(2) = 'k_mu'
       this%basekernel_id(3) = 'k_b'
       this%basekernel_id(4) = 'k_c'
-      this%modelcoeff_id(1) = 'c_rho'
-      this%modelcoeff_id(2) = 'c_vsh'
-      this%modelcoeff_id(3) = 'c_eta'
    case('vsv')
       this%nbasekernels  = 1
-      this%nmodelcoeffs  = 2
       this%basekernel_id(1) = 'k_b'
-      this%modelcoeff_id(1) = 'c_rho'
-      this%modelcoeff_id(2) = 'c_vsv'
    case('vph')
       this%nbasekernels  = 2
-      this%nmodelcoeffs  = 3
       this%basekernel_id(1) = 'k_a'
       this%basekernel_id(2) = 'k_b'
-      this%modelcoeff_id(1) = 'c_rho'
-      this%modelcoeff_id(2) = 'c_vph'
-      this%modelcoeff_id(3) = 'c_eta'
    case('vpv')
       this%nbasekernels  = 3
-      this%nmodelcoeffs  = 2
       this%basekernel_id(1) = 'k_lambda'
       this%basekernel_id(2) = 'k_a'
       this%basekernel_id(3) = 'k_c'
-      this%modelcoeff_id(1) = 'c_rho'
-      this%modelcoeff_id(2) = 'c_vpv'
    case('kappa')
       write(*,*) "Error: Kappa kernels not yet implemented"
       call pabort
@@ -378,10 +353,9 @@ subroutine read_receiver(this)
    end select
 
    call pbroadcast_int(this%nbasekernels, 0)
-   call pbroadcast_int(this%nmodelcoeffs, 0)
    call pbroadcast_char(this%strain_type, 0)
    call pbroadcast_char_arr(this%basekernel_id, 0)
-   call pbroadcast_char_arr(this%modelcoeff_id, 0)
+
 
    fmtstring = '("  Using ", I5, " receivers")'
    write(lu_out, fmtstring) this%nrec

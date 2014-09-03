@@ -7,6 +7,7 @@ module voxel
 
   public :: generate_random_points_vox
   public :: get_volume_vox
+  public :: get_center_vox
   public :: point_in_voxel
 
   public :: spherical_to_cartesian_point

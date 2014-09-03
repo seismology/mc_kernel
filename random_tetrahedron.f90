@@ -7,7 +7,7 @@ module tetrahedra
 
   public :: generate_random_points_tet, generate_random_points_poly
   public :: generate_random_points_ref_tri
-  public :: get_volume_tet, get_volume_poly
+  public :: get_volume_tet, get_volume_poly, get_center_tet
   public :: rmat4_det, point_in_triangle, point_in_triangle_3d
 contains
 

@@ -53,6 +53,8 @@ module readfields
         integer                            :: mesh_rho_varid          ! Variable IDs
         integer                            :: mesh_lambda_varid       ! Variable IDs
         integer                            :: mesh_mu_varid           ! Variable IDs
+        integer                            :: mesh_vs_varid           ! Variable IDs
+        integer                            :: mesh_vp_varid           ! Variable IDs
         integer                            :: chunk_gll
         integer                            :: count_error_pointoutside
         character(len=200)                 :: meshdir
@@ -950,7 +952,7 @@ end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points(this, coordinates, source_params)
+function load_fw_points(this, coordinates, source_params, coeffs)
     use finite_elem_mapping, only      : inside_element
 
     class(semdata_type)               :: this
@@ -958,6 +960,8 @@ function load_fw_points(this, coordinates, source_params)
     type(src_param_type), intent(in)  :: source_params
     real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
                                                         size(coordinates,2))
+
+    real(kind=dp), intent(out), optional :: coeffs(3,size(coordinates,2)) ! for now: vp, vs, rho
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points
@@ -972,7 +976,9 @@ function load_fw_points(this, coordinates, source_params)
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
+    real(kind=dp)                     :: coeff_buff(1)
     real(kind=dp)                     :: xi, eta
+
     
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
@@ -1056,7 +1062,7 @@ function load_fw_points(this, coordinates, source_params)
             endif
 
             id_elem = nextpoint(inext_point)%idx
-
+         
             ! get gll points of spectral element
             gll_point_ids = -1
             if (verbose > 1) &
@@ -1091,6 +1097,32 @@ function load_fw_points(this, coordinates, source_params)
 #           endif
         endif
     
+        ! Load model coefficients vp, vs and rho at point ipoint
+        ! @ TODO : We need to store anisotropic model parameters
+        !          in the wavefield netcdf files
+        ! @ TODO : Ludwig is not sure whether [nextpoint(1)%idx]
+        !          is the correct way to load coeffs from sem mesh
+        ! Load coefficient vp
+        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+             varid  = this%fwd(1)%mesh_vp_varid, &
+             start  = [nextpoint(1)%idx], & !gll_point_ids(this%npol/2, this%npol/2)], &
+             count  = [1], &
+             values = coeff_buff))
+        coeffs(1,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
+        ! Load coefficient vs
+        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+             varid  = this%fwd(1)%mesh_vs_varid, &
+             start  = [nextpoint(1)%idx], & ![gll_point_ids(this%npol/2, this%npol/2)], &
+             count  = [1], &
+             values = coeff_buff))
+        coeffs(2,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
+        ! Load coefficient rho
+        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+             varid  = this%fwd(1)%mesh_rho_varid, &
+             start  = [nextpoint(1)%idx], & ![gll_point_ids(this%npol/2, this%npol/2)], &
+             count  = [1], &
+             values = coeff_buff))
+        coeffs(3,ipoint) = coeff_buff(1)*1e9 ! convert to kg/(km^3)
 
         select case(trim(this%strain_type))
         case('straintensor_trace')    
@@ -2374,6 +2406,14 @@ subroutine read_meshes(this)
                       varid = this%fwd(1)%mesh_rho_varid)
 
         call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_vp",              &
+                      varid = this%fwd(1)%mesh_vp_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_vs",              &
+                      varid = this%fwd(1)%mesh_vs_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
                       name  = "mesh_lambda",              &
                       varid = this%fwd(1)%mesh_lambda_varid)
 
@@ -2384,6 +2424,7 @@ subroutine read_meshes(this)
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mp_mesh_S", &
                         varid = ncvarid_mesh_s) 
+
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mp_mesh_Z", &
                         varid = ncvarid_mesh_z) 
@@ -2393,6 +2434,7 @@ subroutine read_meshes(this)
                        start  = 1,                    &
                        count  = this%fwdmesh%nelem, &
                        values = this%fwdmesh%s_mp ) 
+
         call nc_getvar(ncid   = this%fwd(1)%mesh,       &
                        varid  = ncvarid_mesh_z,         &
                        start  = 1,                    &
@@ -2423,6 +2465,7 @@ subroutine read_meshes(this)
                        start  = 1,                          &
                        count  = this%fwdmesh%npoints,       &
                        values = this%fwdmesh%s ) 
+
         call nc_getvar(ncid   = this%fwd(1)%mesh,           &
                        varid  = this%fwd(1)%mesh_z_varid,   &
                        start  = 1,                          &
@@ -2433,10 +2476,31 @@ subroutine read_meshes(this)
     else
         allocate(this%fwdmesh%s(this%fwdmesh%npoints))
         allocate(this%fwdmesh%z(this%fwdmesh%npoints))
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_rho",              &
+                      varid = this%fwd(1)%mesh_rho_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_vp",              &
+                      varid = this%fwd(1)%mesh_vp_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_vs",              &
+                      varid = this%fwd(1)%mesh_vs_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_lambda",              &
+                      varid = this%fwd(1)%mesh_lambda_varid)
+
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_mu",              &
+                      varid = this%fwd(1)%mesh_mu_varid)
            
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mesh_S", &
                         varid = ncvarid_mesh_s) 
+
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mesh_Z", &
                         varid = ncvarid_mesh_z) 
@@ -2446,6 +2510,7 @@ subroutine read_meshes(this)
                        start  = 1,                    &
                        count  = this%fwdmesh%npoints, &
                        values = this%fwdmesh%s ) 
+
         call nc_getvar(ncid   = this%fwd(1)%mesh,       &
                        varid  = ncvarid_mesh_z,         &
                        start  = 1,                    &
