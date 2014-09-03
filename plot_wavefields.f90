@@ -50,7 +50,7 @@ subroutine plot_wavefields()
     call sem_data%set_params(parameters%fwd_dir,     &
                              parameters%bwd_dir,     &
                              parameters%buffer_size, & 
-                             parameters%model_param)
+                             parameters%strain_type)
     call sem_data%open_files()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()

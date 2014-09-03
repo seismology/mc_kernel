@@ -96,6 +96,31 @@ end function get_volume_vox
 
 
 !-----------------------------------------------------------------------------------------
+function get_center_vox(v)
+!
+! compute geometric center of a spherical voxel
+!
+  real(kind=dp), intent(in)  ::  v(3,8)     ! voxel in sph. coord
+  real(kind=dp)              ::  sph_rng(6) ! the 8 vertices in spherical coordinates
+  real(kind=dp)              ::  sph_pnt(3)       ! geometric center in spherical coordinates
+  real(kind=dp)              ::  get_center_vox(3) ! center in cartesian coordinates
+  
+
+  ! Convert cartesian vertices to spherical range
+  call cartesian_to_spherical_range(v,sph_rng)
+
+  sph_pnt(1) = ( sph_rng(2) - sph_rng(1) ) / 2.d0 + sph_rng(1)
+  sph_pnt(2) = ( sph_rng(4) - sph_rng(3) ) / 2.d0 + sph_rng(3)
+  sph_pnt(3) = ( sph_rng(4) - sph_rng(3) ) / 2.d0 + sph_rng(3)
+
+  ! Convert spherical point to cartesian point
+  call spherical_to_cartesian_point(sph_pnt,get_center_vox)
+
+end function get_center_vox
+!-----------------------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------------------
 subroutine cartesian_to_spherical_range ( v, spherical_range )
 !
 ! Converts a voxel given in terms of its 8 vertices in cartesian

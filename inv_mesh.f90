@@ -45,6 +45,8 @@ module inversion_mesh
      procedure, pass :: read_abaqus_meshtype
      procedure, pass :: dump_mesh_xdmf
      procedure, pass :: get_volume
+     procedure, pass :: get_center
+     procedure, pass :: get_model_coeffs
      procedure, pass :: generate_random_points
      procedure, pass :: make_2d_vectors
      procedure, pass :: weights
@@ -317,6 +319,72 @@ function get_volume(this, ielement)
   end select
 
 end function get_volume
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_center(this, ielement)
+  class(inversion_mesh_type)        :: this
+  integer, intent(in)               :: ielement
+  real(kind=dp)                     :: get_center(3)
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
+  get_center = 0
+
+  select case(this%element_type)
+  case('tet')
+     get_center = get_center_tet(this%get_element(ielement))
+  case('quad')
+!    get_center = get_center_poly(4, this%get_element(ielement))
+  case('tri')
+!    get_center = get_center_poly(3, this%get_element(ielement))
+  case('vox')
+     get_center = get_center_vox(this%get_element(ielement))
+  case('hex')
+!    get_center = get_center_hex(this%get_element(ielement))
+  end select
+
+end function get_center
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_model_coeffs(this, ielement, nmodelcoeffs, modelcoeffs_id, int_type)
+!
+!< Depending on the int_type (volumetric or vertex based mode) returns
+! model coefficients at the center or the vertices of an element, respectively
+!
+  class(inversion_mesh_type)        :: this
+  integer, intent(in)               :: ielement
+  integer, intent(in)               :: nmodelcoeffs
+  character(len=*), intent(in)      :: modelcoeffs_id
+  character(len=*), intent(in)      :: int_type
+  real(kind=dp), allocatable        :: get_model_coeffs(:,:)
+  real(kind=dp), allocatable        :: vertices(:,:)
+  real(kind=dp)                     :: center(3) 
+  integer                           :: icoeff
+  integer                           :: ivertex
+
+  select case(trim(int_type))
+  case('onvertices')  
+     allocate(get_model_coeffs(nmodelcoeffs,this%nvertices))
+     allocate(vertices(3,this%nvertices))
+     vertices = this%get_element(ielement)
+     do icoeff = 1, nmodelcoeffs       
+        do ivertex = 1,this%nvertices           
+           get_model_coeffs(icoeff) = load_coefficient(vertices(:,1),modelcoeffs_id(icoeff))
+        end do
+     end do
+  case('volumetric')
+     allocate(get_model_coeffs(nmodelcoeffs,1))
+     center = this%get_center(ielement)
+     do icoeff = 1, nmodelcoeffs
+        get_model_coeffs(icoeff) = load_coefficient(center,modelcoeffs_id(icoeff))        
+     end do
+  end select
+ 
+end function get_model_coeffs
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

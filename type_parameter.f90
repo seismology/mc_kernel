@@ -6,7 +6,8 @@ module type_parameter
     use receiver_class,     only : rec_param_type
     use filtering,          only : filter_type
     use commpi,             only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
-                                   pbroadcast_dble_arr, pbroadcast_log, pbarrier, pabort
+                                   pbroadcast_dble_arr, pbroadcast_log, pbarrier, &
+                                   pbroadcast_char_arr, pabort
     implicit none    
 
     type parameter_type
@@ -18,6 +19,7 @@ module type_parameter
 
         real(kind=dp)                        :: allowed_error
         real(kind=dp)                        :: allowed_relative_error = 1d-10
+
         character(len=512)                   :: fwd_dir
         character(len=512)                   :: bwd_dir
         character(len=512)                   :: source_file
@@ -26,17 +28,22 @@ module type_parameter
         character(len=512)                   :: mesh_file
         character(len=512)                   :: output_file = 'kerner'
         character(len=1)                     :: component
-        character(len=4)                     :: model_param
+        character(len=16)                    :: model_param
         character(len=32)                    :: whattodo
         character(len=32)                    :: int_type
         character(len=32)                    :: dump_type
         character(len=32)                    :: fftw_plan = 'MEASURE'
+        character(len=16), allocatable       :: basekernel_id(:)
+        character(len=16), allocatable       :: modelcoeff_id(:)
+        character(len=32)                    :: strain_type
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
         integer                              :: nelems_per_task
         integer                              :: npoints_per_step
         integer                              :: max_iter
         integer                              :: buffer_size
+        integer                              :: nbasekernels
+        integer                              :: nmodelcoeffs
         logical                              :: parameters_read      = .false.
         logical                              :: receiver_read        = .false.
         logical                              :: source_read          = .false.
@@ -287,8 +294,95 @@ subroutine read_receiver(this)
    call pbroadcast_int(this%nrec, 0)
    call pbroadcast_char(this%model_param, 0)
    call pbroadcast_char(this%component, 0)
-
    this%model_param = to_lower(this%model_param)
+
+
+   ! As a default use the full 6-component strain tensor
+   allocate(this%basekernel_id(6))
+   allocate(this%modelcoeff_id(6))
+   this%strain_type   = 'straintensor_full'
+
+   ! Here the we tabulate the base kernels and model coefficients
+   ! required to assemble the physical kernels for a desired model
+   ! parameter
+   select case(trim(this%model_param))     
+   case('lambda')
+      this%nbasekernels  = 1
+      this%basekernel_id(1) = 'k_lambda'
+      this%strain_type   = 'straintensor_trace'
+   case('vp')
+      this%nbasekernels  = 1
+      this%nmodelcoeffs  = 2
+      this%basekernel_id(1) = 'k_lambda'
+      this%modelcoeff_id(1) = 'c_rho'
+      this%modelcoeff_id(2) = 'c_vp'      
+      this%strain_type   = 'straintensor_trace'
+   case('vs')
+      this%nbasekernels  = 2
+      this%nmodelcoeffs  = 2
+      this%basekernel_id(1) = 'k_lambda'
+      this%basekernel_id(2) = 'k_mu' 
+      this%modelcoeff_id(1) = 'c_rho'
+      this%modelcoeff_id(2) = 'c_vs'      
+   case('mu')
+      this%nbasekernels  = 1
+      this%nmodelcoeffs  = 0
+      this%basekernel_id(1) = 'k_mu'
+   case('vsh')
+      this%nbasekernels  = 4
+      this%nmodelcoeffs  = 3
+      this%basekernel_id(1) = 'k_lambda'
+      this%basekernel_id(2) = 'k_mu'
+      this%basekernel_id(3) = 'k_b'
+      this%basekernel_id(4) = 'k_c'
+      this%modelcoeff_id(1) = 'c_rho'
+      this%modelcoeff_id(2) = 'c_vsh'
+      this%modelcoeff_id(3) = 'c_eta'
+   case('vsv')
+      this%nbasekernels  = 1
+      this%nmodelcoeffs  = 2
+      this%basekernel_id(1) = 'k_b'
+      this%modelcoeff_id(1) = 'c_rho'
+      this%modelcoeff_id(2) = 'c_vsv'
+   case('vph')
+      this%nbasekernels  = 2
+      this%nmodelcoeffs  = 3
+      this%basekernel_id(1) = 'k_a'
+      this%basekernel_id(2) = 'k_b'
+      this%modelcoeff_id(1) = 'c_rho'
+      this%modelcoeff_id(2) = 'c_vph'
+      this%modelcoeff_id(3) = 'c_eta'
+   case('vpv')
+      this%nbasekernels  = 3
+      this%nmodelcoeffs  = 2
+      this%basekernel_id(1) = 'k_lambda'
+      this%basekernel_id(2) = 'k_a'
+      this%basekernel_id(3) = 'k_c'
+      this%modelcoeff_id(1) = 'c_rho'
+      this%modelcoeff_id(2) = 'c_vpv'
+   case('kappa')
+      write(*,*) "Error: Kappa kernels not yet implemented"
+      call pabort
+   case('eta')
+      write(*,*) "Error: Eta kernels not yet implemented"
+      call pabort
+   case('xi')
+      write(*,*) "Error: Xi kernels not yet implemented"
+      call pabort
+   case('rho')
+      write(*,*) "Error: Density kernels not yet implemented"
+      call pabort
+   case default
+      write(*,*) "Error: Unknown model parameter"
+      call pabort      
+   end select
+
+   call pbroadcast_int(this%nbasekernels, 0)
+   call pbroadcast_int(this%nmodelcoeffs, 0)
+   call pbroadcast_char(this%strain_type, 0)
+   call pbroadcast_char_arr(this%basekernel_id, 0)
+   call pbroadcast_char_arr(this%modelcoeff_id, 0)
+
    fmtstring = '("  Using ", I5, " receivers")'
    write(lu_out, fmtstring) this%nrec
 
@@ -420,6 +514,8 @@ subroutine read_kernel(this, sem_data, filter)
       do ikernel = this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
 
          if (master) read(lu_receiver, *) kernel_shortname, filtername, misfit_type, timewindow
+
+
          call pbroadcast_char(kernel_shortname, 0)
          call pbroadcast_char(filtername, 0)
          call pbroadcast_char(misfit_type, 0)

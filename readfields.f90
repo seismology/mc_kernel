@@ -89,7 +89,7 @@ module readfields
         logical                            :: meshes_read
         logical                            :: kdtree_built
         
-        character(len=4)                   :: model_param   !< Parameter for which to calculate kernel
+        character(len=32)                  :: strain_type  !< full tensor or straintrace
         integer                            :: ndim          !< Number of dimensions which has to be read to calculate 
                                                             !! Kernel on parameter model_param
 
@@ -142,11 +142,11 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
+subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, strain_type)
     class(semdata_type)            :: this
     character(len=512), intent(in) :: fwd_dir, bwd_dir
     integer,            intent(in) :: buffer_size
-    character(len=4),   intent(in), optional :: model_param
+    character(len=32),   intent(in), optional :: strain_type
     character(len=512)             :: dirnam
     logical                        :: moment=.false., force=.false., single=.false.
 
@@ -246,22 +246,22 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, model_param)
 
     end select
     
-    if (present(model_param)) then
-       this%model_param = model_param
+    if (present(strain_type)) then
+       this%strain_type = strain_type
     else
-       this%model_param = 'vp'
+       this%strain_type = 'straintensor_full'
     end if
 
-    select case(trim(this%model_param))
-    case('vp')
+    select case(trim(this%strain_type))
+    case('straintensor_trace')
        this%ndim = 1
-    case('vs')
+    case('straintensor_full')
        this%ndim = 6
     case default
-        print *, 'ERROR in set_params(): unknown model param '//this%model_param
+        print *, 'ERROR in set_params(): unknown straintensor output format '//this%strain_type
         call pabort
     end select
-    write(lu_out, *) 'Model parameter: ', trim(this%model_param), &
+    write(lu_out, *) 'Straintensor output variant: ', trim(this%strain_type), &
                      ', Dimension of wavefields: ', this%ndim
 
     call flush(lu_out)
@@ -604,13 +604,13 @@ subroutine open_files(this)
     case('displ_only')
        do isim = 1, this%nsim_fwd
           status = this%fwd(isim)%buffer_disp%init(this%buffer_size, this%fwd(isim)%ndumps, 3)
-          select case(this%model_param)
-          case('vp')
+          select case(this%strain_type)
+          case('straintensor_trace')
             status = this%fwd(isim)%buffer_strain%init(this%buffer_size,      &
                                                        this%fwd(isim)%ndumps, &
                                                        this%fwd(isim)%npol+1,   &
                                                        this%fwd(isim)%npol+1)
-          case('vs')
+          case('straintensor_full')
             status = this%fwd(isim)%buffer_strain%init(this%buffer_size,      &
                                                        this%fwd(isim)%ndumps, &
                                                        this%fwd(isim)%npol+1,   &
@@ -622,13 +622,13 @@ subroutine open_files(this)
 
        do isim = 1, this%nsim_bwd
           status = this%bwd(isim)%buffer_disp%init(this%buffer_size, this%bwd(isim)%ndumps, 3)
-          select case(this%model_param)
-          case('vp')
+          select case(this%strain_type)
+          case('straintensor_trace')
             status = this%bwd(isim)%buffer_strain%init(this%buffer_size,      &
                                                        this%bwd(isim)%ndumps, &
                                                        this%bwd(isim)%npol+1,   &
                                                        this%bwd(isim)%npol+1)
-          case('vs')
+          case('straintensor_full')
             status = this%bwd(isim)%buffer_strain%init(this%buffer_size,      &
                                                        this%bwd(isim)%ndumps, &
                                                        this%bwd(isim)%npol+1,   &
@@ -1092,19 +1092,19 @@ function load_fw_points(this, coordinates, source_params)
         endif
     
 
-        select case(trim(this%model_param))
-        case('vp')    
+        select case(trim(this%strain_type))
+        case('straintensor_trace')    
            
            do isim = 1, this%nsim_fwd
               if (trim(this%dump_type) == 'displ_only') then
                  utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                      xi, eta, this%model_param, &
+                      xi, eta, this%strain_type, &
                       corner_points, eltype(1), axis, &
-                      id_elem = id_elem)
+                      id_elem = id_elem) / this%fwd(isim)%amplitude
               else
                  utemp = load_strain_point(this%fwd(isim),      &
                       pointid(ipoint),     &
-                      this%model_param)
+                      this%strain_type) / this%fwd(isim)%amplitude
               endif
               
               iclockold = tick()
@@ -1115,35 +1115,48 @@ function load_fw_points(this, coordinates, source_params)
               iclockold = tick(id=id_rotate, since=iclockold)
            end do !isim
 
-        case('vs')
+        case('straintensor_full')
 
            do isim = 1, this%nsim_fwd
 
               if (trim(this%dump_type) == 'displ_only') then
                  utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                      xi, eta, this%model_param, &
+                      xi, eta, this%strain_type, &
                       corner_points, eltype(1), axis, &
-                      id_elem = id_elem)
+                      id_elem = id_elem) / this%fwd(isim)%amplitude
               else
                  utemp = load_strain_point(this%fwd(isim),      &
                       pointid(ipoint),     &
-                      this%model_param)
+                      this%strain_type) / this%fwd(isim)%amplitude
               endif
               
               iclockold = tick()
 
-              utemp &
-                   = rotate_straintensor(utemp, &
-                   rotmesh_phi(ipoint),        &
-                   source_params%mij, isim)
-              
-              load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)                   &
-                   + utemp * azim_factor(rotmesh_phi(ipoint),     &
-                   source_params%mij, isim, 1) 
+              load_fw_points(:,1,ipoint) = load_fw_points(:,1,ipoint) &
+                    + utemp(:,1) * azim_factor(rotmesh_phi(ipoint), source_params%mij, isim, 1) 
+              load_fw_points(:,2,ipoint) = load_fw_points(:,2,ipoint) &
+                    + utemp(:,2) * azim_factor(rotmesh_phi(ipoint), source_params%mij, isim, 1) 
+              load_fw_points(:,3,ipoint) = load_fw_points(:,3,ipoint) &
+                    + utemp(:,3) * azim_factor(rotmesh_phi(ipoint), source_params%mij, isim, 1) 
+              load_fw_points(:,4,ipoint) = load_fw_points(:,4,ipoint) &
+                    + utemp(:,4) * azim_factor(rotmesh_phi(ipoint), source_params%mij, isim, 2) 
+              load_fw_points(:,5,ipoint) = load_fw_points(:,5,ipoint) &
+                    + utemp(:,5) * azim_factor(rotmesh_phi(ipoint), source_params%mij, isim, 1) 
+              load_fw_points(:,6,ipoint) = load_fw_points(:,6,ipoint) &
+                    + utemp(:,6) * azim_factor(rotmesh_phi(ipoint), source_params%mij, isim, 2) 
               
               iclockold = tick(id=id_rotate, since=iclockold)
               
-           end do !isim                    
+           end do !isim
+
+           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_src_to_xyz(load_fw_points(:,:,ipoint), &
+                                          source_params%lon, this%ndumps)
+
+           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(load_fw_points(:,:,ipoint), &
+                                          source_params%lon, source_params%colat, this%ndumps)
+
+
+
         end select
 
     end do !ipoint
@@ -1174,6 +1187,7 @@ subroutine load_seismogram(this, receivers, src)
    allocate(this%dispseis(this%ndumps, nrec))
    
    Mij_scale = src%mij / this%fwd(1)%amplitude
+
    write(lu_out, '(A, ES11.3)') '  Forward simulation amplitude: ', this%fwd(1)%amplitude
  
    do irec = 1, nrec
@@ -1263,10 +1277,12 @@ subroutine load_seismogram(this, receivers, src)
                          values = utemp) 
       
          seismogram_velo = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_velo
+
       end do
 
       this%dispseis(:, irec) = seismogram_disp(1:this%ndumps)
       this%veloseis(:, irec) = seismogram_velo(1:this%ndumps)
+
    end do
   
    call flush(lu_out)
@@ -1412,29 +1428,46 @@ function load_bw_points(this, coordinates, receiver)
         case('Z')
             if (trim(this%dump_type) == 'displ_only') then
                utemp = load_strain_point_interp(this%bwd(1), gll_point_ids,     &
-                                                xi, eta, this%model_param,      &
+                                                xi, eta, this%strain_type,      &
                                                 corner_points, eltype(1), axis, &
                                                 id_elem = id_elem)
             else
-               utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%model_param)
+               utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%strain_type)
             endif
             load_bw_points(:,:,ipoint) &
                 =                               utemp / this%bwd(1)%amplitude
         case('R')
-            utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%model_param)
+            if (trim(this%dump_type) == 'displ_only') then
+               utemp = load_strain_point_interp(this%bwd(2), gll_point_ids,     &
+                                                xi, eta, this%strain_type,      &
+                                                corner_points, eltype(1), axis, &
+                                                id_elem = id_elem)
+            else
+               utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%strain_type)
+            endif
             load_bw_points(:,:,ipoint) &
                 =   dcos(rotmesh_phi(ipoint)) * utemp / this%bwd(2)%amplitude
         case('T')
-            utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%model_param)
+            if (trim(this%dump_type) == 'displ_only') then
+               utemp = load_strain_point_interp(this%bwd(2), gll_point_ids,     &
+                                                xi, eta, this%strain_type,      &
+                                                corner_points, eltype(1), axis, &
+                                                id_elem = id_elem)
+            else
+               utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%strain_type)
+            endif
             load_bw_points(:,:,ipoint) &
                 = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(2)%amplitude 
         end select
 
-        if (this%model_param.eq.'vs') then
-            load_bw_points(:,:,ipoint) &
-                = rotate_straintensor(load_bw_points(:,:,ipoint), &
-                                      rotmesh_phi(ipoint),        &
-                                      real([1, 1, 1, 0, 0, 0], kind=dp), 1)
+        ! only need to rotate in case of vs
+        if (this%strain_type.eq.'straintensor_full') then
+
+           load_bw_points(:,:,ipoint) = rotate_symm_tensor_voigt_src_to_xyz(load_bw_points(:,:,ipoint), &
+                                          receiver%lon, this%ndumps)
+
+           load_bw_points(:,:,ipoint) = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(load_bw_points(:,:,ipoint), &
+                                          receiver%lon, receiver%colat, this%ndumps)
         end if
 
     end do !ipoint
@@ -1604,17 +1637,17 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
 
         endif
     
-        if (this%model_param == 'vp') then
+        if (this%strain_type == 'straintensor_trace') then
             select case(component)
             case('Z')
                  isim = 1
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                                                      xi, eta, this%model_param, &
+                                                      xi, eta, this%strain_type, &
                                                       corner_points, eltype(1), axis, &
                                                       id_elem=id_elem)
                  else
-                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%strain_type)
                  endif
                  load_fw_points_rdbm(:, :, ipoint) = utemp
 
@@ -1622,11 +1655,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                  isim = 2
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                                                      xi, eta, this%model_param, &
+                                                      xi, eta, this%strain_type, &
                                                       corner_points, eltype(1), axis, &
                                                       id_elem=id_elem)
                  else
-                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%strain_type)
                  endif
                  load_fw_points_rdbm(:, :, ipoint) = utemp 
 
@@ -1637,11 +1670,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                  isim = 2
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                                                      xi, eta, this%model_param, &
+                                                      xi, eta, this%strain_type, &
                                                       corner_points, eltype(1), axis, &
                                                       id_elem=id_elem)
                  else
-                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%strain_type)
                  endif
 
                  load_fw_points_rdbm(:, :, ipoint) = &
@@ -1651,11 +1684,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                  isim = 2
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                                                      xi, eta, this%model_param, &
+                                                      xi, eta, this%strain_type, &
                                                       corner_points, eltype(1), axis, &
                                                       id_elem=id_elem)
                  else
-                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%strain_type)
                  endif
 
                  load_fw_points_rdbm(:, :, ipoint) = &
@@ -1665,17 +1698,17 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                  write(6,*) 'component "', component, '" unknown or not yet implemented'
                  call pabort
             end select
-        elseif (this%model_param == 'vs') then
+        elseif (this%strain_type == 'straintensor_full') then
             select case(component)
             case('Z')
                  isim = 1
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                                                      xi, eta, this%model_param, &
+                                                      xi, eta, this%strain_type, &
                                                       corner_points, eltype(1), axis, &
                                                       id_elem=id_elem)
                  else
-                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%strain_type)
                  endif
 
                  ! rotate source mt to global cartesian system
@@ -1710,12 +1743,12 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                  isim = 2
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                                                      xi, eta, this%model_param, &
+                                                      xi, eta, this%strain_type, &
                                                       corner_points, eltype(1), axis, &
                                                       id_elem=id_elem)
 
                  else
-                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%strain_type)
                  endif
 
                  ! rotate source mt to global cartesian system
@@ -1762,11 +1795,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                  isim = 2
                  if (trim(this%dump_type) == 'displ_only') then
                      utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                                                      xi, eta, this%model_param, &
+                                                      xi, eta, this%strain_type, &
                                                       corner_points, eltype(1), axis, &
                                                       id_elem=id_elem)
                  else
-                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%model_param)
+                     utemp = load_strain_point(this%fwd(isim), pointid(ipoint), this%strain_type)
                  endif
 
                  ! rotate source mt to global cartesian system
@@ -1820,11 +1853,11 @@ end function load_fw_points_rdbm
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_strain_point(sem_obj, pointid, model_param)
+function load_strain_point(sem_obj, pointid, strain_type)
 
     type(ncparamtype), intent(in)   :: sem_obj
     integer, intent(in)             :: pointid
-    character(len=*), intent(in)    :: model_param
+    character(len=*), intent(in)    :: strain_type
     real(kind=dp), allocatable      :: load_strain_point(:,:)
     real(kind=dp), allocatable      :: strain_buff(:,:)
 
@@ -1845,8 +1878,8 @@ function load_strain_point(sem_obj, pointid, model_param)
     iclockold_total = tick()
 #   endif
 
-    select case(model_param)
-    case('vp')
+    select case(strain_type)
+    case('straintensor_trace')
         allocate(load_strain_point(sem_obj%ndumps, 1))
         allocate(utemp(sem_obj%ndumps, 1))
         allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 1))
@@ -1890,7 +1923,7 @@ function load_strain_point(sem_obj, pointid, model_param)
            load_strain_point(:,1) = real(utemp(:,1), kind=dp)
         end if
 
-    case('vs')
+    case('straintensor_full')
         allocate(utemp(sem_obj%ndumps, 6))
         allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 6))
         allocate(strain_buff(sem_obj%ndumps, 6))
@@ -1946,6 +1979,14 @@ function load_strain_point(sem_obj, pointid, model_param)
         load_strain_point(:,5) = strain_buff(:,2)
         load_strain_point(:,6) = -strain_buff(:,4)
 
+        ! print*,"TT1",load_strain_point(:,1)
+        ! print*,"TT2",load_strain_point(:,2)
+        ! print*,"TT3",load_strain_point(:,3)
+        ! print*,"TT4",load_strain_point(:,4)
+        ! print*,"TT5",load_strain_point(:,5)
+        ! print*,"TT6",load_strain_point(:,6)
+
+
     end select
 
 #   ifdef flag_kerner
@@ -1955,7 +1996,7 @@ end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes, &
+function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes, &
                                   element_type, axis, id_elem)
     !< Calculates strain in element given by pointids, nodes. 
     !! Strain is then interpolated to the point defined by xi, eta.
@@ -1971,7 +2012,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
                                                     !! interest
     real(kind=dp),     intent(in)   :: xi, eta      !< Coordinates at which to interpolate
                                                     !! strain
-    character(len=*),  intent(in)   :: model_param  !< Model parameter (decides on 
+    character(len=*),  intent(in)   :: strain_type  !< Model parameter (decides on 
                                                     !! straintrace (vp) or full tensor (vs)
     real(kind=dp),     intent(in)   :: nodes(4,2)   !< Coordinates of element corner
                                                     !! points
@@ -2039,10 +2080,10 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
         iclockold = tick()
 #       endif
 
-        select case(model_param)
-        case('vp')
+        select case(strain_type)
+        case('straintensor_trace')
             status = sem_obj%buffer_strain%get(id_elem, straintrace)
-        case('vs')
+        case('straintensor_full')
             status = sem_obj%buffer_strain%get(id_elem, strain)
         case default
             status = - 1
@@ -2112,8 +2153,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
 #     ifdef flag_kerner
       iclockold = tick()
 #     endif
-      select case(model_param)
-      case('vp')
+      select case(strain_type)
+      case('straintensor_trace')
           ! compute straintrace
           if (sem_obj%excitation_type == 'monopole') then
               straintrace = real(straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
@@ -2140,7 +2181,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
           if (use_strainbuffer) & 
               status = sem_obj%buffer_strain%put(id_elem, straintrace)
 
-      case('vs')
+      case('straintensor_full')
           ! compute full strain tensor
           if (sem_obj%excitation_type == 'monopole') then
               strain = real(strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
@@ -2172,8 +2213,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
     
     endif ! Element not found in buffer
     
-    select case(model_param)
-    case('vp')
+    select case(strain_type)
+    case('straintensor_trace')
         allocate(load_strain_point_interp(sem_obj%ndumps, 1))
         load_strain_point_interp(:, 1) &
             = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
@@ -2183,7 +2224,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, model_param, nodes
         iclockold = tick(id=id_lagrange, since=iclockold)
 #       endif
 
-    case('vs')
+    case('straintensor_full')
         allocate(load_strain_point_interp(sem_obj%ndumps, 6))
         do i = 1, 6
             load_strain_point_interp(:, i) &
