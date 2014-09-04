@@ -1104,23 +1104,23 @@ function load_fw_points(this, coordinates, source_params, coeffs)
         !          is the correct way to load coeffs from sem mesh
         ! Load coefficient vp
         call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_vp_varid, &
-             start  = [nextpoint(1)%idx], & !gll_point_ids(this%npol/2, this%npol/2)], &
-             count  = [1], &
+             varid  = this%fwd(1)%mesh_vp_varid,             &
+             start  = [pointid(ipoint)],                     &
+             count  = [1],                                   &
              values = coeff_buff))
         coeffs(1,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
         ! Load coefficient vs
         call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_vs_varid, &
-             start  = [nextpoint(1)%idx], & ![gll_point_ids(this%npol/2, this%npol/2)], &
-             count  = [1], &
+             varid  = this%fwd(1)%mesh_vs_varid,             &
+             start  = [pointid(ipoint)],                     & 
+             count  = [1],                                   &
              values = coeff_buff))
         coeffs(2,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
         ! Load coefficient rho
         call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_rho_varid, &
-             start  = [nextpoint(1)%idx], & ![gll_point_ids(this%npol/2, this%npol/2)], &
-             count  = [1], &
+             varid  = this%fwd(1)%mesh_rho_varid,            &
+             start  = [pointid(ipoint)],                     & 
+             count  = [1],                                   &
              values = coeff_buff))
         coeffs(3,ipoint) = coeff_buff(1)*1e9 ! convert to kg/(km^3)
 
