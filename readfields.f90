@@ -1132,11 +1132,11 @@ function load_fw_points(this, coordinates, source_params, coeffs)
                  utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                       xi, eta, this%strain_type, &
                       corner_points, eltype(1), axis, &
-                      id_elem = id_elem) / this%fwd(isim)%amplitude
+                      id_elem = id_elem) !/ this%fwd(isim)%amplitude
               else
                  utemp = load_strain_point(this%fwd(isim),      &
                       pointid(ipoint),     &
-                      this%strain_type) / this%fwd(isim)%amplitude
+                      this%strain_type)  !/ this%fwd(isim)%amplitude
               endif
               
               iclockold = tick()
@@ -1155,11 +1155,11 @@ function load_fw_points(this, coordinates, source_params, coeffs)
                  utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                       xi, eta, this%strain_type, &
                       corner_points, eltype(1), axis, &
-                      id_elem = id_elem) / this%fwd(isim)%amplitude
+                      id_elem = id_elem) !/ this%fwd(isim)%amplitude
               else
                  utemp = load_strain_point(this%fwd(isim),      &
                       pointid(ipoint),     &
-                      this%strain_type) / this%fwd(isim)%amplitude
+                      this%strain_type)  !/ this%fwd(isim)%amplitude
               endif
               
               iclockold = tick()
