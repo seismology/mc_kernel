@@ -12,8 +12,11 @@ module commpi
 
   private 
 
-  public  :: pbroadcast_dble, pbroadcast_dble_arr, pbroadcast_char, pbroadcast_log
-  public  :: pbroadcast_int_arr, pbroadcast_int, ppinit, pbarrier, ppend, pabort
+  public  :: pbroadcast_dble, pbroadcast_dble_arr
+  public  :: pbroadcast_char, pbroadcast_char_arr
+  public  :: pbroadcast_int, pbroadcast_int_arr
+  public  :: ppinit, pbarrier, ppend, pabort
+  public  :: pbroadcast_log
 
 contains
 
@@ -69,6 +72,27 @@ subroutine pbroadcast_char(input_char,input_proc)
   end if
 
 end subroutine pbroadcast_char
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine pbroadcast_char_arr(input_char,input_proc)
+
+  integer, intent(in)          :: input_proc
+  character(*), intent(inout)  :: input_char(:)
+  integer                      :: ierror
+  logical                      :: isinitialized
+
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     call mpi_bcast(input_char, size(input_char), MPI_CHARACTER, input_proc, &
+                    MPI_COMM_WORLD, ierror)
+     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  else
+     input_char = input_char
+  end if
+
+end subroutine pbroadcast_char_arr
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
