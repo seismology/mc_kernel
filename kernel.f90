@@ -138,7 +138,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    if (.not.deconv_stf_loc) then
      ! It's slightly ineffective to init that every time, but it is only 
      ! called once per receiver at initialization.
-     call timeshift%init(fft_data%get_f(), timeshift_fwd)
+     call timeshift%init(fft_data%get_f(), dtshift = timeshift_fwd)
      call timeshift%apply(seis_fd)
      call timeshift%freeme()
    end if
