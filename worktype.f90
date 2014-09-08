@@ -25,7 +25,7 @@ module work_type_mod
      integer, allocatable       :: connectivity(:,:)
      real(kind=dp), allocatable :: vertices(:,:)
      real(kind=dp), allocatable :: kernel_values(:,:,:)
-     real(kind=dp), allocatable :: kernel_errors(:,:,:)
+     real(kind=dp), allocatable :: kernel_variance(:,:,:)
      integer, allocatable       :: niterations(:,:)
 
   end type
@@ -64,14 +64,14 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   allocate(wt%connectivity(wt%nvertices_per_elem, wt%nelems_per_task))
   allocate(wt%vertices(3, wt%nvertices))
   allocate(wt%kernel_values(wt%ntotal_kernel, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
-  allocate(wt%kernel_errors(wt%ntotal_kernel, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
+  allocate(wt%kernel_variance(wt%ntotal_kernel, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
   allocate(wt%niterations(wt%ntotal_kernel, wt%nelems_per_task))
 
-  wt%connectivity  = 0
-  wt%vertices      = 0
-  wt%kernel_values = 0
-  wt%kernel_errors = 0
-  wt%niterations   = 0
+  wt%connectivity    = 0
+  wt%vertices        = 0
+  wt%kernel_values   = 0
+  wt%kernel_variance = 0
+  wt%niterations     = 0
 
   ! define blocks for the mpi type. NB: it seems to be necessary to define one
   ! block per array, otherwise having segfaults.
@@ -83,23 +83,23 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   blocklengths(2) = wt%nelems_per_task * wt%nvertices_per_elem ! connectivity
   blocklengths(3) = wt%nvertices * 3                           ! vertices
   blocklengths(4) = wt%ntotal_kernel * wt%nbasisfuncs_per_elem * wt%nelems_per_task !kernel_values
-  blocklengths(5) = wt%ntotal_kernel * wt%nbasisfuncs_per_elem * wt%nelems_per_task !kernel_errors
+  blocklengths(5) = wt%ntotal_kernel * wt%nbasisfuncs_per_elem * wt%nelems_per_task !kernel_variance
   blocklengths(6) = wt%ntotal_kernel * wt%nelems_per_task                           !niterations
 
   oldtypes(1) = MPI_INTEGER            ! all variable sizes and itask
   oldtypes(2) = MPI_INTEGER            ! connectivity
   oldtypes(3) = MPI_DOUBLE_PRECISION   ! vertices 
   oldtypes(4) = MPI_DOUBLE_PRECISION   ! kernel_values 
-  oldtypes(5) = MPI_DOUBLE_PRECISION   ! kernel_errors
+  oldtypes(5) = MPI_DOUBLE_PRECISION   ! kernel_variance
   oldtypes(6) = MPI_INTEGER            ! niterations
 
   ! find memory offsets, more stable then computing with MPI_TYPE_EXTEND
-  call MPI_GET_ADDRESS(wt%ntotal_kernel, offsets(1), ierr)
-  call MPI_GET_ADDRESS(wt%connectivity,  offsets(2), ierr)
-  call MPI_GET_ADDRESS(wt%vertices,      offsets(3), ierr)
-  call MPI_GET_ADDRESS(wt%kernel_values, offsets(4), ierr)
-  call MPI_GET_ADDRESS(wt%kernel_errors, offsets(5), ierr)
-  call MPI_GET_ADDRESS(wt%niterations,   offsets(6), ierr)
+  call MPI_GET_ADDRESS(wt%ntotal_kernel,   offsets(1), ierr)
+  call MPI_GET_ADDRESS(wt%connectivity,    offsets(2), ierr)
+  call MPI_GET_ADDRESS(wt%vertices,        offsets(3), ierr)
+  call MPI_GET_ADDRESS(wt%kernel_values,   offsets(4), ierr)
+  call MPI_GET_ADDRESS(wt%kernel_variance, offsets(5), ierr)
+  call MPI_GET_ADDRESS(wt%niterations,     offsets(6), ierr)
 
   ! make offsets relative
   do i=2, size(offsets)

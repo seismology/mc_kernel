@@ -12,8 +12,8 @@ SRCS =	commpi.F90 buffer.f90 calc_kernels.f90 clocks.f90 fft_type.f90 \
 	test_finite_elem_mapping.f90 test_ftnunit.f90 test_inv_mesh.f90 \
 	test_kernel.f90 test_mc.f90 test_readfields.f90 \
 	test_resampling_type.f90 test_rotations.f90 test_sem_derivatives.f90 \
-	test_simple_routines.f90 test_spectral_basis.f90 test_tetrahedra.f90 \
-	type_parameter.f90 worktype.f90
+	test_simple_routines.f90 test_source.f90 test_spectral_basis.f90 \
+	test_tetrahedra.f90 test_voxel.f90 type_parameter.f90 worktype.f90
 
 OBJS =	commpi.o buffer.o calc_kernels.o clocks.o fft_type.o filtering.o \
 	finite_elem_mapping.o ftnunit.o global_parameters.o inv_mesh.o \
@@ -26,20 +26,20 @@ OBJS =	commpi.o buffer.o calc_kernels.o clocks.o fft_type.o filtering.o \
 	test_finite_elem_mapping.o test_ftnunit.o test_inv_mesh.o \
 	test_kernel.o test_mc.o test_readfields.o test_resampling_type.o \
 	test_rotations.o test_sem_derivatives.o test_simple_routines.o \
-	test_spectral_basis.o test_tetrahedra.o type_parameter.o worktype.o
+	test_source.o test_spectral_basis.o test_tetrahedra.o test_voxel.o \
+	type_parameter.o worktype.o
 
 #Example to include specific netcdf libraries: 
-LIBS = -lm -llapack -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib 
+LIBS = -lm -llapack -lfftw3 -lfftw3f -lnetcdff
 
 # set unc to compile with netcdf: 
 F90FLAGS = -cpp -Dflag_kerner 
 CC = gcc
 CFLAGS = -O3 -DF_UNDERSCORE
 F90 = mpif90 -O3  -fbacktrace -g 
-FC = gfortran -O3 -fbacktrace -g 
  
 # to include local built of netcdf you might want to use sth like this: 
-INCLUDE = -I $(HOME)/local/include -I /usr/include 
+INCLUDE = -I /usr/include 
 
 
 # cancel m2c implicit rule 
@@ -80,16 +80,16 @@ master_queue.o: global_parameters.o inv_mesh.o type_parameter.o worktype.o Makef
 master_slave_parameters.o:  Makefile 
 mc_integration.o: commpi.o global_parameters.o Makefile 
 nc_routines.o: commpi.o global_parameters.o Makefile 
-plot_wavefields.o: fft_type.o global_parameters.o inv_mesh.o readfields.o \
-	type_parameter.o Makefile 
+plot_wavefields.o: fft_type.o filtering.o global_parameters.o inv_mesh.o \
+	readfields.o type_parameter.o Makefile 
 random_tetrahedron.o: global_parameters.o simple_routines.o Makefile 
 random_voxel.o: global_parameters.o Makefile 
 readfields.o: buffer.o clocks.o commpi.o finite_elem_mapping.o \
 	global_parameters.o kdtree2.o nc_routines.o receiver.o rotations.o \
 	sem_derivatives.o source.o spectral_basis.o Makefile 
 receiver.o: global_parameters.o kernel.o Makefile 
-resampling_type.o: commpi.o fft_type.o global_parameters.o Makefile 
-rotations.o: global_parameters.o Makefile 
+resampling_type.o: commpi.o fft_type.o filtering.o global_parameters.o Makefile 
+rotations.o: commpi.o global_parameters.o Makefile 
 sem_derivatives.o: commpi.o finite_elem_mapping.o global_parameters.o Makefile 
 simple_routines.o: global_parameters.o Makefile 
 slave.o: clocks.o fft_type.o filtering.o global_parameters.o inv_mesh.o \
@@ -106,7 +106,7 @@ test_ftnunit.o: ftnunit.o global_parameters.o test_buffer.o test_fft_type.o \
 	test_filter.o test_finite_elem_mapping.o test_inv_mesh.o \
 	test_kernel.o test_mc.o test_readfields.o test_resampling_type.o \
 	test_rotations.o test_sem_derivatives.o test_simple_routines.o \
-	test_spectral_basis.o test_tetrahedra.o Makefile 
+	test_source.o test_spectral_basis.o test_tetrahedra.o test_voxel.o Makefile 
 test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o \
 	random_tetrahedron.o Makefile 
 test_kernel.o: ftnunit.o global_parameters.o kernel.o Makefile 
@@ -119,9 +119,11 @@ test_rotations.o: ftnunit.o global_parameters.o rotations.o Makefile
 test_sem_derivatives.o: finite_elem_mapping.o ftnunit.o global_parameters.o \
 	sem_derivatives.o spectral_basis.o Makefile 
 test_simple_routines.o: ftnunit.o global_parameters.o simple_routines.o Makefile 
+test_source.o: ftnunit.o global_parameters.o source.o Makefile 
 test_spectral_basis.o: ftnunit.o global_parameters.o spectral_basis.o Makefile 
 test_tetrahedra.o: ftnunit.o global_parameters.o inv_mesh.o \
 	random_tetrahedron.o simple_routines.o Makefile 
+test_voxel.o: ftnunit.o global_parameters.o inv_mesh.o random_voxel.o Makefile 
 type_parameter.o: commpi.o filtering.o global_parameters.o kernel.o \
 	readfields.o receiver.o simple_routines.o source.o Makefile 
 worktype.o: global_parameters.o Makefile 

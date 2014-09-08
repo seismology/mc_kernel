@@ -13,6 +13,11 @@ MESH_FILE            'unit_tests/flat_triangles.inp'
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
 OUTPUT_FILE          'kerner'
 
+# Output format when dumping kernels and wavefields. Chose between xdmf and 
+# Yale-style csr binary format (compressed sparse row). Yet, the allowed
+# error below is assumed as the truncation threshold in csr storage
+DUMP_TYPE            'xdmf'
+
 # Write out seismograms? (default: true)
 # Seismograms (raw full trace, filtered full trace and cut trace) can be 
 # written out. Produces three files per kernel. Disable to avoid congesting 
@@ -24,6 +29,7 @@ WRITE_SEISMOGRAMS    true
 # conditions are connected by OR
 # Allowed absolute error per cell
 ALLOWED_ERROR        1e-4
+
 # Allowed relative error per cell
 ALLOWED_RELATIVE_ERROR 2e-2
 
@@ -33,6 +39,14 @@ POINTS_PER_MC_STEP   20
 # Maximum number of iterations after which to cancel Monte Carlo integration 
 # in one cell, regardless of error.
 MAXIMUM_ITERATIONS   100
+
+# Write detailed convergence of elements (default: false)
+# Every slave writes out the values of all the kernels and their respective 
+# estimated errors into his OUTPUT_??? file after each MC step. This can lead 
+# to huge ASCII files (>1GB) with inane line lengths (approx. 20 x nkernel).
+# However, it might be interesting to study the convergence behaviour. 
+# When set to false, only one summary per cell is written out.
+WRITE_DETAILED_CONVERGENCE  false
 
 # Size of reading buffer. 1000 is a good value, unless you run into memory 
 # problems. Higher values avoid repeated reading of the same point.

@@ -1,0 +1,12 @@
+
+ - fft type should be generic
+
+ - tidy up specialized npol=4 functions if not used
+
+ - check sampling of the wavefields vs source time function an others: does it include
+   time zero?? related to this: nstrain in nc_routines assumes the first dump is after dt,
+   not at zero
+   one consequence: the peak of the stf is not at the location indicated by time_shift
+   also, the variable snapshot_times in the netcdf output does not start at 0, but the
+   snapshots do. the values seem to be off anyway (yes, the whole source stuff is a
+   complete mess)

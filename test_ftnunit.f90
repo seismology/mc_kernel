@@ -3,9 +3,11 @@ module unit_tests
 
   use ftnunit, only: test
   use global_parameters, only: lu_out, verbose
+  use test_source
   use test_montecarlo
   use test_fft_type
   use test_tetrahedra
+  use test_voxel
   use test_inversion_mesh
   use test_buffer
   use test_filter
@@ -27,6 +29,12 @@ subroutine test_all
   verbose = 1
 
   call init_output()
+
+  ! test source routines
+  write(6,'(/,a)') 'TEST SOURCE MODULE'
+  call test(test_read_srf, 'read srf file')
+  call test(test_resample_stf, 'resample stf')
+  call test(test_fft_stf, 'fft stf')
 
   ! test simple routines
   write(6,'(/,a)') 'TEST SIMPLE ROUTINES MODULE'
@@ -125,16 +133,21 @@ subroutine test_all
   call test(test_fft_inverse_taz, 'FFT_inverse_taperandzeropad')
   call test(test_fft_convolve, 'FFT_convolve')
   call test(test_fft_taperandzeropad, 'FFT_taperandzeropad')
+  call test(test_fft_parseval, 'FFT_Parseval_theorem')
 
   ! test_resampling
   write(6,'(/,a)') 'TEST RESAMPLING MODULE'
   call test(test_resampling_const, 'RESAMPLING_const')
   call test(test_resampling_const_ntraces, 'RESAMPLING_const_ntraces')
   call test(test_resampling_triangle, 'RESAMPLING_triangle')
+  call test(test_resampling_timeshift_triangle, 'RESAMPLING_triangle with timeshift')
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
   call test(test_filter_gabor_response, 'Test Gabor filter')
+  call test(test_filter_butterworth_lp_response, 'Test Butterworth LP filter')
+  call test(test_filter_butterworth_hp_response, 'Test Butterworth HP filter')
+  call test(test_filter_butterworth_bp_response, 'Test Butterworth BP filter')
   call test(test_filter_timeshift, 'Test time shifting routine')
   
   ! test kernel
@@ -155,6 +168,12 @@ subroutine test_all
   call test(test_generate_random_point_triangle, 'Random points in reference triangle')
   call test(test_point_in_triangle_3d, 'Test for test whether Point in triangle')
 
+  ! test_voxel
+  write(6,'(/,a)') 'TEST VOXEL MODULE'
+  call test(test_generate_random_points_vox, 'Random points in Voxel')
+  call test(test_get_volume_vox, 'Volume of voxel')
+  call test(test_coordinate_transformations_vox, 'Voxel related coordinate transformations')
+
   ! test_inversion_mesh
   write(6,'(/,a)') 'TEST INVERSION MESH MODULE'
   call test(test_mesh_read, 'reading tetrahedral mesh')
@@ -170,6 +189,7 @@ subroutine test_all
             'reading/dumping hexahedral mesh from abaqus file with data')
   call test(test_mesh_data_dump5, &
             'reading/dumping tetrahedral mesh from abaqus file with data')
+  call test(test_mesh_tracedata_dump, 'reading/dumping tetrahedral mesh with tracedata')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
   call test(test_initialize_mesh, 'initialize mesh')

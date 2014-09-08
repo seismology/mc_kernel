@@ -2,16 +2,21 @@
 module inversion_mesh
 
   use global_parameters, only: sp, dp, lu_out
-  use tetrahedra,        only: get_volume_tet, get_volume_poly, &
-                               generate_random_points_tet, &
-                               generate_random_points_poly, &
+
+  use tetrahedra,        only: get_volume_tet,                  &
+                               get_volume_poly,                 &
+                               get_center_tet,                  &
+                               generate_random_points_tet,      &
+                               generate_random_points_poly,     &
                                generate_random_points_ref_tri
-  use voxel,             only: get_volume_vox, &
+
+  use voxel,             only: get_volume_vox,                  &
+                               get_center_vox,                  &
                                generate_random_points_vox
-
+                               
   use commpi,            only: pabort
-  implicit none
 
+  implicit none
 
   private
   public :: inversion_mesh_type
@@ -36,6 +41,7 @@ module inversion_mesh
      procedure, pass :: get_nvertices
      procedure, pass :: get_nbasisfuncs
      procedure, pass :: get_vertices
+     procedure, pass :: get_vertices_dp
      procedure, pass :: get_valence
      procedure, pass :: get_connected_elements
      procedure, pass :: get_connectivity
@@ -44,6 +50,8 @@ module inversion_mesh
      procedure, pass :: read_abaqus_meshtype
      procedure, pass :: dump_mesh_xdmf
      procedure, pass :: get_volume
+     procedure, pass :: get_center
+     procedure, pass :: get_model_coeff
      procedure, pass :: generate_random_points
      procedure, pass :: make_2d_vectors
      procedure, pass :: weights
@@ -55,20 +63,35 @@ module inversion_mesh
 
   type, extends(inversion_mesh_type)    :: inversion_mesh_data_type
      private
-     integer                            :: ntimes_node, ntimes_cell
-     real(kind=sp), allocatable         :: datat_node(:,:), datat_cell(:,:)
-     integer, allocatable               :: group_id_node(:), group_id_cell(:)
-     character(len=32), allocatable     :: data_group_names_node(:), data_group_names_cell(:)
-     integer                            :: ngroups_node, ngroups_cell
+     integer                            :: ntimes_node
+     integer                            :: ntimes_cell
+     real(kind=sp), allocatable         :: datat_node(:,:)
+     real(kind=sp), allocatable         :: datat_cell(:,:)
+     integer, allocatable               :: group_id_node(:)
+     integer, allocatable               :: group_id_cell(:)
+     character(len=32), allocatable     :: data_group_names_node(:)
+     character(len=32), allocatable     :: data_group_names_cell(:)
+     integer                            :: ngroups_node
+     integer                            :: ngroups_cell
+
      contains
      procedure, pass :: get_ntimes_node
      procedure, pass :: get_ntimes_cell
-     procedure, pass :: set_node_data_snap
-     procedure, pass :: set_cell_data_snap
+
+     ! for xdmf format dumps
      procedure, pass :: init_node_data
      procedure, pass :: init_cell_data
+     procedure, pass :: set_node_data_snap
+     procedure, pass :: set_cell_data_snap
+     procedure, pass :: set_node_data_trace
+     procedure, pass :: set_cell_data_trace
      procedure, pass :: dump_node_data_xdmf
      procedure, pass :: dump_cell_data_xdmf
+
+     ! for csr format dumps
+     procedure, pass :: dump_node_data_csr
+     procedure, pass :: dump_cell_data_csr
+
   end type
 
 contains
@@ -93,6 +116,9 @@ integer function get_element_type(this)
      get_element_type = 4
   case('vox')
      get_element_type = 5
+  case default
+     get_element_type = -1
+     call pabort
   end select
 end function
 !-----------------------------------------------------------------------------------------
@@ -100,6 +126,7 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_nelements(this)
   class(inversion_mesh_type)        :: this
+
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -130,6 +157,7 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_nvertices(this)
   class(inversion_mesh_type)        :: this
+
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -140,20 +168,23 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-integer function get_nbasisfuncs(this, inttype)
+integer function get_nbasisfuncs(this, int_type)
   class(inversion_mesh_type)        :: this
-  character(len=32)                 :: inttype
+  character(len=32)                 :: int_type
   
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
   end if
 
-  select case(trim(inttype))
+  select case(trim(int_type))
   case('onvertices')
      get_nbasisfuncs = this%nvertices
   case('volumetric')
      get_nbasisfuncs = this%nelements
+  case default
+     get_nbasisfuncs = -1
+     call pabort
   end select
 
 end function
@@ -170,6 +201,20 @@ function get_vertices(this)
   end if
 
   get_vertices = this%vertices
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_vertices_dp(this)
+  class(inversion_mesh_type)        :: this
+  real(kind=dp)                     :: get_vertices_dp(3,this%nvertices)
+
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
+  get_vertices_dp = this%vertices
 end function
 !-----------------------------------------------------------------------------------------
 
@@ -219,7 +264,8 @@ end function
 !-----------------------------------------------------------------------------------------
 function get_connectivity(this)
   class(inversion_mesh_type)        :: this
-  integer                           :: get_connectivity(this%nvertices_per_elem, this%nelements)
+  integer                           :: get_connectivity(this%nvertices_per_elem, &
+                                                        this%nelements)
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -231,6 +277,7 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntimes_node(this)
   class(inversion_mesh_data_type)        :: this
+
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -242,6 +289,7 @@ end function
 !-----------------------------------------------------------------------------------------
 integer function get_ntimes_cell(this)
   class(inversion_mesh_data_type)        :: this
+
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
@@ -279,6 +327,69 @@ end function get_volume
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function get_center(this, ielement)
+  class(inversion_mesh_type)        :: this
+  integer, intent(in)               :: ielement
+  real(kind=dp)                     :: get_center(3)
+  if (.not. this%initialized) then
+     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
+     call pabort 
+  end if
+
+  get_center = 0
+
+  select case(this%element_type)
+  case('tet')
+     get_center = get_center_tet(this%get_element(ielement))
+  case('quad')
+!    get_center = get_center_poly(4, this%get_element(ielement))
+  case('tri')
+!    get_center = get_center_poly(3, this%get_element(ielement))
+  case('vox')
+     get_center = get_center_vox(this%get_element(ielement))
+  case('hex')
+!    get_center = get_center_hex(this%get_element(ielement))
+  end select
+
+end function get_center
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_model_coeff(this, ielement, modelcoeffid, int_type)
+!
+!< Depending on the int_type (volumetric or vertex based mode) returns
+! model coefficient with id modelcoeffid at the center or the vertices of an element
+!
+  class(inversion_mesh_type)        :: this
+  integer, intent(in)               :: ielement
+  character(len=*), intent(in)      :: modelcoeffid
+  character(len=*), intent(in)      :: int_type
+  real(kind=dp), allocatable        :: get_model_coeff(:)
+  real(kind=dp), allocatable        :: vertices(:,:)
+  real(kind=dp)                     :: center(3) 
+  integer                           :: ivertex
+
+  ! @ TODO: This routine is not quite finished but may become useful
+  ! if one wants to export model coefficients for plotting
+
+  select case(trim(int_type))
+  case('onvertices')  
+     allocate(get_model_coeff(this%nvertices))
+     allocate(vertices(3,this%nvertices))
+     vertices = this%get_element(ielement)
+     do ivertex = 1,this%nvertices           
+        get_model_coeff(ivertex) = 0.d0 ! @ TODO: load_coefficient(vertices(:,1),modelcoeffs_id(icoeff))
+     end do
+  case('volumetric')
+     allocate(get_model_coeff(1))
+     center = this%get_center(ielement)
+     get_model_coeff(1) = 0.d0 ! @ TODO: load_coefficient(center,modelcoeffs_id(icoeff))
+  end select
+ 
+end function get_model_coeff
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function weights(this, ielem, ivertex, points)
 !< Calculates the weight that a value at location "points" has on a kernel on vertex 
 !! "ivertex" of element "ielement". Quadrature rules come in here   
@@ -296,42 +407,20 @@ function weights(this, ielem, ivertex, points)
   select case(this%element_type) 
 
   case('tet')
+     do ipoint = 1, size(points, 2)
+        dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
+        dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
+        dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
 
-  !    ! Version from Karin's code
-
-  !    ivert = vertices(1,itetr)          ! first vertex in this tetrahedron
-  !    dx = x - points(1,ivert)           ! location of (x,y,z) wrt first vertex
-  !    dy = y - points(2,ivert)
-  !    dz = z - points(3,ivert)
-
-  do ipoint = 1, size(points, 2)
-     dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
-     dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
-     dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
-
-     weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
-                       + this%abinv(ivertex, 2, ielem) * dy &
-                       + this%abinv(ivertex, 3, ielem) * dz
-  end do
-
-
-
-  !    ! compute interpolation coefficient for each vertex
-  !    pointweights(1)=abinv(1,1,itetr)*dx+abinv(1,2,itetr)*dy+ &
-  !          abinv(1,3,itetr)*dz + abinv(1,4,itetr)
-  !    pointweights(2)=abinv(2,1,itetr)*dx+abinv(2,2,itetr)*dy+ &
-  !          abinv(2,3,itetr)*dz + abinv(2,4,itetr)
-  !    pointweights(3)=abinv(3,1,itetr)*dx+abinv(3,2,itetr)*dy+ &
-  !          abinv(3,3,itetr)*dz + abinv(3,4,itetr)
-  !    pointweights(4)=abinv(4,1,itetr)*dx+abinv(4,2,itetr)*dy+ &
-  !          abinv(4,3,itetr)*dz + abinv(4,4,itetr)
-  !    ivertices = vertices(:,itetr)
-
+        weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
+                          + this%abinv(ivertex, 2, ielem) * dy &
+                          + this%abinv(ivertex, 3, ielem) * dz
+     end do
   case default
       ! Least sophisticated version possible
       weights = 1
-
   end select
+
 end function weights
 !-----------------------------------------------------------------------------------------
 
@@ -347,6 +436,7 @@ function generate_random_points(this, ielement, npoints) result(points)
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
   end if
+
   select case(this%element_type)
   case('tet')
      points = generate_random_points_tet(this%get_element(ielement), npoints)
@@ -437,20 +527,17 @@ end subroutine read_tet_mesh
 !-----------------------------------------------------------------------------------------
 subroutine initialize_mesh(this, ielem_type, vertices, connectivity, nbasisfuncs_per_elem) 
   class(inversion_mesh_type)        :: this
-  !character(len=*), intent(in)     :: elem_type
   integer                          :: ielem_type !1-tet, 2-quad, 3-tri, 4-hex
   integer                          :: nbasisfuncs_per_elem
   real(kind=dp),    intent(in)     :: vertices(:,:)
   integer,          intent(in)     :: connectivity(:,:)
   character(len=255)               :: fmtstring
 
-
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
      call pabort 
   end if
   
-
   this%nvertices = size(vertices,2)
   this%nelements = size(connectivity,2)
 
@@ -502,17 +589,16 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity, nbasisfuncs
      call this%init_weight_tet_mesh()
   end if
 
-
   this%initialized = .true.
 
 end subroutine initialize_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_abaqus_meshtype(this, filename, inttype)
+subroutine read_abaqus_meshtype(this, filename, int_type)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
-  character(len=*), intent(in)      :: inttype
+  character(len=*), intent(in)      :: int_type
   integer                           :: iinput
   integer                           :: ierr, ct
   character(len=128)                :: line
@@ -522,7 +608,6 @@ subroutine read_abaqus_meshtype(this, filename, inttype)
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
      call pabort 
   end if
-
 
   ! open file 
   open(newunit=iinput, file=trim(filename), status='old', &
@@ -580,28 +665,25 @@ subroutine read_abaqus_meshtype(this, filename, inttype)
   end select
   close(iinput)
 
-
-  select case(trim(inttype))
+  select case(trim(int_type))
   case('onvertices')
      this%nbasisfuncs_per_elem = this%nvertices_per_elem    
   case('volumetric')
      this%nbasisfuncs_per_elem = 1     
   end select
 
-
 end subroutine read_abaqus_meshtype
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_abaqus_mesh(this, filename, inttype)
+subroutine read_abaqus_mesh(this, filename, int_type)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
-  character(len=*), intent(in)      :: inttype
+  character(len=*), intent(in)      :: int_type
   integer                           :: iinput
   integer                           :: i, ierr, ct
   character(len=128)                :: line, line_buff
   character(len=16)                 :: elem_type, elem_type_buff
-
 
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to initialize inversion mesh type that is already initialized'
@@ -723,7 +805,6 @@ subroutine read_abaqus_mesh(this, filename, inttype)
 
   ! abaqus starts counting at 1
   this%connectivity(:,:) = this%connectivity(:,:) - 1
-
   
   if (this%element_type.eq.'tri'.or.this%element_type.eq.'quad') then
      call this%make_2d_vectors
@@ -731,14 +812,12 @@ subroutine read_abaqus_mesh(this, filename, inttype)
      call this%init_weight_tet_mesh()
   end if
 
-
   write(lu_out, '("  Mesh type: ", A)')  trim(this%element_type)
   write(lu_out, '("  nvertices: ", I8)') this%nvertices
   write(lu_out, '("  nelements: ", I8)') this%nelements
 
-
   ! how many basis functions per elem
-  select case(trim(inttype))
+  select case(trim(int_type))
   case('onvertices')
      this%nbasisfuncs_per_elem = this%nvertices_per_elem    
   case('volumetric')
@@ -831,7 +910,6 @@ subroutine make_2d_vectors(this)
     
      this%p_2d = 0
 
-
   case('quad') 
      nvec = 3
   
@@ -846,16 +924,15 @@ subroutine make_2d_vectors(this)
                             p_2d    = this%p_2d(:,:,ielem),                                   &
                             vec     = this%v_2d(:,1:2,ielem))
      end do
+  case default
+     call pabort
   end select
 end subroutine make_2d_vectors
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
-
-!*****************************************************************************80
-!
-!! PLANE_EXP_PRO2 produces 2D coordinates of points that lie in a plane, in 3D.
+! PLANE_EXP_PRO2 produces 2D coordinates of points that lie in a plane, in 3D.
 !
 !  Discussion:
 !
@@ -884,9 +961,7 @@ subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
 !
 !    Output, real ( kind = 8 ) PP(2,N), the "in-plane"
 !    coordinates of the points.  
-!
-  implicit none
-  
+
   integer, parameter         :: dim_num = 3
   integer, intent(in)        :: npoints
   real(kind=dp), intent(in)  :: p_3d(dim_num,npoints)
@@ -896,25 +971,17 @@ subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
   
   real(kind=dp)              :: dot
   integer                    :: i
-  !
-  !  Compute the two basis vectors for the affine plane.
-  !
+
+  !Compute the two basis vectors for the affine plane.
   vec(:,1) = p_ref(:,2) - p_ref(:,1)
-  
-  !call vector_unit_nd ( dim_num, v1 )
   vec(:,1) = vec(:,1) / norm2(vec(:,1))
   
   vec(:,2) = p_ref(:,3) - p_ref(:,1)
-  
   dot = dot_product ( vec(:,1), vec(:,2) )
-  
   vec(:,2) = vec(:,2) - dot * vec(:,1)
-  
-  !call vector_unit_nd ( dim_num, v2 )
   vec(:,2) = vec(:,2) / norm2(vec(:,2))
-  !
-  !  Now decompose each point.
-  !
+  
+  !Now decompose each point.
   do i = 1, npoints
      p_2d(1,i) = dot_product ( p_3d(:,i) - p_ref(:,1), vec(:,1) )
      p_2d(2,i) = dot_product ( p_3d(:,i) - p_ref(:,2), vec(:,2) )
@@ -928,7 +995,6 @@ subroutine dump_mesh_xdmf(this, filename)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput_xdmf, iinput_heavy_data
-  integer                           :: i
   character(len=16)                 :: xdmf_elem_type
   character(len=512)                :: filename_np
 
@@ -1006,8 +1072,8 @@ subroutine free_node_and_cell_data(this)
 
   select type (this)
   type is (inversion_mesh_data_type)
-     if (allocated(this%datat_node))       deallocate(this%datat_node)
-     if (allocated(this%datat_cell))       deallocate(this%datat_cell)
+     if (allocated(this%datat_node))            deallocate(this%datat_node)
+     if (allocated(this%datat_cell))            deallocate(this%datat_cell)
      if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
      if (allocated(this%group_id_node))         deallocate(this%group_id_node)
      if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
@@ -1029,15 +1095,15 @@ subroutine freeme(this)
   this%nvertices_per_elem = -1
   this%nbasisfuncs_per_elem = -1
   this%element_type = ''
+
   if (allocated(this%v_2d)) deallocate(this%v_2d)
   if (allocated(this%p_2d)) deallocate(this%p_2d)
   if (allocated(this%abinv)) deallocate(this%abinv)
 
-
   select type (this)
   type is (inversion_mesh_data_type)
-     if (allocated(this%datat_node))       deallocate(this%datat_node)
-     if (allocated(this%datat_cell))       deallocate(this%datat_cell)
+     if (allocated(this%datat_node))            deallocate(this%datat_node)
+     if (allocated(this%datat_cell))            deallocate(this%datat_cell)
      if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
      if (allocated(this%group_id_node))         deallocate(this%group_id_node)
      if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
@@ -1049,11 +1115,11 @@ subroutine freeme(this)
 end subroutine freeme
 !-----------------------------------------------------------------------------------------
 
-
 !-----------------------------------------------------------------------------------------
-subroutine init_node_data(this, ntimes_node)
-  class(inversion_mesh_data_type)   :: this
-  integer, intent(in)               :: ntimes_node
+subroutine init_node_data(this, ntimes_node, default_name)
+  class(inversion_mesh_data_type)        :: this
+  integer, intent(in)                    :: ntimes_node
+  character(len=*), intent(in), optional :: default_name
 
   this%ntimes_node = ntimes_node
 
@@ -1061,21 +1127,25 @@ subroutine init_node_data(this, ntimes_node)
   this%datat_node = 0
 
   allocate(this%data_group_names_node(ntimes_node))
-  this%data_group_names_node = 'node_data'
+
+  if (present(default_name)) then
+     this%data_group_names_node = trim(default_name)
+  else
+     this%data_group_names_node = 'node_data'
+  endif
 
   allocate(this%group_id_node(ntimes_node))
   this%group_id_node = 1
-
   this%ngroups_node = 0
 
 end subroutine
 !-----------------------------------------------------------------------------------------
 
-
 !-----------------------------------------------------------------------------------------
-subroutine init_cell_data(this, ntimes_cell)
-  class(inversion_mesh_data_type)   :: this
-  integer, intent(in)               :: ntimes_cell
+subroutine init_cell_data(this, ntimes_cell, default_name)
+  class(inversion_mesh_data_type)        :: this
+  integer, intent(in)                    :: ntimes_cell
+  character(len=*), intent(in), optional :: default_name
 
   this%ntimes_cell = ntimes_cell
 
@@ -1083,16 +1153,90 @@ subroutine init_cell_data(this, ntimes_cell)
   this%datat_cell = 0
 
   allocate(this%data_group_names_cell(ntimes_cell))
-  this%data_group_names_cell = 'cell_data'
+
+  if (present(default_name)) then
+     this%data_group_names_cell = trim(default_name)
+  else
+     this%data_group_names_cell = 'cell_data'
+  endif
 
   allocate(this%group_id_cell(ntimes_cell))
   this%group_id_cell = 1
-
   this%ngroups_cell = 0
 
 end subroutine
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine dump_cell_data_csr( this, data_kernel, nkernels, threshold, filename)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_kernel(:,:)
+  character(len=*), intent(in)              :: filename
+  integer, intent(in)                       :: nkernels
+  real(kind=dp)                             :: threshold
+  integer                                   :: iinput_ind
+  integer                                   :: iinput_val
+  integer                                   :: iinput_pnt
+  integer                                   :: ielement
+  integer                                   :: ikernel
+  integer                                   :: ientry
+
+  open(newunit=iinput_val,file=trim(filename)//'.val',&
+       access='direct',recl=4,form='unformatted')
+  open(newunit=iinput_ind,file=trim(filename)//'.ind',&
+       access='direct',recl=4,form='unformatted')
+  open(newunit=iinput_pnt,file=trim(filename)//'.pnt')
+
+  ientry = 0
+  do ikernel=1,nkernels
+     do ielement=1,this%nelements
+        if ( abs(data_kernel(ielement,ikernel)).gt.threshold ) then
+           ientry = ientry + 1
+           write(iinput_val,rec=ientry) data_kernel(ielement,ikernel)
+           write(iinput_ind,rec=ientry) ielement
+        end if
+     end do
+     write(iinput_pnt,*) ientry
+  end do
+
+end subroutine dump_cell_data_csr
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine dump_node_data_csr( this, data_kernel, nkernels, threshold, filename)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_kernel(:,:)
+  character(len=*), intent(in)              :: filename
+  integer, intent(in)                       :: nkernels
+  real(kind=dp)                             :: threshold
+  integer                                   :: iinput_ind
+  integer                                   :: iinput_val
+  integer                                   :: iinput_pnt
+  integer                                   :: ikernel
+  integer                                   :: ivertex
+  integer                                   :: ientry
+
+  open(newunit=iinput_val,file=trim(filename)//'.val',&
+       access='direct',recl=4,form='unformatted')
+  open(newunit=iinput_ind,file=trim(filename)//'.ind',&
+       access='direct',recl=4,form='unformatted')
+  open(newunit=iinput_pnt,file=trim(filename)//'.pnt')
+
+  ientry = 0
+  do ikernel=1,nkernels
+     do ivertex=1,this%nvertices
+        if ( abs(data_kernel(ivertex,ikernel)).gt.threshold ) then
+           ientry = ientry + 1
+           write(iinput_val,rec=ientry) data_kernel(ivertex,ikernel)
+           write(iinput_ind,rec=ientry) ivertex
+        end if
+     end do
+     write(iinput_pnt) ientry
+  end do
+
+
+end subroutine dump_node_data_csr
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine set_node_data_snap(this, data_snap, isnap, data_name)
@@ -1181,6 +1325,58 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine set_node_data_trace(this, data_trace, itrace)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_trace(:)
+  integer, intent(in)                       :: itrace
+
+  if (.not. allocated(this%datat_node)) then
+     write(*,*) 'ERROR: trying to write node data without initialization!'
+     call pabort 
+  end if
+
+  if (size(data_trace) /= this%ntimes_node) then
+     write(*,*) 'ERROR: wrong dimensions of input data_trace for writing vertex data'
+     call pabort 
+  end if
+
+  if (itrace < 1 .or. itrace > this%nvertices) then
+     write(*,*) 'ERROR: index "itrace" out of bounds'
+     call pabort 
+  end if
+
+  this%datat_node(itrace,:) = data_trace(:)
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine set_cell_data_trace(this, data_trace, itrace)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_trace(:)
+  integer, intent(in)                       :: itrace
+
+  if (.not. allocated(this%datat_node)) then
+     write(*,*) 'ERROR: trying to write node data without initialization!'
+     call pabort 
+  end if
+
+  if (size(data_trace) /= this%ntimes_cell) then
+     write(*,*) 'ERROR: wrong dimensions of input data_trace for writing cell data'
+     call pabort 
+  end if
+
+  if (itrace < 1 .or. itrace > this%nelements) then
+     write(*,*) 'ERROR: index "itrace" out of bounds'
+     call pabort 
+  end if
+
+  this%datat_cell(itrace,:) = data_trace(:)
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine dump_cell_data_xdmf(this, filename)
   class(inversion_mesh_data_type)   :: this
   character(len=*), intent(in)      :: filename
@@ -1231,12 +1427,13 @@ subroutine dump_cell_data_xdmf(this, filename)
 
   ! loop over all data
   do while(i <= this%ntimes_cell)
+
      ! create new snapshot in the temporal collection
      write(iinput_xdmf, 7341) 'grid', dble(itime), trim(xdmf_elem_type), this%nelements, &
                               "'", "'", "'", "'"
 
      igroup = 1
-     ! loop over groups, that have more items then itime
+     ! loop over groups, that have more items than itime
      do while(igroup <= this%ngroups_cell)
         if (count(this%group_id_cell == igroup) >= itime) then
            ! find the itime'th item in the group
@@ -1310,7 +1507,6 @@ subroutine dump_cell_data_xdmf(this, filename)
     '</Domain>',/&
     '</Xdmf>')
 
-
   ! VERTEX data
   open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
@@ -1383,6 +1579,7 @@ subroutine dump_node_data_xdmf(this, filename)
   i = 1
   itime = 1
 
+  
   ! loop over all data
   do while(i <= this%ntimes_node)
      ! create new snapshot in the temporal collection
@@ -1486,5 +1683,6 @@ subroutine dump_node_data_xdmf(this, filename)
 
 end subroutine
 !-----------------------------------------------------------------------------------------
+
 end module
 !=========================================================================================

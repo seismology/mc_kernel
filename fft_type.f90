@@ -30,6 +30,7 @@ module fft
      procedure, pass            :: get_f
      procedure, pass            :: get_df
      procedure, pass            :: get_t
+     procedure, pass            :: get_dt
      procedure, pass            :: init
      procedure, pass            :: rfft_md
      procedure, pass            :: irfft_md
@@ -122,6 +123,18 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function get_dt(this)
+  class(rfft_type) :: this
+  real(kind=dp)    :: get_dt
+  if (.not. this%initialized) then
+     write(*,*) 'ERROR: accessing fft type that is not initialized'
+     call pabort 
+  end if
+  get_dt = this%dt
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function get_t(this)
   class(rfft_type) :: this
   real(kind=dp)    :: get_t(this%ntimes)
@@ -201,7 +214,7 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt, fftw_plan, nfft)
      this%dt = 1.0
   end if
 
-  this%df    = 1. / (this%dt*ntimes_np2)
+  this%df    = 1. / (this%dt*this%ntimes)
   allocate( this%f( this%nomega ) )
   allocate( this%t( this%ntimes ) )
   
@@ -289,6 +302,9 @@ subroutine rfft_1d(this, datat, dataf)
   ! compiler does not change the order of execution (stupid, but known issue)
   call dfftw_execute_dft_r2c(this%plan_fft_1d, datat, dataf)
 
+  ! Normalization
+  dataf = dataf * this%dt
+
 end subroutine rfft_1d
 !-----------------------------------------------------------------------------------------
 
@@ -321,10 +337,11 @@ subroutine irfft_1d(this, dataf, datat)
 
   ! use specific interfaces including the buffer arrays to make sure the
   ! compiler does not change the order of execution (stupid, but known issue)
-  call dfftw_execute_dft_c2r(this%plan_ifft, dataf, datat)
+
+  call dfftw_execute_dft_c2r(this%plan_ifft_1d, dataf, datat)
   ! normalization, see
   ! http://www.fftw.org/doc/The-1d-Discrete-Fourier-Transform-_0028DFT_0029.html
-  datat = datat / this%ntimes
+  datat = datat * this%df
 
 end subroutine irfft_1d
 !-----------------------------------------------------------------------------------------
@@ -362,7 +379,11 @@ subroutine rfft_md(this, datat_in, dataf_out)
   ! compiler does not change the order of execution (stupid, but known issue)
   datat = reshape(datat_in, [this%ntimes, this%ntraces_fft])
   call dfftw_execute_dft_r2c(this%plan_fft, datat, dataf)
-  dataf_out = reshape(dataf, [this%nomega, this%ndim, this%ntraces])
+
+  ! Normalization
+  dataf = dataf * this%dt
+
+  dataf_out = reshape(dataf, [this%nomega, this%ndim, this%ntraces]) 
 
 end subroutine rfft_md
 !-----------------------------------------------------------------------------------------
@@ -401,9 +422,10 @@ subroutine irfft_md(this, dataf_in, datat_out)
   ! compiler does not change the order of execution (stupid, but known issue)
   dataf = reshape(dataf_in, [this%nomega, this%ntraces_fft])
   call dfftw_execute_dft_c2r(this%plan_ifft, dataf, datat)
+
   ! normalization, see
   ! http://www.fftw.org/doc/The-1d-Discrete-Fourier-Transform-_0028DFT_0029.html
-  datat = datat / this%ntimes
+  datat = datat * this%df
 
   datat_out = reshape(datat, [this%ntimes, this%ndim, this%ntraces]) 
 
@@ -435,14 +457,16 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function taperandzeropad_1d(array, ntimes, ntaper)
+function taperandzeropad_1d(array, ntimes, ntaper, end_only)
   real(kind=dp), intent(in)     :: array(:,:)
   integer, intent(in)           :: ntimes
   integer, intent(in), optional :: ntaper ! Taper length in samples
+  logical, intent(in), optional :: end_only
   real(kind=dp)                 :: taperandzeropad_1d(ntimes, size(array,2))
   real(kind=dp), allocatable    :: win(:)
 
   integer                       :: ntaper_loc
+  logical                       :: end_only_loc
   real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
@@ -460,14 +484,25 @@ function taperandzeropad_1d(array, ntimes, ntaper)
     ntaper_loc = ntimes_in / 4
   endif
 
+  if (present(end_only)) then
+    end_only_loc = end_only
+  else
+    end_only_loc = .false.
+  endif
+
+
   taperandzeropad_1d(:,:) = 0
 
   if (ntaper_loc > 0) then
      allocate(win(ntimes_in))
      win = 1
-     do i = 1, ntaper_loc
-        win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
-     end do
+     
+     if (.not. end_only_loc) then
+        do i = 1, ntaper_loc
+           win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
+        end do
+     endif
+
      do i = 0, ntaper_loc-1
         win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
      end do
@@ -481,15 +516,17 @@ end function taperandzeropad_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function taperandzeropad_md(array, ntimes, ntaper)
+function taperandzeropad_md(array, ntimes, ntaper, end_only)
   real(kind=dp), intent(in)     :: array(:,:,:)
   integer,       intent(in)     :: ntimes
   integer, intent(in), optional :: ntaper ! Taper length in samples
+  logical, intent(in), optional :: end_only
   real(kind=dp)                 :: taperandzeropad_md(ntimes, size(array,2), &
                                                       size(array,3))
   real(kind=dp), allocatable    :: win(:)
 
   integer                       :: ntaper_loc
+  logical                       :: end_only_loc
   real, parameter               :: D=3.3  ! Decay constant
   integer                       :: ntimes_in ! Length of incoming time series
   integer                       :: i
@@ -507,16 +544,27 @@ function taperandzeropad_md(array, ntimes, ntaper)
     ntaper_loc = ntimes_in / 4
   endif
 
+  if (present(end_only)) then
+    end_only_loc = end_only
+  else
+    end_only_loc = .false.
+  endif
+
   taperandzeropad_md(:,:,:) = 0
   if (ntaper_loc > 0) then
      allocate(win(ntimes_in))
      win = 1
-     do i = 1, ntaper_loc
-        win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
-     end do
+
+     if (.not. end_only_loc) then
+        do i = 1, ntaper_loc
+           win(i) = exp( -(D * (ntaper_loc-i+1) / ntaper_loc)**2 )
+        end do
+     endif
+
      do i = 0, ntaper_loc-1
         win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
      end do
+
      taperandzeropad_md(1:size(array,1), :, :) = mult3d_1d(array, win)
   else
      taperandzeropad_md(1:size(array,1), :, :) = array(:,:,:)

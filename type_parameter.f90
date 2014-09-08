@@ -6,7 +6,8 @@ module type_parameter
     use receiver_class,     only : rec_param_type
     use filtering,          only : filter_type
     use commpi,             only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
-                                   pbroadcast_dble_arr, pbroadcast_log, pbarrier, pabort
+                                   pbroadcast_dble_arr, pbroadcast_log, pbarrier, &
+                                   pbroadcast_char_arr, pabort
     implicit none    
 
     type parameter_type
@@ -18,6 +19,7 @@ module type_parameter
 
         real(kind=dp)                        :: allowed_error
         real(kind=dp)                        :: allowed_relative_error = 1d-10
+
         character(len=512)                   :: fwd_dir
         character(len=512)                   :: bwd_dir
         character(len=512)                   :: source_file
@@ -26,23 +28,28 @@ module type_parameter
         character(len=512)                   :: mesh_file
         character(len=512)                   :: output_file = 'kerner'
         character(len=1)                     :: component
-        character(len=4)                     :: model_param
+        character(len=16)                    :: model_param
         character(len=32)                    :: whattodo
-        character(len=32)                    :: inttype
+        character(len=32)                    :: int_type
+        character(len=32)                    :: dump_type
         character(len=32)                    :: fftw_plan = 'MEASURE'
+        character(len=16), allocatable       :: basekernel_id(:)
+        character(len=32)                    :: strain_type
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
         integer                              :: nelems_per_task
         integer                              :: npoints_per_step
         integer                              :: max_iter
         integer                              :: buffer_size
-        logical                              :: parameters_read = .false.
-        logical                              :: receiver_read   = .false.
-        logical                              :: source_read     = .false.
-        logical                              :: filter_read     = .false.
-        logical                              :: kernel_read     = .false.
-        logical                              :: deconv_stf      = .false.
-        logical                              :: write_smgr      = .true.
+        integer                              :: nbasekernels
+        logical                              :: parameters_read      = .false.
+        logical                              :: receiver_read        = .false.
+        logical                              :: source_read          = .false.
+        logical                              :: filter_read          = .false.
+        logical                              :: kernel_read          = .false.
+        logical                              :: detailed_convergence = .false.
+        logical                              :: deconv_stf           = .false.
+        logical                              :: write_smgr           = .true.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -120,6 +127,9 @@ subroutine read_parameters(this, input_file_in)
         case('OUTPUT_FILE')
            this%output_file = keyvalue
 
+        case('DUMP_TYPE')
+           this%dump_type = keyvalue
+
         case('NETCDF_BUFFER_SIZE')
            read(keyvalue, *) this%buffer_size
 
@@ -132,6 +142,9 @@ subroutine read_parameters(this, input_file_in)
         case('POINTS_PER_MC_STEP')
            read(keyvalue, *) this%npoints_per_step
 
+        case('WRITE_DETAILED_CONVERGENCE')
+           read(keyvalue, *) this%detailed_convergence
+
         case('DECONVOLVE_STF')
            read(keyvalue, *) this%deconv_stf
 
@@ -142,7 +155,7 @@ subroutine read_parameters(this, input_file_in)
            this%whattodo = keyvalue
 
         case('INT_TYPE')
-           this%inttype = keyvalue
+           this%int_type = keyvalue
 
         case('WRITE_SEISMOGRAMS')
            read(keyvalue, *) this%write_smgr
@@ -168,15 +181,17 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%filter_file, 0)
   call pbroadcast_char(this%mesh_file, 0)
   call pbroadcast_char(this%output_file, 0)
+  call pbroadcast_char(this%dump_type, 0)
   call pbroadcast_int(this%buffer_size, 0)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)
+  call pbroadcast_log(this%detailed_convergence, 0)
   call pbroadcast_log(this%deconv_stf, 0)
   call pbroadcast_log(this%write_smgr, 0)
   call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
-  call pbroadcast_char(this%inttype, 0)
+  call pbroadcast_char(this%int_type, 0)
 
   write(lu_out,*)
   call flush(lu_out)
@@ -247,7 +262,7 @@ subroutine read_receiver(this)
    integer, parameter            :: lu_receiver = 1001
    integer                       :: irec, firstkernel, lastkernel
    integer                       :: ikernel, recnkernel
-   real(kind=dp)                 :: timewindow(2), reclatd, reclond
+   real(kind=dp)                 :: reclatd, reclond
    character(len=16)             :: recname
    character(len=80)             :: fmtstring
 
@@ -277,8 +292,71 @@ subroutine read_receiver(this)
    call pbroadcast_int(this%nrec, 0)
    call pbroadcast_char(this%model_param, 0)
    call pbroadcast_char(this%component, 0)
-
    this%model_param = to_lower(this%model_param)
+
+
+   ! As a default use the full 6-component strain tensor
+   allocate(this%basekernel_id(6))
+   this%strain_type   = 'straintensor_full'
+
+   ! Here the we tabulate the base kernels required to assemble 
+   ! the physical kernels for a desired model parameter
+   select case(trim(this%model_param))     
+   case('lambda')
+      this%nbasekernels  = 1
+      this%basekernel_id(1) = 'k_lambda'
+      this%strain_type   = 'straintensor_trace'
+   case('vp')
+      this%nbasekernels  = 1
+      this%basekernel_id(1) = 'k_lambda'     
+      this%strain_type   = 'straintensor_trace'
+   case('vs')
+      this%nbasekernels  = 2
+      this%basekernel_id(1) = 'k_lambda'
+      this%basekernel_id(2) = 'k_mu'      
+   case('mu')
+      this%nbasekernels  = 1
+      this%basekernel_id(1) = 'k_mu'
+   case('vsh')
+      this%nbasekernels  = 4
+      this%basekernel_id(1) = 'k_lambda'
+      this%basekernel_id(2) = 'k_mu'
+      this%basekernel_id(3) = 'k_b'
+      this%basekernel_id(4) = 'k_c'
+   case('vsv')
+      this%nbasekernels  = 1
+      this%basekernel_id(1) = 'k_b'
+   case('vph')
+      this%nbasekernels  = 2
+      this%basekernel_id(1) = 'k_a'
+      this%basekernel_id(2) = 'k_b'
+   case('vpv')
+      this%nbasekernels  = 3
+      this%basekernel_id(1) = 'k_lambda'
+      this%basekernel_id(2) = 'k_a'
+      this%basekernel_id(3) = 'k_c'
+   case('kappa')
+      write(*,*) "Error: Kappa kernels not yet implemented"
+      call pabort
+   case('eta')
+      write(*,*) "Error: Eta kernels not yet implemented"
+      call pabort
+   case('xi')
+      write(*,*) "Error: Xi kernels not yet implemented"
+      call pabort
+   case('rho')
+      write(*,*) "Error: Density kernels not yet implemented"
+      call pabort
+   case default
+      write(*,*) "Error: Unknown model parameter"
+      call pabort      
+   end select
+
+   call pbroadcast_int(this%nbasekernels, 0)
+   call pbroadcast_char(this%strain_type, 0)
+   call pbroadcast_char_arr(this%basekernel_id, 0)
+
+
    fmtstring = '("  Using ", I5, " receivers")'
    write(lu_out, fmtstring) this%nrec
 
@@ -394,6 +472,8 @@ subroutine read_kernel(this, sem_data, filter)
               call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%stf_bwd)
           end do
        end if
+   else
+       nfilter = 0
    end if
 
    do irec = 1, this%nrec
@@ -408,6 +488,8 @@ subroutine read_kernel(this, sem_data, filter)
       do ikernel = this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
 
          if (master) read(lu_receiver, *) kernel_shortname, filtername, misfit_type, timewindow
+
+
          call pbroadcast_char(kernel_shortname, 0)
          call pbroadcast_char(filtername, 0)
          call pbroadcast_char(misfit_type, 0)

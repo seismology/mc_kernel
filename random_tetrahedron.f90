@@ -7,7 +7,7 @@ module tetrahedra
 
   public :: generate_random_points_tet, generate_random_points_poly
   public :: generate_random_points_ref_tri
-  public :: get_volume_tet, get_volume_poly
+  public :: get_volume_tet, get_volume_poly, get_center_tet
   public :: rmat4_det, point_in_triangle, point_in_triangle_3d
 contains
 
@@ -380,6 +380,41 @@ function get_volume_tet(v)
   get_volume_tet = abs ( rmat4_det ( a ) ) / 6.0d+00
 
 end function get_volume_tet
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_center_tet(v)
+!
+! TETRAHEDRON_CENTROID computes the centroid of a tetrahedron.
+!
+!  Licensing:
+!
+!    This code is distributed under the GNU LGPL license.
+!
+!  Modified:
+!
+!    30 December 2004
+!
+!  Author:
+!
+!    John Burkardt
+!
+!  Parameters:
+!
+!    Input, real ( kind = 8 ) TETRA(3,4) the tetrahedron vertices.
+!
+!    Output, real ( kind = 8 ) CENTROID(3), the coordinates of the centroid.
+!
+
+  real(kind=dp), intent(in) :: v(3,4)
+  real(kind=dp)             :: get_center_tet(3)
+  integer i
+
+  do i = 1,3
+    get_center_tet(i) = sum ( v(i,1:4) ) / 4.0D+00
+  end do
+
+end function get_center_tet
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

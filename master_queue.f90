@@ -11,7 +11,7 @@ module master_queue
   type(inversion_mesh_data_type)      :: inv_mesh
   type(parameter_type)                :: parameters
   integer, allocatable                :: tasks(:), elems_in_task(:,:)
-  real(kind=dp), allocatable          :: K_x(:,:), Err(:,:)
+  real(kind=dp), allocatable          :: K_x(:,:), Var(:,:)
   integer,       allocatable          :: connectivity(:,:)
   integer,       allocatable          :: niterations(:,:), element_proc(:)
 
@@ -43,7 +43,7 @@ subroutine init_queue(ntasks)
   if (trim(parameters%mesh_file).eq.'Karin') then
     call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
   else
-    call inv_mesh%read_abaqus_mesh(parameters%mesh_file,parameters%inttype)
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file,parameters%int_type)
   end if
   
   wt%ielement_type = inv_mesh%get_element_type()
@@ -86,16 +86,19 @@ subroutine init_queue(ntasks)
      end do
   enddo
   
-  allocate(K_x(inv_mesh%get_nbasisfuncs(parameters%inttype), parameters%nkernel))
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Allocate variables to store result'
+  write(lu_out,'(A)') '***************************************************************'
+  allocate(K_x(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
   K_x = 0.0
-  allocate(Err(inv_mesh%get_nbasisfuncs(parameters%inttype), parameters%nkernel))
-  Err = 0.0
+  allocate(Var(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
+  Var = 0.0
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Starting to distribute the work'
   write(lu_out,'(A)') '***************************************************************'
   
-end subroutine
+end subroutine init_queue
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -139,19 +142,19 @@ subroutine extract_receive_buffer(itask, irank)
       do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
 
          ! are we in volumetric or vertex mode?
-         select case(trim(parameters%inttype))
+         select case(trim(parameters%int_type))
          case('onvertices')         
             K_x(connectivity(ibasisfunc, ielement),:) = K_x(connectivity(ibasisfunc, ielement),:) &
                                                         + wt%kernel_values(:, ibasisfunc, iel)
-            Err(connectivity(ibasisfunc, ielement),:) = Err(connectivity(ibasisfunc, ielement),:) &
-                                                        + wt%kernel_errors(:, ibasisfunc, iel)    &
-                                                        / abs(wt%kernel_values(:, ibasisfunc, iel))
+            Var(connectivity(ibasisfunc, ielement),:) = Var(connectivity(ibasisfunc, ielement),:) &
+                                                        + wt%kernel_variance(:, ibasisfunc, iel) !    &
+                                                        !/ abs(wt%kernel_values(:, ibasisfunc, iel))
          case('volumetric')
             K_x(ielement,:) = K_x(ielement,:) &
                               + wt%kernel_values(:, ibasisfunc, iel) 
-            Err(ielement,:) = Err(ielement,:) &
-                              + wt%kernel_errors(:, ibasisfunc, iel)    &
-                              / abs(wt%kernel_values(:, ibasisfunc, iel))
+            Var(ielement,:) = Var(ielement,:) &
+                              + wt%kernel_variance(:, ibasisfunc, iel)   ! &
+                              !/ abs(wt%kernel_values(:, ibasisfunc, iel))
          end select
 
 
@@ -166,43 +169,76 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine finalize()
-  integer       :: ikernel, ivertex
+  integer       :: ikernel
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
   write(lu_out,'(A)') '***************************************************************'
-  
-
 
   ! Save big kernel variable to disk
   write(lu_out,*) 'Write Kernel to disk'
 
-  select case(trim(parameters%inttype))
-  case('onvertices')
-     call inv_mesh%init_node_data(parameters%nkernel*2)
-     do ikernel = 1, parameters%nkernel
-        call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
-             ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
-        call inv_mesh%set_node_data_snap(real(Err(:,ikernel), kind=sp), &
-             ikernel+parameters%nkernel,         &
-             'Err_'//parameters%kernel(ikernel)%name )
-     end do
-     call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
-  case('volumetric')
-     call inv_mesh%init_cell_data(parameters%nkernel*2)
-     do ikernel = 1, parameters%nkernel
-        call inv_mesh%set_cell_data_snap(real(K_x(:,ikernel), kind=sp), &
-             ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
-        call inv_mesh%set_cell_data_snap(real(Err(:,ikernel), kind=sp), &
-             ikernel+parameters%nkernel,         &
-             'Err_'//parameters%kernel(ikernel)%name )
-     end do
-     call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel')
+  ! Select dump format
+  select case(trim(parameters%dump_type))
+
+  ! Save kernels in xdmf format
+  case ('xdmf')
+  
+     ! Distiguish between volumetric and node-based mode
+     select case(trim(parameters%int_type))
+     case ('onvertices')
+        call inv_mesh%init_node_data(parameters%nkernel*2)
+        do ikernel = 1, parameters%nkernel
+           call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
+                ikernel, 'K_x_'//parameters%kernel(ikernel)%name )        
+           call inv_mesh%set_node_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
+                kind=sp),                                 &
+                ikernel+parameters%nkernel,                    &
+                'err_'//parameters%kernel(ikernel)%name )
+
+        end do
+        call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
+     case ('volumetric')
+        call inv_mesh%init_cell_data(parameters%nkernel*2)
+        do ikernel = 1, parameters%nkernel
+           call inv_mesh%set_cell_data_snap(real(K_x(:,ikernel), kind=sp), &
+                ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
+           call inv_mesh%set_cell_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
+                kind=sp),                                 &
+                ikernel+parameters%nkernel,                    &
+                'err_'//parameters%kernel(ikernel)%name )
+        end do
+        call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel')
+     end select
+  
+  ! Save kernels in Yale-style csr format
+  case ('csr')
+
+     select case(trim(parameters%int_type))
+     case ('onvertices')
+
+        call inv_mesh%dump_node_data_csr ( real(K_x(:,:), kind=sp),  &
+                                           parameters%nkernel,       &
+                                           parameters%allowed_error, & 
+                                           trim(parameters%output_file)//'_kernel')
+
+
+     case ('volumetric')
+
+        call inv_mesh%dump_cell_data_csr ( real(K_x(:,:), kind=sp),  &
+                                           parameters%nkernel,       &
+                                           parameters%allowed_error, & 
+                                           trim(parameters%output_file)//'_kernel')
+
+
+     end select
+
   end select
 
   call inv_mesh%free_node_and_cell_data()
 
   ! Save mesh partition and convergence information
+  write(lu_out,*) 'Write mesh partition and convergence to disk'
   call inv_mesh%init_cell_data(parameters%nkernel + 1)
   call inv_mesh%set_cell_data_snap(real(element_proc, kind=sp), 1,  &
                                    'element_proc')

@@ -193,7 +193,7 @@ end function tick
 !-----------------------------------------------------------------------
 subroutine get_clock( id, ticks, calls, total_time, time_per_call )
     integer, intent(in)                 :: id
-    integer, intent(out), optional      :: ticks, calls
+    integer(8), intent(out), optional   :: ticks, calls
     real(kind=4), intent(out), optional :: total_time, time_per_call
 
     if( 0.LT.id .AND. id.LE.max_clocks )then

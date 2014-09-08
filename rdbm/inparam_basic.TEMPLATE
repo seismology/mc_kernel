@@ -4,18 +4,34 @@ SIM_DIR                 '../../axisem/SOLVER/20s_kernel_output'
 # mode: 
 # tomography        one seismogram per source receiver pair
 # finitesource      one seismogram per receiver, summed over all sources
-MODE                    tomo
+MODE                    tomography
 
 # Receiver file type, allowed options:
 # colatlon          Colatitude and Longitude for each station.
 # stations          SPECFEM-style stations file with latitude, longitude and station name
 #                     (default)
+# abaqus            abaqus mesh (radius is ignored and only lon/lat used)
 RECFILE_TYPE            stations 
+
+# Filename of the receiver file
+#RECFILE_NAME            'receivers.dat'    # default filename for RECFILE_TYPE colatlon
+RECFILE_NAME            'STATIONS'          # default filename for RECFILE_TYPE stations
 
 # Source file type, allowed options:
 # cmtsolution       standard cmtsolution file as available form globalcmt.org (allows only
 #                     one source per run)
+# cmtsolutions      use multiple cmtsolution files
+# srf               standard rupture format
 SRCFILE_TYPE            cmtsolution
+
+# Source file name, used for SRCFILE_TYPE = cmtsolution or srf
+SRCFILE_NAME        'nr6.70-s0000-h0000.srf'
+
+# bash wildcard expression for cmtsolution files to be used.
+# details can be found in the manpages: 'man 7 glob'
+# only used if SRCFILE_TYPE is 'cmtsolutions', quotation marks are essential
+# example to use all files in subfolder CMT: 'CMT/*'
+SRCFILE_WILDCARD        'CMT/CMTSOLUTION?'
 
 # source type, should be one of [moment, explosion]
 # in case of exlosion, only the straintrace needs to be read from file instead of the
@@ -31,6 +47,17 @@ RESAMPLE                T
 # number of samples in the seismograms, resampling is done in the frequency domain, 
 # length of the traces in seconds depends on the forward run
 NSAMP                   3600
+
+# filter the seismograms? done during resampling, so only possible if resampling is
+# activated
+FILTER                  F
+
+# filter definition
+FILTER_DEF              'Butterw_LP_O4 2. 0. 0. 0.'
+
+# Time Shift? done during resampling, so only possible if resampling is activated
+# uses timeshift from the source and the forward simulation
+TIMESHIFT               T
 
 # Size of reading buffer. 1000 is a good value, unless you run into memory problems.
 # Higher values avoid repeated reading of the same point.

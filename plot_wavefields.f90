@@ -1,19 +1,20 @@
 !=========================================================================================
 module plot_wavefields_mod
 
+    implicit none
+
 contains
 
 !-----------------------------------------------------------------------------------------
 subroutine plot_wavefields()
 
-    use global_parameters,          only : sp, dp, pi, deg2rad, verbose, init_random_seed
+    use global_parameters,          only : sp, dp, pi, deg2rad, init_random_seed
     use inversion_mesh,             only : inversion_mesh_data_type
     use readfields,                 only : semdata_type
     use type_parameter,             only : parameter_type
     use fft,                        only : rfft_type, taperandzeropad
     use filtering,                  only : timeshift_type
 
-    implicit none
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
     type(semdata_type)                  :: sem_data
@@ -22,14 +23,14 @@ subroutine plot_wavefields()
 
     integer                             :: nelems, ntimes, nomega, nrec
     integer                             :: idump, ndumps, irec
-    integer                             :: nvertices
+    integer                             :: nvertices, ndim
     real(kind=dp),    allocatable       :: co_points(:,:)
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
     real(kind=dp),    allocatable       :: bw_field(:,:,:)
     complex(kind=dp), allocatable       :: fw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
-    complex(kind=dp), allocatable       :: conv_field_fd(:,:,:)
-    real(kind=dp),    allocatable       :: conv_field(:,:,:)
+    complex(kind=dp), allocatable       :: conv_field_fd(:,:)
+    real(kind=dp),    allocatable       :: conv_field(:,:)
     real(kind=dp)                       :: df
     character(len=64)                   :: fmtstring
 
@@ -49,7 +50,7 @@ subroutine plot_wavefields()
     call sem_data%set_params(parameters%fwd_dir,     &
                              parameters%bwd_dir,     &
                              parameters%buffer_size, & 
-                             parameters%model_param)
+                             parameters%strain_type)
     call sem_data%open_files()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
@@ -57,7 +58,7 @@ subroutine plot_wavefields()
     call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
     ndumps = sem_data%ndumps
-
+    ndim   = sem_data%get_ndim()
 
     write(*,*) '***************************************************************'
     write(*,*) ' Read inversion mesh'
@@ -65,7 +66,7 @@ subroutine plot_wavefields()
     !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
     !call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
     !call inv_mesh%read_abaqus_mesh('unit_tests/flat_triangles.inp')
-    call inv_mesh%read_abaqus_mesh(parameters%mesh_file,parameters%inttype)
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file,parameters%int_type)
 
     nvertices = inv_mesh%get_nvertices()
     nelems    = inv_mesh%get_nelements()
@@ -76,7 +77,7 @@ subroutine plot_wavefields()
     write(*,*) '***************************************************************'
     write(*,*) ' Initialize FFT'
     write(*,*) '***************************************************************'
-    call fft_data%init(ndumps, ndim=1, ntraces=nvertices, dt=sem_data%dt)
+    call fft_data%init(ndumps, ndim=ndim, ntraces=nvertices, dt=sem_data%dt)
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()
@@ -91,18 +92,20 @@ subroutine plot_wavefields()
     call inv_mesh%init_node_data(ndumps + 2*ndumps*nrec)
 
     write(*,*) ' Read in forward field'
-    allocate(fw_field(ndumps, 1, nvertices))
+    allocate(fw_field(ndumps, ndim, nvertices))
     fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source)
 
     write(*,*) ' FFT forward field'
-    allocate(fw_field_fd(nomega, 1, nvertices))
+    allocate(fw_field_fd(nomega, ndim, nvertices))
     call fft_data%rfft(taperandzeropad(fw_field, ntimes, 2), fw_field_fd)
     deallocate(fw_field)
 
     write(*,*) ' Timeshift forward field'
     call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
     call timeshift_fwd%apply(fw_field_fd)
-    allocate(fw_field(ntimes, 1, nvertices))
+    allocate(fw_field(ntimes, ndim, nvertices))
+
+    print*,shape(fw_field),shape(fw_field_fd)
     call fft_data%irfft(fw_field_fd, fw_field)
     call timeshift_fwd%freeme()
 
@@ -120,18 +123,20 @@ subroutine plot_wavefields()
 
     do irec = 1, nrec
         write(*,*) ' Read in backward field of receiver', irec
-        allocate(bw_field(ndumps, 1, nvertices))
+        allocate(bw_field(ndumps, ndim, nvertices))
         bw_field(:,:,:) = sem_data%load_bw_points(dble(co_points), &
                                                   parameters%receiver(irec))
-        write(*,*) ' FFT backward field'
-        allocate(bw_field_fd  (nomega, 1, nvertices))
+
+        allocate(bw_field_fd  (nomega, ndim, nvertices))
         call fft_data%rfft(taperandzeropad(bw_field, ntimes, 2), bw_field_fd)
         deallocate(bw_field)
         
         write(*,*) ' Timeshift backward field'
         call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
         call timeshift_bwd%apply(bw_field_fd)
-        allocate(bw_field(ntimes, 1, nvertices))
+        allocate(bw_field(ntimes, ndim, nvertices))
+        
+        print*,shape(bw_field),shape(bw_field_fd)
         call fft_data%irfft(bw_field_fd, bw_field)
         call timeshift_bwd%freeme()
 
@@ -143,24 +148,29 @@ subroutine plot_wavefields()
             !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
             !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
             call inv_mesh%set_node_data_snap(real(bw_field(idump,1,:), kind=sp), &
-                                             idump+(ndumps*irec), &
+                                             idump + ndumps + ndumps*(irec-1), &
                                              'bwd_'//trim(parameters%receiver(irec)%name))
         end do
         deallocate(bw_field)
 
         write(*,*) ' Convolve wavefields'
-        allocate(conv_field_fd(nomega, 1, nvertices))
-        conv_field_fd = fw_field_fd * bw_field_fd
+        allocate(conv_field_fd(nomega, nvertices))
+
+        ! sum over dimension 2 necessary for vs kernels
+        conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
         deallocate(bw_field_fd)
         
-        allocate(conv_field(ntimes, 1, nvertices))
+        allocate(conv_field(ntimes, nvertices))
+
         call fft_data%irfft(conv_field_fd, conv_field)
+
         deallocate(conv_field_fd)
 
+        write(*,*) ' dumping'
         do idump = 1, ndumps
            if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
-           call inv_mesh%set_node_data_snap(real(conv_field(idump,1,:), kind=sp), &
-                                            idump + ndumps*2 + (irec-1)*ndumps, &
+           call inv_mesh%set_node_data_snap(real(conv_field(idump,:), kind=sp), &
+                                            idump + (irec-1)*ndumps + (nrec+1) * ndumps, &
                                             'convolved_'//trim(parameters%receiver(irec)%name))
         end do 
         deallocate(conv_field)

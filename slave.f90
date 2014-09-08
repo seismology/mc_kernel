@@ -1,23 +1,23 @@
+!=========================================================================================
 module slave_mod
 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           myrank, lu_out
+    use global_parameters,           only: sp, dp, pi, deg2rad, &
+                                           init_random_seed, myrank, lu_out
     use work_type_mod
     use mpi
     implicit none
 
     type slave_result_type  
       real(kind=dp), allocatable :: kernel_values(:,:,:)
-      real(kind=dp), allocatable :: kernel_errors(:,:,:)
+      real(kind=dp), allocatable :: kernel_variance(:,:,:)
       integer,       allocatable :: niterations(:,:)
     end type
 
 contains
 
-!=========================================================================================
+!-----------------------------------------------------------------------------------------
 subroutine do_slave() 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, &
-                                           init_random_seed, DIETAG, id_mpi
+    use global_parameters,           only: DIETAG, id_mpi
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
@@ -36,9 +36,8 @@ subroutine do_slave()
     integer                             :: ikernel, ierror, iclockold
     integer                             :: mpistatus(MPI_STATUS_SIZE)
     real(kind=dp)                       :: df
-    real(kind=dp), allocatable          :: K_x(:,:)
-    integer                             :: ielement, itask
-    character(len=255)                  :: fmtstring, fnam
+    integer                             :: itask
+    character(len=255)                  :: fmtstring
     integer                             :: nptperstep
 
     write(lu_out,'(A)') '***************************************************************'
@@ -63,7 +62,7 @@ subroutine do_slave()
     call sem_data%set_params(parameters%fwd_dir,     &
                              parameters%bwd_dir,     &
                              parameters%buffer_size, & 
-                             parameters%model_param)
+                             parameters%strain_type)
 
     call sem_data%open_files()
     call sem_data%read_meshes()
@@ -80,6 +79,7 @@ subroutine do_slave()
 
     call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, &
                        fftw_plan=parameters%fftw_plan)
+
     ntimes = fft_data%get_ntimes()
     nomega = fft_data%get_nomega()
     df     = fft_data%get_df()
@@ -103,6 +103,7 @@ subroutine do_slave()
     call flush(lu_out)
 
     call parameters%read_kernel(sem_data, parameters%filter)
+    
     
     itask = 0
     do 
@@ -134,32 +135,9 @@ subroutine do_slave()
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
 
-       wt%kernel_values = slave_result%kernel_values
-       wt%kernel_errors = slave_result%kernel_errors
-       wt%niterations   = slave_result%niterations
-
-
-       !! Write out my part of the mesh
-       !call inv_mesh%init_node_data(parameters%nkernel)
-       !
-       !if (.not.allocated(K_x)) allocate(K_x(inv_mesh%get_nvertices(), parameters%nkernel))
-       !K_x = 0
-       !do iel = 1, parameters%nelems_per_task
-       !    ielement = iel  
-       !    if (ielement.eq.-1) cycle
-       !    do ivertex = 1, inv_mesh%nvertices_per_elem
-       !       K_x(wt%connectivity(ivertex, ielement),:) = K_x(wt%connectivity(ivertex, ielement),:) &
-       !                                                + wt%kernel_values(:, ivertex, iel)
-       !    end do
-       !end do
-
-       !write(fnam, "('partial_kernels/kernel_part_data_', I5.5)") wt%itask
-       !do ikernel = 1, parameters%nkernel
-       !   call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
-       !                               ikernel, parameters%kernel(ikernel)%name )
-       !end do
-
-       !call inv_mesh%dump_node_data_xdmf(fnam)
+       wt%kernel_values   = slave_result%kernel_values
+       wt%kernel_variance = slave_result%kernel_variance
+       wt%niterations     = slave_result%niterations
 
        ! Finished writing my part of the mesh
        call inv_mesh%freeme
@@ -208,13 +186,12 @@ subroutine do_slave()
     call fft_data%freeme()
 
 end subroutine do_slave
-!=========================================================================================
+!-----------------------------------------------------------------------------------------
 
-
-!=========================================================================================
+!-----------------------------------------------------------------------------------------
 function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_result)
 
-    use global_parameters,           only: sp, dp, pi, deg2rad, verbose, myrank, &
+    use global_parameters,           only: sp, dp, pi, deg2rad, myrank, &
                                            id_fwd, id_bwd, id_fft, id_mc, id_filter_conv, &
                                            id_inv_mesh, id_kernel, id_init
 
@@ -241,21 +218,30 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:)
-    real(kind=dp),    allocatable       :: random_points(:,:), kernelvalue(:,:), kernelvalue_weighted(:,:)
+    real(kind=dp),    allocatable       :: random_points(:,:) 
+    real(kind=dp),    allocatable       :: kernelvalue_basekers(:,:,:)
+    real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:,:) 
+    real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
     integer,          allocatable       :: niterations(:,:)
+    real(kind=dp),    allocatable       :: modelcoeffs(:,:)
+
+    real(kind=dp),    allocatable       :: c_rho(:), c_eta(:)
+    real(kind=dp),    allocatable       :: c_vs(:),  c_vp(:)
+    real(kind=dp),    allocatable       :: c_vsh(:), c_vsv(:)
+    real(kind=dp),    allocatable       :: c_vph(:), c_vpv(:)
+
     real(kind=dp)                       :: volume
 
     character(len=256)                  :: fmtstring
-    integer                             :: ielement, irec, ivertex, ikernel, ibasisfunc
+    integer                             :: ielement, irec, ikernel, ibasisfunc, ibasekernel
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
-    integer                             :: nvertices_per_elem
-    integer                             :: nbasisfuncs_per_elem
+    integer                             :: nbasisfuncs_per_elem, nbasekernels
     integer                             :: iclockold
     integer                             :: ndim
-    integer, parameter                  :: taper_length = 2 ! This is the bare minimum. It does 
+    integer, parameter                  :: taper_length = 10! This is the bare minimum. It does 
                                                             ! not produce artifacts yet, at least 
                                                             ! no obvious ones
-    
+
     iclockold = tick()
 
     ndim = sem_data%get_ndim()
@@ -265,25 +251,38 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     nomega = fft_data%get_nomega()
     nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
     nelements = inv_mesh%get_nelements()
-
+    nbasekernels = parameters%nbasekernels
 
     allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
-    allocate(slave_result%kernel_errors(parameters%nkernel, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%niterations(parameters%nkernel, nelements))
-
-    allocate(kernelvalue_weighted(nptperstep, parameters%nkernel))
-    allocate(kernelvalue(nptperstep, parameters%nkernel))
     
     allocate(fw_field(ndumps, ndim, nptperstep))
     allocate(bw_field(ndumps, ndim, nptperstep))
 
-    allocate(conv_field        (ntimes, nptperstep))
     allocate(fw_field_fd       (nomega, ndim, nptperstep))
     allocate(bw_field_fd       (nomega, ndim, nptperstep))
+
+    allocate(conv_field        (ntimes, nptperstep))
     allocate(conv_field_fd     (nomega, nptperstep))
     allocate(conv_field_fd_filt(nomega, nptperstep))
 
+    allocate(kernelvalue_basekers(nptperstep, parameters%nkernel, nbasekernels))
+    allocate(kernelvalue_weighted(nptperstep, parameters%nkernel, nbasekernels))
+    allocate(kernelvalue_physical(nptperstep, parameters%nkernel))
+
+
     volume = 0.0
+
+    allocate(modelcoeffs(3, nptperstep)) ! for now just load vp, vs, rho
+    allocate(c_vp(nptperstep)) 
+    allocate(c_vs(nptperstep)) 
+    allocate(c_rho(nptperstep)) 
+    allocate(c_vsh(nptperstep)) 
+    allocate(c_vsv(nptperstep)) 
+    allocate(c_vph(nptperstep)) 
+    allocate(c_vpv(nptperstep)) 
+    allocate(c_eta(nptperstep)) 
 
     allocate(niterations(parameters%nkernel, nelements))
     niterations = 0
@@ -293,10 +292,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
       call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
     end if
     
-
-    !write(*,*) '***************************************************************'
-    !write(*,*) ' Start loop over elements'
-    !write(*,*) '***************************************************************'
+!    write(*,*) '***************************************************************'
+!    write(*,*) ' Start loop over elements'
+!    write(*,*) '***************************************************************'
 
     allocate(random_points(3, nptperstep))
     allocate(int_kernel(nbasisfuncs_per_elem))
@@ -306,31 +304,50 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     do ielement = 1, nelements 
 
         iclockold = tick()
+
+        ! Get volume of current element
         volume = inv_mesh%get_volume(ielement)
 
-        ! Initialize Monte Carlo integral for this element
+        ! Initialize basis kernel Monte Carlo integrals for current element
         iclockold = tick(id=id_inv_mesh)
         do ibasisfunc = 1, nbasisfuncs_per_elem
-            call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel, &
-                                                           volume,   &
-                                                           parameters%allowed_error
-                                                           parameters%allowed_relative_error) 
+           call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel, &
+                                                             volume,                         &
+                                                             parameters%allowed_error,       &
+                                                             parameters%allowed_relative_error) 
         end do
-      
+
         do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
+
+
            iclockold = tick(id=id_mc)
 
+           ! Generate random points
            random_points = inv_mesh%generate_random_points( ielement, nptperstep )
            iclockold = tick(id=id_inv_mesh)
            
            ! Stop MC integration in this element after max_iter iterations
            if (any(niterations(:, ielement)>parameters%max_iter)) exit 
-           
+
            ! Load forward field
            iclockold = tick()
-           fw_field = sem_data%load_fw_points( random_points, parameters%source )
+           fw_field = sem_data%load_fw_points( random_points, parameters%source, & 
+                                               coeffs = modelcoeffs)
            iclockold = tick(id=id_fwd, since=iclockold)
-           
+
+           ! Recombine model coefficients for chosen parameterization
+           c_vp  = modelcoeffs(1,:) ! contains velocities at each point in km/s
+           c_vs  = modelcoeffs(2,:) ! contains velocities at each point in km/s
+           c_rho = modelcoeffs(3,:) ! contains velocities at each point in kg/(km^3)
+
+           ! @ TODO : For now assume an isotropic background model
+           !          need to store xi in the netcdf files
+           c_vsh = c_vs
+           c_vsv = c_vs
+           c_vph = c_vp
+           c_vpv = c_vp
+           c_eta = 1.d0
+
            ! FFT of forward field
            call fft_data%rfft( taperandzeropad(fw_field, ntimes, taper_length), fw_field_fd )
            iclockold = tick(id=id_fft, since=iclockold)
@@ -341,23 +358,25 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               call timeshift_fwd%apply(fw_field_fd)
               iclockold = tick(id=id_filter_conv, since=iclockold)
            end if
-
          
+           ! Loop over all receivers in receiver input file
            do irec = 1, parameters%nrec
-                
-              if (allallconverged(int_kernel,[(ikernel, ikernel =                                 & 
-                                                        parameters%receiver(irec)%firstkernel,    &
-                                                        parameters%receiver(irec)%lastkernel) ])) &
-                                              cycle
+              
+              if (allallconverged(int_kernel,[(ikernel, ikernel =                         &
+                                               parameters%receiver(irec)%firstkernel,     &
+                                               parameters%receiver(irec)%lastkernel) ]))  &
+                                               cycle
           
               iclockold = tick(id=id_mc, since=iclockold)
 
-              ! Load backward field
+              ! Load backward field             
               bw_field = sem_data%load_bw_points( random_points, parameters%receiver(irec) )
+
               iclockold = tick(id=id_bwd, since=iclockold)
 
               ! FFT of backward field
               call fft_data%rfft( taperandzeropad(bw_field, ntimes, taper_length), bw_field_fd )
+
               iclockold = tick(id=id_fft, since=iclockold)
 
               ! Timeshift backward field
@@ -366,74 +385,177 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  call timeshift_bwd%apply(bw_field_fd)
               end if
 
-              ! Convolve forward and backward fields
-              ! The summation over dimension 2 is necessary for vs kernels
-              conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
               iclockold = tick(id=id_filter_conv, since=iclockold)
+                 
+              ! Loop over all base kernels
+              do ibasekernel = 1, nbasekernels
 
-              do ikernel = parameters%receiver(irec)%firstkernel, &
-                           parameters%receiver(irec)%lastkernel 
+                 ! readfields.f90 returns strain tensor in voigt notation
+                 ! elements 1,...,6 contain tt,pp,rr,pr,tr,tp. See Fichtner
+                 ! book, p. 168-169 how the fundamental kernels K_a, K_b and
+                 ! K_c are defined
 
-                 ! If this kernel is already converged, go to the next one
-                 if (allisconverged(int_kernel, ikernel)) cycle
-                 niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
-                 iclockold = tick(id=id_mc, since=iclockold)
+                 ! @ TODO : This could be deferred to a subroutine
+                 
+                 select case(trim(parameters%basekernel_id(ibasekernel)))
+                 case('k_lambda')
+                    select case(trim(parameters%strain_type))
+                    case('straintensor_trace')
+                       conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
+                    case('straintensor_full')
+                       ! Only convolve trace of fw and bw fields
+                       conv_field_fd = fw_field_fd(:,1,:) * &
+                                       fw_field_fd(:,2,:) * &
+                                       fw_field_fd(:,3,:) * &
+                                       bw_field_fd(:,1,:) * &
+                                       bw_field_fd(:,2,:) * &
+                                       bw_field_fd(:,3,:)
+                    end select
+                 case('k_mu')
+                    conv_field_fd = sum(fw_field_fd * bw_field_fd, 2) * 2.d0
+                 case('k_a')
+                    conv_field_fd = ( bw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
+                                    ( fw_field_fd(:,2,:) * bw_field_fd(:,1,:) )
+                 case('k_b')
+                    conv_field_fd = ( ( bw_field_fd(:,5,:) * fw_field_fd(:,5,:) ) + &
+                                    ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
+                 case('k_c')
+                    conv_field_fd = ( fw_field_fd(:,1,:) + fw_field_fd(:,2,:) ) * &
+                                      bw_field_fd(:,3,:) + &
+                                    ( bw_field_fd(:,1,:) * bw_field_fd(:,2,:) ) * &
+                                      fw_field_fd(:,3,:)
+                 case('k_rho')
+                    print*,"ERROR: Density kernels not yet implemented"
+                    stop
+                 end select
 
-                 ! Apply Filter 
-                 conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
                  iclockold = tick(id=id_filter_conv, since=iclockold)
+                 
+                 do ikernel = parameters%receiver(irec)%firstkernel, &
+                      parameters%receiver(irec)%lastkernel 
+                                           
+                       ! If this kernel is already converged, go to the next one
+                       if (allisconverged(int_kernel, ikernel)) cycle
+                       niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                       iclockold = tick(id=id_mc, since=iclockold)
 
-                 ! iFFT of multiplied spectra
-                 call fft_data%irfft(conv_field_fd_filt, conv_field)
-                 iclockold = tick(id=id_fft, since=iclockold)
+                       ! Apply Filter 
+                       conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
+                       iclockold = tick(id=id_filter_conv, since=iclockold)
 
-                 ! Calculate Scalar kernel from convolved time traces
-                 kernelvalue(:,ikernel) = &
-                     parameters%kernel(ikernel)%calc_misfit_kernel(conv_field)
-                 iclockold = tick(id=id_kernel, since=iclockold)
-              end do ! ikernel
+                       ! Apply Inverse FFT
+                       call fft_data%irfft(conv_field_fd_filt, conv_field)
+                       iclockold = tick(id=id_fft, since=iclockold)
+
+                       ! Calculate scalar base kernels from convolved time traces
+                       kernelvalue_basekers(:,ikernel,ibasekernel) =         &
+                                            parameters%kernel(ikernel)       &
+                                            %calc_misfit_kernel(conv_field)
+                                                                                           
+                       iclockold = tick(id=id_kernel, since=iclockold)
+
+                 end do ! ikernel
+
+              end do ! ibasekernel 
               iclockold = tick(id=id_mc, since=iclockold)
 
            end do ! irec
            iclockold = tick(id=id_mc, since=iclockold)
 
-
            ! Check for convergence           
-           do ibasisfunc = 1, nbasisfuncs_per_elem !inv_mesh%nvertices_per_elem
+           do ibasisfunc = 1, nbasisfuncs_per_elem
               iclockold = tick()
+
+              ! Compute weighted base kernels
               do ikernel = 1, parameters%nkernel
-                 kernelvalue_weighted(:, ikernel) = kernelvalue(:, ikernel) &
-                      * inv_mesh%weights(ielement, ibasisfunc, random_points)
+
+                 do ibasekernel = 1, nbasekernels
+                    kernelvalue_weighted(:, ikernel, ibasekernel) =    &
+                         kernelvalue_basekers(:, ikernel, ibasekernel) &
+                         * inv_mesh%weights(ielement, ibasisfunc, random_points)                 
+                 end do
+                 
+                 ! See Fichtner p. 169 how kernels are defined and type_parameter.f90
+                 ! how basekernels inside kernelvalue_weighted are ordered
+                 select case(trim(parameters%model_param))
+                 case('lambda')
+                    kernelvalue_physical(:, ikernel) =                                 &
+                           kernelvalue_weighted(:, ikernel, 1)
+                 case('mu')
+                    kernelvalue_physical(:, ikernel) =                                 & 
+                           kernelvalue_weighted(:, ikernel, 1)
+                 case('vp')
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vp *           &
+                           kernelvalue_weighted(:, ikernel, 1)
+                 case('vs')
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vs *           &
+                           kernelvalue_weighted(:, ikernel, 2) - 4.d0 * c_rho * c_vs * &
+                           kernelvalue_weighted(:, ikernel, 1)
+                 case('vsh')
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vsh *          &
+                         ( kernelvalue_weighted(:, ikernel, 1) * 2 +                   &
+                           kernelvalue_weighted(:, ikernel, 2) +                       &
+                           kernelvalue_weighted(:, ikernel, 3) +                       &
+                           kernelvalue_weighted(:, ikernel, 4) * 2*(1-c_eta))
+                 case('vsv')
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vsv *          &
+                           kernelvalue_weighted(:, ikernel, 1)
+                 case('vph')
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vph *          &
+                         ( kernelvalue_weighted(:, ikernel, 1) +                       &
+                           kernelvalue_weighted(:, ikernel, 2) * c_eta )
+                 case('vpv')
+                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vpv *          &
+                         ( kernelvalue_weighted(:, ikernel, 1) +                       &
+                           kernelvalue_weighted(:, ikernel, 2) +                       &
+                           kernelvalue_weighted(:, ikernel, 3) )
+                    stop
+                 case('kappa')
+                    write(*,*) "Error: Kappa kernels not yet implemented"
+                    stop
+                 case('eta')
+                    write(*,*) "Error: Eta kernels not yet implemented"
+                    stop
+                 case('xi')
+                    write(*,*) "Error: Xi kernels not yet implemented"
+                    stop
+                 case('rho')
+                    write(*,*) "Error: Density kernels not yet implemented"
+                    stop
+                 end select
+
               end do
+
+              ! Check if the summed kernels for each basis function have converged
               iclockold = tick(id=id_kernel, since=iclockold)
-              call int_kernel(ibasisfunc)%check_montecarlo_integral(kernelvalue_weighted)
+              call int_kernel(ibasisfunc)%check_montecarlo_integral(kernelvalue_physical)
               iclockold = tick(id=id_mc, since=iclockold)
            end do        
               
            ! Print convergence info
-           write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
-                           parameters%nkernel, parameters%nkernel 
-           write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
-                                   int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
-                                   int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
+           if (parameters%detailed_convergence) then
+              write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
+                              parameters%nkernel, parameters%nkernel 
+              write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
+                                      int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
+                                      int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
+           end if
 
         end do ! End of Monte Carlo loop
     
         if (any(niterations(:, ielement)>parameters%max_iter)) then
-           fmtstring = "('Max number of iterations reached. ', I5 , ' kernels were not converged.')"
-           write(lu_out, fmtstring) parameters%nkernel - int_kernel(1)%countconverged()
+           fmtstring = "('Element', I6, ': Max number of iterations reached. ', I5 , ' kernels were not converged.')"
+           write(lu_out, fmtstring) ielement, parameters%nkernel - int_kernel(1)%countconverged()
         else
-           fmtstring = "('All kernels converged after', I5, ' iterations')"
-           write(lu_out, fmtstring) maxval(niterations(:, ielement))
+           fmtstring = "('Element', I6, ': All kernels converged after', I5, ' iterations')"
+           write(lu_out, fmtstring) ielement, maxval(niterations(:, ielement))
         end if
 
-
-        do ibasisfunc = 1, nbasisfuncs_per_elem
-           
-           slave_result%kernel_values(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getintegral()
-           slave_result%kernel_errors(:, ibasisfunc, ielement) = sqrt(int_kernel(ibasisfunc)%getvariance())
-           slave_result%niterations(:,ielement)             = niterations(:,ielement)
-
+        ! Pass over results to master
+        do ibasisfunc = 1, nbasisfuncs_per_elem          
+           slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
+           slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
+           slave_result%niterations(:,ielement)                  = niterations(:,ielement)
            call int_kernel(ibasisfunc)%freeme()
         end do
 
@@ -442,9 +564,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     call timeshift_fwd%freeme()
     call timeshift_bwd%freeme()
 end function slave_work
-!=========================================================================================
-
-
-
+!-----------------------------------------------------------------------------------------
 
 end module
+!=========================================================================================

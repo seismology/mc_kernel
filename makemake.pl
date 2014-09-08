@@ -46,10 +46,8 @@ print MAKEFILE "CFLAGS = -O3 -DF_UNDERSCORE\n";
 if ($ARGV[0] eq 'ifort'){
     if ($ARGV[1] eq 'debug'){
 	$F90_strg = 'mpif90  -vec-report:0 -g -O2 -shared-intel  -mcmodel=medium -ftz -check all -check noarg_temp_created -debug  -check -traceback';
-	$FC_strg = 'ifort  -vec-report:0 -g -O2 -shared-intel  -mcmodel=medium -ftz -check all -check noarg_temp_created -debug  -check -traceback';
     } else {
 	$F90_strg = 'mpif90  -vec-report:0 -g -O4 -xHOST -shared-intel'; 
-	$FC_strg = 'ifort  -vec-report:0 -g -O4 -xHOST -shared-intel'; 
     }
 }
 elsif ($ARGV[0] eq '-h'){
@@ -64,20 +62,16 @@ else {
 	print "If you want another compiler type ./makemake.pl <compiler_name> \n";
     if ($ARGV[0] eq 'debug' or $ARGV[1] eq 'debug'){
 	$F90_strg = 'mpif90 -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic -fbacktrace';
-	$FC_strg =  'gfortran -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic -fbacktrace';
     } else {
 	$F90_strg = 'mpif90 -O3  -fbacktrace -g';
-	$FC_strg = 'gfortran -O3 -fbacktrace -g';	
     }
 }
 ###################################################################################
 
 $F90_full="F90 = $F90_strg \n";
-$FC_full="FC = $FC_strg \n";
 $INCLUDE_full = "INCLUDE = -I /usr/include";
 
 print MAKEFILE $F90_full;
-print MAKEFILE $FC_full;
 print MAKEFILE " \n";
 print MAKEFILE '# to include local built of netcdf you might want to use sth like this:';
 print MAKEFILE " \n";

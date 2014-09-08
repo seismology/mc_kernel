@@ -69,8 +69,8 @@ subroutine test_mult2d_1d_complex
   call random_number(vect_1d_imag) 
   call random_number(vect_2d_imag)
 
-  vect_2d = cmplx(vect_2d_real, vect_2d_imag)
-  vect_1d = cmplx(vect_1d_real, vect_1d_imag)
+  vect_2d = cmplx(vect_2d_real, vect_2d_imag, kind=dp)
+  vect_1d = cmplx(vect_1d_real, vect_1d_imag, kind=dp)
 
   vect_res = mult2d_1d(vect_2d, vect_1d)
 
@@ -99,8 +99,8 @@ subroutine test_mult3d_1d_complex
   call random_number(vect_1d_imag) 
   call random_number(vect_3d_imag)
 
-  vect_3d = cmplx(vect_3d_real, vect_3d_imag)
-  vect_1d = cmplx(vect_1d_real, vect_1d_imag)
+  vect_3d = cmplx(vect_3d_real, vect_3d_imag, kind=dp)
+  vect_1d = cmplx(vect_1d_real, vect_1d_imag, kind=dp)
 
   vect_res = mult3d_1d(vect_3d, vect_1d)
 

@@ -80,6 +80,76 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     select case(trim(filterclass))
     case('Gabor')
        this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2))
+
+    case('Butterw_LP_O2')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 2)
+    case('Butterw_HP_O2')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2)
+    case('Butterw_BP_O2')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2) &
+                             * butterworth_lowpass(this%f, frequencies(2), 2)
+    case('Butterw_LP_O4')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 4)
+    case('Butterw_HP_O4')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4)
+    case('Butterw_BP_O4')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4) &
+                             * butterworth_lowpass(this%f, frequencies(2), 4)
+    case('Butterw_LP_O6')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 6)
+    case('Butterw_HP_O6')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6)
+    case('Butterw_BP_O6')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6) &
+                             * butterworth_lowpass(this%f, frequencies(2), 6)
+    case('Butterw_LP_O8')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 8)
+    case('Butterw_HP_O8')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8)
+    case('Butterw_BP_O8')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8) &
+                             * butterworth_lowpass(this%f, frequencies(2), 8)
+
+    case('Butterw_LP_O2_ZP')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 2)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_HP_O2_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_BP_O2_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2) &
+                             * butterworth_lowpass(this%f, frequencies(2), 2)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_LP_O4_ZP')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 4)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_HP_O4_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_BP_O4_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4) &
+                             * butterworth_lowpass(this%f, frequencies(2), 4)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_LP_O6_ZP')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 6)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_HP_O6_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_BP_O6_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6) &
+                             * butterworth_lowpass(this%f, frequencies(2), 6)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_LP_O8_ZP')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 8)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_HP_O8_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    case('Butterw_BP_O8_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8) &
+                             * butterworth_lowpass(this%f, frequencies(2), 8)
+       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
     case default
        print *, 'ERROR: Unknown filter type: ', trim(filterclass)
        call pabort
@@ -104,7 +174,7 @@ end subroutine create
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-!> Multiplies the transferfunction of the filter with the complex spectra of 
+!> Devides the transferfunction of the filter with the complex spectra of 
 !! the Source time functions of the SEM simulation, to cancel its effect.
 !! The filter is multiplied with the square root of the STF spectra, since it is
 !! applied twice later. (We could get around this by having separate filters for 
@@ -392,14 +462,75 @@ function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by 
                                          !! narrower bandwidth sigmaIfc = .5 means the
                                          !! one-sigma interval i equals one octave
 
-    real(kind=dp)                   :: loggabor(size(f))
-    real(kind=dp)                   :: f_c
+    real(kind=dp)               :: loggabor(size(f))
+    real(kind=dp)               :: f_c
 
     f_c = 1 / p_c
     loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )
     ! G(f,k) = exp( -(ln(f/f_k))^2 / (2*ln(sigmaIfc)^2)  )
 
 end function loggabor
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function butterworth_lowpass(f, p_c, n)
+    !http://en.wikipedia.org/wiki/Butterworth_filter
+
+    real(kind=dp), intent(in)   :: f(:)  !< Frequency array
+    real(kind=dp), intent(in)   :: p_c   !< cutoff period of the filter
+    integer, intent(in)         :: n     !< order
+
+    complex(kind=dp)            :: butterworth_lowpass(size(f))
+    real(kind=dp)               :: omega_c
+    complex(kind=dp)            :: s(1:n), j
+    integer                     :: k
+
+    omega_c = 2 * pi / p_c
+    j = cmplx(0, 1)
+
+    do k=1, n
+        s(k) = omega_c * exp(j * (2 * k + n - 1) * pi / (2 * n))
+    enddo
+
+    butterworth_lowpass = 1
+
+    do k=1, n
+        butterworth_lowpass = butterworth_lowpass / ((2 * pi * j * f - s(k)) / omega_c)
+    enddo
+
+end function butterworth_lowpass
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function butterworth_highpass(f, p_c, n)
+    !http://en.wikipedia.org/wiki/Butterworth_filter
+    !http://en.wikipedia.org/wiki/Prototype_filter#Lowpass_to_highpass
+
+    real(kind=dp), intent(in)   :: f(:)  !< Frequency array
+    real(kind=dp), intent(in)   :: p_c   !< cutoff period of the filter
+    integer, intent(in)         :: n     !< order
+
+    complex(kind=dp)            :: butterworth_highpass(size(f))
+    real(kind=dp)               :: omega_c
+    complex(kind=dp)            :: s(1:n), j
+    integer                     :: k
+
+    omega_c = 2 * pi / p_c
+    j = cmplx(0, 1)
+
+    do k=1, n
+        s(k) = omega_c * exp(j * (2 * k + n - 1) * pi / (2 * n))
+    enddo
+
+    butterworth_highpass = 1
+
+    do k=1, n
+        butterworth_highpass(2:) &
+            = butterworth_highpass(2:) / (omega_c / (2 * pi * j * f(2:)) - s(k) / omega_c)
+    enddo
+    butterworth_highpass(1) = 0
+
+end function butterworth_highpass
 !-----------------------------------------------------------------------------------------
 
 end module

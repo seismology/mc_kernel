@@ -16,10 +16,7 @@ implicit none
         real(kind=dp)                        :: normalization
         integer                              :: filter_type
         character(len=4)                     :: misfit_type
-        character(len=4)                     :: model_parameter
-        !integer                              :: receiver_index
-        !integer                              :: src_index
-        !type(rec_param_type), pointer        :: receiver
+        character(len=16)                    :: model_parameter
         type(filter_type), pointer           :: filter
         logical                              :: initialized = .false.
         contains 
@@ -45,7 +42,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    real(kind=dp), intent(in)               :: time_window(2)
    type(filter_type), target, intent(in)   :: filter
    character(len=4), intent(in)            :: misfit_type
-   character(len=4), intent(in)            :: model_parameter
+   character(len=*), intent(in)            :: model_parameter
    real(kind=dp), intent(in)               :: seis(:)
    real(kind=dp), intent(in)               :: dt
    real(kind=dp), intent(in), optional     :: timeshift_fwd
@@ -222,26 +219,36 @@ function calc_misfit_kernel(this, timeseries)
 
    select case(trim(this%misfit_type))
    case('CC')
+
       do itrace = 1, ntrace
+         
+         ! print*,"TEST99",timeseries(:,itrace)
+         ! print*,"TEST88",this%seis
+
          call cut_timewindow(this%t,                 &
                              timeseries(:, itrace),  &
                              this%time_window,       &
                              cut_timeseries)
-         
+
          calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
                                       * this%normalization
       end do
 
    case('AM')
-      do itrace = 1, ntrace
-         call cut_timewindow(this%t,                 &
-                             timeseries(:, itrace),  &
-                             this%time_window,       &
-                             cut_timeseries)
+
+      ! @TODO: Amplitude kernels not yet implemented
+
+      ! do itrace = 1, ntrace
+
+      !    call cut_timewindow(this%t,                 &
+      !                        timeseries(:, itrace),  &
+      !                        this%time_window,       &
+      !                        cut_timeseries)
          
-         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
-                                      * this%normalization
-      end do
+      !    calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
+      !                                 * this%normalization
+      ! end do
+
    end select
 
    if (any(calc_misfit_kernel.ne.calc_misfit_kernel)) then ! Kernel is NaN

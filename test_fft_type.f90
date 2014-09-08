@@ -70,7 +70,7 @@ subroutine test_fft_sine
     type(rfft_type) :: fftt
 
     real(kind=dp), dimension(:,:), allocatable       :: datat
-    complex(kind=dp), dimension(:,:), allocatable    :: dataf, dataf_ref
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf
     real(kind=dp), dimension(:,:), allocatable       :: T
     real(kind=dp), dimension(:), allocatable         :: F
     real(kind=dp)                                    :: dt, df
@@ -95,11 +95,6 @@ subroutine test_fft_sine
        T(i,1) = dt * i
     end do
 
-    !df = 1. / (dt*fftt%get_ntimes())
-
-    !do i = 1, nomega
-    !   F(i) = df * (i-1)
-    !end do
     df = fftt%get_df()
     F = fftt%get_f()
 
@@ -109,7 +104,7 @@ subroutine test_fft_sine
 
     call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
 
-    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+    f_max = real(F( maxloc( abs(dataf(:,1)), 1 ) ), kind=sp)
 
     call assert_comparable_real(f_max, f_ref, &
                                 real(dF/2), 'Maximum amplitude at 1 Hz (Sine)')
@@ -120,7 +115,7 @@ subroutine test_fft_sine
 
     call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
 
-    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+    f_max = real(F( maxloc( abs(dataf(:,1)), 1 ) ), kind=sp)
 
     call assert_comparable_real(f_max, f_ref, &
                                 real(dF/2), 'Maximum amplitude at 1 Hz (Cosine)')
@@ -131,7 +126,7 @@ subroutine test_fft_sine
 
     call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
 
-    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+    f_max = real(F( maxloc( abs(dataf(:,1)), 1 ) ), kind=sp)
 
     call assert_comparable_real(f_max, f_ref, &
                                 real(dF/2), 'Maximum amplitude at 0.5 Hz')
@@ -142,7 +137,7 @@ subroutine test_fft_sine
 
     call fftt%rfft(taperandzeropad(datat, fftt%get_ntimes()), dataf)
 
-    f_max = F( maxloc( abs(dataf(:,1)), 1 ) )
+    f_max = real(F( maxloc( abs(dataf(:,1)), 1 ) ), kind=sp)
 
     call assert_comparable_real(f_max, f_ref, &
                                 real(dF/2), 'Maximum amplitude at 2 Hz')
@@ -164,7 +159,7 @@ subroutine test_fft_inverse
     ntimes = 4
     ntraces = 1
 
-    call fftt%init(ntimes, 1, ntraces)
+    call fftt%init(ntimes, 1, ntraces, dt=1d-1)
 
     ntimes = fftt%get_ntimes()
     nomega = fftt%get_nomega()
@@ -360,6 +355,53 @@ subroutine test_fft_taperandzeropad
                                   1e-8, 'zeropadded part is really zero')
 
 end subroutine
+!-----------------------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------------------
+subroutine test_fft_parseval
+    integer     :: nomega, ntimes, ntraces
+    integer     :: i
+
+    type(rfft_type) :: fftt
+
+    real(kind=dp), dimension(:,:), allocatable       :: datat
+    complex(kind=dp), dimension(:,:), allocatable    :: dataf
+
+    ntimes = 8
+    ntraces = 1
+
+    call fftt%init(ntimes, 1, ntraces, nfft=ntimes)
+
+    ntimes = fftt%get_ntimes()
+    nomega = fftt%get_nomega()
+
+    allocate(datat(1:ntimes, 1:ntraces))
+    allocate(dataf(1:nomega, 1:ntraces))
+
+    ! some random data
+    datat = 0
+    datat(1,:) = 0
+    datat(2,:) = 2
+    datat(3,:) = 0
+    datat(4,:) = 1
+    datat(5,:) = -1
+    datat(6,:) = -2
+    datat(7,:) = 0
+    datat(8,:) = 0
+
+    call fftt%rfft(datat, dataf)
+
+    call assert_comparable((sum(abs(dataf(2:nomega-1,1))**2) * 2 &
+                              + abs(dataf(1,1))**2 &
+                              + abs(dataf(nomega,1))**2 )&
+                           / ntimes, &
+                           sum((datat(:,1)**2)), &
+                           1d-5, 'sum((fft(datat)^2)/N = sum(datat^2)')
+
+    call fftt%freeme()
+
+end subroutine test_fft_parseval
 !-----------------------------------------------------------------------------------------
 
 end module test_fft_type

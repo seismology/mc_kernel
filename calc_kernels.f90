@@ -3,7 +3,7 @@ program kerner_code
     use mpi
     use commpi,                      only: ppinit, pbroadcast_int, ppend
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           master, lu_out, myrank, id_fft, id_fwd, id_bwd
+                                           master, lu_out, myrank
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use type_parameter,              only: parameter_type
@@ -22,8 +22,6 @@ program kerner_code
     integer                             :: nvertices_per_task
     integer                             :: nbasisfuncs_per_elem
     integer                             :: nbasisfuncs_per_task
-    integer                             :: ierror
-    
 
     verbose = 0
 
@@ -58,7 +56,7 @@ program kerner_code
                nvertices_per_elem = 4
                nbasisfuncs_per_elem = 4
            else
-               call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%inttype)
+               call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%int_type)
                nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
                nvertices_per_elem = inv_mesh%nvertices_per_elem
                call inv_mesh%freeme()

@@ -1,6 +1,5 @@
-!===============
+!=========================================================================================
 module commpi
-!===============
   
   ! Wrapper routines to invoke the MPI library. 
   ! This routine is the sole place for parallel interactions. 
@@ -13,12 +12,15 @@ module commpi
 
   private 
 
-  public  :: pbroadcast_dble, pbroadcast_dble_arr, pbroadcast_char, pbroadcast_log
-  public  :: pbroadcast_int_arr, pbroadcast_int, ppinit, pbarrier, ppend, pabort
+  public  :: pbroadcast_dble, pbroadcast_dble_arr
+  public  :: pbroadcast_char, pbroadcast_char_arr
+  public  :: pbroadcast_int, pbroadcast_int_arr
+  public  :: ppinit, pbarrier, ppend, pabort
+  public  :: pbroadcast_log
 
 contains
 
-!----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine ppinit
 !< Start message-passing interface, assigning the total number of processors 
 !! nproc and each processor with its local number mynum=0,...,nproc-1.
@@ -49,9 +51,9 @@ subroutine ppinit
 
   
 end subroutine ppinit
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine pbroadcast_char(input_char,input_proc)
 
   integer, intent(in)          :: input_proc
@@ -70,9 +72,30 @@ subroutine pbroadcast_char(input_char,input_proc)
   end if
 
 end subroutine pbroadcast_char
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine pbroadcast_char_arr(input_char,input_proc)
+
+  integer, intent(in)          :: input_proc
+  character(*), intent(inout)  :: input_char(:)
+  integer                      :: ierror
+  logical                      :: isinitialized
+
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     call mpi_bcast(input_char, size(input_char), MPI_CHARACTER, input_proc, &
+                    MPI_COMM_WORLD, ierror)
+     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  else
+     input_char = input_char
+  end if
+
+end subroutine pbroadcast_char_arr
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine pbroadcast_log(input_log,input_proc)
 
   integer, intent(in)          :: input_proc
@@ -90,9 +113,9 @@ subroutine pbroadcast_log(input_log,input_proc)
   end if
 
 end subroutine pbroadcast_log
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine pbroadcast_int(input_int,input_proc)
 
   integer, intent(in)          :: input_proc
@@ -110,9 +133,9 @@ subroutine pbroadcast_int(input_int,input_proc)
   end if
 
 end subroutine pbroadcast_int
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine pbroadcast_int_arr(input_int, input_proc)
 
   integer, intent(in)          :: input_proc
@@ -131,9 +154,9 @@ subroutine pbroadcast_int_arr(input_int, input_proc)
   end if
 
 end subroutine pbroadcast_int_arr
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine pbroadcast_dble(input_dble,input_proc)
 
   integer, intent(in)          :: input_proc
@@ -152,9 +175,9 @@ subroutine pbroadcast_dble(input_dble,input_proc)
   end if
 
 end subroutine pbroadcast_dble
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine pbroadcast_dble_arr(input_dble,input_proc)
 
   integer, intent(in)          :: input_proc
@@ -173,9 +196,9 @@ subroutine pbroadcast_dble_arr(input_dble,input_proc)
   end if
 
 end subroutine pbroadcast_dble_arr
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine pbarrier
   integer :: ierror
   logical                      :: isinitialized
@@ -187,9 +210,9 @@ subroutine pbarrier
   end if
 
 end subroutine pbarrier
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine ppend
 !< Calls MPI_FINALIZE
   integer :: ierror
@@ -197,9 +220,9 @@ subroutine ppend
   call MPI_FINALIZE(ierror)
 
 end subroutine ppend
-!=============================================================================
+!-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine pabort
 !< Calls MPI_ABORT
   integer :: ierror
@@ -224,5 +247,7 @@ subroutine pabort
   end if
 
 end subroutine pabort
-!=============================================================================
+!-----------------------------------------------------------------------------------------
+
 end module
+!=========================================================================================
