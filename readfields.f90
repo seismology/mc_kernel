@@ -38,6 +38,10 @@ module readfields
 
     type ncparamtype
         integer                            :: ncid
+        integer                            :: file_version
+        real(kind=dp)                      :: planet_radius
+        real(kind=dp)                      :: rmin, rmax
+        real(kind=dp)                      :: colatmin, colatmax
         integer                            :: snap, surf, mesh, seis  ! Group IDs
         integer                            :: strainvarid(6)          ! Variable IDs
         integer                            :: displvarid(3)           ! Variable IDs
@@ -309,6 +313,15 @@ subroutine open_files(this)
         call nc_open_for_read(    filename = filename,              &
                                   ncid     = this%fwd(isim)%ncid) 
 
+        call nc_read_att_int(this%fwd(isim)%file_version, 'file version', this%fwd(isim))
+
+        call nc_read_att_dble(this%fwd(isim)%planet_radius, 'planet radius', this%fwd(isim))
+
+        call nc_read_att_dble(this%fwd(isim)%rmin, 'kernel wavefield rmin', this%fwd(isim))
+        call nc_read_att_dble(this%fwd(isim)%rmax, 'kernel wavefield rmax', this%fwd(isim))
+        call nc_read_att_dble(this%fwd(isim)%colatmin, 'kernel wavefield colatmin', this%fwd(isim))
+        call nc_read_att_dble(this%fwd(isim)%colatmax, 'kernel wavefield colatmax', this%fwd(isim))
+
         call nc_read_att_char(this%fwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
                                this%fwd(isim))
@@ -461,6 +474,15 @@ subroutine open_files(this)
         if (verbose>0) write(lu_out,format20) trim(filename), myrank
         call nc_open_for_read(filename = filename,              &
                               ncid     = this%bwd(isim)%ncid) 
+
+        call nc_read_att_int(this%bwd(isim)%file_version, 'file version', this%bwd(isim))
+
+        call nc_read_att_dble(this%bwd(isim)%planet_radius, 'planet radius', this%bwd(isim))
+
+        call nc_read_att_dble(this%bwd(isim)%rmin, 'kernel wavefield rmin', this%bwd(isim))
+        call nc_read_att_dble(this%bwd(isim)%rmax, 'kernel wavefield rmax', this%bwd(isim))
+        call nc_read_att_dble(this%bwd(isim)%colatmin, 'kernel wavefield colatmin', this%bwd(isim))
+        call nc_read_att_dble(this%bwd(isim)%colatmax, 'kernel wavefield colatmax', this%bwd(isim))
 
         call nc_read_att_char(this%bwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
