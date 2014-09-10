@@ -109,7 +109,8 @@ module readfields
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
         real(kind=dp), public, allocatable :: stf_fwd(:), stf_bwd(:)
         real(kind=dp), public, allocatable :: stf_d_fwd(:), stf_d_bwd(:)
-        integer                            :: buffer_size
+        integer                            :: strain_buffer_size
+        integer                            :: displ_buffer_size
         character(len=12)                  :: dump_type
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
@@ -144,15 +145,17 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, strain_type)
+subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_size, strain_type)
     class(semdata_type)            :: this
     character(len=512), intent(in) :: fwd_dir, bwd_dir
-    integer,            intent(in) :: buffer_size
+    integer,            intent(in) :: strain_buffer_size
+    integer,            intent(in) :: displ_buffer_size
     character(len=32),   intent(in), optional :: strain_type
     character(len=512)             :: dirnam
     logical                        :: moment=.false., force=.false., single=.false.
 
-    this%buffer_size = buffer_size
+    this%strain_buffer_size = strain_buffer_size
+    this%displ_buffer_size = displ_buffer_size
 
     dirnam = trim(fwd_dir)//'/MZZ/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
@@ -605,15 +608,15 @@ subroutine open_files(this)
     select case(trim(this%dump_type))
     case('displ_only')
        do isim = 1, this%nsim_fwd
-          status = this%fwd(isim)%buffer_disp%init(this%buffer_size, this%fwd(isim)%ndumps, 3)
+          status = this%fwd(isim)%buffer_disp%init(this%displ_buffer_size, this%fwd(isim)%ndumps, 3)
           select case(this%strain_type)
           case('straintensor_trace')
-            status = this%fwd(isim)%buffer_strain%init(this%buffer_size,      &
+            status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
                                                        this%fwd(isim)%ndumps, &
                                                        this%fwd(isim)%npol+1,   &
                                                        this%fwd(isim)%npol+1)
           case('straintensor_full')
-            status = this%fwd(isim)%buffer_strain%init(this%buffer_size,      &
+            status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
                                                        this%fwd(isim)%ndumps, &
                                                        this%fwd(isim)%npol+1,   &
                                                        this%fwd(isim)%npol+1,   &
@@ -623,15 +626,15 @@ subroutine open_files(this)
        end do
 
        do isim = 1, this%nsim_bwd
-          status = this%bwd(isim)%buffer_disp%init(this%buffer_size, this%bwd(isim)%ndumps, 3)
+          status = this%bwd(isim)%buffer_disp%init(this%displ_buffer_size, this%bwd(isim)%ndumps, 3)
           select case(this%strain_type)
           case('straintensor_trace')
-            status = this%bwd(isim)%buffer_strain%init(this%buffer_size,      &
+            status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
                                                        this%bwd(isim)%ndumps, &
                                                        this%bwd(isim)%npol+1,   &
                                                        this%bwd(isim)%npol+1)
           case('straintensor_full')
-            status = this%bwd(isim)%buffer_strain%init(this%buffer_size,      &
+            status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
                                                        this%bwd(isim)%ndumps, &
                                                        this%bwd(isim)%npol+1,   &
                                                        this%bwd(isim)%npol+1,   &
@@ -641,11 +644,11 @@ subroutine open_files(this)
        end do
     case('fullfields')
        do isim = 1, this%nsim_fwd
-          status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, this%ndim)
+          status = this%fwd(isim)%buffer%init(this%strain_buffer_size, this%fwd(isim)%ndumps, this%ndim)
        end do
 
        do isim = 1, this%nsim_bwd
-          status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, this%ndim)
+          status = this%bwd(isim)%buffer%init(this%strain_buffer_size, this%bwd(isim)%ndumps, this%ndim)
        end do
     case default
        print *, 'Unknown dump type in solver'
