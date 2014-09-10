@@ -473,7 +473,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   character(len=*), intent(in)      :: filename_vertices
   character(len=*), intent(in)      :: filename_connectivity
   integer                           :: iinput_vertices, iinput_connectivity
-  integer                           :: i, ierr
+  integer                           :: i, ierr, ndim
 
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to read mesh into inversion mesh type that is already initialized'
@@ -491,6 +491,17 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
      write(*,*) 'ierr :', ierr
      call pabort
   endif
+
+  read(iinput_vertices,*) ndim ! The dimensionality of the mesh can be changed here
+                               ! 3 means tetrahedral meshes
+                               ! 2 means probably triangles. This should not be used 
+                               !   anymore and is not implemented here, at least for 
+                               !   now. SCS September 14
+  if (ndim.ne.3) then
+    write(*,*) 'ERROR: the dimension of Sigloch/Nolet style meshes should be three (3)'
+    write(*,*) '       Defined in the first line of the vertex files'
+    call pabort()
+  end if    
 
   read(iinput_vertices,*) this%nvertices
 
@@ -517,6 +528,15 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
      read(iinput_connectivity,*) this%connectivity(:,i)
   enddo
   close(iinput_connectivity)
+
+  
+  write(lu_out,'(A)')       ' Tetrahedral mesh read in...'
+  write(lu_out,'(A,A)')     '  vertex file       : ', trim(filename_vertices)
+  write(lu_out,'(A,A)')     '  connectivity file : ', trim(filename_connectivity)
+  write(lu_out,'(A,I10,A)') '  contains ', this%nvertices, ' vertices '
+  write(lu_out,'(A,I10,A)') '  and      ', this%nelements, ' elements '
+  write(lu_out,'(A)')       ''
+
 
   call this%init_weight_tet_mesh()
 
