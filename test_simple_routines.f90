@@ -133,6 +133,20 @@ subroutine test_to_lower
 end subroutine test_to_lower
 !------------------------------------------------------------------------------
 
+!------------------------------------------------------------------------------
+subroutine test_lowtrim
+  character(len=48)    :: string, string_ref
+
+  string = 'LiEsT iRgEnDJEMANd dieSEN CODE? 146 &%$%        '
+  string_ref = 'liest irgendjemand diesen code? 146 &%$%'
+
+  call assert_true(lowtrim(string)==string_ref,  & 
+                   'trimlow transforms all uppercase letters, but leaves special ' // &
+                   'characters and numbers intact and trims')
+
+end subroutine test_lowtrim
+!------------------------------------------------------------------------------
+
 
 !------------------------------------------------------------------------------
 subroutine test_absreldiff

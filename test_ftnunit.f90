@@ -43,6 +43,7 @@ subroutine test_all
   call test(test_mult2d_1d_complex, 'Multiply complex 2D array with 1D array')
   call test(test_mult3d_1d_complex, 'Multiply complex 3D array with 1D array')
   call test(test_to_lower, 'Transform string to lowercase')
+  call test(test_lowtrim,  'Transform string to lowercase and trim')
   call test(test_absreldiff, 'Calculate absolute relative difference')
   call test(test_cross, 'Cross product')
 
