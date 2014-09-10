@@ -6,7 +6,6 @@ Improvements
 
 -> OUTPUT CSR: Threshold for output to ensure sparsity (Ludwig)
 
-
 -> Quasirandom series for MC integration (Simon)
 
 
@@ -15,7 +14,6 @@ Improvements
 
 -> Implement inverted STF in kernel calculation (Simon)
 
--> treatment of points outside of earth (Martin)
 
 
 -> Anisotropic parameter kernels (Ludwig)
@@ -50,3 +48,5 @@ DONE:
 -> NetCDF buffers (Martin and Simon)
 
 -> Tidying up (fixed npol routines)
+
+-> treatment of points outside of earth (Martin)
