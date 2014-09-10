@@ -316,9 +316,13 @@ subroutine open_files(this)
         call nc_read_att_int(this%fwd(isim)%file_version, 'file version', this%fwd(isim))
 
         call nc_read_att_dble(this%fwd(isim)%planet_radius, 'planet radius', this%fwd(isim))
+        this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
 
         call nc_read_att_dble(this%fwd(isim)%rmin, 'kernel wavefield rmin', this%fwd(isim))
         call nc_read_att_dble(this%fwd(isim)%rmax, 'kernel wavefield rmax', this%fwd(isim))
+        this%fwd(isim)%rmin = this%fwd(isim)%rmin * 1d3
+        this%fwd(isim)%rmax = this%fwd(isim)%rmax * 1d3
+
         call nc_read_att_dble(this%fwd(isim)%colatmin, 'kernel wavefield colatmin', this%fwd(isim))
         call nc_read_att_dble(this%fwd(isim)%colatmax, 'kernel wavefield colatmax', this%fwd(isim))
 
@@ -478,9 +482,13 @@ subroutine open_files(this)
         call nc_read_att_int(this%bwd(isim)%file_version, 'file version', this%bwd(isim))
 
         call nc_read_att_dble(this%bwd(isim)%planet_radius, 'planet radius', this%bwd(isim))
+        this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
 
         call nc_read_att_dble(this%bwd(isim)%rmin, 'kernel wavefield rmin', this%bwd(isim))
         call nc_read_att_dble(this%bwd(isim)%rmax, 'kernel wavefield rmax', this%bwd(isim))
+        this%fwd(isim)%rmin = this%fwd(isim)%rmin * 1d3
+        this%fwd(isim)%rmax = this%fwd(isim)%rmax * 1d3
+
         call nc_read_att_dble(this%bwd(isim)%colatmin, 'kernel wavefield colatmin', this%bwd(isim))
         call nc_read_att_dble(this%bwd(isim)%colatmax, 'kernel wavefield colatmax', this%bwd(isim))
 
@@ -1028,6 +1036,16 @@ function load_fw_points(this, coordinates, source_params, coeffs)
     allocate(nextpoint(nnext_points))
     load_fw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
+        ! map points from outside earth to the surface:
+        if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%fwd(1)%planet_radius**2) then
+           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
+                               * this%fwd(1)%planet_radius
+           rotmesh_z(ipoint) = rotmesh_z(ipoint) &
+                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
+                               * this%fwd(1)%planet_radius
+        endif
+
 #       ifdef flag_kerner
         iclockold = tick()
 #       endif
@@ -1081,9 +1099,9 @@ function load_fw_points(this, coordinates, source_params, coeffs)
                write(6,*) 'eltype     = ', eltype
                write(6,*) 'xi, eta    = ', xi, eta
                write(6,*) 'element id = ', nextpoint(inext_point)%idx
-               !call pabort
-               this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
-               cycle
+               call pabort
+               !this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
+               !cycle
             endif
 
             id_elem = nextpoint(inext_point)%idx
@@ -1394,6 +1412,15 @@ function load_bw_points(this, coordinates, receiver)
     allocate(nextpoint(nnext_points))
     load_bw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
+        ! map points from outside earth to the surface:
+        if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%fwd(1)%planet_radius**2) then
+           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
+                               * this%fwd(1)%planet_radius
+           rotmesh_z(ipoint) = rotmesh_z(ipoint) &
+                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
+                               * this%fwd(1)%planet_radius
+        endif
 #       ifdef flag_kerner
         iclockold = tick()
 #       endif
@@ -1440,9 +1467,9 @@ function load_bw_points(this, coordinates, receiver)
                write(6,*) 'ERROR: element not found. (bwd)'
                write(6,*) '       Probably outside depth/distance range in the netcdf file?'
                write(6,*) '       Try increasing nnext_points in case this problem persists'
-               this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
-               cycle
-               !call pabort
+               !this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
+               !cycle
+               call pabort
             endif
 
             id_elem = nextpoint(inext_point)%idx
