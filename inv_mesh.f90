@@ -477,7 +477,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
 
   if (this%initialized) then
      write(*,'(A)') 'ERROR: Trying to read mesh into inversion mesh type that is already initialized'
-     call pabort 
+     call pabort(do_traceback = .false.)
   end if
 
   this%nvertices_per_elem = 4
@@ -487,20 +487,22 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   open(newunit=iinput_vertices, file=trim(filename_vertices), status='old', &
        action='read', iostat=ierr)
   if ( ierr /= 0 ) then
-     write(*,*) 'ERROR: Could not open file: ', trim(filename_vertices)
+     write(*,*) 'ERROR: Could not open vertex file: ', trim(filename_vertices)
      write(*,*) 'ierr :', ierr
-     call pabort
+     call pabort(do_traceback = .false.)
   endif
 
   read(iinput_vertices,*) ndim ! The dimensionality of the mesh can be changed here
-                               ! 3 means tetrahedral meshes
-                               ! 2 means probably triangles. This should not be used 
-                               !   anymore and is not implemented here, at least for 
-                               !   now. SCS September 14
+                               ! 3: means tetrahedral meshes
+                               ! 2: means probably triangles. This should not be used 
+                               !    anymore and is not implemented here, at least for 
+                               !    now. SCS September 14
+
+  write(1000,*) 'NDIM: ', ndim                               
   if (ndim.ne.3) then
-    write(*,*) 'ERROR: the dimension of Sigloch/Nolet style meshes should be three (3)'
-    write(*,*) '       Defined in the first line of the vertex files'
-    call pabort()
+     write(*,*) 'ERROR: the dimension of Sigloch/Nolet style meshes should be three (3)'
+     write(*,*) '       Defined in the first line of the vertex files'
+     call pabort(do_traceback = .false.)
   end if    
 
   read(iinput_vertices,*) this%nvertices
@@ -516,9 +518,9 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   open(newunit=iinput_connectivity, file=trim(filename_connectivity), status='old', &
        action='read', iostat=ierr)
   if ( ierr /= 0 ) then
-     write(*,*) 'ERROR: Could not open file: ', trim(filename_connectivity)
+     write(*,*) 'ERROR: Could not open connectivity file: ', trim(filename_connectivity)
      write(*,*) 'ierr :', ierr
-     call pabort
+     call pabort(do_traceback = .false.)
   endif
 
   read(iinput_connectivity,*) this%nelements

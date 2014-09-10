@@ -1,9 +1,10 @@
 program kerner_code
 
     use mpi
-    use commpi,                      only: ppinit, pbroadcast_int, ppend
+    use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
                                            master, lu_out, myrank
+    use simple_routines,             only: lowtrim
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use type_parameter,              only: parameter_type
@@ -52,15 +53,20 @@ program kerner_code
 
        if (master) then
            ! Get type of mesh and number of vertices per element
-           if (trim(parameters%mesh_file).eq.'Karin') then
+           
+           select case(lowtrim(parameters%mesh_file_type))
+           case('tetrahedral') 
                nvertices_per_elem = 4
                nbasisfuncs_per_elem = 4
-           else
+           case('abaqus') 
                call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%int_type)
                nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
                nvertices_per_elem = inv_mesh%nvertices_per_elem
                call inv_mesh%freeme()
-           end if
+           case default
+               write(*,*) 'Unknown mesh type: ', trim(parameters%mesh_file_type)
+               call pabort(do_traceback=.false.)
+           end select
        end if
 
        call pbroadcast_int(nbasisfuncs_per_elem, 0)
