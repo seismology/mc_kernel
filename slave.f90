@@ -220,15 +220,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     real(kind=dp),    allocatable       :: conv_field(:,:)
     real(kind=dp),    allocatable       :: random_points(:,:) 
     real(kind=dp),    allocatable       :: kernelvalue_basekers(:,:,:)
-    real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:,:) 
+    real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:) 
     real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
     integer,          allocatable       :: niterations(:,:)
     real(kind=dp),    allocatable       :: modelcoeffs(:,:)
 
-    real(kind=dp),    allocatable       :: c_rho(:), c_eta(:)
-    real(kind=dp),    allocatable       :: c_vs(:),  c_vp(:)
-    real(kind=dp),    allocatable       :: c_vsh(:), c_vsv(:)
-    real(kind=dp),    allocatable       :: c_vph(:), c_vpv(:)
+    real(kind=dp),    allocatable       :: c_rho(:,:), c_eta(:,:)
+    real(kind=dp),    allocatable       :: c_vs(:,:),  c_vp(:,:)
+    real(kind=dp),    allocatable       :: c_vsh(:,:), c_vsv(:,:)
+    real(kind=dp),    allocatable       :: c_vph(:,:), c_vpv(:,:)
 
     real(kind=dp)                       :: volume
 
@@ -268,21 +268,21 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(conv_field_fd_filt(nomega, nptperstep))
 
     allocate(kernelvalue_basekers(nptperstep, parameters%nkernel, nbasekernels))
-    allocate(kernelvalue_weighted(nptperstep, parameters%nkernel, nbasekernels))
+    allocate(kernelvalue_weighted(nptperstep, parameters%nkernel))
     allocate(kernelvalue_physical(nptperstep, parameters%nkernel))
 
 
     volume = 0.0
 
     allocate(modelcoeffs(3, nptperstep)) ! for now just load vp, vs, rho
-    allocate(c_vp(nptperstep)) 
-    allocate(c_vs(nptperstep)) 
-    allocate(c_rho(nptperstep)) 
-    allocate(c_vsh(nptperstep)) 
-    allocate(c_vsv(nptperstep)) 
-    allocate(c_vph(nptperstep)) 
-    allocate(c_vpv(nptperstep)) 
-    allocate(c_eta(nptperstep)) 
+    allocate(c_vp(nptperstep,parameters%nkernel)) 
+    allocate(c_vs(nptperstep,parameters%nkernel)) 
+    allocate(c_rho(nptperstep,parameters%nkernel)) 
+    allocate(c_vsh(nptperstep,parameters%nkernel)) 
+    allocate(c_vsv(nptperstep,parameters%nkernel)) 
+    allocate(c_vph(nptperstep,parameters%nkernel)) 
+    allocate(c_vpv(nptperstep,parameters%nkernel)) 
+    allocate(c_eta(nptperstep,parameters%nkernel)) 
 
     allocate(niterations(parameters%nkernel, nelements))
     niterations = 0
@@ -335,10 +335,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                                                coeffs = modelcoeffs)
            iclockold = tick(id=id_fwd, since=iclockold)
 
-           ! Recombine model coefficients for chosen parameterization
-           c_vp  = modelcoeffs(1,:) ! contains velocities at each point in km/s
-           c_vs  = modelcoeffs(2,:) ! contains velocities at each point in km/s
-           c_rho = modelcoeffs(3,:) ! contains velocities at each point in kg/(km^3)
+
+          ! Recombine model coefficients for chosen parameterization         
+          c_vp  = spread(modelcoeffs(1,:),2,parameters%nkernel) ! contains velocities at each point in km/s
+          c_vs  = spread(modelcoeffs(2,:),2,parameters%nkernel) ! contains velocities at each point in km/s
+          c_rho = spread(modelcoeffs(3,:),2,parameters%nkernel) ! contains velocities at each point in km/s                     
 
            ! @ TODO : For now assume an isotropic background model
            !          need to store xi in the netcdf files
@@ -462,6 +463,60 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            end do ! irec
            iclockold = tick(id=id_mc, since=iclockold)
 
+
+          ! See Fichtner p. 169 how kernels are defined and type_parameter.f90
+          ! how basekernels inside kernelvalue_weighted are ordered
+          select case(trim(parameters%model_param))
+          case('lambda')
+             kernelvalue_physical(:,:) =                                 &
+                  kernelvalue_basekers(:,:,1)
+          case('mu')
+             kernelvalue_physical(:,:) =                                 & 
+                  kernelvalue_basekers(:,:,1)
+          case('vp')
+             kernelvalue_physical(:,:) =  2.d0 * c_rho(:,:) *  c_vp(:,:) *   &  !
+                  kernelvalue_basekers(:,:,1)
+             
+          case('vs')
+             kernelvalue_physical(:,:) = 2.d0 * c_rho(:,:) * c_vs(:,:) *           &
+                  kernelvalue_basekers(:,:,2) - 4.d0 * c_rho(:,:) * c_vs(:,:) *  &
+                  kernelvalue_basekers(:,:,1)
+          case('vsh')
+             kernelvalue_physical(:,:) = 2.d0 * c_rho(:,:) * c_vsh(:,:) *          &
+                  ( kernelvalue_basekers(:,:, 1) * 2.d0 +                &
+                  kernelvalue_basekers(:,:,2) +                        &
+                  kernelvalue_basekers(:,:,3) +                        &
+                  kernelvalue_basekers(:,:,4) * 2.d0 * (1.d0-c_eta(:,:)))
+          case('vsv')
+             kernelvalue_physical(:,:) = 2.d0 * c_rho(:,:) * c_vsv(:,:) *          &
+                  kernelvalue_basekers(:,:,1)
+          case('vph')
+             kernelvalue_physical(:,:) = 2.d0 * c_rho(:,:) * c_vph(:,:) *          &
+                  ( kernelvalue_basekers(:,:,1) +                        &
+                  kernelvalue_basekers(:,:,2) * c_eta )
+          case('vpv')
+             kernelvalue_physical(:,:) = 2.d0 * c_rho(:,:) * c_vpv(:,:) *          &
+                  ( kernelvalue_basekers(:,:,1) +                        &
+                  kernelvalue_basekers(:,:,2) +                        &
+                  kernelvalue_basekers(:,:,3) )             
+          case('kappa')
+             write(*,*) "Error: Kappa kernels not yet implemented"
+             stop
+          case('eta')
+             write(*,*) "Error: Eta kernels not yet implemented"
+             stop
+          case('xi')
+             write(*,*) "Error: Xi kernels not yet implemented"
+             stop
+          case('rho')
+             write(*,*) "Error: Density kernels not yet implemented"
+             stop
+          end select
+
+
+
+
+
            ! Check for convergence           
            do ibasisfunc = 1, nbasisfuncs_per_elem
               iclockold = tick()
@@ -469,66 +524,17 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               ! Compute weighted base kernels
               do ikernel = 1, parameters%nkernel
 
-                 do ibasekernel = 1, nbasekernels
-                    kernelvalue_weighted(:, ikernel, ibasekernel) =    &
-                         kernelvalue_basekers(:, ikernel, ibasekernel) &
-                         * inv_mesh%weights(ielement, ibasisfunc, random_points)                 
-                 end do
+!                 do ibasekernel = 1, nbasekernels
+                    kernelvalue_weighted(:, ikernel) =    &
+                         kernelvalue_physical(:, ikernel) &
+                         * inv_mesh%weights(ielement, ibasisfunc, random_points)
+!                 end do
                  
-                 ! See Fichtner p. 169 how kernels are defined and type_parameter.f90
-                 ! how basekernels inside kernelvalue_weighted are ordered
-                 select case(trim(parameters%model_param))
-                 case('lambda')
-                    kernelvalue_physical(:, ikernel) =                                 &
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('mu')
-                    kernelvalue_physical(:, ikernel) =                                 & 
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('vp')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vp *           &
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('vs')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vs *           &
-                           kernelvalue_weighted(:, ikernel, 2) - 4.d0 * c_rho * c_vs * &
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('vsh')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vsh *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) * 2 +                   &
-                           kernelvalue_weighted(:, ikernel, 2) +                       &
-                           kernelvalue_weighted(:, ikernel, 3) +                       &
-                           kernelvalue_weighted(:, ikernel, 4) * 2*(1-c_eta))
-                 case('vsv')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vsv *          &
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('vph')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vph *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) +                       &
-                           kernelvalue_weighted(:, ikernel, 2) * c_eta )
-                 case('vpv')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vpv *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) +                       &
-                           kernelvalue_weighted(:, ikernel, 2) +                       &
-                           kernelvalue_weighted(:, ikernel, 3) )
-                    stop
-                 case('kappa')
-                    write(*,*) "Error: Kappa kernels not yet implemented"
-                    stop
-                 case('eta')
-                    write(*,*) "Error: Eta kernels not yet implemented"
-                    stop
-                 case('xi')
-                    write(*,*) "Error: Xi kernels not yet implemented"
-                    stop
-                 case('rho')
-                    write(*,*) "Error: Density kernels not yet implemented"
-                    stop
-                 end select
-
               end do
 
               ! Check if the summed kernels for each basis function have converged
               iclockold = tick(id=id_kernel, since=iclockold)
-              call int_kernel(ibasisfunc)%check_montecarlo_integral(kernelvalue_physical)
+              call int_kernel(ibasisfunc)%check_montecarlo_integral(kernelvalue_weighted)
               iclockold = tick(id=id_mc, since=iclockold)
            end do        
               
