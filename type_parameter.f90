@@ -40,7 +40,8 @@ module type_parameter
         integer                              :: nelems_per_task
         integer                              :: npoints_per_step
         integer                              :: max_iter
-        integer                              :: buffer_size
+        integer                              :: strain_buffer_size
+        integer                              :: displ_buffer_size
         integer                              :: nbasekernels
         logical                              :: parameters_read      = .false.
         logical                              :: receiver_read        = .false.
@@ -130,8 +131,11 @@ subroutine read_parameters(this, input_file_in)
         case('DUMP_TYPE')
            this%dump_type = keyvalue
 
-        case('NETCDF_BUFFER_SIZE')
-           read(keyvalue, *) this%buffer_size
+        case('STRAIN_BUFFER_SIZE')
+           read(keyvalue, *) this%strain_buffer_size
+
+        case('DISPL_BUFFER_SIZE')
+           read(keyvalue, *) this%displ_buffer_size
 
         case('MAXIMUM_ITERATIONS')
            read(keyvalue, *) this%max_iter
@@ -182,7 +186,8 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%mesh_file, 0)
   call pbroadcast_char(this%output_file, 0)
   call pbroadcast_char(this%dump_type, 0)
-  call pbroadcast_int(this%buffer_size, 0)
+  call pbroadcast_int(this%strain_buffer_size, 0)
+  call pbroadcast_int(this%displ_buffer_size, 0)
   call pbroadcast_int(this%max_iter, 0)
   call pbroadcast_int(this%nelems_per_task, 0)
   call pbroadcast_int(this%npoints_per_step, 0)

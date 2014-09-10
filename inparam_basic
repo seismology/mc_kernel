@@ -48,9 +48,12 @@ MAXIMUM_ITERATIONS   100
 # When set to false, only one summary per cell is written out.
 WRITE_DETAILED_CONVERGENCE  false
 
-# Size of reading buffer. 1000 is a good value, unless you run into memory 
-# problems. Higher values avoid repeated reading of the same point.
-NETCDF_BUFFER_SIZE   1000
+# Size of buffers for strain and displacement.
+#  - fullfields: only strain buffer is used for chunkwise IO
+#  - displ_only: displacement buffer is used for chunkwise IO and strain buffer contains
+#                the strain in the GLL basis for whole elements
+STRAIN_BUFFER_SIZE   1000
+DISPL_BUFFER_SIZE    100
 
 # Number of elements in each MPI task. 
 ELEMENTS_PER_TASK    100 
