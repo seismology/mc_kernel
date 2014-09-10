@@ -6,8 +6,6 @@ Improvements
 
 -> OUTPUT CSR: Threshold for output to ensure sparsity (Ludwig)
 
--> NetCDF buffers (Martin and Simon)
-
 
 -> Quasirandom series for MC integration (Simon)
 
@@ -36,7 +34,7 @@ Improvements
 
 -> time integration scheme 
 
--> Tidying up (fixed npol routines, database mode FORTRAN routines)
+-> Tidying up (database mode FORTRAN routines)
 
 Cosmetic changes
 
@@ -45,3 +43,10 @@ Cosmetic changes
 -> rename dump type
 
 -> fft type should be generic
+
+
+DONE:
+
+-> NetCDF buffers (Martin and Simon)
+
+-> Tidying up (fixed npol routines)
