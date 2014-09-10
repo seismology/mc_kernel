@@ -177,7 +177,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, strain_type)
        write(lu_out,*) 'Forward simulation was ''single'' source'
     else 
        this%nsim_fwd = 0
-       write(lu_out,*) 'ERROR: Forward rundir does not seem to be an axisem rundirectory'
+       write(*,*) 'ERROR: Forward rundir does not seem to be an axisem rundirectory'
        call pabort
     end if
 
@@ -1373,7 +1373,7 @@ function load_bw_points(this, coordinates, receiver)
         iclockold = tick()
 #       endif
         call kdtree2_n_nearest( this%bwdtree,                           &
-                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)], kind=sp), &
                                 nn = nnext_points,                            &
                                 results = nextpoint )
 #       ifdef flag_kerner
