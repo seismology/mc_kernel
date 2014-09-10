@@ -6,9 +6,6 @@ Improvements
 
 -> OUTPUT CSR: Threshold for output to ensure sparsity (Ludwig)
 
--> NetCDF buffers (Martin and Simon)
-
-
 -> Quasirandom series for MC integration (Simon)
 
 
@@ -17,7 +14,6 @@ Improvements
 
 -> Implement inverted STF in kernel calculation (Simon)
 
--> treatment of points outside of earth (Martin)
 
 
 -> Anisotropic parameter kernels (Ludwig)
@@ -36,7 +32,7 @@ Improvements
 
 -> time integration scheme 
 
--> Tidying up (fixed npol routines, database mode FORTRAN routines)
+-> Tidying up (database mode FORTRAN routines)
 
 Cosmetic changes
 
@@ -45,3 +41,12 @@ Cosmetic changes
 -> rename dump type
 
 -> fft type should be generic
+
+
+DONE:
+
+-> NetCDF buffers (Martin and Simon)
+
+-> Tidying up (fixed npol routines)
+
+-> treatment of points outside of earth (Martin)
