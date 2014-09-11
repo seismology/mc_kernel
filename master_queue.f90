@@ -235,6 +235,28 @@ subroutine finalize()
 
      end select
 
+  ! Save kernels in ASCII format
+  case ('ascii')
+
+     select case(trim(parameters%int_type))
+     case ('onvertices')
+
+        call inv_mesh%dump_node_data_ascii ( real(K_x(:,:), kind=sp),  &
+                                           parameters%nkernel,         &
+                                           parameters%allowed_error,   & 
+                                           trim(parameters%output_file)//'_kernel')
+
+
+     case ('volumetric')
+
+        call inv_mesh%dump_cell_data_ascii ( real(K_x(:,:), kind=sp),  &
+                                           parameters%nkernel,         &
+                                           parameters%allowed_error,   & 
+                                           trim(parameters%output_file)//'_kernel')
+
+     end select
+
+
   end select
 
   call inv_mesh%free_node_and_cell_data()

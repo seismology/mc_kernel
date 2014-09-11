@@ -30,9 +30,11 @@ MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
 OUTPUT_FILE          'kerner'
 
-# Output format when dumping kernels and wavefields. Chose between xdmf and 
-# Yale-style csr binary format (compressed sparse row). Yet, the allowed
-# error below is assumed as the truncation threshold in csr storage
+# Output format when dumping kernels and wavefields. 
+# Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
+# ascii.
+# Yet, the allowed error below is assumed as the truncation threshold in 
+# csr and ascii storage
 DUMP_TYPE            'xdmf'
 
 # Write out seismograms? (default: true)
