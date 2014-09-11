@@ -476,7 +476,7 @@ subroutine open_files(this)
         call nc_read_att_int(this%bwd(isim)%file_version, 'file version', this%bwd(isim))
 
         call nc_read_att_dble(this%bwd(isim)%planet_radius, 'planet radius', this%bwd(isim))
-        this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
+        this%bwd(isim)%planet_radius = this%bwd(isim)%planet_radius * 1d3
 
         call nc_read_att_dble(this%bwd(isim)%rmin, 'kernel wavefield rmin', this%bwd(isim))
         call nc_read_att_dble(this%bwd(isim)%rmax, 'kernel wavefield rmax', this%bwd(isim))
@@ -999,7 +999,7 @@ function load_fw_points(this, coordinates, source_params, coeffs)
     integer, allocatable              :: gll_point_ids(:,:)
     integer                           :: id_elem
     real(kind=dp)                     :: corner_points(4,2)
-    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_s(size(coordinates,2)), rotmesh_s_buff
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
@@ -1032,12 +1032,13 @@ function load_fw_points(this, coordinates, source_params, coeffs)
     do ipoint = 1, npoints
         ! map points from outside earth to the surface:
         if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%fwd(1)%planet_radius**2) then
-           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+           rotmesh_s_buff = rotmesh_s(ipoint) &
                                / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
                                * this%fwd(1)%planet_radius
            rotmesh_z(ipoint) = rotmesh_z(ipoint) &
                                / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
                                * this%fwd(1)%planet_radius
+           rotmesh_s(ipoint) = rotmesh_s_buff
         endif
 
         iclockold = tick()
@@ -1370,7 +1371,7 @@ function load_bw_points(this, coordinates, receiver)
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
     real(kind=dp)                     :: corner_points(4,2)
-    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_s(size(coordinates,2)), rotmesh_s_buff
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
@@ -1399,13 +1400,15 @@ function load_bw_points(this, coordinates, receiver)
     load_bw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
         ! map points from outside earth to the surface:
-        if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%fwd(1)%planet_radius**2) then
-           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+        if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%bwd(1)%planet_radius**2) then
+
+           rotmesh_s_buff = rotmesh_s(ipoint) &
                                / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
-                               * this%fwd(1)%planet_radius
+                               * this%bwd(1)%planet_radius
            rotmesh_z(ipoint) = rotmesh_z(ipoint) &
                                / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
-                               * this%fwd(1)%planet_radius
+                               * this%bwd(1)%planet_radius
+           rotmesh_s(ipoint) = rotmesh_s_buff
         endif
         iclockold = tick()
         call kdtree2_n_nearest( this%bwdtree,                           &
