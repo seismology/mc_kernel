@@ -1075,22 +1075,23 @@ function load_fw_points(this, coordinates, source_params, coeffs)
                 endif
             enddo
 
-            if (inext_point >= nnext_points) then
+            if (inext_point > nnext_points) then
                write(6,*) 'ERROR: element not found. (fwd)'
                write(6,*) '       Probably outside depth/distance range in the netcdf file?'
                write(6,*) '       Try increasing nnext_points in case this problem persists'
                write(6,*) 'coordinates= ', coordinates(:,ipoint)
                write(6,*) 's, z       = ', rotmesh_s(ipoint), rotmesh_z(ipoint)
+               write(6,*) 'radius     = ', norm2([rotmesh_s(ipoint), rotmesh_z(ipoint)])
                do icp = 1, 4
-               write(6,*) 'cp: ', icp, ', s: ',   corner_points(icp, 1) 
-               write(6,*) 'cp: ', icp, ', z: ',   corner_points(icp, 2)
-                enddo                        
+                 write(6,*) 'cp: ', icp, ', s: ',   corner_points(icp, 1) 
+                 write(6,*) 'cp: ', icp, ', z: ',   corner_points(icp, 2)
+               enddo                        
                write(6,*) 'eltype     = ', eltype
                write(6,*) 'xi, eta    = ', xi, eta
                write(6,*) 'element id = ', nextpoint(inext_point)%idx
-               call pabort
-               !this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
-               !cycle
+               call pabort(do_traceback = .false.)
+               this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
+               cycle
             endif
 
             id_elem = nextpoint(inext_point)%idx
@@ -1380,7 +1381,7 @@ function load_bw_points(this, coordinates, receiver)
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_bw_points: input variable coordinates has to be a '
        write(*,*) ' 3 x npoints array'
-       call pabort 
+       call pabort
     end if
     npoints = size(coordinates,2)
 
@@ -1446,13 +1447,14 @@ function load_bw_points(this, coordinates, receiver)
                 endif
             enddo
 
-            if (inext_point >= nnext_points) then
+            if (inext_point > nnext_points) then
                write(6,*) 'ERROR: element not found. (bwd)'
                write(6,*) '       Probably outside depth/distance range in the netcdf file?'
                write(6,*) '       Try increasing nnext_points in case this problem persists'
-               !this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
-               !cycle
-               call pabort
+               write(6,*) 'radius     = ', norm2([rotmesh_s(ipoint), rotmesh_z(ipoint)])
+               this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
+               cycle
+               call pabort(do_traceback = .false.)
             endif
 
             id_elem = nextpoint(inext_point)%idx
@@ -1560,7 +1562,7 @@ function load_strain_point(sem_obj, pointid, strain_type)
         write(6,*) 'ERROR: trying to read strain from a file that was not'
         write(6,*) '       written with dump_type "fullfields"'
         write(6,*) sem_obj%dump_type
-        call pabort
+        call pabort(do_traceback=.false.)
     endif
 
     iclockold_total = tick()
