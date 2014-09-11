@@ -15,7 +15,6 @@ module unit_tests
   use test_kernel
   use test_readfields
   use test_rotations
-  use test_resampling
   use test_finite_elem_mapping
   use test_spectral_basis
   use test_sem_derivatives
@@ -32,10 +31,9 @@ subroutine test_all
   call init_output()
 
   ! test source routines
-  write(6,'(/,a)') 'TEST SOURCE MODULE'
-  call test(test_read_srf, 'read srf file')
-  call test(test_resample_stf, 'resample stf')
-  call test(test_fft_stf, 'fft stf')
+  !write(6,'(/,a)') 'TEST SOURCE MODULE'
+  !call test(test_resample_stf, 'resample stf')
+  !call test(test_fft_stf, 'fft stf')
 
   ! test simple routines
   write(6,'(/,a)') 'TEST SIMPLE ROUTINES MODULE'
@@ -141,13 +139,6 @@ subroutine test_all
   call test(test_fft_convolve, 'FFT_convolve')
   call test(test_fft_taperandzeropad, 'FFT_taperandzeropad')
   call test(test_fft_parseval, 'FFT_Parseval_theorem')
-
-  ! test_resampling
-  write(6,'(/,a)') 'TEST RESAMPLING MODULE'
-  call test(test_resampling_const, 'RESAMPLING_const')
-  call test(test_resampling_const_ntraces, 'RESAMPLING_const_ntraces')
-  call test(test_resampling_triangle, 'RESAMPLING_triangle')
-  call test(test_resampling_timeshift_triangle, 'RESAMPLING_triangle with timeshift')
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'

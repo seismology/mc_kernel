@@ -38,7 +38,7 @@ print MAKEFILE "#Example to include specific netcdf libraries: \n";
 print MAKEFILE 'LIBS = -lm -llapack -lfftw3 -lfftw3f -lnetcdff';
 print MAKEFILE " \n\n";
 print MAKEFILE "# set unc to compile with netcdf: \n";
-print MAKEFILE "F90FLAGS = -cpp -Dflag_kerner \n";
+print MAKEFILE "F90FLAGS = -cpp \n";
 print MAKEFILE "CC = gcc\n";
 print MAKEFILE "CFLAGS = -O3 -DF_UNDERSCORE\n";
 
@@ -296,6 +296,6 @@ sub MakeDependsf90 {
    }
 
 #print "\nCheck Makefile to make sure you're happy with it.\n\n";
-system("cowsay Check Makefile to make sure you are happy with it.");
+system("cowsay -f tux Check Makefile to make sure you are happy with it.");
 
 system("vi Makefile -c '%s/fftw3.f//' -c ':wq'");
