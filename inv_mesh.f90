@@ -1409,7 +1409,7 @@ subroutine set_cell_data_trace(this, data_trace, itrace, data_name)
   if (present(data_name)) then
      this%data_group_names_cell = trim(data_name)
   else
-     this%data_group_names_node = 'cell_data'
+     this%data_group_names_cell = 'cell_data'
   endif
 
   this%group_id_cell = 1
