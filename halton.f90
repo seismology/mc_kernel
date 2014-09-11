@@ -29,14 +29,14 @@ subroutine init_halton(ndim_in, seed_in, base_in, leap_in)
   !< Initializes a ndimensional Halton sequence
 
   integer, intent(in)            :: ndim_in           !< Dimensionality of Halton sequence
-  integer, intent(in), optional  :: seed_in(ndim_in)  !< Seed for each dimension. Basically
-                                                      !! the step with which to start the 
-                                                      !! sequence
+  integer, intent(in), optional  :: seed_in(ndim_in)  !< Seed for each dimension.
+                                                      !! Basically the step with which to
+                                                      !! start the sequence
   integer, intent(in), optional  :: base_in(ndim_in)  !< Bases of the sequence. Has to be 
                                                       !! ndim (different) prime numbers
                                                       !! Preferrably small ones
-  integer, intent(in), optional  :: leap_in(ndim_in)  !< Leap, i.e. number of sequence members
-                                                      !! to omit after each call
+  integer, intent(in), optional  :: leap_in(ndim_in)  !< Leap, i.e. number of sequence
+                                                      !! members to omit after each call
   integer                        :: i_dim
 
   ndim = ndim_in
