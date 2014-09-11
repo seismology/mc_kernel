@@ -296,6 +296,6 @@ sub MakeDependsf90 {
    }
 
 #print "\nCheck Makefile to make sure you're happy with it.\n\n";
-system("cowsay Check Makefile to make sure you are happy with it.");
+system("cowsay -f tux Check Makefile to make sure you are happy with it.");
 
 system("vi Makefile -c '%s/fftw3.f//' -c ':wq'");
