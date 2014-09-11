@@ -30,10 +30,9 @@ subroutine test_all
   call init_output()
 
   ! test source routines
-  write(6,'(/,a)') 'TEST SOURCE MODULE'
-  call test(test_read_srf, 'read srf file')
-  call test(test_resample_stf, 'resample stf')
-  call test(test_fft_stf, 'fft stf')
+  !write(6,'(/,a)') 'TEST SOURCE MODULE'
+  !call test(test_resample_stf, 'resample stf')
+  !call test(test_fft_stf, 'fft stf')
 
   ! test simple routines
   write(6,'(/,a)') 'TEST SIMPLE ROUTINES MODULE'
