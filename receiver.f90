@@ -2,9 +2,7 @@
 module receiver_class
     
     use global_parameters,  only : sp, dp, pi, deg2rad, rad2deg
-#ifdef flag_kerner    
     use kernel,             only : kernelspec_type
-#endif                                       
     implicit none
 
     type rec_param_type
@@ -21,9 +19,7 @@ module receiver_class
         real(kind=dp), dimension(3,3)  :: rot_mat, trans_rot_mat
         integer                        :: nkernel
         integer                        :: firstkernel, lastkernel
-#ifdef flag_kerner    
         type(kernelspec_type), pointer :: kernel(:)
-#endif                                       
         contains
            procedure, pass      :: rotate_receiver
            procedure, pass      :: init
@@ -54,9 +50,7 @@ subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkerne
    this%firstkernel = firstkernel
    this%lastkernel  = lastkernel
 
-#ifdef flag_kerner    
    allocate(this%kernel(this%nkernel))
-#endif                                       
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -100,9 +94,7 @@ end subroutine
 subroutine freeme(this)
    class(rec_param_type)         :: this
 
-#ifdef flag_kerner    
    deallocate(this%kernel)
-#endif                                       
 
 end subroutine freeme
 !-----------------------------------------------------------------------------------------

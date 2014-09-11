@@ -61,7 +61,8 @@ subroutine do_slave()
 
     call sem_data%set_params(parameters%fwd_dir,     &
                              parameters%bwd_dir,     &
-                             parameters%buffer_size, & 
+                             parameters%strain_buffer_size, & 
+                             parameters%displ_buffer_size, & 
                              parameters%strain_type)
 
     call sem_data%open_files()

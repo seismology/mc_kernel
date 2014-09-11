@@ -3,6 +3,7 @@ module master_queue
   use global_parameters,           only: sp, dp, lu_out
   use inversion_mesh,              only: inversion_mesh_data_type
   use type_parameter,              only: parameter_type
+  use simple_routines,             only: lowtrim
   implicit none
   private
   
@@ -40,11 +41,12 @@ subroutine init_queue(ntasks)
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Read inversion mesh'
   write(lu_out,'(A)') '***************************************************************'
-  if (trim(parameters%mesh_file).eq.'Karin') then
-    call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
-  else
-    call inv_mesh%read_abaqus_mesh(parameters%mesh_file,parameters%int_type)
-  end if
+  select case(lowtrim(parameters%mesh_file_type))
+  case('tetrahedral') 
+    call inv_mesh%read_tet_mesh(parameters%mesh_file_vert, parameters%mesh_file_face)
+  case('abaqus')
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file, parameters%int_type)
+  end select
   
   wt%ielement_type = inv_mesh%get_element_type()
   print *, 'Inversion mesh type: ', wt%ielement_type

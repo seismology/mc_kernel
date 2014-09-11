@@ -1,12 +1,52 @@
 
- - fft type should be generic
 
- - tidy up specialized npol=4 functions if not used
+Improvements
 
- - check sampling of the wavefields vs source time function an others: does it include
-   time zero?? related to this: nstrain in nc_routines assumes the first dump is after dt,
-   not at zero
-   one consequence: the peak of the stf is not at the location indicated by time_shift
-   also, the variable snapshot_times in the netcdf output does not start at 0, but the
-   snapshots do. the values seem to be off anyway (yes, the whole source stuff is a
-   complete mess)
+-> OUTPUT format Karin (Kasra)
+
+-> OUTPUT CSR: Threshold for output to ensure sparsity (Ludwig)
+
+-> Quasirandom series for MC integration (Simon)
+
+
+-> multiple model parameters in one run (Ludwig)
+
+
+-> Implement inverted STF in kernel calculation (Simon)
+
+
+
+-> Anisotropic parameter kernels (Ludwig)
+
+
+-> Test S-wave kernels (just by their look), check time windows again 
+
+
+-> Optimization of interpolation routines (Simon, Kasra -> M. Bader)
+
+
+-> Profiling
+
+
+-> convergence test
+
+-> time integration scheme 
+
+-> Tidying up (database mode FORTRAN routines)
+
+Cosmetic changes
+
+-> rename 'what_to_do' keyvalues
+
+-> rename dump type
+
+-> fft type should be generic
+
+
+DONE:
+
+-> NetCDF buffers (Martin and Simon)
+
+-> Tidying up (fixed npol routines)
+
+-> treatment of points outside of earth (Martin)

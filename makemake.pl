@@ -35,10 +35,10 @@ print MAKEFILE "\n\n";
 #
 $LIBS = '';
 print MAKEFILE "#Example to include specific netcdf libraries: \n";
-print MAKEFILE 'LIBS = -lm -llapack -lfftw3 -lfftw3f -L $(HOME)/local/lib -lnetcdff -Wl,-rpath,$(HOME)/local/lib';
+print MAKEFILE 'LIBS = -lm -llapack -lfftw3 -lfftw3f -lnetcdff';
 print MAKEFILE " \n\n";
 print MAKEFILE "# set unc to compile with netcdf: \n";
-print MAKEFILE "F90FLAGS = -cpp -Dflag_kerner \n";
+print MAKEFILE "F90FLAGS = -cpp \n";
 print MAKEFILE "CC = gcc\n";
 print MAKEFILE "CFLAGS = -O3 -DF_UNDERSCORE\n";
 
@@ -75,7 +75,7 @@ print MAKEFILE $F90_full;
 print MAKEFILE " \n";
 print MAKEFILE '# to include local built of netcdf you might want to use sth like this:';
 print MAKEFILE " \n";
-print MAKEFILE 'INCLUDE = -I $(HOME)/local/include -I /usr/include';
+print MAKEFILE 'INCLUDE = -I /usr/include';
 print MAKEFILE " \n";
 
 print "\n:::::: F90 compiler & flags ::::::\n $F90_strg \n";
@@ -296,6 +296,6 @@ sub MakeDependsf90 {
    }
 
 #print "\nCheck Makefile to make sure you're happy with it.\n\n";
-system("cowsay Check Makefile to make sure you are happy with it.");
+system("cowsay -f tux Check Makefile to make sure you are happy with it.");
 
 system("vi Makefile -c '%s/fftw3.f//' -c ':wq'");

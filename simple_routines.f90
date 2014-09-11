@@ -83,6 +83,19 @@ end function to_lower
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
+function lowtrim(strIn) result(strOut)
+!< Converts string to lowercase and trims it
+    implicit none
+
+    character(len=*), intent(in)   :: strIn
+    character(len=len_trim(strIn)) :: strOut
+
+    strOut = trim(to_lower(strIn))
+
+end function lowtrim 
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
 function firstderiv(timeseries) 
 !< Calculates the first derivative of timeseries, using a compact stencil
 real(kind=dp), intent(in) :: timeseries(:)
