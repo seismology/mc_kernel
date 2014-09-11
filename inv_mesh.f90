@@ -1420,10 +1420,11 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_node_data_trace(this, data_trace, itrace)
+subroutine set_node_data_trace(this, data_trace, itrace, data_name)
   class(inversion_mesh_data_type)           :: this
   real(kind=sp), intent(in)                 :: data_trace(:)
   integer, intent(in)                       :: itrace
+  character(len=*), intent(in), optional    :: data_name
 
   if (.not. allocated(this%datat_node)) then
      write(*,*) 'ERROR: trying to write node data without initialization!'
@@ -1442,14 +1443,24 @@ subroutine set_node_data_trace(this, data_trace, itrace)
 
   this%datat_node(itrace,:) = data_trace(:)
 
+  if (present(data_name)) then
+     this%data_group_names_node = trim(data_name)
+  else
+     this%data_group_names_node = 'node_data'
+  endif
+
+  this%group_id_node = 1
+  this%ngroups_node = 1
+
 end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_cell_data_trace(this, data_trace, itrace)
+subroutine set_cell_data_trace(this, data_trace, itrace, data_name)
   class(inversion_mesh_data_type)           :: this
   real(kind=sp), intent(in)                 :: data_trace(:)
   integer, intent(in)                       :: itrace
+  character(len=*), intent(in), optional    :: data_name
 
   if (.not. allocated(this%datat_node)) then
      write(*,*) 'ERROR: trying to write node data without initialization!'
@@ -1467,6 +1478,15 @@ subroutine set_cell_data_trace(this, data_trace, itrace)
   end if
 
   this%datat_cell(itrace,:) = data_trace(:)
+
+  if (present(data_name)) then
+     this%data_group_names_cell = trim(data_name)
+  else
+     this%data_group_names_cell = 'cell_data'
+  endif
+
+  this%group_id_cell = 1
+  this%ngroups_cell = 1
 
 end subroutine
 !-----------------------------------------------------------------------------------------

@@ -146,8 +146,8 @@ subroutine test_mesh_data_dump
 
   datat_node(:,:) = inv_mesh%get_vertices()
   call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
+  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'y')
+  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'z')
 
   call inv_mesh%dump_node_data_xdmf('unit_tests/testdata')
 
@@ -544,7 +544,7 @@ subroutine test_mesh_tracedata_dump
 
   datat_node(:,:) = inv_mesh%get_vertices()
   do i=1, npoints
-     call inv_mesh%set_node_data_trace(datat_node(:,i), i)
+     call inv_mesh%set_node_data_trace(datat_node(:,i), i, 'tracedata')
   enddo
 
   call inv_mesh%dump_node_data_xdmf('unit_tests/testtracedata')
