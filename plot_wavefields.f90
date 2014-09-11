@@ -31,6 +31,7 @@ subroutine plot_wavefields()
     complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:)
+    real(kind=dp),    allocatable       :: modelcoeffs(:,:)
     real(kind=dp)                       :: df
     character(len=64)                   :: fmtstring
 
@@ -49,7 +50,8 @@ subroutine plot_wavefields()
     write(*,*) '***************************************************************'
     call sem_data%set_params(parameters%fwd_dir,     &
                              parameters%bwd_dir,     &
-                             parameters%buffer_size, & 
+                             parameters%strain_buffer_size, & 
+                             parameters%displ_buffer_size, & 
                              parameters%strain_type)
     call sem_data%open_files()
     call sem_data%read_meshes()
@@ -86,6 +88,8 @@ subroutine plot_wavefields()
     fmtstring = '(A, F8.3, A, F8.3, A)'
     print fmtstring, '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
+
+
     print *, 'Initialize XDMF file'
     allocate(co_points(3, nvertices))
     co_points = inv_mesh%get_vertices()
@@ -93,7 +97,8 @@ subroutine plot_wavefields()
 
     write(*,*) ' Read in forward field'
     allocate(fw_field(ndumps, ndim, nvertices))
-    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source)
+    allocate(modelcoeffs(3,size(co_points)))
+    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source, coeffs=modelcoeffs)
 
     write(*,*) ' FFT forward field'
     allocate(fw_field_fd(nomega, ndim, nvertices))

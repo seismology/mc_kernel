@@ -38,6 +38,10 @@ module readfields
 
     type ncparamtype
         integer                            :: ncid
+        integer                            :: file_version
+        real(kind=dp)                      :: planet_radius
+        real(kind=dp)                      :: rmin, rmax
+        real(kind=dp)                      :: colatmin, colatmax
         integer                            :: snap, surf, mesh, seis  ! Group IDs
         integer                            :: strainvarid(6)          ! Variable IDs
         integer                            :: displvarid(3)           ! Variable IDs
@@ -109,7 +113,8 @@ module readfields
         real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
         real(kind=dp), public, allocatable :: stf_fwd(:), stf_bwd(:)
         real(kind=dp), public, allocatable :: stf_d_fwd(:), stf_d_bwd(:)
-        integer                            :: buffer_size
+        integer                            :: strain_buffer_size
+        integer                            :: displ_buffer_size
         character(len=12)                  :: dump_type
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
@@ -144,15 +149,17 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, strain_type)
+subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_size, strain_type)
     class(semdata_type)            :: this
     character(len=512), intent(in) :: fwd_dir, bwd_dir
-    integer,            intent(in) :: buffer_size
+    integer,            intent(in) :: strain_buffer_size
+    integer,            intent(in) :: displ_buffer_size
     character(len=32),   intent(in), optional :: strain_type
     character(len=512)             :: dirnam
     logical                        :: moment=.false., force=.false., single=.false.
 
-    this%buffer_size = buffer_size
+    this%strain_buffer_size = strain_buffer_size
+    this%displ_buffer_size = displ_buffer_size
 
     dirnam = trim(fwd_dir)//'/MZZ/simulation.info'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
@@ -177,7 +184,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, buffer_size, strain_type)
        write(lu_out,*) 'Forward simulation was ''single'' source'
     else 
        this%nsim_fwd = 0
-       write(lu_out,*) 'ERROR: Forward rundir does not seem to be an axisem rundirectory'
+       write(*,*) 'ERROR: Forward rundir does not seem to be an axisem rundirectory'
        call pabort
     end if
 
@@ -305,6 +312,19 @@ subroutine open_files(this)
         if (verbose>0) write(lu_out,format20) trim(filename), myrank
         call nc_open_for_read(    filename = filename,              &
                                   ncid     = this%fwd(isim)%ncid) 
+
+        call nc_read_att_int(this%fwd(isim)%file_version, 'file version', this%fwd(isim))
+
+        call nc_read_att_dble(this%fwd(isim)%planet_radius, 'planet radius', this%fwd(isim))
+        this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
+
+        call nc_read_att_dble(this%fwd(isim)%rmin, 'kernel wavefield rmin', this%fwd(isim))
+        call nc_read_att_dble(this%fwd(isim)%rmax, 'kernel wavefield rmax', this%fwd(isim))
+        this%fwd(isim)%rmin = this%fwd(isim)%rmin * 1d3
+        this%fwd(isim)%rmax = this%fwd(isim)%rmax * 1d3
+
+        call nc_read_att_dble(this%fwd(isim)%colatmin, 'kernel wavefield colatmin', this%fwd(isim))
+        call nc_read_att_dble(this%fwd(isim)%colatmax, 'kernel wavefield colatmax', this%fwd(isim))
 
         call nc_read_att_char(this%fwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
@@ -459,6 +479,19 @@ subroutine open_files(this)
         call nc_open_for_read(filename = filename,              &
                               ncid     = this%bwd(isim)%ncid) 
 
+        call nc_read_att_int(this%bwd(isim)%file_version, 'file version', this%bwd(isim))
+
+        call nc_read_att_dble(this%bwd(isim)%planet_radius, 'planet radius', this%bwd(isim))
+        this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
+
+        call nc_read_att_dble(this%bwd(isim)%rmin, 'kernel wavefield rmin', this%bwd(isim))
+        call nc_read_att_dble(this%bwd(isim)%rmax, 'kernel wavefield rmax', this%bwd(isim))
+        this%fwd(isim)%rmin = this%fwd(isim)%rmin * 1d3
+        this%fwd(isim)%rmax = this%fwd(isim)%rmax * 1d3
+
+        call nc_read_att_dble(this%bwd(isim)%colatmin, 'kernel wavefield colatmin', this%bwd(isim))
+        call nc_read_att_dble(this%bwd(isim)%colatmax, 'kernel wavefield colatmax', this%bwd(isim))
+
         call nc_read_att_char(this%bwd(isim)%dump_type, &
                               'dump type (displ_only, displ_velo, fullfields)', &
                                this%bwd(isim))
@@ -605,15 +638,15 @@ subroutine open_files(this)
     select case(trim(this%dump_type))
     case('displ_only')
        do isim = 1, this%nsim_fwd
-          status = this%fwd(isim)%buffer_disp%init(this%buffer_size, this%fwd(isim)%ndumps, 3)
+          status = this%fwd(isim)%buffer_disp%init(this%displ_buffer_size, this%fwd(isim)%ndumps, 3)
           select case(this%strain_type)
           case('straintensor_trace')
-            status = this%fwd(isim)%buffer_strain%init(this%buffer_size,      &
+            status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
                                                        this%fwd(isim)%ndumps, &
                                                        this%fwd(isim)%npol+1,   &
                                                        this%fwd(isim)%npol+1)
           case('straintensor_full')
-            status = this%fwd(isim)%buffer_strain%init(this%buffer_size,      &
+            status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
                                                        this%fwd(isim)%ndumps, &
                                                        this%fwd(isim)%npol+1,   &
                                                        this%fwd(isim)%npol+1,   &
@@ -623,15 +656,15 @@ subroutine open_files(this)
        end do
 
        do isim = 1, this%nsim_bwd
-          status = this%bwd(isim)%buffer_disp%init(this%buffer_size, this%bwd(isim)%ndumps, 3)
+          status = this%bwd(isim)%buffer_disp%init(this%displ_buffer_size, this%bwd(isim)%ndumps, 3)
           select case(this%strain_type)
           case('straintensor_trace')
-            status = this%bwd(isim)%buffer_strain%init(this%buffer_size,      &
+            status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
                                                        this%bwd(isim)%ndumps, &
                                                        this%bwd(isim)%npol+1,   &
                                                        this%bwd(isim)%npol+1)
           case('straintensor_full')
-            status = this%bwd(isim)%buffer_strain%init(this%buffer_size,      &
+            status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
                                                        this%bwd(isim)%ndumps, &
                                                        this%bwd(isim)%npol+1,   &
                                                        this%bwd(isim)%npol+1,   &
@@ -641,11 +674,11 @@ subroutine open_files(this)
        end do
     case('fullfields')
        do isim = 1, this%nsim_fwd
-          status = this%fwd(isim)%buffer%init(this%buffer_size, this%fwd(isim)%ndumps, this%ndim)
+          status = this%fwd(isim)%buffer%init(this%strain_buffer_size, this%fwd(isim)%ndumps, this%ndim)
        end do
 
        do isim = 1, this%nsim_bwd
-          status = this%bwd(isim)%buffer%init(this%buffer_size, this%bwd(isim)%ndumps, this%ndim)
+          status = this%bwd(isim)%buffer%init(this%strain_buffer_size, this%bwd(isim)%ndumps, this%ndim)
        end do
     case default
        print *, 'Unknown dump type in solver'
@@ -1003,6 +1036,16 @@ function load_fw_points(this, coordinates, source_params, coeffs)
     allocate(nextpoint(nnext_points))
     load_fw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
+        ! map points from outside earth to the surface:
+        if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%fwd(1)%planet_radius**2) then
+           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
+                               * this%fwd(1)%planet_radius
+           rotmesh_z(ipoint) = rotmesh_z(ipoint) &
+                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
+                               * this%fwd(1)%planet_radius
+        endif
+
 #       ifdef flag_kerner
         iclockold = tick()
 #       endif
@@ -1056,9 +1099,9 @@ function load_fw_points(this, coordinates, source_params, coeffs)
                write(6,*) 'eltype     = ', eltype
                write(6,*) 'xi, eta    = ', xi, eta
                write(6,*) 'element id = ', nextpoint(inext_point)%idx
-               !call pabort
-               this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
-               cycle
+               call pabort
+               !this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
+               !cycle
             endif
 
             id_elem = nextpoint(inext_point)%idx
@@ -1369,11 +1412,20 @@ function load_bw_points(this, coordinates, receiver)
     allocate(nextpoint(nnext_points))
     load_bw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
+        ! map points from outside earth to the surface:
+        if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%fwd(1)%planet_radius**2) then
+           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
+                               * this%fwd(1)%planet_radius
+           rotmesh_z(ipoint) = rotmesh_z(ipoint) &
+                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
+                               * this%fwd(1)%planet_radius
+        endif
 #       ifdef flag_kerner
         iclockold = tick()
 #       endif
         call kdtree2_n_nearest( this%bwdtree,                           &
-                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)], kind=sp), &
                                 nn = nnext_points,                            &
                                 results = nextpoint )
 #       ifdef flag_kerner
@@ -1415,9 +1467,9 @@ function load_bw_points(this, coordinates, receiver)
                write(6,*) 'ERROR: element not found. (bwd)'
                write(6,*) '       Probably outside depth/distance range in the netcdf file?'
                write(6,*) '       Try increasing nnext_points in case this problem persists'
-               this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
-               cycle
-               !call pabort
+               !this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
+               !cycle
+               call pabort
             endif
 
             id_elem = nextpoint(inext_point)%idx
