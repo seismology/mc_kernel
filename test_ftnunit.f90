@@ -5,6 +5,7 @@ module unit_tests
   use global_parameters, only: lu_out, verbose
   use test_source
   use test_montecarlo
+  use test_halton_sequence
   use test_fft_type
   use test_tetrahedra
   use test_voxel
@@ -14,7 +15,6 @@ module unit_tests
   use test_kernel
   use test_readfields
   use test_rotations
-  use test_resampling
   use test_finite_elem_mapping
   use test_spectral_basis
   use test_sem_derivatives
@@ -31,10 +31,9 @@ subroutine test_all
   call init_output()
 
   ! test source routines
-  write(6,'(/,a)') 'TEST SOURCE MODULE'
-  call test(test_read_srf, 'read srf file')
-  call test(test_resample_stf, 'resample stf')
-  call test(test_fft_stf, 'fft stf')
+  !write(6,'(/,a)') 'TEST SOURCE MODULE'
+  !call test(test_resample_stf, 'resample stf')
+  !call test(test_fft_stf, 'fft stf')
 
   ! test simple routines
   write(6,'(/,a)') 'TEST SIMPLE ROUTINES MODULE'
@@ -125,6 +124,11 @@ subroutine test_all
   call test(test_mc_unit_hexagon, 'MC unit hexagon')
   call test(test_mc_sphere_in_tetrahedron, 'MC sphere in tetrahedron')
 
+  ! test_halton_sequence
+  write(6,'(/,a)') 'TEST HALTON SEQUENCE MODULE'
+  call test(test_init_halton, 'Init_Halton sequence')
+  call test(test_get_halton,  'Get_Halton sequence')
+
   ! test_fft_type
   write(6,'(/,a)') 'TEST FFT MODULE'
   call test(test_fft_dirac, 'FFT_dirac')
@@ -135,13 +139,6 @@ subroutine test_all
   call test(test_fft_convolve, 'FFT_convolve')
   call test(test_fft_taperandzeropad, 'FFT_taperandzeropad')
   call test(test_fft_parseval, 'FFT_Parseval_theorem')
-
-  ! test_resampling
-  write(6,'(/,a)') 'TEST RESAMPLING MODULE'
-  call test(test_resampling_const, 'RESAMPLING_const')
-  call test(test_resampling_const_ntraces, 'RESAMPLING_const_ntraces')
-  call test(test_resampling_triangle, 'RESAMPLING_triangle')
-  call test(test_resampling_timeshift_triangle, 'RESAMPLING_triangle with timeshift')
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
