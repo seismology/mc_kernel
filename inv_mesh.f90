@@ -91,6 +91,10 @@ module inversion_mesh
      ! for csr format dumps
      procedure, pass :: dump_node_data_csr
      procedure, pass :: dump_cell_data_csr
+  
+     ! for ascii format dumps
+     procedure, pass :: dump_node_data_ascii
+     procedure, pass :: dump_cell_data_ascii
 
   end type
 
@@ -1258,6 +1262,75 @@ subroutine dump_node_data_csr( this, data_kernel, nkernels, threshold, filename)
 
 
 end subroutine dump_node_data_csr
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine dump_cell_data_ascii( this, data_kernel, nkernels, threshold, filename)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_kernel(:,:)
+  character(len=*), intent(in)              :: filename
+  integer, intent(in)                       :: nkernels
+  real(kind=dp)                             :: threshold
+  integer                                   :: iinput_ind
+  integer                                   :: iinput_val
+  integer                                   :: iinput_pnt
+  integer                                   :: ielement
+  integer                                   :: ikernel
+  integer                                   :: ientry
+
+  open(newunit=iinput_val,file=trim(filename)//'.val')
+  open(newunit=iinput_ind,file=trim(filename)//'.ind')
+  open(newunit=iinput_pnt,file=trim(filename)//'.pnt')
+
+  ientry = 0
+  do ikernel=1,nkernels
+     do ielement=1,this%nelements
+        if ( abs(data_kernel(ielement,ikernel)).gt.threshold ) then
+           ientry = ientry + 1
+           write(iinput_val, *) data_kernel(ielement,ikernel)
+           write(iinput_ind, *) ielement
+        end if
+     end do
+     write(iinput_pnt,*) ientry
+  end do
+
+end subroutine dump_cell_data_ascii
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine dump_node_data_ascii( this, data_kernel, nkernels, threshold, filename)
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_kernel(:,:)
+  character(len=*), intent(in)              :: filename
+  integer, intent(in)                       :: nkernels
+  real(kind=dp)                             :: threshold
+  integer                                   :: iinput_ind
+  integer                                   :: iinput_val
+  integer                                   :: iinput_pnt
+  integer                                   :: ikernel
+  integer                                   :: ivertex
+  integer                                   :: ientry
+
+  open(newunit=iinput_val,file=trim(filename)//'.val')
+  open(newunit=iinput_ind,file=trim(filename)//'.ind')
+  open(newunit=iinput_pnt,file=trim(filename)//'.pnt')
+
+  ientry = 0
+  do ikernel=1,nkernels
+     do ivertex=1,this%nvertices
+        if ( abs(data_kernel(ivertex,ikernel)).gt.threshold ) then
+           ientry = ientry + 1
+           write(iinput_val, '(" ", E15.8)', advance='no') data_kernel(ivertex,ikernel)
+           write(iinput_ind, '(" ", I15)', advance='no') ivertex
+        end if
+     end do
+     write(iinput_pnt, *) ientry
+     write(iinput_val, '(A)', advance='yes') 
+     write(iinput_ind, '(A)', advance='yes') 
+  end do
+
+
+end subroutine dump_node_data_ascii
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
