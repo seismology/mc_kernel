@@ -57,7 +57,6 @@ module inversion_mesh
      procedure, pass :: weights
      procedure, pass :: initialize_mesh
      procedure, pass :: freeme
-     procedure, pass :: free_node_and_cell_data
      procedure       :: init_weight_tet_mesh
   end type
 
@@ -87,6 +86,8 @@ module inversion_mesh
      procedure, pass :: set_cell_data_trace
      procedure, pass :: dump_node_data_xdmf
      procedure, pass :: dump_cell_data_xdmf
+
+     procedure, pass :: free_node_and_cell_data
 
      ! for csr format dumps
      procedure, pass :: dump_node_data_csr
@@ -1068,17 +1069,14 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine free_node_and_cell_data(this)
-  class(inversion_mesh_type)   :: this
+  class(inversion_mesh_data_type)   :: this
 
-  select type (this)
-  type is (inversion_mesh_data_type)
-     if (allocated(this%datat_node))            deallocate(this%datat_node)
-     if (allocated(this%datat_cell))            deallocate(this%datat_cell)
-     if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
-     if (allocated(this%group_id_node))         deallocate(this%group_id_node)
-     if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
-     if (allocated(this%group_id_cell))         deallocate(this%group_id_cell)
-  end select
+  if (allocated(this%datat_node))            deallocate(this%datat_node)
+  if (allocated(this%datat_cell))            deallocate(this%datat_cell)
+  if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
+  if (allocated(this%group_id_node))         deallocate(this%group_id_node)
+  if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
+  if (allocated(this%group_id_cell))         deallocate(this%group_id_cell)
 
 end subroutine free_node_and_cell_data
 !-----------------------------------------------------------------------------------------
@@ -1435,7 +1433,9 @@ subroutine dump_cell_data_xdmf(this, filename)
      igroup = 1
      ! loop over groups, that have more items than itime
      do while(igroup <= this%ngroups_cell)
+
         if (count(this%group_id_cell == igroup) >= itime) then
+
            ! find the itime'th item in the group
            n = 0
            do isnap=1, this%ntimes_cell
@@ -1589,7 +1589,9 @@ subroutine dump_node_data_xdmf(this, filename)
      igroup = 1
      ! loop over groups, that have more items then itime
      do while(igroup <= this%ngroups_node)
+
         if (count(this%group_id_node == igroup) >= itime) then
+
            ! find the itime'th item in the group
            n = 0
            do isnap=1, this%ntimes_node
