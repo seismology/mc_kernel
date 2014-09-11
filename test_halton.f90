@@ -58,20 +58,20 @@ end subroutine test_get_halton
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_halton_density
-  real(kind=dp)  :: halton_data(2, 5)
-
-  call init_halton(ndim_in = 2,       &
-                   seed_in = [1, 1],  &
-                   base_in = [2, 3],  &
-                   leap_in = [1, 1] )
-
-  call get_halton(halton_data)
-
-  density_middle = count(abs(halton_data(1,:)-0.5)<0.1)
-
-
-end subroutine test_halton_density
+!subroutine test_halton_density
+!  real(kind=dp)  :: halton_data(2, 5)
+!
+!  call init_halton(ndim_in = 2,       &
+!                   seed_in = [1, 1],  &
+!                   base_in = [2, 3],  &
+!                   leap_in = [1, 1] )
+!
+!  call get_halton(halton_data)
+!
+!  density_middle = count(abs(halton_data(1,:)-0.5)<0.1)
+!
+!
+!end subroutine test_halton_density
 !-----------------------------------------------------------------------------------------
 
 end module test_halton_sequence
