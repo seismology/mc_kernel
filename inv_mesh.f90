@@ -29,6 +29,7 @@ module inversion_mesh
      integer, public                    :: nbasisfuncs_per_elem
      integer                            :: nelements, nvertices
      integer, allocatable               :: connectivity(:,:)
+     integer, allocatable               :: block_id(:)
      real(kind=dp), allocatable         :: vertices(:,:)
      real(kind=dp), allocatable         :: v_2d(:,:,:), p_2d(:,:,:)
      real(kind=dp), allocatable         :: abinv(:,:,:)
@@ -531,6 +532,8 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   enddo
   close(iinput_connectivity)
 
+  allocate(this%block_id(this%nelements))
+  this%block_id = 1
   
   write(lu_out,'(A)')       ' Tetrahedral mesh read in...'
   write(lu_out,'(A,A)')     '  vertex file       : ', trim(filename_vertices)
@@ -601,9 +604,11 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity, nbasisfuncs
   ! prepare arrays
   allocate(this%vertices(3,this%nvertices))
   allocate(this%connectivity(this%nvertices_per_elem,this%nelements))
+  allocate(this%block_id(this%nelements))
 
   this%vertices = vertices
   this%connectivity = connectivity - 1
+  this%block_id = 1
 
   if (this%element_type.eq.'tri'.or.this%element_type.eq.'quad') then
      call this%make_2d_vectors
@@ -703,7 +708,7 @@ subroutine read_abaqus_mesh(this, filename, int_type)
   character(len=*), intent(in)      :: filename
   character(len=*), intent(in)      :: int_type
   integer                           :: iinput
-  integer                           :: i, ierr, ct
+  integer                           :: i, ierr, ct, ct_block
   character(len=128)                :: line, line_buff
   character(len=16)                 :: elem_type, elem_type_buff
 
@@ -792,6 +797,8 @@ subroutine read_abaqus_mesh(this, filename, int_type)
   ! prepare arrays
   allocate(this%vertices(3,this%nvertices))
   allocate(this%connectivity(this%nvertices_per_elem,this%nelements))
+  allocate(this%block_id(this%nelements))
+  this%block_id = 1
 
   ! reset to beginning of file
   rewind(iinput)
@@ -815,11 +822,16 @@ subroutine read_abaqus_mesh(this, filename, int_type)
 
   ! read elements
   ct = 0
+  ct_block = 1
   do 
      read(iinput,'(A128)') line_buff
-     if (index(line_buff, '*ELEMENT') == 1) cycle
+     if (index(line_buff, '*ELEMENT') == 1) then
+        ct_block = ct_block + 1
+        cycle
+     endif
      ct = ct + 1
      read(line_buff,*) line, this%connectivity(:,ct)
+     this%block_id(ct) = ct_block
      if (ct == this%nelements) exit
   enddo
 
@@ -1050,7 +1062,8 @@ subroutine dump_mesh_xdmf(this, filename)
   write(iinput_xdmf, 732) trim(xdmf_elem_type), this%nelements, this%nelements, &
                       this%nvertices_per_elem, 'binary', &
                       trim(filename_np)//'_grid.dat', this%nvertices, 'binary', &
-                      trim(filename_np)//'_points.dat'
+                      trim(filename_np)//'_points.dat', &
+                      this%nelements, trim(filename_np)//'_block.dat'
   close(iinput_xdmf)
 
 732 format(&    
@@ -1069,6 +1082,11 @@ subroutine dump_mesh_xdmf(this, filename)
     '        ',A/&
     '      </DataItem>',/&
     '    </Geometry>',/&
+    '    <Attribute Name="blockid" AttributeType="Scalar" Center="Cell">',/&
+    '      <DataItem Dimensions="',i10,'" NumberType="Int" Format="binary">',/&
+    '        ',A,/&
+    '      </DataItem>',/&
+    '    </Attribute>',/&
     '  </Grid>',/&
     '</Domain>',/&
     '</Xdmf>')
@@ -1083,6 +1101,12 @@ subroutine dump_mesh_xdmf(this, filename)
   open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
   write(iinput_heavy_data) this%connectivity
+  close(iinput_heavy_data)
+
+  ! BLOCK data
+  open(newunit=iinput_heavy_data, file=trim(filename)//'_block.dat', access='stream', &
+      status='replace', form='unformatted', convert='little_endian')
+  write(iinput_heavy_data) this%block_id
   close(iinput_heavy_data)
   
 end subroutine
@@ -1121,6 +1145,7 @@ subroutine freeme(this)
   if (allocated(this%v_2d)) deallocate(this%v_2d)
   if (allocated(this%p_2d)) deallocate(this%p_2d)
   if (allocated(this%abinv)) deallocate(this%abinv)
+  if (allocated(this%block_id)) deallocate(this%block_id)
 
   select type (this)
   type is (inversion_mesh_data_type)
@@ -1462,7 +1487,8 @@ subroutine dump_cell_data_xdmf(this, filename)
   ! start xdmf file, write header
   write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'binary', &
                           trim(filename_np)//'_grid.dat', &
-                          this%nvertices, 'binary', trim(filename_np)//'_points.dat'
+                          this%nvertices, 'binary', trim(filename_np)//'_points.dat', &
+                          this%nelements, 'binary', trim(filename_np)//'_block.dat'
 
   i = 1
   itime = 1
@@ -1472,7 +1498,7 @@ subroutine dump_cell_data_xdmf(this, filename)
 
      ! create new snapshot in the temporal collection
      write(iinput_xdmf, 7341) 'grid', dble(itime), trim(xdmf_elem_type), this%nelements, &
-                              "'", "'", "'", "'"
+                              "'", "'", "'", "'", "'", "'"
 
      igroup = 1
      ! loop over groups, that have more items than itime
@@ -1515,6 +1541,9 @@ subroutine dump_cell_data_xdmf(this, filename)
     '<DataItem Name="points" Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
     '  ', A,/&
     '</DataItem>',/,/&
+    '<DataItem Name="block" Dimensions="',i10'" NumberType="Int" Format="',A,'">',/&
+    '  ', A,/&
+    '</DataItem>',/,/&
     '<Grid Name="CellsTime" GridType="Collection" CollectionType="Temporal">',/)
 
 7341 format(&    
@@ -1525,7 +1554,10 @@ subroutine dump_cell_data_xdmf(this, filename)
     '        </Topology>',/&
     '        <Geometry GeometryType="XYZ">',/&
     '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'points', A,']" />',/&
-    '        </Geometry>')
+    '        </Geometry>',/&
+    '        <Attribute Name="blockid" AttributeType="Scalar" Center="Cell">',/&
+    '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'block', A,']" />',/&
+    '        </Attribute>')
 
 7342 format(&    
     '        <Attribute Name="', A,'" AttributeType="Scalar" Center="Cell">',/&
@@ -1559,6 +1591,12 @@ subroutine dump_cell_data_xdmf(this, filename)
   open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
   write(iinput_heavy_data) this%connectivity
+  close(iinput_heavy_data)
+
+  ! BLOCK data
+  open(newunit=iinput_heavy_data, file=trim(filename)//'_block.dat', access='stream', &
+      status='replace', form='unformatted', convert='little_endian')
+  write(iinput_heavy_data) this%block_id
   close(iinput_heavy_data)
 
   ! CELL data
@@ -1616,7 +1654,8 @@ subroutine dump_node_data_xdmf(this, filename)
   ! start xdmf file, write header
   write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'binary', &
                           trim(filename_np)//'_grid.dat', &
-                          this%nvertices, 'binary', trim(filename_np)//'_points.dat'
+                          this%nvertices, 'binary', trim(filename_np)//'_points.dat', &
+                          this%nelements, 'binary', trim(filename_np)//'_block.dat'
 
   i = 1
   itime = 1
@@ -1626,7 +1665,7 @@ subroutine dump_node_data_xdmf(this, filename)
   do while(i <= this%ntimes_node)
      ! create new snapshot in the temporal collection
      write(iinput_xdmf, 7341) 'grid', dble(itime), trim(xdmf_elem_type), this%nelements, &
-                              "'", "'", "'", "'"
+                              "'", "'", "'", "'", "'", "'"
 
      igroup = 1
      ! loop over groups, that have more items then itime
@@ -1668,6 +1707,9 @@ subroutine dump_node_data_xdmf(this, filename)
     '<DataItem Name="points" Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
     '  ', A,/&
     '</DataItem>',/,/&
+    '<DataItem Name="block" Dimensions="',i10'" NumberType="Int" Format="',A,'">',/&
+    '  ', A,/&
+    '</DataItem>',/,/&
     '<Grid Name="CellsTime" GridType="Collection" CollectionType="Temporal">',/)
 
 7341 format(&    
@@ -1678,7 +1720,10 @@ subroutine dump_node_data_xdmf(this, filename)
     '        </Topology>',/&
     '        <Geometry GeometryType="XYZ">',/&
     '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'points', A,']" />',/&
-    '        </Geometry>')
+    '        </Geometry>',/&
+    '        <Attribute Name="blockid" AttributeType="Scalar" Center="Cell">',/&
+    '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'block', A,']" />',/&
+    '        </Attribute>')
 
 7342 format(&    
     '        <Attribute Name="', A,'" AttributeType="Scalar" Center="Node">',/&
@@ -1713,6 +1758,12 @@ subroutine dump_node_data_xdmf(this, filename)
   open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
       status='replace', form='unformatted', convert='little_endian')
   write(iinput_heavy_data) this%connectivity
+  close(iinput_heavy_data)
+
+  ! BLOCK data
+  open(newunit=iinput_heavy_data, file=trim(filename)//'_block.dat', access='stream', &
+      status='replace', form='unformatted', convert='little_endian')
+  write(iinput_heavy_data) this%block_id
   close(iinput_heavy_data)
 
   ! VERTEX data
