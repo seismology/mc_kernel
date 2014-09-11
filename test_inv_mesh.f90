@@ -731,7 +731,7 @@ subroutine test_random_points_triangle_mesh
       nbasisfuncs_per_elem = 1
       call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
       
-      points = inv_mesh%generate_random_points(1, npoints)
+      points = inv_mesh%generate_random_points(1, npoints, .true.)
       
       isintriangle = point_in_triangle_3d(vertices, points, isinplane)
 

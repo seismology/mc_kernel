@@ -324,7 +324,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            iclockold = tick(id=id_mc)
 
            ! Generate random points
-           random_points = inv_mesh%generate_random_points( ielement, nptperstep )
+           random_points = inv_mesh%generate_random_points( ielement, nptperstep, &
+                                                            parameters%quasirandom)
            iclockold = tick(id=id_inv_mesh)
            
            ! Stop MC integration in this element after max_iter iterations

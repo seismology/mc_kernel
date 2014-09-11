@@ -12,7 +12,7 @@ module tetrahedra
 contains
 
 !-----------------------------------------------------------------------------------------
-function generate_random_points_tet(v, n)
+function generate_random_points_tet(v, n, quasirandom)
 !  returns uniform points in a tetrahedron.
 !
 !    This code is distributed under the GNU LGPL license.
@@ -28,16 +28,29 @@ function generate_random_points_tet(v, n)
 !    Journal of Graphics Tools,
 !    Volume 5, Number 5, 2000, pages 9-12.
 
-  integer, intent(in)        ::  n
-  real(kind=dp), intent(in)  ::  v(3,4)
-  real(kind=dp)              ::  generate_random_points_tet(3,n)
+  use halton_sequence, only: get_halton
 
-  real(kind=dp)              ::  c(4)
-  real(kind=dp)              ::  coordinates(3,n)
-  integer                    ::  j
-  real(kind=dp )             ::  t
+  integer, intent(in)           ::  n
+  real(kind=dp), intent(in)     ::  v(3,4)
+  logical, intent(in), optional ::  quasirandom
+  real(kind=dp)                 ::  generate_random_points_tet(3,n)
 
-  call random_number(coordinates)
+  real(kind=dp)                 ::  c(4)
+  real(kind=dp)                 ::  coordinates(3,n)
+  integer                       ::  j
+  real(kind=dp )                ::  t
+
+  if (present(quasirandom)) then
+    if (quasirandom) then
+      call get_halton(coordinates)
+    else
+      call random_number(coordinates)
+    end if
+  else
+    call random_number(coordinates)
+  end if
+
+
   do j = 1, n
 
      c(1:3) = dble(coordinates(:, j))
@@ -69,25 +82,35 @@ end function generate_random_points_tet
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function generate_random_points_ref_tri( npoints ) result(x)
+function generate_random_points_ref_tri( npoints, quasirandom ) result(x)
 !< Generate random points in the reference triangle (0,0), (0,1), (1,0)
 
-  implicit none
+  use halton_sequence, only: get_halton
 
-  integer, parameter           :: dim_num = 2
-  integer, intent(in)          :: npoints  ! Number of points
-  real(kind=dp)                :: x(dim_num, npoints)
-  real(kind=dp)                :: r(dim_num)
-  integer                      :: ipoint
+  integer, parameter            :: dim_num = 2
+  integer, intent(in)           :: npoints  ! Number of points
+  logical, intent(in), optional :: quasirandom
 
+  real(kind=dp)                 :: x(dim_num, npoints)
+  real(kind=dp)                 :: r(dim_num, npoints)
+  integer                       :: ipoint
+
+  if (present(quasirandom)) then
+    if (quasirandom) then
+      call get_halton(r)
+    else
+      call random_number(r)
+    end if
+  else
+    call random_number(r)
+  end if
 
   do ipoint = 1, npoints
-    call random_number(r)
 
-    if ( 1 < sum (r(:)) ) then
-      x(:, ipoint) = 1 - (r(:)*0.999+0.0005)
+    if ( 1 < sum (r(:,ipoint)) ) then
+      x(:, ipoint) = 1 - (r(:,ipoint)*0.999+0.0005)
     else
-      x(:, ipoint) = r(:)*0.999+0.0005
+      x(:, ipoint) = r(:,ipoint)*0.999+0.0005
     end if
   end do
 end function generate_random_points_ref_tri
@@ -95,7 +118,7 @@ end function generate_random_points_ref_tri
 
 
 !-----------------------------------------------------------------------------------------
-function generate_random_points_poly( nv, v, n ) result(x)
+function generate_random_points_poly( nv, v, n, quasirandom ) result(x)
 !! UNIFORM_IN_POLYGON_MAP maps uniform points into a polygon.
 !
 !  Discussion:
@@ -108,35 +131,45 @@ function generate_random_points_poly( nv, v, n ) result(x)
 !
 !    This routine is valid for spatial dimension DIM_NUM = 2.
 !
-  implicit none
+  use halton_sequence, only: get_halton
 
-  integer, parameter           :: dim_num = 2
-  integer, intent(in)          :: n  ! Number of points
-  integer, intent(in)          :: nv ! Degree of polynomial
-  real(kind=dp), intent(in)    :: v(dim_num, nv)
-  real(kind=dp)                :: x(dim_num, n)
+  integer, parameter            :: dim_num = 2
+  integer, intent(in)           :: n  ! Number of points
+  integer, intent(in)           :: nv ! Degree of polynomial
+  real(kind=dp), intent(in)     :: v(dim_num, nv)
+  logical, intent(in), optional :: quasirandom
 
-  real(kind=dp)                :: area(nv)
-  real(kind=dp)                :: area_norm(nv)
-  real(kind=dp)                :: area_int(nv)
-  real(kind=dp)                :: area_percent
-  real(kind=dp)                :: centroid(dim_num)
-  integer                      :: i, ip1, j, k
-  real(kind=dp)                :: r(2)
-  real(kind=dp)                :: t(dim_num,3)
+  real(kind=dp)                 :: x(dim_num, n)
+
+  real(kind=dp)                 :: area(nv)
+  real(kind=dp)                 :: area_norm(nv)
+  real(kind=dp)                 :: area_int(nv)
+  real(kind=dp)                 :: area_percent
+  real(kind=dp)                 :: centroid(dim_num)
+  integer                       :: i, ip1, j, k
+  real(kind=dp)                 :: r(2, n)
+  real(kind=dp)                 :: t(dim_num,3)
+
+  if (present(quasirandom)) then
+    if (quasirandom) then
+      call get_halton(r)
+    else
+      call random_number(r)
+    end if
+  else
+    call random_number(r)
+  end if
 
 
   if (nv == 3) then
     do j = 1, n
-      call random_number(r)
-
-      if ( 1.0D+00 < sum (r(:)) ) then
-        r(:) = 1.0D+00 - r(:)
+      if ( sum(r(:,j)) > 1  ) then
+        r(:,j) = 1 - r(:,j)
       end if
 
-      x(:,j) = ( 1.0D+00 - r(1) - r(2) ) * v(:,1) &
-                         + r(1)          * v(:,2) &
-                                + r(2)   * v(:,3) 
+      x(:,j) = ( 1 - r(1,j) - r(2,j) ) * v(:,1) &
+                   + r(1,j)            * v(:,2) &
+                            + r(2,j)   * v(:,3) 
     end do
 
   else
@@ -199,10 +232,9 @@ function generate_random_points_poly( nv, v, n ) result(x)
         end if
 
         !call r8vec_uniform_01 ( dim_num, seed, r )
-        call random_number(r)
 
-        if ( 1.0D+00 < sum (r(:)) ) then
-          r(:) = 1.0D+00 - r(:)
+        if ( 1.0D0 < sum (r(:,j)) ) then
+          r(:,j) = 1.0D0 - r(:,j)
         end if
 
         if ((ip1.gt.nv).or.(i.gt.nv)) then
@@ -216,9 +248,9 @@ function generate_random_points_poly( nv, v, n ) result(x)
             print *, v(:,3)
             print *, centroid
         end if
-        x(:,j) = ( 1.0D+00 - r(1) - r(2) ) * dble(v(:,i)) &
-                           + r(1)          * dble(v(:,ip1)) &
-                                  + r(2)   * centroid(:)
+        x(:,j) = ( 1.0D0 - r(1,j) - r(2,j) ) * v(:,i) &
+                         + r(1,j)            * v(:,ip1) &
+                                  + r(2,j)   * centroid(:)
 
       end do
 

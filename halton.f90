@@ -131,11 +131,13 @@ end subroutine get_halton
 !-----------------------------------------------------------------------------------------
 subroutine free_halton
 
-  ndim = -1
-  deallocate(seed)
-  deallocate(step)
-  deallocate(base)
-  deallocate(leap)
+  if (initialized) then
+    ndim = -1
+    deallocate(seed)
+    deallocate(step)
+    deallocate(base)
+    deallocate(leap)
+  end if
 
   initialized = .false.
 

@@ -425,9 +425,10 @@ end function weights
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function generate_random_points(this, ielement, npoints) result(points)
+function generate_random_points(this, ielement, npoints, quasirandom) result(points)
   class(inversion_mesh_type)     :: this
   integer, intent(in)            :: ielement, npoints
+  logical, intent(in)            :: quasirandom
   real(kind=dp)                  :: points(3, npoints)
   real(kind=dp)                  :: points2d(2, npoints)
   integer                        :: ipoint
@@ -439,17 +440,18 @@ function generate_random_points(this, ielement, npoints) result(points)
 
   select case(this%element_type)
   case('tet')
-     points = generate_random_points_tet(this%get_element(ielement), npoints)
+     points = generate_random_points_tet(this%get_element(ielement), npoints,  &
+                                         quasirandom )
   case('quad')
-     points2d = generate_random_points_poly(4, this%p_2d(:,:,ielement), npoints)
+     points2d = generate_random_points_poly(4, this%p_2d(:,:,ielement), &
+                                            npoints, quasirandom )
      do ipoint = 1, npoints
         points(:,ipoint) =   this%v_2d(:,0,ielement)                         &
                            + this%v_2d(:,1,ielement) * points2d(1,ipoint)    &
                            + this%v_2d(:,2,ielement) * points2d(2,ipoint)
      end do
   case('tri')
-     !points2d = generate_random_points_poly(3, this%p_2d(:,:,ielement), npoints)
-     points2d = generate_random_points_ref_tri(npoints)
+     points2d = generate_random_points_ref_tri(npoints, quasirandom)
      do ipoint = 1, npoints
         points(:,ipoint) =   this%v_2d(:,0,ielement)                         &
                            + this%v_2d(:,1,ielement) * points2d(1,ipoint)    &
