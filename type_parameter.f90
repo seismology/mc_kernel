@@ -7,7 +7,8 @@ module type_parameter
     use filtering,          only : filter_type
     use commpi,             only : pbroadcast_char, pbroadcast_int, pbroadcast_dble, &
                                    pbroadcast_dble_arr, pbroadcast_log, pbarrier, &
-                                   pbroadcast_char_arr, pabort
+                                   pbroadcast_char_arr, pabort 
+    use simple_routines,    only : lowtrim
     implicit none    
 
     type parameter_type
@@ -26,6 +27,9 @@ module type_parameter
         character(len=512)                   :: receiver_file
         character(len=512)                   :: filter_file
         character(len=512)                   :: mesh_file
+        character(len=512)                   :: mesh_file_type
+        character(len=512)                   :: mesh_file_vert
+        character(len=512)                   :: mesh_file_face
         character(len=512)                   :: output_file = 'kerner'
         character(len=1)                     :: component
         character(len=16)                    :: model_param
@@ -122,8 +126,17 @@ subroutine read_parameters(this, input_file_in)
         case('FILTER_FILE')
            this%filter_file = keyvalue
 
-        case('MESH_FILE')
+        case('MESH_FILE_TYPE')
+           this%mesh_file_type = keyvalue
+
+        case('MESH_FILE_ABAQUS')
            this%mesh_file = keyvalue
+
+        case('MESH_FILE_VERTICES')
+           this%mesh_file_vert = keyvalue
+
+        case('MESH_FILE_FACETS')
+           this%mesh_file_face = keyvalue
 
         case('OUTPUT_FILE')
            this%output_file = keyvalue
@@ -183,7 +196,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%source_file, 0) 
   call pbroadcast_char(this%receiver_file, 0)
   call pbroadcast_char(this%filter_file, 0)
-  call pbroadcast_char(this%mesh_file, 0)
+  call pbroadcast_char(this%mesh_file_type, 0)
   call pbroadcast_char(this%output_file, 0)
   call pbroadcast_char(this%dump_type, 0)
   call pbroadcast_int(this%strain_buffer_size, 0)
@@ -197,6 +210,13 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
   call pbroadcast_char(this%int_type, 0)
+
+  if (lowtrim(this%mesh_file_type)=='abaqus') then
+     call pbroadcast_char(this%mesh_file, 0)
+  else
+     call pbroadcast_char(this%mesh_file_vert, 0)
+     call pbroadcast_char(this%mesh_file_face, 0)
+  end if
 
   write(lu_out,*)
   call flush(lu_out)

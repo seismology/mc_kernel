@@ -223,19 +223,26 @@ end subroutine ppend
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pabort
+subroutine pabort(do_traceback)
 !< Calls MPI_ABORT
-  integer :: ierror
-  logical :: isinitialized
+!! By default, does also a traceback. Can be suppressed by the argument do_traceback=.false
+  logical, intent(in), optional :: do_traceback
+  integer                       :: ierror
+  logical                       :: isinitialized, do_traceback_loc
 
-#if defined(__GFORTRAN__)
-#if (__GNUC_MINOR__>=8)
-  call backtrace
-#endif
-#endif
-#if defined(__INTEL_COMPILER)
-  call tracebackqq()
-#endif
+  do_traceback_loc = .true.
+  if (present(do_traceback)) do_traceback_loc = do_traceback
+
+  if (do_traceback_loc) then
+#   if defined(__GFORTRAN__)
+#   if (__GNUC_MINOR__>=8)
+     call backtrace
+#   endif
+#   endif
+#   if defined(__INTEL_COMPILER)
+     call tracebackqq()
+#   endif
+  end if
 
   call MPI_Initialized(isinitialized, ierror)
 

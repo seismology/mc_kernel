@@ -6,7 +6,24 @@ BWD_DIR              './wavefield/bwd/'
 SOURCE_FILE          'CMTSOLUTION'
 RECEIVER_FILE        'receiver.dat'
 FILTER_FILE          'filters.dat'
-MESH_FILE            'unit_tests/flat_triangles.inp'
+
+# Select the mesh file type. Allowed values are
+# abaqus      : .inp file, can be generated with Qubit or other codes. Can
+#               contain various geometries and multiple sub-objects
+#               Supported geometries: tetrahedra, triangles, quadrilaterals
+#               Set file name in MESH_FILE_ABAQUS
+# 
+# tetrahedral : tetrahedral mesh in two separate files with 
+#               1. coordinates of the vertices (MESH_FILE_VERTICES)
+#               2. the connectivity of the facets of the tetrahedrons
+#                  (MESH_FILE_FACETS)
+MESH_FILE_TYPE       'abaqus'
+MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
+
+#MESH_FILE_TYPE       'tetrahedral'
+#MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
+#MESH_FILE_FACETS     'unit_tests/facets.TEST'
+
 
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
