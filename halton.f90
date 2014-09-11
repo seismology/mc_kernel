@@ -6,6 +6,7 @@ module halton_sequence
   
   public :: init_halton
   public :: get_halton      
+  public :: free_halton
                             
 
   integer, save, allocatable :: step(:)   !< stores current step of the sequence
@@ -72,7 +73,7 @@ subroutine init_halton(ndim_in, seed_in, base_in, leap_in)
      leap = 2
   end if
   
-  step = seed
+  step = 0
 
   initialized = .true.
 
@@ -125,6 +126,20 @@ subroutine get_halton(r)
   step = step + npoints
 
 end subroutine get_halton
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine free_halton
+
+  ndim = -1
+  deallocate(seed)
+  deallocate(step)
+  deallocate(base)
+  deallocate(leap)
+
+  initialized = .false.
+
+end subroutine free_halton
 !-----------------------------------------------------------------------------------------
 
 end module halton_sequence
