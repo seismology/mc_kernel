@@ -5,6 +5,7 @@ module unit_tests
   use global_parameters, only: lu_out, verbose
   use test_source
   use test_montecarlo
+  use test_halton_sequence
   use test_fft_type
   use test_tetrahedra
   use test_voxel
@@ -124,6 +125,11 @@ subroutine test_all
   call test(test_mc_meanandvariance, 'MC mean and variance')
   call test(test_mc_unit_hexagon, 'MC unit hexagon')
   call test(test_mc_sphere_in_tetrahedron, 'MC sphere in tetrahedron')
+
+  ! test_halton_sequence
+  write(6,'(/,a)') 'TEST HALTON SEQUENCE MODULE'
+  call test(test_init_halton, 'Init_Halton sequence')
+  call test(test_get_halton,  'Get_Halton sequence')
 
   ! test_fft_type
   write(6,'(/,a)') 'TEST FFT MODULE'
