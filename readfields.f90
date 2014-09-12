@@ -127,6 +127,7 @@ module readfields
             procedure, pass                :: load_seismogram
 
     end type
+ 
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -979,8 +980,9 @@ end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points(this, coordinates, source_params, coeffs)
+function load_fw_points(this, coordinates, source_params, model)
     use finite_elem_mapping, only      : inside_element
+    use backgroundmodel, only          : backgroundmodel_type
 
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
@@ -988,7 +990,7 @@ function load_fw_points(this, coordinates, source_params, coeffs)
     real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
                                                         size(coordinates,2))
 
-    real(kind=dp), intent(out), optional :: coeffs(3,size(coordinates,2)) ! for now: vp, vs, rho
+    type(backgroundmodel_type), intent(out), optional :: model
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points
@@ -1004,6 +1006,7 @@ function load_fw_points(this, coordinates, source_params, coeffs)
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
     real(kind=dp)                     :: coeff_buff(1)
+    real(kind=dp), allocatable        :: coeffs(:,:)
     real(kind=dp)                     :: xi, eta
 
     
@@ -1021,6 +1024,7 @@ function load_fw_points(this, coordinates, source_params, coeffs)
         nnext_points = 1
     endif
 
+    allocate(coeffs(3,npoints))
     
     ! Rotate points to FWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
@@ -1128,32 +1132,34 @@ function load_fw_points(this, coordinates, source_params, coeffs)
             iclockold = tick(id=id_find_point_fwd, since=iclockold)
         endif
     
-        ! Load model coefficients vp, vs and rho at point ipoint
-        ! @ TODO : We need to store anisotropic model parameters
-        !          in the wavefield netcdf files
-        ! @ TODO : Ludwig is not sure whether [nextpoint(1)%idx]
-        !          is the correct way to load coeffs from sem mesh
-        ! Load coefficient vp
-        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_vp_varid,             &
-             start  = [pointid(ipoint)],                     &
-             count  = [1],                                   &
-             values = coeff_buff))
-        coeffs(1,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
-        ! Load coefficient vs
-        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_vs_varid,             &
-             start  = [pointid(ipoint)],                     & 
-             count  = [1],                                   &
-             values = coeff_buff))
-        coeffs(2,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
-        ! Load coefficient rho
-        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_rho_varid,            &
-             start  = [pointid(ipoint)],                     & 
-             count  = [1],                                   &
-             values = coeff_buff))
-        coeffs(3,ipoint) = coeff_buff(1)*1e9 ! convert to kg/(km^3)
+        if (present(model)) then
+          ! Load model coefficients vp, vs and rho at point ipoint
+          ! @ TODO : We need to store anisotropic model parameters
+          !          in the wavefield netcdf files
+          ! @ TODO : Ludwig is not sure whether [nextpoint(1)%idx]
+          !          is the correct way to load coeffs from sem mesh
+          ! Load coefficient vp
+          call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+               varid  = this%fwd(1)%mesh_vp_varid,             &
+               start  = [pointid(ipoint)],                     &
+               count  = [1],                                   &
+               values = coeff_buff))
+          coeffs(1,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
+          ! Load coefficient vs
+          call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+               varid  = this%fwd(1)%mesh_vs_varid,             &
+               start  = [pointid(ipoint)],                     & 
+               count  = [1],                                   &
+               values = coeff_buff))
+          coeffs(2,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
+          ! Load coefficient rho
+          call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
+               varid  = this%fwd(1)%mesh_rho_varid,            &
+               start  = [pointid(ipoint)],                     & 
+               count  = [1],                                   &
+               values = coeff_buff))
+          coeffs(3,ipoint) = coeff_buff(1)*1e9 ! convert to kg/(km^3)
+        end if
 
         select case(trim(this%strain_type))
         case('straintensor_trace')    
@@ -1163,11 +1169,11 @@ function load_fw_points(this, coordinates, source_params, coeffs)
                  utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                       xi, eta, this%strain_type, &
                       corner_points, eltype(1), axis, &
-                      id_elem = id_elem) !/ this%fwd(isim)%amplitude
+                      id_elem = id_elem) / this%fwd(isim)%amplitude
               else
                  utemp = load_strain_point(this%fwd(isim),      &
                       pointid(ipoint),     &
-                      this%strain_type)  !/ this%fwd(isim)%amplitude
+                      this%strain_type)  / this%fwd(isim)%amplitude
               endif
               
               iclockold = tick()
@@ -1223,6 +1229,8 @@ function load_fw_points(this, coordinates, source_params, coeffs)
         end select
 
     end do !ipoint
+
+    if (present(model)) call model%recombine(coeffs)
 
 end function load_fw_points
 !-----------------------------------------------------------------------------------------
