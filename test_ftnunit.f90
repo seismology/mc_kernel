@@ -192,6 +192,8 @@ subroutine test_all
             'reading/dumping hexahedral mesh from abaqus file with data')
   call test(test_mesh_data_dump5, &
             'reading/dumping tetrahedral mesh from abaqus file with data')
+  call test(test_mesh_data_blocks, &
+            'reading/dumping tetrahedral mesh from abaqus file with blocks and data')
   call test(test_mesh_tracedata_dump, 'reading/dumping tetrahedral mesh with tracedata')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
