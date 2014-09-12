@@ -22,7 +22,7 @@ subroutine plot_wavefields()
     type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
 
     integer                             :: nelems, ntimes, nomega, nrec
-    integer                             :: idump, ndumps, irec
+    integer                             :: idump, ndumps, irec, icomp
     integer                             :: nvertices, ndim
     real(kind=dp),    allocatable       :: co_points(:,:)
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
@@ -34,6 +34,8 @@ subroutine plot_wavefields()
     real(kind=dp),    allocatable       :: modelcoeffs(:,:)
     real(kind=dp)                       :: df
     character(len=64)                   :: fmtstring
+    character(len=64)                   :: cname
+    character(len=64)                   :: rname
 
     write(*,*) '***************************************************************'
     write(*,*) ' Read input files for parameters, source and receivers'
@@ -57,7 +59,9 @@ subroutine plot_wavefields()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
 
-    call sem_data%load_seismogram(parameters%receiver, parameters%source)
+    ! Read seismogram
+    call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+!    call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
     ndumps = sem_data%ndumps
     ndim   = sem_data%get_ndim()
@@ -65,9 +69,6 @@ subroutine plot_wavefields()
     write(*,*) '***************************************************************'
     write(*,*) ' Read inversion mesh'
     write(*,*) '***************************************************************'
-    !call inv_mesh%read_tet_mesh('vertices.USA10', 'facets.USA10')
-    !call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp')
-    !call inv_mesh%read_abaqus_mesh('unit_tests/flat_triangles.inp')
     call inv_mesh%read_abaqus_mesh(parameters%mesh_file,parameters%int_type)
 
     nvertices = inv_mesh%get_nvertices()
@@ -88,12 +89,8 @@ subroutine plot_wavefields()
     fmtstring = '(A, F8.3, A, F8.3, A)'
     print fmtstring, '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
-
-
-    print *, 'Initialize XDMF file'
     allocate(co_points(3, nvertices))
     co_points = inv_mesh%get_vertices()
-    call inv_mesh%init_node_data(ndumps + 2*ndumps*nrec)
 
     write(*,*) ' Read in forward field'
     allocate(fw_field(ndumps, ndim, nvertices))
@@ -114,6 +111,9 @@ subroutine plot_wavefields()
     call fft_data%irfft(fw_field_fd, fw_field)
     call timeshift_fwd%freeme()
 
+    print *, ' Initialize XDMF file'
+    call inv_mesh%init_node_data(ndumps*ndim)
+
     write(*,*) ' Dump forward field to XDMF file'
     do idump = 1, ndumps
         if (mod(idump, 100)==0) &
@@ -121,12 +121,26 @@ subroutine plot_wavefields()
         !Test of planar wave , works
         !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
         !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-        call inv_mesh%set_node_data_snap(real(fw_field(idump,1,:), kind=sp), &
-                                         idump, 'fwd_wavefield')
+        do icomp=1,ndim
+           write(cname,'("comp_",I0.2)') icomp
+           call inv_mesh%set_node_data_snap(real(fw_field(idump,icomp,:), kind=sp), &
+                                            idump + ndumps*(icomp-1), &
+                                            'fwd_'//trim(cname))
+        end do
     end do
     deallocate(fw_field)
 
+    print *, ' Save XDMF file'
+    call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_fwd')
+    call inv_mesh%free_node_and_cell_data()
+
+
+
+
     do irec = 1, nrec
+
+        write(rname,'("_",I0.2)') irec
+
         write(*,*) ' Read in backward field of receiver', irec
         allocate(bw_field(ndumps, ndim, nvertices))
         bw_field(:,:,:) = sem_data%load_bw_points(dble(co_points), &
@@ -145,6 +159,9 @@ subroutine plot_wavefields()
         call fft_data%irfft(bw_field_fd, bw_field)
         call timeshift_bwd%freeme()
 
+
+        call inv_mesh%init_node_data(ndumps*ndim)
+
         write(*,*) ' Dump backward field to XDMF file'
         do idump = 1, ndumps
             if (mod(idump, 100)==0) &
@@ -152,11 +169,19 @@ subroutine plot_wavefields()
             !Test of planar wave , works
             !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
             !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-            call inv_mesh%set_node_data_snap(real(bw_field(idump,1,:), kind=sp), &
-                                             idump + ndumps + ndumps*(irec-1), &
-                                             'bwd_'//trim(parameters%receiver(irec)%name))
+
+            do icomp = 1,ndim
+               write(cname,'("comp_",I0.2)') icomp
+               call inv_mesh%set_node_data_snap(real(bw_field(idump,icomp,:), kind=sp), &
+                                                idump + ndumps*(icomp-1), &
+                                                'bwd_'//trim(parameters%receiver(irec)%name)//'_'//trim(cname))
+            end do
         end do
         deallocate(bw_field)
+
+        print *, ' Save XDMF file'
+        call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_'//trim(rname)//'_bwd')
+        call inv_mesh%free_node_and_cell_data()
 
         write(*,*) ' Convolve wavefields'
         allocate(conv_field_fd(nomega, nvertices))
@@ -166,28 +191,28 @@ subroutine plot_wavefields()
         deallocate(bw_field_fd)
         
         allocate(conv_field(ntimes, nvertices))
-
         call fft_data%irfft(conv_field_fd, conv_field)
-
         deallocate(conv_field_fd)
 
-        write(*,*) ' dumping'
+        call inv_mesh%init_node_data(ndumps)
+
+        write(*,*) ' Dump convolved fields to XDMF file'
         do idump = 1, ndumps
            if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
            call inv_mesh%set_node_data_snap(real(conv_field(idump,:), kind=sp), &
-                                            idump + (irec-1)*ndumps + (nrec+1) * ndumps, &
+                                            idump, &
                                             'convolved_'//trim(parameters%receiver(irec)%name))
         end do 
         deallocate(conv_field)
 
+        write(*,*) ' Save XDMF file'
+        call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_'//trim(rname)//'_conv')
+        call inv_mesh%free_node_and_cell_data()
+
+
     end do ! irec
 
     deallocate(fw_field_fd)
-
-    write(*,*)
-    write(*,*) ' Writing data to disk'
-    call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'wavefield')
-    call inv_mesh%freeme()
 
     write(*,*)
     write(*,*) '***************************************************************'
