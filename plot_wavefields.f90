@@ -107,7 +107,6 @@ subroutine plot_wavefields()
     call timeshift_fwd%apply(fw_field_fd)
     allocate(fw_field(ntimes, ndim, nvertices))
 
-    print*,shape(fw_field),shape(fw_field_fd)
     call fft_data%irfft(fw_field_fd, fw_field)
     call timeshift_fwd%freeme()
 
@@ -155,10 +154,8 @@ subroutine plot_wavefields()
         call timeshift_bwd%apply(bw_field_fd)
         allocate(bw_field(ntimes, ndim, nvertices))
         
-        print*,shape(bw_field),shape(bw_field_fd)
         call fft_data%irfft(bw_field_fd, bw_field)
         call timeshift_bwd%freeme()
-
 
         call inv_mesh%init_node_data(ndumps*ndim)
 
