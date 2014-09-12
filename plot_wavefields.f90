@@ -106,7 +106,7 @@ subroutine plot_wavefields()
     deallocate(fw_field)
 
     write(*,*) ' Timeshift forward field'
-    call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
+    call timeshift_fwd%init_ts(fft_data%get_f(), sem_data%timeshift_fwd)
     call timeshift_fwd%apply(fw_field_fd)
     allocate(fw_field(ntimes, ndim, nvertices))
 
@@ -137,7 +137,7 @@ subroutine plot_wavefields()
         deallocate(bw_field)
         
         write(*,*) ' Timeshift backward field'
-        call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+        call timeshift_bwd%init_ts(fft_data%get_f(), sem_data%timeshift_bwd)
         call timeshift_bwd%apply(bw_field_fd)
         allocate(bw_field(ntimes, ndim, nvertices))
         

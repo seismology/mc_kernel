@@ -325,7 +325,7 @@ subroutine test_filter_timeshift()
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
 
-   call timeshift%init(fft_data%get_f(), 1.0d0)
+   call timeshift%init_ts(fft_data%get_f(), 1.0d0)
    call timeshift%apply(data_fd)
    call timeshift%freeme()
    call fft_data%irfft(data_fd, data_out)
@@ -346,7 +346,7 @@ subroutine test_filter_timeshift()
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
    
-   call timeshift%init(fft_data%get_f(), -1.0d0)
+   call timeshift%init_ts(fft_data%get_f(), -1.0d0)
    call timeshift%apply(data_fd)
    call timeshift%freeme()
 
@@ -368,7 +368,7 @@ subroutine test_filter_timeshift()
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
    
-   call timeshift%init(fft_data%get_f(), 6.4d0)
+   call timeshift%init_ts(fft_data%get_f(), 6.4d0)
    call timeshift%apply(data_fd)
    call timeshift%freeme()
 

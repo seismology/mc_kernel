@@ -289,8 +289,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     niterations = 0
 
     if (.not.parameters%deconv_stf) then
-      call timeshift_fwd%init(fft_data%get_f(), sem_data%timeshift_fwd)
-      call timeshift_bwd%init(fft_data%get_f(), sem_data%timeshift_bwd)
+      call timeshift_fwd%init_ts(fft_data%get_f(), sem_data%timeshift_fwd)
+      call timeshift_bwd%init_ts(fft_data%get_f(), sem_data%timeshift_bwd)
     end if
     
 !    write(*,*) '***************************************************************'
