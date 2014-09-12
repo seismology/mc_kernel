@@ -283,7 +283,7 @@ function assemble_basekernel(basekernel_id, strain_type, &
 !! book, p. 168-169 how the fundamental kernels K_a, K_b and
 !! K_c are defined
 
-  character(len=32), intent(in)     :: basekernel_id, strain_type
+  character(len=*), intent(in)      :: basekernel_id, strain_type
   complex(kind=dp), intent(in)      :: fw_field_fd(:,:,:), bw_field_fd(:,:,:)
   complex(kind=dp)                  :: conv_field_fd(size(fw_field_fd,1),size(fw_field_fd,3))
   
