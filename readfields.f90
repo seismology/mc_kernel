@@ -1947,13 +1947,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
               
                  end do
 
-                 ! print*,"COMP1",utemp(:,1)
-                 ! print*,"COMP2",utemp(:,2)
-                 ! print*,"COMP3",utemp(:,3)
-                 ! print*,"COMP4",utemp(:,4)
-                 ! print*,"COMP5",utemp(:,5)
-                 ! print*,"COMP6",utemp(:,6)
-
                  ! rotate source mt to global cartesian system
                  mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
                                   source_params(ipoint)%mij_voigt, &
