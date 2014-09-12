@@ -184,6 +184,7 @@ integer function get_nbasisfuncs(this, int_type)
   case('volumetric')
      get_nbasisfuncs = this%nelements
   case default
+     write(*,'(A)') 'ERROR: unknown int_type caused crash in get_nbasisfuncs!'
      get_nbasisfuncs = -1
      call pabort
   end select
