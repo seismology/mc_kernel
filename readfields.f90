@@ -54,6 +54,9 @@ module readfields
         integer                            :: mesh_mu_varid           ! Variable IDs
         integer                            :: mesh_vs_varid           ! Variable IDs
         integer                            :: mesh_vp_varid           ! Variable IDs
+        integer                            :: mesh_xi_varid           ! Variable IDs
+        integer                            :: mesh_phi_varid           ! Variable IDs
+        integer                            :: mesh_eta_varid           ! Variable IDs
         integer                            :: chunk_gll
         integer                            :: count_error_pointoutside
         character(len=200)                 :: meshdir
@@ -1005,8 +1008,7 @@ function load_fw_points(this, coordinates, source_params, model)
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
-    real(kind=dp)                     :: coeff_buff(1)
-    real(kind=dp), allocatable        :: coeffs(:,:)
+    real(kind=sp), allocatable        :: coeffs(:,:)
     real(kind=dp)                     :: xi, eta
 
     
@@ -1024,7 +1026,7 @@ function load_fw_points(this, coordinates, source_params, model)
         nnext_points = 1
     endif
 
-    allocate(coeffs(3,npoints))
+    allocate(coeffs(6,npoints))
     
     ! Rotate points to FWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
@@ -1133,32 +1135,7 @@ function load_fw_points(this, coordinates, source_params, model)
         endif
     
         if (present(model)) then
-          ! Load model coefficients vp, vs and rho at point ipoint
-          ! @ TODO : We need to store anisotropic model parameters
-          !          in the wavefield netcdf files
-          ! @ TODO : Ludwig is not sure whether [nextpoint(1)%idx]
-          !          is the correct way to load coeffs from sem mesh
-          ! Load coefficient vp
-          call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-               varid  = this%fwd(1)%mesh_vp_varid,             &
-               start  = [pointid(ipoint)],                     &
-               count  = [1],                                   &
-               values = coeff_buff))
-          coeffs(1,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
-          ! Load coefficient vs
-          call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-               varid  = this%fwd(1)%mesh_vs_varid,             &
-               start  = [pointid(ipoint)],                     & 
-               count  = [1],                                   &
-               values = coeff_buff))
-          coeffs(2,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
-          ! Load coefficient rho
-          call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-               varid  = this%fwd(1)%mesh_rho_varid,            &
-               start  = [pointid(ipoint)],                     & 
-               count  = [1],                                   &
-               values = coeff_buff))
-          coeffs(3,ipoint) = coeff_buff(1)*1e9 ! convert to kg/(km^3)
+          coeffs(:, ipoint) = load_model_coeffs(this%fwd(1), pointid(ipoint))
         end if
 
         select case(trim(this%strain_type))
@@ -1233,6 +1210,66 @@ function load_fw_points(this, coordinates, source_params, model)
     if (present(model)) call model%recombine(coeffs)
 
 end function load_fw_points
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function load_model_coeffs(mesh, ipoint) result(coeffs)
+   type(ncparamtype), intent(in)   :: mesh
+   integer, intent(in)         :: ipoint
+   real(kind=sp)               :: coeffs(6)
+   real(kind=sp)               :: coeff_buff(1)
+
+   
+   ! Load model coefficients vp, vs and rho at point ipoint
+   ! @ TODO : Ludwig is not sure whether [nextpoint(1)%idx]
+   !          is the correct way to load coeffs from sem mesh
+   ! Load coefficient vp
+   call check(nf90_get_var(ncid   = mesh%mesh,   &
+        varid  = mesh%mesh_vp_varid,             &
+        start  = [ipoint],                     &
+        count  = [1],                                   &
+        values = coeff_buff))
+   coeffs(1) = coeff_buff(1)
+   ! Load coefficient vs
+   call check(nf90_get_var(ncid   = mesh%mesh,   &
+        varid  = mesh%mesh_vs_varid,             &
+        start  = [ipoint],                     & 
+        count  = [1],                                   &
+        values = coeff_buff))
+   coeffs(2) = coeff_buff(1)
+   ! Load coefficient rho
+   call check(nf90_get_var(ncid   = mesh%mesh,   &
+        varid  = mesh%mesh_rho_varid,            &
+        start  = [ipoint],                     & 
+        count  = [1],                                   &
+        values = coeff_buff))
+   coeffs(3) = coeff_buff(1)
+
+   ! Load coefficient phi
+   call check(nf90_get_var(ncid   = mesh%mesh,   &
+        varid  = mesh%mesh_phi_varid,            &
+        start  = [ipoint],                     & 
+        count  = [1],                                   &
+        values = coeff_buff))
+   coeffs(4) = coeff_buff(1)
+
+   ! Load coefficient xi
+   call check(nf90_get_var(ncid   = mesh%mesh,   &
+        varid  = mesh%mesh_xi_varid,            &
+        start  = [ipoint],                     & 
+        count  = [1],                                   &
+        values = coeff_buff))
+   coeffs(5) = coeff_buff(1)
+
+   ! Load coefficient eta
+   call check(nf90_get_var(ncid   = mesh%mesh,   &
+        varid  = mesh%mesh_eta_varid,            &
+        start  = [ipoint],                     & 
+        count  = [1],                                   &
+        values = coeff_buff))
+   coeffs(6) = coeff_buff(1)
+
+end function load_model_coeffs
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -2035,6 +2072,18 @@ subroutine read_meshes(this)
                       name  = "mesh_mu",              &
                       varid = this%fwd(1)%mesh_mu_varid)
            
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_xi",              &
+                      varid = this%fwd(1)%mesh_xi_varid)
+           
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_phi",              &
+                      varid = this%fwd(1)%mesh_phi_varid)
+           
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_eta",              &
+                      varid = this%fwd(1)%mesh_eta_varid)
+           
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mp_mesh_S", &
                         varid = ncvarid_mesh_s) 
@@ -2108,6 +2157,18 @@ subroutine read_meshes(this)
         call getvarid(ncid  = this%fwd(1)%mesh,   &
                       name  = "mesh_mu",              &
                       varid = this%fwd(1)%mesh_mu_varid)
+           
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_xi",              &
+                      varid = this%fwd(1)%mesh_xi_varid)
+           
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_phi",              &
+                      varid = this%fwd(1)%mesh_phi_varid)
+           
+        call getvarid(ncid  = this%fwd(1)%mesh,   &
+                      name  = "mesh_eta",              &
+                      varid = this%fwd(1)%mesh_eta_varid)
            
         call  getvarid( ncid  = this%fwd(1)%mesh, &
                         name  = "mesh_S", &
