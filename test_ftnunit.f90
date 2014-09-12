@@ -159,12 +159,17 @@ subroutine test_all
   call test(test_generate_random_point_poly_4, 'Random points in Quadrilateral')
   call test(test_generate_random_point_tet, 'Random points in Tetrahedra')
   call test(test_generate_random_point_triangle_space, 'Random points in Triangle in Space')
+  call test(test_generate_random_point_triangle, 'Random points in reference triangle')
   call test(test_rmat4_det, 'Matrix determinant')
   call test(test_tetra_volume_3d, 'Tetrahedron volume')
   call test(test_get_volume_poly_3, 'Triangle area')
   call test(test_get_volume_poly_4, 'Quadrilateral area')
-  call test(test_generate_random_point_triangle, 'Random points in reference triangle')
   call test(test_point_in_triangle_3d, 'Test for test whether Point in triangle')
+  call test(test_generate_random_point_poly_3_quasi, 'Quasi-Random points in Triangle')
+  call test(test_generate_random_point_poly_4_quasi, 'Quasi-Random points in Quadrilateral')
+  call test(test_generate_random_point_tet_quasi, 'Quasi-Random points in Tetrahedra')
+  call test(test_generate_random_point_triangle_space_quasi, 'Quasi-Random points in Triangle in Space')
+  call test(test_generate_random_point_triangle_quasi, 'Quasi-Random points in reference triangle')
 
   ! test_voxel
   write(6,'(/,a)') 'TEST VOXEL MODULE'
