@@ -3,9 +3,9 @@ module backgroundmodel
 use global_parameters, only: sp, dp
 
  type backgroundmodel_type
-   real(kind=sp), allocatable :: c_vp(:)  ! contains velocities at each point in km/s
-   real(kind=sp), allocatable :: c_vs(:)  ! contains velocities at each point in km/s
-   real(kind=sp), allocatable :: c_rho(:) ! contains velocities at each point in kg/(km^3)
+   real(kind=sp), allocatable :: c_vp(:)  ! contains velocities at each point in m/s
+   real(kind=sp), allocatable :: c_vs(:)  ! contains velocities at each point in m/s
+   real(kind=sp), allocatable :: c_rho(:) ! contains velocities at each point in kg/(m^3)
 
   !@ TODO : For now assume an isotropic background model
   !         need to store xi in the netcdf files
@@ -14,6 +14,8 @@ use global_parameters, only: sp, dp
    real(kind=sp), allocatable :: c_vph(:)
    real(kind=sp), allocatable :: c_vpv(:)
    real(kind=sp), allocatable :: c_eta(:)
+   real(kind=sp), allocatable :: c_phi(:)
+   real(kind=sp), allocatable :: c_xi(:)
    contains 
      procedure, pass            :: recombine
  end type
@@ -23,7 +25,7 @@ use global_parameters, only: sp, dp
 !-------------------------------------------------------------------------------
  subroutine recombine(this, coeffs)
    class(backgroundmodel_type) :: this
-   real(kind=dp), intent(in)  :: coeffs(:,:)
+   real(kind=sp), intent(in)  :: coeffs(:,:)
    integer                    :: npoints
 
 
@@ -39,22 +41,22 @@ use global_parameters, only: sp, dp
    allocate(this%c_eta(npoints))
 
    ! Recombine this coefficients for chosen parameterization
-   this%c_vp  = coeffs(1,:) ! contains velocities at each point in km/s
-   this%c_vs  = coeffs(2,:) ! contains velocities at each point in km/s
-   this%c_rho = coeffs(3,:) ! contains velocities at each point in kg/(km^3)
+   this%c_vp  = coeffs(1,:) ! contains velocities at each point in m/s
+   this%c_vs  = coeffs(2,:) ! contains velocities at each point in m/s
+   this%c_rho = coeffs(3,:) ! contains velocities at each point in kg/(m^3)
 
-   ! @ TODO : For now assume an isotropic background this
-   !          need to store xi in the netcdf files
-   if (size(coeffs, 1) == 3) then !isotropic case
-     this%c_vsh = this%c_vs
-     this%c_vsv = this%c_vs
-     this%c_vph = this%c_vp
-     this%c_vpv = this%c_vp
-     this%c_eta = 1.d0
-   else
-     !! SOMETHING
-     stop
-   end if
+   this%c_phi = coeffs(4,:) 
+   this%c_xi  = coeffs(5,:) 
+   this%c_eta = coeffs(6,:) 
+
+   ! @ TODO : For now assume an isotropic background 
+   this%c_vsh = this%c_vs
+   this%c_vsv = this%c_vs
+   this%c_vph = this%c_vp
+   this%c_vpv = this%c_vp
+   this%c_eta = 1.d0
+
+
  end subroutine recombine
 !-------------------------------------------------------------------------------
 
