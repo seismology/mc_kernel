@@ -14,12 +14,14 @@ subroutine plot_wavefields()
     use type_parameter,             only : parameter_type
     use fft,                        only : rfft_type, taperandzeropad
     use filtering,                  only : timeshift_type
+    use backgroundmodel,            only : backgroundmodel_type
 
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
     type(semdata_type)                  :: sem_data
     type(rfft_type)                     :: fft_data
     type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
+    type(backgroundmodel_type)          :: bg_model
 
     integer                             :: nelems, ntimes, nomega, nrec
     integer                             :: idump, ndumps, irec
@@ -97,8 +99,7 @@ subroutine plot_wavefields()
 
     write(*,*) ' Read in forward field'
     allocate(fw_field(ndumps, ndim, nvertices))
-    allocate(modelcoeffs(3,size(co_points)))
-    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source, coeffs=modelcoeffs)
+    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source, model=bg_model)
 
     write(*,*) ' FFT forward field'
     allocate(fw_field_fd(nomega, ndim, nvertices))
