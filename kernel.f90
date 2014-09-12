@@ -273,6 +273,117 @@ end function
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
+function assemble_basekernel(basekernel_id, strain_type, &
+                             fw_field_fd, bw_field_fd) result(conv_field_fd)
+
+!< Assembles the basic (waveform) kernels from the forward and the backward field
+!! in frequency domain.
+!! readfields.f90 returns strain tensor in voigt notation
+!! elements 1,...,6 contain tt,pp,rr,pr,tr,tp. See Fichtner
+!! book, p. 168-169 how the fundamental kernels K_a, K_b and
+!! K_c are defined
+
+  character(len=32), intent(in)     :: basekernel_id, strain_type
+  complex(kind=dp), intent(in)      :: fw_field_fd(:,:,:), bw_field_fd(:,:,:)
+  complex(kind=dp)                  :: conv_field_fd(size(fw_field_fd,1),size(fw_field_fd,3))
+  
+  select case(trim(basekernel_id))
+  case('k_lambda')
+     select case(trim(strain_type))
+     case('straintensor_trace')
+        conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
+     case('straintensor_full')
+        ! Only convolve trace of fw and bw fields
+        conv_field_fd = fw_field_fd(:,1,:) * &
+                        fw_field_fd(:,2,:) * &
+                        fw_field_fd(:,3,:) * &
+                        bw_field_fd(:,1,:) * &
+                        bw_field_fd(:,2,:) * &
+                        bw_field_fd(:,3,:)
+     end select
+  case('k_mu')
+     conv_field_fd = sum(fw_field_fd * bw_field_fd, 2) * 2.d0
+  case('k_a')
+     conv_field_fd = ( bw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
+                     ( fw_field_fd(:,2,:) * bw_field_fd(:,1,:) )
+  case('k_b')
+     conv_field_fd = ( ( bw_field_fd(:,5,:) * fw_field_fd(:,5,:) ) + &
+                     ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
+  case('k_c')
+     conv_field_fd = ( fw_field_fd(:,1,:) + fw_field_fd(:,2,:) ) * &
+                       bw_field_fd(:,3,:) + &
+                     ( bw_field_fd(:,1,:) * bw_field_fd(:,2,:) ) * &
+                       fw_field_fd(:,3,:)
+  case('k_rho')
+     print*,"ERROR: Density kernels not yet implemented"
+     stop
+  end select
+
+end function assemble_basekernel
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+function calc_physical_kernels(model_param, base_kernel, bg_model)  &
+                               result(physical_kernel)
+
+  use backgroundmodel, only               :  backgroundmodel_type
+  character(len=*), intent(in)           :: model_param
+  real(kind=dp),    intent(in)           :: base_kernel(:,:)
+  type(backgroundmodel_type), intent(in) :: bg_model
+  real(kind=dp)                          :: physical_kernel(size(base_kernel,1))
+
+  ! See Fichtner p. 169 how kernels are defined and type_parameter.f90
+  ! how basekernels inside kernelvalue_weighted are ordered
+  select case(trim(model_param))
+  case('lambda')
+     physical_kernel(:) =                                 &
+            base_kernel(:, 1)
+  case('mu')
+     physical_kernel(:) =                                 & 
+            base_kernel(:, 1)
+  case('vp')
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vp *           &
+            base_kernel(:, 1)
+  case('vs')
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vs *           &
+            base_kernel(:, 2) - 4.d0 * bg_model%c_rho * bg_model%c_vs * &
+            base_kernel(:, 1)
+  case('vsh')
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vsh *          &
+          ( base_kernel(:, 1) * 2 +                   &
+            base_kernel(:, 2) +                       &
+            base_kernel(:, 3) +                       &
+            base_kernel(:, 4) * 2*(1-bg_model%c_eta))
+  case('vsv')
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vsv *          &
+            base_kernel(:, 1)
+  case('vph')
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vph *          &
+          ( base_kernel(:, 1) +                       &
+            base_kernel(:, 2) * bg_model%c_eta )
+  case('vpv')
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vpv *          &
+          ( base_kernel(:, 1) +                       &
+            base_kernel(:, 2) +                       &
+            base_kernel(:, 3) )
+  case('kappa')
+     write(*,*) "Error: Kappa kernels not yet implemented"
+     stop
+  case('eta')
+     write(*,*) "Error: Eta kernels not yet implemented"
+     stop
+  case('xi')
+     write(*,*) "Error: Xi kernels not yet implemented"
+     stop
+  case('rho')
+     write(*,*) "Error: Density kernels not yet implemented"
+     stop
+  end select
+
+end function
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 subroutine cut_timewindow(t, x, timewindow, cut_tw, ierror)
    real(kind=dp), intent(in)        :: t(:), x(:)
    real(kind=dp), intent(in)        :: timewindow(2)
