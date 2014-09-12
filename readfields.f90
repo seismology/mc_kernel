@@ -1423,7 +1423,7 @@ function load_bw_points(this, coordinates, receiver)
                                                          size(coordinates,2))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
-    integer                           :: npoints, nnext_points, id_elem
+    integer                           :: npoints, nnext_points, id_elem, isim
     integer                           :: pointid(size(coordinates,2))
     integer                           :: ipoint, inext_point, iclockold, icp
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
@@ -1561,6 +1561,7 @@ function load_bw_points(this, coordinates, receiver)
             load_bw_points(:,:,ipoint) &
                 =                               utemp / this%bwd(1)%amplitude
         case('R') 
+            isim = 2
             if (trim(this%dump_type) == 'displ_only') then
                utemp = load_strain_point_interp(this%bwd(2), gll_point_ids,     &
                                                 xi, eta, this%strain_type,      &
@@ -1569,9 +1570,35 @@ function load_bw_points(this, coordinates, receiver)
             else
                utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%strain_type)
             endif
-            load_bw_points(:,:,ipoint) &
-                =   dcos(rotmesh_phi(ipoint)) * utemp / this%bwd(2)%amplitude
+
+            ! @ TODO: not entirely sure if this is correct
+            load_bw_points(:,:,ipoint) = 0d0
+
+            load_bw_points(:, 1, ipoint) &
+                 = load_bw_points(:, 1, ipoint) + utemp(:,1) &
+                 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+            load_bw_points(:, 2, ipoint) &
+                 = load_bw_points(:, 2, ipoint) + utemp(:,2) &
+                 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+            load_bw_points(:, 3, ipoint) &
+                 = load_bw_points(:, 3, ipoint) + utemp(:,3) &
+                 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+            load_bw_points(:, 4, ipoint) &
+                 = load_bw_points(:, 4, ipoint) + utemp(:,4) &
+                 * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+            load_bw_points(:, 5, ipoint) &
+                 = load_bw_points(:, 5, ipoint) + utemp(:,5) &
+                 * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+            load_bw_points(:, 6, ipoint) &
+                 = load_bw_points(:, 6, ipoint) + utemp(:,6) &
+                 * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+            
+            load_bw_points(:,:,ipoint) = load_bw_points(:,:,ipoint) &
+                                         / this%bwd(2)%amplitude
+
+
         case('T') 
+            isim = 2
             if (trim(this%dump_type) == 'displ_only') then
                utemp = load_strain_point_interp(this%bwd(2), gll_point_ids,     &
                                                 xi, eta, this%strain_type,      &
@@ -1580,16 +1607,31 @@ function load_bw_points(this, coordinates, receiver)
             else
                utemp = load_strain_point(this%bwd(2), pointid(ipoint), this%strain_type)
             endif
-            load_bw_points(:,:,ipoint) &
-                = - dsin(rotmesh_phi(ipoint)) * utemp / this%bwd(2)%amplitude
-             
 
-            ! @ TODO: The following is a hack to remove the bug, 
-            !         but the whole subroutine needs to be revised
-            !         since components T and R show some strange
-            !         leakage from P to S waves at the axis
+            ! @ TODO: not entirely sure if this is correct
+            load_bw_points(:,:,ipoint) = 0d0
 
-            !         = 1d0 * utemp / this%bwd(2)%amplitude  &
+            load_bw_points(:, 1, ipoint) &
+                 = load_bw_points(:, 1, ipoint) + utemp(:,1) &
+                 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+            load_bw_points(:, 2, ipoint) &
+                 = load_bw_points(:, 2, ipoint) + utemp(:,2) &
+                 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+            load_bw_points(:, 3, ipoint) &
+                 = load_bw_points(:, 3, ipoint) + utemp(:,3) &
+                 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+            load_bw_points(:, 4, ipoint) &
+                 = load_bw_points(:, 4, ipoint) + utemp(:,4) &
+                 * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+            load_bw_points(:, 5, ipoint) &
+                 = load_bw_points(:, 5, ipoint) + utemp(:,5) &
+                 * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+            load_bw_points(:, 6, ipoint) &
+                 = load_bw_points(:, 6, ipoint) + utemp(:,6) &
+                 * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+
+            load_bw_points(:,:,ipoint) = load_bw_points(:,:,ipoint) &
+                                         / this%bwd(2)%amplitude            
 
         end select
 
