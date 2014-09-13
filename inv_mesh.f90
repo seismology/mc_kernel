@@ -549,13 +549,6 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
   write(lu_out,'(A)')       ''
 
 
-  ! Convert locations to meters, if necessary
-  if (maxval(abs(this%vertices))<1D4) then
-    write(lu_out, *) 'Assuming the vertex locations are in km!'
-    this%vertices = this%vertices * 1D3 ! Vertices are set in km
-  end if
-
-  ! Initialize weigths and calculate base vectors for each element
   call this%init_weight_tet_mesh()
 
   this%initialized = .true.
@@ -853,13 +846,6 @@ subroutine read_abaqus_mesh(this, filename, int_type)
   ! abaqus starts counting at 1
   this%connectivity(:,:) = this%connectivity(:,:) - 1
   
-  ! Convert locations to meters, if necessary
-  if (maxval(abs(this%vertices))<1D4) then
-    write(lu_out, *) 'Assuming the vertex locations are in km!'
-    this%vertices = this%vertices * 1D3 ! Vertices are set in km
-  end if
-
-  ! Initialize weigths and calculate base vectors for each element
   if (this%element_type.eq.'tri'.or.this%element_type.eq.'quad') then
      call this%make_2d_vectors
   elseif (this%element_type.eq.'tet') then
