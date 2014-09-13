@@ -62,6 +62,7 @@ module type_parameter
            procedure, pass                   :: read_source
            procedure, pass                   :: read_kernel
            procedure, pass                   :: read_filter
+           procedure, pass                   :: set_basekernels
     end type
 
 contains
@@ -325,73 +326,14 @@ subroutine read_receiver(this)
    this%model_param = to_lower(this%model_param)
 
 
-   ! As a default use the full 6-component strain tensor
-   allocate(this%basekernel_id(6))
-   this%strain_type   = 'straintensor_full'
-
-   ! Here the we tabulate the base kernels required to assemble 
-   ! the physical kernels for a desired model parameter
-   select case(trim(this%model_param))     
-   case('lambda')
-      this%nbasekernels  = 1
-      this%basekernel_id(1) = 'k_lambda'
-      this%strain_type   = 'straintensor_trace'
-   case('vp')
-      this%nbasekernels  = 1
-      this%basekernel_id(1) = 'k_lambda'     
-      this%strain_type   = 'straintensor_trace'
-   case('vs')
-      this%nbasekernels  = 2
-      this%basekernel_id(1) = 'k_lambda'
-      this%basekernel_id(2) = 'k_mu'      
-   case('mu')
-      this%nbasekernels  = 1
-      this%basekernel_id(1) = 'k_mu'
-   case('vsh')
-      this%nbasekernels  = 4
-      this%basekernel_id(1) = 'k_lambda'
-      this%basekernel_id(2) = 'k_mu'
-      this%basekernel_id(3) = 'k_b'
-      this%basekernel_id(4) = 'k_c'
-   case('vsv')
-      this%nbasekernels  = 1
-      this%basekernel_id(1) = 'k_b'
-   case('vph')
-      this%nbasekernels  = 2
-      this%basekernel_id(1) = 'k_a'
-      this%basekernel_id(2) = 'k_b'
-   case('vpv')
-      this%nbasekernels  = 3
-      this%basekernel_id(1) = 'k_lambda'
-      this%basekernel_id(2) = 'k_a'
-      this%basekernel_id(3) = 'k_c'
-   case('kappa')
-      write(*,*) "Error: Kappa kernels not yet implemented"
-      call pabort
-   case('eta')
-      write(*,*) "Error: Eta kernels not yet implemented"
-      call pabort
-   case('xi')
-      write(*,*) "Error: Xi kernels not yet implemented"
-      call pabort
-   case('rho')
-      write(*,*) "Error: Density kernels not yet implemented"
-      call pabort
-   case default
-      write(*,*) "Error: Unknown model parameter"
-      call pabort      
-   end select
-
-   call pbroadcast_int(this%nbasekernels, 0)
-   call pbroadcast_char(this%strain_type, 0)
-   call pbroadcast_char_arr(this%basekernel_id, 0)
-
 
    fmtstring = '("  Using ", I5, " receivers")'
    write(lu_out, fmtstring) this%nrec
 
    fmtstring = '("  Kernel for parameter ", A, " on component ", A)'
    write(lu_out, fmtstring) this%model_param, this%component
+
+   call this%set_basekernels()
 
    allocate(this%receiver(this%nrec))
 
@@ -485,7 +427,7 @@ subroutine read_kernel(this, sem_data, filter)
        write(6,*)'Reading kernels from file ', trim(this%receiver_file)
        open(newunit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) 
-       read(lu_receiver,*)
+       read(lu_receiver,*) this%model_param
 
    else
       write(lu_out,*) 'Waiting for master to distribute kernels...'
@@ -624,6 +566,73 @@ subroutine read_filter(this, nomega, df)
    this%filter_read = .true.
 end subroutine
 !-----------------------------------------------------------------------------------------
+
+subroutine set_basekernels(this)
+  class(parameter_type) :: this
+
+  ! As a default use the full 6-component strain tensor
+  allocate(this%basekernel_id(6))
+  this%strain_type   = 'straintensor_full'
+
+  ! Here the we tabulate the base kernels required to assemble 
+  ! the physical kernels for a desired model parameter
+  select case(trim(this%model_param))     
+  case('lambda')
+     this%nbasekernels  = 1
+     this%basekernel_id(1) = 'k_lambda'
+     this%strain_type   = 'straintensor_trace'
+  case('vp')
+     this%nbasekernels  = 1
+     this%basekernel_id(1) = 'k_lambda'     
+     this%strain_type   = 'straintensor_trace'
+  case('vs')
+     this%nbasekernels  = 2
+     this%basekernel_id(1) = 'k_lambda'
+     this%basekernel_id(2) = 'k_mu'      
+  case('mu')
+     this%nbasekernels  = 1
+     this%basekernel_id(1) = 'k_mu'
+  case('vsh')
+     this%nbasekernels  = 4
+     this%basekernel_id(1) = 'k_lambda'
+     this%basekernel_id(2) = 'k_mu'
+     this%basekernel_id(3) = 'k_b'
+     this%basekernel_id(4) = 'k_c'
+  case('vsv')
+     this%nbasekernels  = 1
+     this%basekernel_id(1) = 'k_b'
+  case('vph')
+     this%nbasekernels  = 2
+     this%basekernel_id(1) = 'k_a'
+     this%basekernel_id(2) = 'k_b'
+  case('vpv')
+     this%nbasekernels  = 3
+     this%basekernel_id(1) = 'k_lambda'
+     this%basekernel_id(2) = 'k_a'
+     this%basekernel_id(3) = 'k_c'
+  case('kappa')
+     write(*,*) "Error: Kappa kernels not yet implemented"
+     call pabort
+  case('eta')
+     write(*,*) "Error: Eta kernels not yet implemented"
+     call pabort
+  case('xi')
+     write(*,*) "Error: Xi kernels not yet implemented"
+     call pabort
+  case('rho')
+     write(*,*) "Error: Density kernels not yet implemented"
+     call pabort
+  case default
+     write(*,*) "Error: Unknown model parameter"
+     call pabort      
+  end select
+   call pbroadcast_int(this%nbasekernels, 0)
+   call pbroadcast_char(this%strain_type, 0)
+   call pbroadcast_char_arr(this%basekernel_id, 0)
+
+end subroutine set_basekernels
+
+
 
 end module
 !=========================================================================================
