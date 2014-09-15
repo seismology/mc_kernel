@@ -33,13 +33,13 @@ subroutine test_readfields_set_params()
    type(semdata_type)   :: sem_data
    character(len=512)   :: fwd_dir, bwd_dir
 
-   fwd_dir = './wavefield/fwd'
-   bwd_dir = './wavefield/bwd'
+   fwd_dir = './test_wavefield/fwd'
+   bwd_dir = './test_wavefield/bwd'
    
    call sem_data%set_params(fwd_dir, bwd_dir, 100, 100)
 
    call assert_equal_int(sem_data%nsim_fwd, 4, 'nsim_fwd == 4')
-   call assert_equal_int(sem_data%nsim_bwd, 1, 'nsim_bwd == 1')
+   call assert_equal_int(sem_data%nsim_bwd, 2, 'nsim_bwd == 2')
 
 end subroutine test_readfields_set_params
 !-----------------------------------------------------------------------------------------
@@ -49,8 +49,8 @@ subroutine test_readfields_open_files()
    type(semdata_type)   :: sem_data
    character(len=512)   :: fwd_dir, bwd_dir
 
-   fwd_dir = './wavefield/fwd'
-   bwd_dir = './wavefield/bwd'
+   fwd_dir = './test_wavefield/fwd'
+   bwd_dir = './test_wavefield/bwd'
    
    call sem_data%set_params(fwd_dir, bwd_dir, 100, 100) 
 
