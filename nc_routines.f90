@@ -4,8 +4,13 @@ module nc_routines
     use netcdf
     implicit none
 
+    interface nc_getvar_by_name
+      module procedure  :: nc_getvar_by_name_1d
+    end interface nc_getvar_by_name
+
     interface nc_getvar
       module procedure  :: getvar_real1d
+      module procedure  :: getvar_real1d_dble
       module procedure  :: getvar_real2d
       module procedure  :: getvar_real3d
       !module procedure  :: getvar_real1d_from_3d
@@ -82,6 +87,54 @@ subroutine getgrpid(ncid, name, grp_ncid)
 100 format('ERROR: CPU ', I4, ' could not find group: ''', A, ''' in NCID', I7)
 101 format('    Group ''', A, ''' found in NCID', I7, ', has ID:', I7)
 end subroutine getgrpid
+!-----------------------------------------------------------------------------------------
+ 
+!-----------------------------------------------------------------------------------------
+subroutine nc_getvar_by_name_1d(ncid, variable_name, values)
+!< Looks up a 1D variable name and returns the complete variable
+  integer, intent(in)           :: ncid
+  character(len=*), intent(in)  :: variable_name
+  real(kind=sp), intent(out)    :: values(:)
+
+  real(kind=sp)                 :: tempvar_sp(size(mesh_variable,1))
+  real(kind=dp)                 :: tempvar_dp(size(mesh_variable,1))
+  integer                       :: variable_id, dimid(1), npoints, variable_type
+  integer                       :: status
+
+  call  getvarid( ncid  = ncid,            &
+                  name  = variable_name,   &
+                  varid = variable_id)
+
+  status = nf90_inquire_variable(ncid   = ncid,           &
+                                 varid  = variable_id,    &
+                                 xtype  = variable_type,  &
+                                 dimids = dimid  )
+
+  status = nf90_inquire_dimension(ncid  = ncid,           &
+                                  dimid = dimid(1),       &
+                                  len   = npoints)
+
+  select case(variable_type)
+  case(NF90_FLOAT)
+    call nc_getvar(ncid   = ncid,                 &
+                   varid  = variable_id,          &
+                   start  = 1,                    &
+                   count  = npoints,              &
+                   values = tempvar_sp) 
+    values = real(tempvar_sp, kind=sp)
+  case(NF90_DOUBLE)
+    call nc_getvar(ncid   = ncid,                 &
+                   varid  = variable_id,          &
+                   start  = 1,                    &
+                   count  = npoints,              &
+                   values = tempvar_dp) 
+    values = real(tempvar_dp, kind=sp)
+  case default
+    write(*,*) 'get_mesh_variable is only implemented for NF90_FLOAT and NF90_DBLE variables'
+    call pabort()
+  end select
+
+end subroutine nc_getvar_by_name_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -167,6 +220,91 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Read', F10.3, ' MB from 1D variable in NCID', I7, ', with ID:', I7)
 end subroutine getvar_real1d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine getvar_real1d_dble(ncid, varid, values, start, count)
+!< Help interpret the inane NetCDF error messages
+   integer, intent(in)          :: ncid, varid, start, count
+   real(kind=dp), intent(out)   :: values(:)
+   integer                      :: xtype, ndims, status, dimsize
+   integer                      :: dimid(10)
+   character(len=nf90_max_name) :: varname, dimname
+
+
+   status = nf90_inquire_variable(ncid  = ncid,     &
+                                  varid = varid,    &
+                                  name  = varname )
+
+   if (status.ne.NF90_NOERR) then
+       write(*,99) myrank, varid, ncid
+       print *, trim(nf90_strerror(status))
+       stop
+   end if
+
+   if (size(values).ne.count) then
+       write(*,100) myrank, trim(varname), varid, ncid, size(values), count
+       stop
+   end if
+
+   status = nf90_get_var(ncid   = ncid,           &
+                         varid  = varid,          &
+                         values = values,         &
+                         start  = [start],        &
+                         count  = [count] )
+
+                      
+   if (status.ne.NF90_NOERR) then
+       status = nf90_inquire_variable(ncid  =  ncid,    &
+                                      varid = varid,    &
+                                      name  = varname,  &
+                                      ndims = ndims)
+       if (ndims.ne.1) then
+           write(*,101) myrank, trim(varname), varid, ncid, ndims
+           print *, trim(nf90_strerror(status))
+           stop
+       end if
+       status = nf90_inquire_variable(ncid   = ncid,     &
+                                      varid  = varid,    &
+                                      name   = varname,  &
+                                      xtype  = xtype,    &
+                                      ndims  = ndims,    &
+                                      dimids = dimid  )
+
+       status = nf90_inquire_dimension(ncid  = ncid,     &
+                                       dimid = dimid(1), &
+                                       name  = dimname,  &
+                                       len   = dimsize )
+       if (start + count - 1 > dimsize) then
+           write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
+           print *, trim(nf90_strerror(status))
+           stop
+       end if
+
+       write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status))
+       stop
+   
+   elseif (verbose>1) then
+       write(*,200) myrank, real(count) * 4. / 1048576., ncid, varid
+       call flush(6)
+   end if
+    
+99  format('ERROR: CPU ', I4, ' could not find 1D variable: ',I7,' in NCID', I7)
+100 format('ERROR: CPU ', I4, ' could not read 1D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       was given ', I10, ' values, but ''count'' is ', I10)
+101 format('ERROR: CPU ', I4, ' could not read 1D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       Variable has ', I2,' dimensions instead of one')
+102 format('ERROR: CPU ', I4, ' could not read 1D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
+           '       of dimension ', A)
+103 format('ERROR: CPU ', I4, ' could not read 1D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       start:   ', I10, / &
+           '       count:   ', I10, / &
+           '       dimsize: ', I10, / &
+           '       dimname: ', A)
+200 format('    Proc ', I4, ': Read', F10.3, ' MB from 1D variable in NCID', I7, ', with ID:', I7)
+end subroutine getvar_real1d_dble
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
