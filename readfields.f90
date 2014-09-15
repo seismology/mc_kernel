@@ -1030,7 +1030,7 @@ function load_fw_points(this, coordinates, source_params, model)
     
     ! Rotate points to FWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
-                          coordinates*1d3,                              &
+                          coordinates,                                  &
                           source_params%lon, source_params%colat)
 
     allocate(nextpoint(nnext_points))
@@ -1439,7 +1439,7 @@ function load_bw_points(this, coordinates, receiver)
 
     ! Rotate points to BWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
-                          coordinates*1e3,                              &
+                          coordinates,                                  &
                           receiver%lon, receiver%colat)
 
     allocate(nextpoint(nnext_points))
