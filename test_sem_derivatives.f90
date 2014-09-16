@@ -309,8 +309,9 @@ subroutine test_strain_dipole_td()
      enddo
   enddo
 
-  u(1,:,:,1) = s**2 * z
-  u(1,:,:,2) = s**2 + z * s
+  ! +- basis!
+  u(1,:,:,1) = (s**2 * z + s**2 + s * z) / 2d0
+  u(1,:,:,2) = (s**2 * z - s**2 - s * z) / 2d0
   u(1,:,:,3) = s * z**2
   
   strain_ref(1,:,:,1) = 2 * s * z
@@ -353,8 +354,9 @@ subroutine test_strain_dipole_td()
      enddo
   enddo
 
-  u(1,:,:,1) = s**2 * z
-  u(1,:,:,2) = s**2 + z * s
+  ! +- basis!
+  u(1,:,:,1) = (s**2 * z + s**2 + s * z) / 2d0
+  u(1,:,:,2) = (s**2 * z - s**2 - s * z) / 2d0
   u(1,:,:,3) = s * z**2
   
   strain_ref(1,:,:,1) = 2 * s * z
@@ -433,8 +435,8 @@ subroutine test_strain_dipole()
      enddo
   enddo
 
-  u(:,:,1) = s**2 * z
-  u(:,:,2) = s**2 + z * s
+  u(:,:,1) = (s**2 * z + s**2 + s * z) / 2d0
+  u(:,:,2) = (s**2 * z - s**2 - s * z) / 2d0
   u(:,:,3) = s * z**2
   
   strain_ref(:,:,1) = 2 * s * z
@@ -474,8 +476,9 @@ subroutine test_strain_dipole()
      enddo
   enddo
 
-  u(:,:,1) = s**2 * z
-  u(:,:,2) = s**2 + z * s
+  ! +- basis!
+  u(:,:,1) = (s**2 * z + s**2 + s * z) / 2d0
+  u(:,:,2) = (s**2 * z - s**2 - s * z) / 2d0
   u(:,:,3) = s * z**2
   
   strain_ref(:,:,1) = 2 * s * z
