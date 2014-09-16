@@ -138,7 +138,7 @@ subroutine plot_wavefields()
 
     do irec = 1, nrec
 
-        write(rname,'("_",I0.2)') irec
+        write(rname,'("",I0.2)') irec
 
         write(*,*) ' Read in backward field of receiver', irec
         allocate(bw_field(ndumps, ndim, nvertices))
