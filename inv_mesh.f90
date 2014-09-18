@@ -505,7 +505,6 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
                                !    anymore and is not implemented here, at least for 
                                !    now. SCS September 14
 
-  write(1000,*) 'NDIM: ', ndim                               
   if (ndim.ne.3) then
      write(*,*) 'ERROR: the dimension of Sigloch/Nolet style meshes should be three (3)'
      write(*,*) '       Defined in the first line of the vertex files'

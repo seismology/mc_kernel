@@ -21,6 +21,8 @@ module readfields
     private
     public                                 :: semdata_type
 
+    integer, parameter                     :: min_file_version = 2
+
     type meshtype
         real(kind=sp), allocatable         :: s(:), z(:)            ! Coordinates of all GLL points
         real(kind=sp), allocatable         :: s_mp(:), z_mp(:)      ! Coordinates of element midpoints
@@ -313,6 +315,12 @@ subroutine open_files(this)
 
         call nc_read_att_int(this%fwd(isim)%file_version, 'file version', this%fwd(isim))
 
+        if (this%fwd(isim)%file_version < min_file_version) then
+           print *, 'NetCDF file to old. Minimum file version: ', min_file_version, &
+                    ', found: ', this%fwd(isim)%file_version
+           call pabort
+        endif
+
         call nc_read_att_dble(this%fwd(isim)%planet_radius, 'planet radius', this%fwd(isim))
         this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
 
@@ -478,6 +486,12 @@ subroutine open_files(this)
                               ncid     = this%bwd(isim)%ncid) 
 
         call nc_read_att_int(this%bwd(isim)%file_version, 'file version', this%bwd(isim))
+
+        if (this%fwd(isim)%file_version < min_file_version) then
+           print *, 'NetCDF file to old. Minimum file version: ', min_file_version, &
+                    ', found: ', this%fwd(isim)%file_version
+           call pabort
+        endif
 
         call nc_read_att_dble(this%bwd(isim)%planet_radius, 'planet radius', this%bwd(isim))
         this%bwd(isim)%planet_radius = this%bwd(isim)%planet_radius * 1d3
