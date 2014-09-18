@@ -33,8 +33,8 @@ subroutine test_readfields_set_params()
    type(semdata_type)   :: sem_data
    character(len=512)   :: fwd_dir, bwd_dir
 
-   fwd_dir = './test_wavefield/fwd/'
-   bwd_dir = './test_wavefield/bwd/'
+   fwd_dir = './test_wavefields/kerner_fwd'
+   bwd_dir = './test_wavefields/kerner_bwd'
    
    call sem_data%set_params(fwd_dir, bwd_dir, 100, 100)
 
@@ -49,8 +49,8 @@ subroutine test_readfields_open_files()
    type(semdata_type)   :: sem_data
    character(len=512)   :: fwd_dir, bwd_dir
 
-   fwd_dir = './test_wavefield/fwd'
-   bwd_dir = './test_wavefield/bwd'
+   fwd_dir = './test_wavefields/kerner_fwd'
+   bwd_dir = './test_wavefields/kerner_bwd'
    
    call sem_data%set_params(fwd_dir, bwd_dir, 100, 100) 
 
