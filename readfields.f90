@@ -121,6 +121,7 @@ module readfields
             procedure, pass                :: load_seismogram
 
     end type
+ 
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -442,6 +443,7 @@ subroutine open_files(this)
         !call check(nf90_inq_ncid( ncid     = this%fwd(isim)%ncid,   &
         !                          name     = "Seismograms",         &
         !                          grp_ncid = this%fwd(isim)%seis))
+
         call getvarid(            ncid     = this%fwd(isim)%surf,   &
                                   name     = "stf_dump",            &
                                   varid    = this%fwd(isim)%stf_varid)
@@ -592,6 +594,8 @@ subroutine open_files(this)
         ! call getvarid(            ncid     = this%bwd(isim)%surf,   &
         !                           name     = "stf_dump",            &
         !                           varid    = this%bwd(isim)%stf_varid)
+
+
 
         call getvarid(            ncid     = this%bwd(isim)%surf,   &
                                   name     = "stf_dump",            &
@@ -1099,9 +1103,7 @@ function load_fw_points(this, coordinates, source_params, model)
             gll_point_ids = -1
             if (verbose > 1) &
                 write(6,*) 'element id = ', id_elem !nextpoint(inext_point)%idx
-
             gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem)
-
             if (verbose > 1) &
                 write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
@@ -1461,7 +1463,6 @@ function load_bw_points(this, coordinates, receiver)
                 write(6,*) 'element id = ', nextpoint(inext_point)%idx
             
             gll_point_ids = this%bwdmesh%gll_point_ids(:,:,id_elem)
-
             if (verbose > 1) &
                 write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
@@ -1961,7 +1962,6 @@ subroutine read_meshes(this)
     write(lu_out,*) '  Read SEM mesh from first forward simulation'
     
     call nc_read_att_int(this%fwdmesh%npoints, 'npoints', this%fwd(1))
-
     if (trim(this%dump_type) == 'displ_only') then
       call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
       !write(lu_out, *) 'Mesh has ', this%fwdmesh%nelem, ' elements'
@@ -1989,6 +1989,7 @@ subroutine read_meshes(this)
       call cache_mesh(this%bwd(1)%mesh, this%bwdmesh, this%dump_type) 
 
     end if
+
 
 
     ! Read surface element theta

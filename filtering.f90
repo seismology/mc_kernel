@@ -33,7 +33,7 @@ module filtering
                                                      !! to apply the timeshift
        logical                        :: isinitialized = .false.
        contains
-       procedure, pass   :: init
+       procedure, pass   :: init_ts
        procedure, pass   :: timeshift_1d
        procedure, pass   :: timeshift_md
        procedure, pass   :: freeme
@@ -384,7 +384,7 @@ end function
 
 !-----------------------------------------------------------------------------------------
 !> Init a timeshift object
-subroutine init(this, freq, dtshift)
+subroutine init_ts(this, freq, dtshift)
    class(timeshift_type)            :: this
    real(kind=dp),    intent(in)     :: freq(:)     !< 1D array with the frequencies of 
                                                    !! the entries in field
@@ -398,7 +398,7 @@ subroutine init(this, freq, dtshift)
    this%isinitialized = .true.
 
 
-end subroutine init
+end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -415,7 +415,7 @@ subroutine timeshift_md(this, field)
      call pabort()
    end if
 
-end subroutine timeshift_md
+end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -432,7 +432,7 @@ subroutine timeshift_1d(this, field)
      call pabort()
    end if
 
-end subroutine timeshift_1d
+end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
