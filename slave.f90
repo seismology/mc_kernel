@@ -117,11 +117,11 @@ subroutine do_slave()
        ! Receive a message from the master
        iclockold = tick()
        call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
-       iclockold = tick(id=id_mpi, since=iclockold)
 
        ! Check the tag of the received message. If no more work to do, exit loop
        ! and return to main program
        if (mpistatus(MPI_TAG) == DIETAG) exit
+       iclockold = tick(id=id_mpi, since=iclockold)
 
        itask = itask + 1
        write(lu_out,'(A)') '***************************************************************'
