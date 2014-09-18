@@ -378,7 +378,7 @@ subroutine read_receiver(this)
       write(*,*) "Error: Density kernels not yet implemented"
       call pabort
    case default
-      write(*,*) "Error: Unknown model parameter"
+      write(*,*) "Error: Unknown model parameter", trim(this%model_param)
       call pabort      
    end select
 

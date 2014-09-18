@@ -14,6 +14,7 @@ subroutine plot_wavefields()
     use type_parameter,             only : parameter_type
     use fft,                        only : rfft_type, taperandzeropad
     use filtering,                  only : timeshift_type
+    use backgroundmodel,            only : backgroundmodel_type
 
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
@@ -31,7 +32,7 @@ subroutine plot_wavefields()
     complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:)
-    real(kind=dp),    allocatable       :: modelcoeffs(:,:)
+    type(backgroundmodel_type)          :: modelcoeffs
     real(kind=dp)                       :: df
     character(len=64)                   :: fmtstring
 
@@ -97,8 +98,7 @@ subroutine plot_wavefields()
 
     write(*,*) ' Read in forward field'
     allocate(fw_field(ndumps, ndim, nvertices))
-    allocate(modelcoeffs(3,size(co_points)))
-    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source, coeffs=modelcoeffs)
+    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source, model=modelcoeffs)
 
     write(*,*) ' FFT forward field'
     allocate(fw_field_fd(nomega, ndim, nvertices))

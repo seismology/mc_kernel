@@ -11,7 +11,7 @@ module readfields
     use clocks_mod,        only            : tick
     use commpi,            only            : pabort
     use nc_routines,       only            : getgrpid, getvarid, nc_open_for_read, nc_getvar, &
-                                             check
+                                             check, nc_getvar_by_name
 
     use rotations
     use netcdf
@@ -28,6 +28,11 @@ module readfields
         real(kind=sp), allocatable         :: s_mp(:), z_mp(:)      ! Coordinates of element midpoints
         integer, allocatable               :: corner_point_ids(:,:) ! (4,nelem)
         integer, allocatable               :: eltype(:)             ! (nelem)
+        real(kind=sp), allocatable         :: vp(:), vs(:), rho(:)  ! Model parameters
+        real(kind=sp), allocatable         :: lambda(:), mu(:)      ! Elastic parameters
+        real(kind=sp), allocatable         :: phi(:), xi(:), eta(:) ! Anisotropic parameters
+        integer, allocatable               :: isaxis(:)
+        integer, allocatable               :: gll_point_ids(:,:,:)
         integer                            :: npoints, nelem
         real(kind=dp), allocatable         :: theta(:)
         integer                            :: nsurfelem
@@ -45,17 +50,6 @@ module readfields
         integer                            :: seis_disp, seis_velo    ! Variable IDs
         integer                            :: stf_varid               ! Variable IDs
         integer                            :: stf_d_varid             ! Variable IDs
-        integer                            :: fem_mesh_varid          ! Variable IDs
-        integer                            :: sem_mesh_varid          ! Variable IDs
-        integer                            :: eltype_varid            ! Variable IDs
-        integer                            :: axis_varid              ! Variable IDs
-        integer                            :: mesh_s_varid            ! Variable IDs
-        integer                            :: mesh_z_varid            ! Variable IDs
-        integer                            :: mesh_rho_varid          ! Variable IDs
-        integer                            :: mesh_lambda_varid       ! Variable IDs
-        integer                            :: mesh_mu_varid           ! Variable IDs
-        integer                            :: mesh_vs_varid           ! Variable IDs
-        integer                            :: mesh_vp_varid           ! Variable IDs
         integer                            :: chunk_gll
         integer                            :: count_error_pointoutside
         character(len=200)                 :: meshdir
@@ -129,6 +123,7 @@ module readfields
             procedure, pass                :: load_seismogram
 
     end type
+ 
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -180,8 +175,10 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
        write(lu_out,*) 'Forward simulation was ''single'' source'
     else 
        this%nsim_fwd = 0
-       write(*,*) 'ERROR: Forward rundir does not seem to be an axisem rundirectory'
-       call pabort
+       write(*,*) 'ERROR: Forward run directory (as set in inparam_basic FWD_DIR)'
+       write(*,*) trim(fwd_dir)
+       write(*,*) 'does not seem to be an axisem rundirectory'
+       call pabort(do_traceback=.false.)
     end if
 
     moment = .false.
@@ -213,8 +210,12 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
        write(lu_out,*) 'Backward simulation was ''single'' source'
     else 
        this%nsim_bwd = 0
-       write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
-       write(lu_out,*) 'continuing anyway, as this is default in db mode'
+       write(*,*) 'ERROR: Backward run directory (as set in inparam_basic FWD_DIR)'
+       write(*,*) trim(bwd_dir)
+       write(*,*) 'does not seem to be an axisem rundirectory'
+       call pabort(do_traceback=.false.)
+       !write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
+       !write(lu_out,*) 'continuing anyway, as this is default in db mode'
     end if
 
     allocate( this%fwd(this%nsim_fwd) )
@@ -993,8 +994,9 @@ end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points(this, coordinates, source_params, coeffs)
+function load_fw_points(this, coordinates, source_params, model)
     use finite_elem_mapping, only      : inside_element
+    use backgroundmodel, only          : backgroundmodel_type
 
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
@@ -1002,7 +1004,7 @@ function load_fw_points(this, coordinates, source_params, coeffs)
     real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
                                                         size(coordinates,2))
 
-    real(kind=dp), intent(out), optional :: coeffs(3,size(coordinates,2)) ! for now: vp, vs, rho
+    type(backgroundmodel_type), intent(out), optional :: model
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points
@@ -1017,7 +1019,7 @@ function load_fw_points(this, coordinates, source_params, coeffs)
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
-    real(kind=dp)                     :: coeff_buff(1)
+    real(kind=sp), allocatable        :: coeffs(:,:)
     real(kind=dp)                     :: xi, eta
 
     
@@ -1035,10 +1037,11 @@ function load_fw_points(this, coordinates, source_params, coeffs)
         nnext_points = 1
     endif
 
-    
+    allocate(coeffs(6,npoints))
+
     ! Rotate points to FWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
-                          coordinates*1d3,                              &
+                          coordinates,                                  &
                           source_params%lon, source_params%colat)
 
     allocate(nextpoint(nnext_points))
@@ -1114,23 +1117,14 @@ function load_fw_points(this, coordinates, source_params, coeffs)
             gll_point_ids = -1
             if (verbose > 1) &
                 write(6,*) 'element id = ', id_elem !nextpoint(inext_point)%idx
-            call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                                    varid  = this%fwd(1)%sem_mesh_varid, &
-                                    start  = [1, 1, id_elem], &
-                                    count  = [this%npol+1, this%npol+1, 1], &
-                                    values = gll_point_ids))
+            gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem)
             if (verbose > 1) &
                 write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
-            call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                                    varid  = this%fwd(1)%axis_varid, &
-                                    start  = [id_elem], &
-                                    count  = [1], &
-                                    values = axis_int))
 
-            if (axis_int(1) == 1) then
+            if (this%fwdmesh%isaxis(id_elem) == 1) then
                axis = .true.
-            elseif (axis_int(1) == 0) then
+            elseif (this%fwdmesh%isaxis(id_elem) == 0) then
                axis = .false.
             else
                call pabort
@@ -1142,32 +1136,9 @@ function load_fw_points(this, coordinates, source_params, coeffs)
             iclockold = tick(id=id_find_point_fwd, since=iclockold)
         endif
     
-        ! Load model coefficients vp, vs and rho at point ipoint
-        ! @ TODO : We need to store anisotropic model parameters
-        !          in the wavefield netcdf files
-        ! @ TODO : Ludwig is not sure whether [nextpoint(1)%idx]
-        !          is the correct way to load coeffs from sem mesh
-        ! Load coefficient vp
-        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_vp_varid,             &
-             start  = [pointid(ipoint)],                     &
-             count  = [1],                                   &
-             values = coeff_buff))
-        coeffs(1,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
-        ! Load coefficient vs
-        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_vs_varid,             &
-             start  = [pointid(ipoint)],                     & 
-             count  = [1],                                   &
-             values = coeff_buff))
-        coeffs(2,ipoint) = coeff_buff(1)/1e3 ! convert to km/s
-        ! Load coefficient rho
-        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-             varid  = this%fwd(1)%mesh_rho_varid,            &
-             start  = [pointid(ipoint)],                     & 
-             count  = [1],                                   &
-             values = coeff_buff))
-        coeffs(3,ipoint) = coeff_buff(1)*1e9 ! convert to kg/(km^3)
+        if (present(model)) then
+          coeffs(:, ipoint) = load_model_coeffs(this, pointid(ipoint))
+        end if
 
         select case(trim(this%strain_type))
         case('straintensor_trace')    
@@ -1238,7 +1209,34 @@ function load_fw_points(this, coordinates, source_params, coeffs)
 
     end do !ipoint
 
+    if (present(model)) call model%recombine(coeffs)
+
 end function load_fw_points
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function load_model_coeffs(mesh, ipoint) result(coeffs)
+   type(semdata_type), intent(in) :: mesh
+   integer, intent(in)            :: ipoint
+   real(kind=sp)                  :: coeffs(6)
+   real(kind=sp)                  :: coeff_buff(1)
+
+   
+   ! Load model coefficients vp, vs and rho at point ipoint
+   ! Load coefficient vp
+   coeffs(1) = mesh%fwdmesh%vp(ipoint)
+   ! Load coefficient vs
+   coeffs(2) = mesh%fwdmesh%vs(ipoint)
+   ! Load coefficient rho
+   coeffs(3) = mesh%fwdmesh%rho(ipoint)
+   ! Load coefficient phi
+   coeffs(4) = mesh%fwdmesh%phi(ipoint)
+   ! Load coefficient xi
+   coeffs(5) = mesh%fwdmesh%xi(ipoint)
+   ! Load coefficient eta
+   coeffs(6) = mesh%fwdmesh%eta(ipoint)
+
+end function load_model_coeffs
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1408,7 +1406,7 @@ function load_bw_points(this, coordinates, receiver)
 
     ! Rotate points to BWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
-                          coordinates*1e3,                              &
+                          coordinates,                                  &
                           receiver%lon, receiver%colat)
 
     allocate(nextpoint(nnext_points))
@@ -1477,23 +1475,15 @@ function load_bw_points(this, coordinates, receiver)
             gll_point_ids = -1
             if (verbose > 1) &
                 write(6,*) 'element id = ', nextpoint(inext_point)%idx
-            call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                    varid  = this%bwd(1)%sem_mesh_varid, &
-                                    start  = [1, 1, nextpoint(inext_point)%idx], &
-                                    count  = [this%npol+1, this%npol+1, 1], &
-                                    values = gll_point_ids))
+            
+            gll_point_ids = this%bwdmesh%gll_point_ids(:,:,id_elem)
             if (verbose > 1) &
                 write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
-            call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                    varid  = this%bwd(1)%axis_varid, &
-                                    start  = [nextpoint(inext_point)%idx], &
-                                    count  = [1], &
-                                    values = axis_int))
 
-            if (axis_int(1) == 1) then
+            if (this%bwdmesh%isaxis(id_elem) == 1) then
                axis = .true.
-            elseif (axis_int(1) == 0) then
+            elseif (this%bwdmesh%isaxis(id_elem) == 0) then
                axis = .false.
             else
                call pabort
@@ -1986,281 +1976,35 @@ subroutine read_meshes(this)
     write(lu_out,*) '  Read SEM mesh from first forward simulation'
     
     call nc_read_att_int(this%fwdmesh%npoints, 'npoints', this%fwd(1))
+    if (trim(this%dump_type) == 'displ_only') then
+      call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
+      !write(lu_out, *) 'Mesh has ', this%fwdmesh%nelem, ' elements'
+    end if
     
     do isim = 1, this%nsim_fwd
        this%fwd(isim)%ngll = this%fwdmesh%npoints
     end do
 
-    if (trim(this%dump_type) == 'displ_only') then
-        call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
-        
-        allocate(this%fwdmesh%s_mp(this%fwdmesh%nelem))
-        allocate(this%fwdmesh%z_mp(this%fwdmesh%nelem))
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "fem_mesh",            &
-                      varid = this%fwd(1)%fem_mesh_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "sem_mesh",            &
-                      varid = this%fwd(1)%sem_mesh_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "eltype",              &
-                      varid = this%fwd(1)%eltype_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "axis",              &
-                      varid = this%fwd(1)%axis_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_S",              &
-                      varid = this%fwd(1)%mesh_s_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_Z",              &
-                      varid = this%fwd(1)%mesh_z_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_rho",              &
-                      varid = this%fwd(1)%mesh_rho_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_vp",              &
-                      varid = this%fwd(1)%mesh_vp_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_vs",              &
-                      varid = this%fwd(1)%mesh_vs_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_lambda",              &
-                      varid = this%fwd(1)%mesh_lambda_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_mu",              &
-                      varid = this%fwd(1)%mesh_mu_varid)
-           
-        call  getvarid( ncid  = this%fwd(1)%mesh, &
-                        name  = "mp_mesh_S", &
-                        varid = ncvarid_mesh_s) 
-
-        call  getvarid( ncid  = this%fwd(1)%mesh, &
-                        name  = "mp_mesh_Z", &
-                        varid = ncvarid_mesh_z) 
-
-        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                       varid  = ncvarid_mesh_s,         &
-                       start  = 1,                    &
-                       count  = this%fwdmesh%nelem, &
-                       values = this%fwdmesh%s_mp ) 
-
-        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                       varid  = ncvarid_mesh_z,         &
-                       start  = 1,                    &
-                       count  = this%fwdmesh%nelem, &
-                       values = this%fwdmesh%z_mp ) 
-
-!       Only executed, if compiled for the KERNER. This block is skipped for the RDBM!
-        allocate(this%fwdmesh%corner_point_ids(4, this%fwdmesh%nelem))
-        allocate(this%fwdmesh%s(this%fwdmesh%npoints))
-        allocate(this%fwdmesh%z(this%fwdmesh%npoints))
-        allocate(this%fwdmesh%eltype(this%fwdmesh%nelem))
-
-        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                                varid  = this%fwd(1)%fem_mesh_varid, &
-                                start  = [1, 1], &
-                                count  = [4, this%fwdmesh%nelem], &
-                                values = this%fwdmesh%corner_point_ids))
-        
-        call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                                varid  = this%fwd(1)%eltype_varid, &
-                                start  = [1], &
-                                count  = [this%fwdmesh%nelem], &
-                                values = this%fwdmesh%eltype))
-        
-        call nc_getvar(ncid   = this%fwd(1)%mesh,           &
-                       varid  = this%fwd(1)%mesh_s_varid,   &
-                       start  = 1,                          &
-                       count  = this%fwdmesh%npoints,       &
-                       values = this%fwdmesh%s ) 
-
-        call nc_getvar(ncid   = this%fwd(1)%mesh,           &
-                       varid  = this%fwd(1)%mesh_z_varid,   &
-                       start  = 1,                          &
-                       count  = this%fwdmesh%npoints,       &
-                       values = this%fwdmesh%z ) 
-    
-    else
-        allocate(this%fwdmesh%s(this%fwdmesh%npoints))
-        allocate(this%fwdmesh%z(this%fwdmesh%npoints))
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_rho",              &
-                      varid = this%fwd(1)%mesh_rho_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_vp",              &
-                      varid = this%fwd(1)%mesh_vp_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_vs",              &
-                      varid = this%fwd(1)%mesh_vs_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_lambda",              &
-                      varid = this%fwd(1)%mesh_lambda_varid)
-
-        call getvarid(ncid  = this%fwd(1)%mesh,   &
-                      name  = "mesh_mu",              &
-                      varid = this%fwd(1)%mesh_mu_varid)
-           
-        call  getvarid( ncid  = this%fwd(1)%mesh, &
-                        name  = "mesh_S", &
-                        varid = ncvarid_mesh_s) 
-
-        call  getvarid( ncid  = this%fwd(1)%mesh, &
-                        name  = "mesh_Z", &
-                        varid = ncvarid_mesh_z) 
-
-        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                       varid  = ncvarid_mesh_s,         &
-                       start  = 1,                    &
-                       count  = this%fwdmesh%npoints, &
-                       values = this%fwdmesh%s ) 
-
-        call nc_getvar(ncid   = this%fwd(1)%mesh,       &
-                       varid  = ncvarid_mesh_z,         &
-                       start  = 1,                    &
-                       count  = this%fwdmesh%npoints, &
-                       values = this%fwdmesh%z ) 
-    endif
-
-   
+    call cache_mesh(this%fwd(1)%mesh, this%fwdmesh, this%dump_type) 
    
     ! Backward SEM mesh                     
     if (this%nsim_bwd > 0) then
-        write(lu_out,*) 'Read SEM mesh from first backward simulation'
-        
-        call nc_read_att_int(this%bwdmesh%npoints, 'npoints', this%bwd(1))
-        
-        do isim = 1, this%nsim_bwd
-           this%bwd(isim)%ngll = this%bwdmesh%npoints
-        end do
+      write(lu_out,*) 'Read SEM mesh from first backward simulation'
+      
+      call nc_read_att_int(this%bwdmesh%npoints, 'npoints', this%bwd(1))
 
-        if (trim(this%dump_type) == 'displ_only') then
-            call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
-            
-            allocate(this%bwdmesh%s_mp(this%fwdmesh%nelem))
-            allocate(this%bwdmesh%z_mp(this%fwdmesh%nelem))
+      if (trim(this%dump_type) == 'displ_only') &
+          call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%bwd(1))
+      
+      do isim = 1, this%nsim_bwd
+         this%bwd(isim)%ngll = this%bwdmesh%npoints
+      end do
+    
+      call cache_mesh(this%bwd(1)%mesh, this%bwdmesh, this%dump_type) 
 
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "fem_mesh",            &
-                          varid = this%bwd(1)%fem_mesh_varid)
+    end if
 
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "sem_mesh",            &
-                          varid = this%bwd(1)%sem_mesh_varid)
 
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "eltype",              &
-                          varid = this%bwd(1)%eltype_varid)
-
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "axis",              &
-                          varid = this%bwd(1)%axis_varid)
-
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "mesh_S",              &
-                          varid = this%bwd(1)%mesh_s_varid)
-
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "mesh_Z",              &
-                          varid = this%bwd(1)%mesh_z_varid)
-
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "mesh_rho",              &
-                          varid = this%bwd(1)%mesh_rho_varid)
-
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "mesh_lambda",              &
-                          varid = this%bwd(1)%mesh_lambda_varid)
-
-            call getvarid(ncid  = this%bwd(1)%mesh,   &
-                          name  = "mesh_mu",              &
-                          varid = this%bwd(1)%mesh_mu_varid)
-            
-            call  getvarid( ncid  = this%bwd(1)%mesh, &
-                            name  = "mp_mesh_S", &
-                            varid = ncvarid_mesh_s) 
-            call  getvarid( ncid  = this%bwd(1)%mesh, &
-                            name  = "mp_mesh_Z", &
-                            varid = ncvarid_mesh_z) 
-
-            call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                           varid  = ncvarid_mesh_s,   &
-                           start  = 1,                &
-                           count  = this%bwdmesh%nelem, &
-                           values = this%bwdmesh%s_mp ) 
-            call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                           varid  = ncvarid_mesh_z,   &
-                           start  = 1,                &
-                           count  = this%bwdmesh%nelem, &
-                           values = this%bwdmesh%z_mp ) 
-
-!           Only executed, if compiled for the KERNER. This block is skipped for the RDBM!
-            allocate(this%bwdmesh%corner_point_ids(4, this%bwdmesh%nelem))
-            allocate(this%bwdmesh%s(this%bwdmesh%npoints))
-            allocate(this%bwdmesh%z(this%bwdmesh%npoints))
-            allocate(this%bwdmesh%eltype(this%bwdmesh%nelem))
-
-            call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                    varid  = this%bwd(1)%fem_mesh_varid, &
-                                    start  = [1, 1], &
-                                    count  = [4, this%bwdmesh%nelem], &
-                                    values = this%bwdmesh%corner_point_ids))
-            
-            call check(nf90_get_var(ncid   = this%bwd(1)%mesh,   &
-                                    varid  = this%bwd(1)%eltype_varid, &
-                                    start  = [1], &
-                                    count  = [this%bwdmesh%nelem], &
-                                    values = this%bwdmesh%eltype))
-            
-            call nc_getvar(ncid   = this%bwd(1)%mesh,            &
-                           varid  = this%bwd(1)%mesh_s_varid,    &
-                           start  = 1,                           &
-                           count  = this%bwdmesh%npoints,        &
-                           values = this%bwdmesh%s ) 
-            call nc_getvar(ncid   = this%bwd(1)%mesh,            &
-                           varid  = this%bwd(1)%mesh_z_varid,    &
-                           start  = 1,                           &
-                           count  = this%bwdmesh%npoints,        &
-                           values = this%bwdmesh%z ) 
-
-        else
-
-            allocate(this%bwdmesh%s(this%bwdmesh%npoints))
-            allocate(this%bwdmesh%z(this%bwdmesh%npoints))
-            
-            call  getvarid( ncid  = this%bwd(1)%mesh, &
-                            name  = "mesh_S", &
-                            varid = ncvarid_mesh_s) 
-            call  getvarid( ncid  = this%bwd(1)%mesh, &
-                            name  = "mesh_Z", &
-                            varid = ncvarid_mesh_z) 
-
-            call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                           varid  = ncvarid_mesh_s,   &
-                           start  = 1,                &
-                           count  = this%bwdmesh%npoints, &
-                           values = this%bwdmesh%s ) 
-            call nc_getvar(ncid   = this%bwd(1)%mesh, &
-                           varid  = ncvarid_mesh_z,   &
-                           start  = 1,                &
-                           count  = this%bwdmesh%npoints, &
-                           values = this%bwdmesh%z ) 
-        endif
-    endif
 
     ! Read surface element theta
     ! Forward mesh
@@ -2459,6 +2203,83 @@ subroutine read_meshes(this)
    call flush(lu_out)
 
 end subroutine read_meshes
+!-----------------------------------------------------------------------------------------
+ 
+!-----------------------------------------------------------------------------------------
+subroutine cache_mesh(ncid, mesh, dump_type)
+!< Read and cache mesh variables
+  integer, intent(in)           :: ncid
+  type(meshtype)                :: mesh
+  character(len=*), intent(in)  :: dump_type
+
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_S',          &
+                         values = mesh%s   )
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_Z',          &
+                         values = mesh%z   )
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_vp',         &
+                         values = mesh%vp  )
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_vs',         &
+                         values = mesh%vs  )
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_rho',        &
+                         values = mesh%rho )
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_lambda',     &
+                         values = mesh%lambda)
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_mu',         &
+                         values = mesh%mu  )
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_phi',        &
+                         values = mesh%phi )
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_xi',         &
+                         values = mesh%xi  )
+              
+  call nc_getvar_by_name(ncid   = ncid,  &
+                         name   = 'mesh_eta',         &
+                         values = mesh%eta )
+
+  if (trim(dump_type) == 'displ_only') then
+      
+      call nc_getvar_by_name(ncid   = ncid,  &
+                             name   = 'eltype',          &
+                             values = mesh%eltype)
+
+      call nc_getvar_by_name(ncid   = ncid,  &
+                             name   = 'axis',            &
+                             values = mesh%isaxis)
+
+      call nc_getvar_by_name(ncid   = ncid,  &
+                             name   = 'mp_mesh_S',         &
+                             values = mesh%s_mp )
+                  
+      call nc_getvar_by_name(ncid   = ncid,  &
+                             name   = 'mp_mesh_Z',         &
+                             values = mesh%z_mp )
+
+      call nc_getvar_by_name(ncid   = ncid,         &
+                             name   = 'fem_mesh',   &
+                             values = mesh%corner_point_ids )
+
+      call nc_getvar_by_name(ncid   = ncid,         &
+                             name   = 'sem_mesh',   &
+                             values = mesh%gll_point_ids)
+  endif
+
+end subroutine cache_mesh
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------

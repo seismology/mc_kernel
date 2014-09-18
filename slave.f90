@@ -117,11 +117,11 @@ subroutine do_slave()
        ! Receive a message from the master
        iclockold = tick()
        call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
-       iclockold = tick(id=id_mpi, since=iclockold)
 
        ! Check the tag of the received message. If no more work to do, exit loop
        ! and return to main program
        if (mpistatus(MPI_TAG) == DIETAG) exit
+       iclockold = tick(id=id_mpi, since=iclockold)
 
        itask = itask + 1
        write(lu_out,'(A)') '***************************************************************'
@@ -202,6 +202,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use fft,                         only: rfft_type, taperandzeropad
     use filtering,                   only: timeshift_type
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
+    use kernel,                      only: assemble_basekernel, calc_physical_kernels
+    use backgroundmodel,             only: backgroundmodel_type
     use clocks_mod,                  only: tick
 
     type(inversion_mesh_data_type), intent(in)    :: inv_mesh
@@ -209,9 +211,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     type(semdata_type),             intent(in)    :: sem_data
     type(rfft_type),                intent(in)    :: fft_data
     type(slave_result_type)                       :: slave_result
-    type(timeshift_type)                          :: timeshift_fwd, timeshift_bwd
 
+    type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
     type(integrated_type), allocatable  :: int_kernel(:)
+    type(backgroundmodel_type)          :: bg_model
 
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
     real(kind=dp),    allocatable       :: bw_field(:,:,:)
@@ -224,12 +227,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:,:) 
     real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
     integer,          allocatable       :: niterations(:,:)
-    real(kind=dp),    allocatable       :: modelcoeffs(:,:)
-
-    real(kind=dp),    allocatable       :: c_rho(:), c_eta(:)
-    real(kind=dp),    allocatable       :: c_vs(:),  c_vp(:)
-    real(kind=dp),    allocatable       :: c_vsh(:), c_vsv(:)
-    real(kind=dp),    allocatable       :: c_vph(:), c_vpv(:)
 
     real(kind=dp)                       :: volume
 
@@ -274,16 +271,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
 
     volume = 0.0
-
-    allocate(modelcoeffs(3, nptperstep)) ! for now just load vp, vs, rho
-    allocate(c_vp(nptperstep)) 
-    allocate(c_vs(nptperstep)) 
-    allocate(c_rho(nptperstep)) 
-    allocate(c_vsh(nptperstep)) 
-    allocate(c_vsv(nptperstep)) 
-    allocate(c_vph(nptperstep)) 
-    allocate(c_vpv(nptperstep)) 
-    allocate(c_eta(nptperstep)) 
 
     allocate(niterations(parameters%nkernel, nelements))
     niterations = 0
@@ -334,21 +321,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            ! Load forward field
            iclockold = tick()
            fw_field = sem_data%load_fw_points( random_points, parameters%source, & 
-                                               coeffs = modelcoeffs)
+                                               model = bg_model)
            iclockold = tick(id=id_fwd, since=iclockold)
-
-           ! Recombine model coefficients for chosen parameterization
-           c_vp  = modelcoeffs(1,:) ! contains velocities at each point in km/s
-           c_vs  = modelcoeffs(2,:) ! contains velocities at each point in km/s
-           c_rho = modelcoeffs(3,:) ! contains velocities at each point in kg/(km^3)
-
-           ! @ TODO : For now assume an isotropic background model
-           !          need to store xi in the netcdf files
-           c_vsh = c_vs
-           c_vsv = c_vs
-           c_vph = c_vp
-           c_vpv = c_vp
-           c_eta = 1.d0
 
            ! FFT of forward field
            call fft_data%rfft( taperandzeropad(fw_field, ntimes, taper_length), fw_field_fd )
@@ -390,46 +364,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               iclockold = tick(id=id_filter_conv, since=iclockold)
                  
               ! Loop over all base kernels
+              ! Calculate the waveform kernel in the basic parameters 
+              ! (mu, lambda, rho, a, b, c)  
               do ibasekernel = 1, nbasekernels
 
-                 ! readfields.f90 returns strain tensor in voigt notation
-                 ! elements 1,...,6 contain tt,pp,rr,pr,tr,tp. See Fichtner
-                 ! book, p. 168-169 how the fundamental kernels K_a, K_b and
-                 ! K_c are defined
+                 ! Calculate base kernel number ibasekernel
+                 conv_field_fd = assemble_basekernel(parameters%basekernel_id(ibasekernel), &
+                                                     parameters%strain_type,                &
+                                                     fw_field_fd, bw_field_fd)
 
-                 ! @ TODO : This could be deferred to a subroutine
-                 
-                 select case(trim(parameters%basekernel_id(ibasekernel)))
-                 case('k_lambda')
-                    select case(trim(parameters%strain_type))
-                    case('straintensor_trace')
-                       conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
-                    case('straintensor_full')
-                       ! Only convolve trace of fw and bw fields
-                       conv_field_fd = fw_field_fd(:,1,:) * &
-                                       fw_field_fd(:,2,:) * &
-                                       fw_field_fd(:,3,:) * &
-                                       bw_field_fd(:,1,:) * &
-                                       bw_field_fd(:,2,:) * &
-                                       bw_field_fd(:,3,:)
-                    end select
-                 case('k_mu')
-                    conv_field_fd = sum(fw_field_fd * bw_field_fd, 2) * 2.d0
-                 case('k_a')
-                    conv_field_fd = ( bw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
-                                    ( fw_field_fd(:,2,:) * bw_field_fd(:,1,:) )
-                 case('k_b')
-                    conv_field_fd = ( ( bw_field_fd(:,5,:) * fw_field_fd(:,5,:) ) + &
-                                    ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
-                 case('k_c')
-                    conv_field_fd = ( fw_field_fd(:,1,:) + fw_field_fd(:,2,:) ) * &
-                                      bw_field_fd(:,3,:) + &
-                                    ( bw_field_fd(:,1,:) * bw_field_fd(:,2,:) ) * &
-                                      fw_field_fd(:,3,:)
-                 case('k_rho')
-                    print*,"ERROR: Density kernels not yet implemented"
-                    stop
-                 end select
 
                  iclockold = tick(id=id_filter_conv, since=iclockold)
                  
@@ -449,7 +392,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                        call fft_data%irfft(conv_field_fd_filt, conv_field)
                        iclockold = tick(id=id_fft, since=iclockold)
 
-                       ! Calculate scalar base kernels from convolved time traces
+                       ! Calculate scalar misfit base kernels from convolved time traces
                        kernelvalue_basekers(:,ikernel,ibasekernel) =         &
                                             parameters%kernel(ikernel)       &
                                             %calc_misfit_kernel(conv_field)
@@ -477,54 +420,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                          * inv_mesh%weights(ielement, ibasisfunc, random_points)                 
                  end do
                  
-                 ! See Fichtner p. 169 how kernels are defined and type_parameter.f90
-                 ! how basekernels inside kernelvalue_weighted are ordered
-                 select case(trim(parameters%model_param))
-                 case('lambda')
-                    kernelvalue_physical(:, ikernel) =                                 &
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('mu')
-                    kernelvalue_physical(:, ikernel) =                                 & 
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('vp')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vp *           &
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('vs')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vs *           &
-                           kernelvalue_weighted(:, ikernel, 2) - 4.d0 * c_rho * c_vs * &
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('vsh')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vsh *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) * 2 +                   &
-                           kernelvalue_weighted(:, ikernel, 2) +                       &
-                           kernelvalue_weighted(:, ikernel, 3) +                       &
-                           kernelvalue_weighted(:, ikernel, 4) * 2*(1-c_eta))
-                 case('vsv')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vsv *          &
-                           kernelvalue_weighted(:, ikernel, 1)
-                 case('vph')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vph *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) +                       &
-                           kernelvalue_weighted(:, ikernel, 2) * c_eta )
-                 case('vpv')
-                    kernelvalue_physical(:, ikernel) = 2.d0 * c_rho * c_vpv *          &
-                         ( kernelvalue_weighted(:, ikernel, 1) +                       &
-                           kernelvalue_weighted(:, ikernel, 2) +                       &
-                           kernelvalue_weighted(:, ikernel, 3) )
-                    stop
-                 case('kappa')
-                    write(*,*) "Error: Kappa kernels not yet implemented"
-                    stop
-                 case('eta')
-                    write(*,*) "Error: Eta kernels not yet implemented"
-                    stop
-                 case('xi')
-                    write(*,*) "Error: Xi kernels not yet implemented"
-                    stop
-                 case('rho')
-                    write(*,*) "Error: Density kernels not yet implemented"
-                    stop
-                 end select
+                 ! Compute the kernels for the actual physical parameters of interest
+                 kernelvalue_physical(:, ikernel) = calc_physical_kernels( &
+                                      parameters%model_param,              &
+                                      kernelvalue_weighted(:, ikernel, :), &
+                                      bg_model = bg_model)
 
               end do
 
@@ -570,3 +470,4 @@ end function slave_work
 
 end module
 !=========================================================================================
+
