@@ -7,8 +7,6 @@ module backgroundmodel
     real(kind=sp), allocatable :: c_vs(:)  ! velocities at each point in m/s
     real(kind=sp), allocatable :: c_rho(:) ! densities at each point in kg/(m^3)
 
-    !@ TODO : For now assume an isotropic background model
-    !         need to store xi in the netcdf files
     real(kind=sp), allocatable :: c_vsh(:)
     real(kind=sp), allocatable :: c_vsv(:)
     real(kind=sp), allocatable :: c_vph(:)
@@ -25,8 +23,8 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine recombine(this, coeffs)
   class(backgroundmodel_type) :: this
-  real(kind=sp), intent(in)  :: coeffs(:,:)
-  integer                    :: npoints
+  real(kind=sp), intent(in)   :: coeffs(:,:)
+  integer                     :: npoints
 
 
   npoints = size(coeffs, 2)
@@ -62,8 +60,8 @@ subroutine recombine(this, coeffs)
   this%c_vsh = this%c_vs
   this%c_vph = this%c_vp
 
-  this%c_vsv = this%c_vsh / xi**.5
-  this%c_vpv = this%c_vph * phi**.5
+  this%c_vsv = this%c_vsh / sqrt(xi)
+  this%c_vpv = this%c_vph * sqrt(phi)
   !this%c_eta = 1.d0
 
 end subroutine 
