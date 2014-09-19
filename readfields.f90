@@ -313,9 +313,12 @@ subroutine open_files(this)
         call nc_read_att_int(this%fwd(isim)%file_version, 'file version', this%fwd(isim))
 
         if (this%fwd(isim)%file_version < min_file_version) then
-           print *, 'NetCDF file to old. Minimum file version: ', min_file_version, &
+           print *, 'ERROR: AxiSEM NetCDF file too old. '
+           print *, 'Filename: ', trim(this%fwd(isim)%meshdir)//'/Data/ordered_output.nc4'
+           print *, 'Minimum file version: ', min_file_version, &
                     ', found: ', this%fwd(isim)%file_version
-           call pabort
+                  
+           call pabort(do_traceback=.false.)
         endif
 
         call nc_read_att_dble(this%fwd(isim)%planet_radius, 'planet radius', this%fwd(isim))
@@ -484,10 +487,13 @@ subroutine open_files(this)
 
         call nc_read_att_int(this%bwd(isim)%file_version, 'file version', this%bwd(isim))
 
-        if (this%fwd(isim)%file_version < min_file_version) then
-           print *, 'NetCDF file to old. Minimum file version: ', min_file_version, &
-                    ', found: ', this%fwd(isim)%file_version
-           call pabort
+        if (this%bwd(isim)%file_version < min_file_version) then
+           print *, 'ERROR: AxiSEM NetCDF file too old. '
+           print *, 'Filename: ', trim(this%bwd(isim)%meshdir)//'/Data/ordered_output.nc4'
+           print *, 'Minimum file version: ', min_file_version, &
+                    ', found: ', this%bwd(isim)%file_version
+                  
+           call pabort(do_traceback=.false.)
         endif
 
         call nc_read_att_dble(this%bwd(isim)%planet_radius, 'planet radius', this%bwd(isim))
