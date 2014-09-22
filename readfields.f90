@@ -1215,7 +1215,7 @@ function load_fw_points(this, coordinates, source_params, model)
 
     end do !ipoint
 
-    if (present(model)) call model%recombine(coeffs)
+    if (present(model)) call model%combine(coeffs)
 
 end function load_fw_points
 !-----------------------------------------------------------------------------------------
@@ -1984,7 +1984,8 @@ subroutine read_meshes(this)
     call nc_read_att_int(this%fwdmesh%npoints, 'npoints', this%fwd(1))
     if (trim(this%dump_type) == 'displ_only') then
       call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
-      !write(lu_out, *) 'Mesh has ', this%fwdmesh%nelem, ' elements'
+      write(lu_out, *) 'Mesh has ', this%fwdmesh%npoints, ' points, ', &
+                                    this%fwdmesh%nelem, ' elements'
     end if
     
     do isim = 1, this%nsim_fwd
@@ -1999,8 +2000,11 @@ subroutine read_meshes(this)
       
       call nc_read_att_int(this%bwdmesh%npoints, 'npoints', this%bwd(1))
 
-      if (trim(this%dump_type) == 'displ_only') &
-          call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%bwd(1))
+      if (trim(this%dump_type) == 'displ_only') then
+        call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%bwd(1))
+        write(lu_out, *) 'Mesh has ', this%fwdmesh%npoints, ' points, ', &
+                                      this%fwdmesh%nelem, ' elements'
+      end if
       
       do isim = 1, this%nsim_bwd
          this%bwd(isim)%ngll = this%bwdmesh%npoints
@@ -2217,6 +2221,8 @@ subroutine cache_mesh(ncid, mesh, dump_type)
   integer, intent(in)           :: ncid
   type(meshtype)                :: mesh
   character(len=*), intent(in)  :: dump_type
+
+  write(lu_out, *) 'Reading mesh parameters...'
 
   call nc_getvar_by_name(ncid   = ncid,  &
                          name   = 'mesh_S',          &
