@@ -904,24 +904,28 @@ function invert(A, nrows) result(A_inv)
   integer, intent(in)           :: nrows 
   real(kind=dp), intent(in)     :: A(nrows, nrows)
   real(kind=dp)                 :: A_inv(nrows, nrows)
-  integer                       :: lda, lwork, info
+  integer                       :: info
   real(kind=dp), allocatable    :: work(:)
   integer, allocatable          :: ipiv(:)
 
+  external                      :: dgetrf, dgetri
   ! This is done in LAPACK routines
   A_inv = A
-  lda = nrows
-  lwork = nrows
   allocate(ipiv(nrows))
   allocate(work(nrows))
   
-  call dgetrf( nrows, nrows, A_inv, lda, ipiv, info )               
+  call dgetrf( nrows, nrows, A_inv, nrows, ipiv, info )               
+
+  if (info.ne.0) then
+    write(*,*) 'Matrix is numerically singular'
+    call pabort()
+  end if
   
   ! Inverse der LU-faktorisierten Matrix A        
-  call dgetri( nrows, A_inv, lda, ipiv, work, lwork, info )
+  call dgetri( nrows, A_inv, nrows, ipiv, work, nrows, info )
   if (info.ne.0) then
      write(*,*) 'Error in matrix inversion'
-     call pabort 
+     call pabort() 
   end if
 
 end function
