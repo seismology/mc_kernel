@@ -107,6 +107,10 @@ subroutine nc_getvar_by_name_1d_int(ncid, name, values)
   integer                       :: variable_id, dimid(1), npoints, variable_type
   integer                       :: status
 
+  if (verbose>1) then
+    write(lu_out,"(' Trying to read 1D variable ', A, '...')") trim(name)
+  end if
+
   call  getvarid( ncid  = ncid,            &
                   name  = name,   &
                   varid = variable_id)
@@ -146,6 +150,11 @@ subroutine nc_getvar_by_name_1d(ncid, name, values)
 
   integer                       :: variable_id, dimid(1), npoints, variable_type
   integer                       :: status
+
+
+  if (verbose>1) then
+    write(lu_out,"(' Trying to read 1D variable ', A, '...')") trim(name)
+  end if
 
   call  getvarid( ncid  = ncid,            &
                   name  = name,   &
@@ -187,6 +196,10 @@ subroutine nc_getvar_by_name_2d_int(ncid, name, values)
   integer                       :: variable_id, dimid(2), len_dim1, len_dim2, variable_type
   integer                       :: status
 
+  if (verbose>1) then
+    write(lu_out,"(' Trying to read 2D variable ', A, '...')") trim(name)
+  end if
+
   call  getvarid( ncid  = ncid,            &
                   name  = name,   &
                   varid = variable_id)
@@ -204,7 +217,9 @@ subroutine nc_getvar_by_name_2d_int(ncid, name, values)
                                   dimid = dimid(2),       &
                                   len   = len_dim2)
 
+  print *, 'Allocating with dimension ', len_dim1, len_dim2                              
   allocate(values(len_dim1, len_dim2))
+  print *, 'Allocated? ', allocated(values), size(values)
 
   select case(variable_type)
   case(NF90_INT)
@@ -230,6 +245,10 @@ subroutine nc_getvar_by_name_2d(ncid, name, values)
 
   integer                       :: variable_id, dimid(2), len_dim1, len_dim2, variable_type
   integer                       :: status
+
+  if (verbose>1) then
+    write(lu_out,"(' Trying to read 2D variable ', A, '...')") trim(name)
+  end if
 
   call  getvarid( ncid  = ncid,            &
                   name  = name,   &
@@ -275,6 +294,10 @@ subroutine nc_getvar_by_name_3d_int(ncid, name, values)
   integer                       :: variable_id, dimid(3), len_dim(3), variable_type
   integer                       :: status, i_dim
 
+  if (verbose>1) then
+    write(lu_out,"(' Trying to read 3D variable ', A, '...')") trim(name)
+  end if
+
   call  getvarid( ncid  = ncid,            &
                   name  = name,   &
                   varid = variable_id)
@@ -318,6 +341,10 @@ subroutine nc_getvar_by_name_3d(ncid, name, values)
 
   integer                       :: variable_id, dimid(3), len_dim(3), variable_type
   integer                       :: status, i_dim
+
+  if (verbose>1) then
+    write(lu_out,"(' Trying to read 3D variable ', A, '...')") trim(name)
+  end if
 
   call  getvarid( ncid  = ncid,            &
                   name  = name,   &
@@ -418,8 +445,8 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
        stop
    
    elseif (verbose>1) then
-       write(*,200) myrank, real(count) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 1D variable: ',I7,' in NCID', I7)
@@ -503,8 +530,8 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
        stop
    
    elseif (verbose>1) then
-       write(*,200) myrank, real(count) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 1D variable: ',I7,' in NCID', I7)
@@ -588,8 +615,8 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
        stop
    
    elseif (verbose>1) then
-       write(*,200) myrank, real(count) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 1D variable: ',I7,' in NCID', I7)
@@ -690,8 +717,8 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
    
    elseif (verbose>1) then
        ! Everything okay
-       write(*,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 2D variable: ',I7,' in NCID', I7)
@@ -716,11 +743,10 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
 !< Help interpret the inane NetCDF error messages
    integer, intent(in)          :: ncid, varid
    integer, intent(in)          :: start(2), count(2)
-   integer, intent(out)         :: values(:,:)
+   integer, intent(inout), allocatable :: values(:,:)
    integer                      :: xtype, ndims, status, dimsize, idim
    integer                      :: dimid(10)
    character(len=nf90_max_name) :: varname, dimname
-
 
    status = nf90_inquire_variable(ncid  = ncid,     &
                                   varid = varid,    &
@@ -731,6 +757,7 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
        print *, trim(nf90_strerror(status))
        stop
    end if
+
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 2
        if (size(values,idim).ne.count(idim)) then
@@ -746,6 +773,7 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
                          start  = start,          &
                          count  = count )
 
+   print *, 'Made it into the getvar_int2d routine'
                       
    ! If an error has occurred, try to find a reason                  
    if (status.ne.NF90_NOERR) then
@@ -792,8 +820,8 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
    
    elseif (verbose>1) then
        ! Everything okay
-       write(*,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 2D variable: ',I7,' in NCID', I7)
@@ -894,8 +922,8 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
    
    elseif (verbose>1) then
        ! Everything okay
-       write(6,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 3D variable: ',I7,' in NCID', I7)
@@ -996,8 +1024,8 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
    
    elseif (verbose>1) then
        ! Everything okay
-       write(6,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 3D variable: ',I7,' in NCID', I7)
@@ -1081,8 +1109,8 @@ subroutine putvar_real1d(ncid, varid, values, start, count)
        stop
    
    elseif (verbose>1) then
-       write(*,200) myrank, real(count) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 1D variable: ',I7,' in NCID', I7)
@@ -1183,8 +1211,8 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
    
    elseif (verbose>1) then
        ! Everything okay
-       write(*,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 2D variable: ',I7,' in NCID', I7)
@@ -1285,8 +1313,8 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
    
    elseif (verbose>1) then
        ! Everything okay
-       write(6,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
-       call flush(6)
+       write(lu_out,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
    end if
     
 99  format('ERROR: CPU ', I4, ' could not find 3D variable: ',I7,' in NCID', I7)
