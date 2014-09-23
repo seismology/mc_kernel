@@ -83,8 +83,8 @@ subroutine combine(this, coeffs)
   this%c_vsh = this%c_vs
   this%c_vph = this%c_vp
 
-  this%c_vsv = this%c_vsh / sqrt(coeffs(5,:))
-  this%c_vpv = this%c_vph * sqrt(coeffs(6,:))
+  this%c_vsv = this%c_vsh / sqrt(coeffs(4,:))
+  this%c_vpv = this%c_vph * sqrt(coeffs(5,:))
   !this%c_eta = 1.d0
 
 end subroutine combine
