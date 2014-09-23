@@ -61,7 +61,7 @@ print MAKEFILE "ifeq (\$(strip \$(USE_NETCDF)),true)\n";
 print MAKEFILE "   FFLAGS += -Dunc\n";
 print MAKEFILE "   ifdef NETCDF_PATH\n";
 print MAKEFILE "       LIBS = -llapack -L \$(strip \$(NETCDF_PATH))/lib -lnetcdff -lfftw3 -Wl,-rpath,\$(strip \$(NETCDF_PATH))/lib\n";
-print MAKEFILE "       INCLUDE = -I \$(strip \$(NETCDF_PATH))/include\n";
+print MAKEFILE "       INCLUDE = -I/usr/include -I \$(strip \$(NETCDF_PATH))/include\n";
 print MAKEFILE "   else\n";
 print MAKEFILE "       LIBS = -lfftw3 -llapack -lnetcdff\n";
 print MAKEFILE "       INCLUDE = -I /usr/include\n";
@@ -79,7 +79,7 @@ print MAKEFILE "\n\n";
 #
 # make
 #
-print MAKEFILE "all: \$(PROG) utils \n\n";
+print MAKEFILE "all: \$(PROG) \n\n";
 print MAKEFILE "\$(PROG): \$(OBJS)\n";
 print MAKEFILE "\t\$(", &LanguageCompiler($ARGV[1], @srcs);
 print MAKEFILE ") \$(LDFLAGS) -o \$@ \$(OBJS) \$(LIBS)\n\n";
@@ -159,7 +159,7 @@ sub LanguageCompiler {
    else {
       CASE: {
          grep(/\.(f|F)90$/, @srcs)   && do { $compiler = "FC"; last CASE; };
-         grep(/\.(f|F)$/, @srcs) && do { $compiler = "FC";  last CASE; };
+         #grep(/\.(f|F)$/, @srcs) && do { $compiler = "FC";  last CASE; };
          grep(/\.c$/, @srcs)     && do { $compiler = "CC";  last CASE; };
          $compiler = "???";
          }
@@ -238,7 +238,7 @@ sub MakeDependsf90 {
    foreach $file (<*.f90 *.F90>) {
       open(FILE, $file);
       while (<FILE>) {
-         /^\s*include\s+["\']([^"\']+)["\']/i && push(@incs,$1);
+         #/^\s*include\s+["\']([^"\']+)["\']/i && push(@incs,$1);
          /^\s*use\s+([^\s,!]+)/i && push(@modules, &toLower($1));
          }
       ($objfile = $file) =~ s/\.(f|F)90$/.o/;
