@@ -142,14 +142,17 @@ end subroutine nc_getvar_by_name_1d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_1d(ncid, name, values)
+subroutine nc_getvar_by_name_1d(ncid, name, values, limits)
 !< Looks up a 1D variable name and returns the complete variable
-  integer, intent(in)           :: ncid
-  character(len=*), intent(in)  :: name
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: name
   real(kind=sp), allocatable, intent(inout)  :: values(:)
+  real(kind=sp), intent(in), optional        :: limits(2)
 
-  integer                       :: variable_id, dimid(1), npoints, variable_type
-  integer                       :: status
+  integer                        :: variable_id, dimid(1), npoints, variable_type
+  integer                        :: status
+  real(kind=sp)                  :: limits_loc(2)
+  logical                        :: have_limits = .false.
 
 
   if (verbose>1) then
@@ -159,16 +162,19 @@ subroutine nc_getvar_by_name_1d(ncid, name, values)
   call  getvarid( ncid  = ncid,            &
                   name  = name,   &
                   varid = variable_id)
-
+ 
+  ! Inquire variable type and dimension ids
   status = nf90_inquire_variable(ncid   = ncid,           &
                                  varid  = variable_id,    &
                                  xtype  = variable_type,  &
                                  dimids = dimid  )
 
+  ! Inquire size of dimension 1                            
   status = nf90_inquire_dimension(ncid  = ncid,           &
                                   dimid = dimid(1),       &
                                   len   = npoints)
 
+  ! Allocate output variable with size of NetCDF variable
   allocate(values(npoints))
 
   select case(variable_type)
@@ -182,6 +188,35 @@ subroutine nc_getvar_by_name_1d(ncid, name, values)
     write(*,*) 'get_mesh_variable is only implemented for NF90_FLOAT and NF90_DBLE variables'
     call pabort()
   end select
+
+  have_limits = .false.
+  if (present(limits)) then
+     limits_loc = limits
+     have_limits = .true.
+  else
+     status = nf90_get_att(ncid   = ncid,          &
+                           varid  = variable_id,   &
+                           name   = 'valid_range', &
+                           values = limits_loc) 
+     if (status.eq.NF90_NOERR) have_limits = .true.
+  end if
+
+  if (have_limits) then
+     if (minval(values).lt.(minval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', minloc(values)
+        write(*,*) 'Element value: ', minval(values)
+        write(*,*) 'Lower limit  : ', minval(limits_loc)
+     end if
+     if (maxval(values).gt.(maxval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', maxloc(values)
+        write(*,*) 'Element value: ', maxval(values)
+        write(*,*) 'Upper limit  : ', maxval(limits_loc)
+     end if
+  end if
 
 end subroutine nc_getvar_by_name_1d
 !-----------------------------------------------------------------------------------------
@@ -217,9 +252,7 @@ subroutine nc_getvar_by_name_2d_int(ncid, name, values)
                                   dimid = dimid(2),       &
                                   len   = len_dim2)
 
-  print *, 'Allocating with dimension ', len_dim1, len_dim2                              
   allocate(values(len_dim1, len_dim2))
-  print *, 'Allocated? ', allocated(values), size(values)
 
   select case(variable_type)
   case(NF90_INT)
@@ -773,8 +806,6 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
                          start  = start,          &
                          count  = count )
 
-   print *, 'Made it into the getvar_int2d routine'
-                      
    ! If an error has occurred, try to find a reason                  
    if (status.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
