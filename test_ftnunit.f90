@@ -103,6 +103,7 @@ subroutine test_all
   call test(test_readfields_set_params, 'Set SEM file params')
   call test(test_readfields_open_files, 'Open SEM file')
   call test(test_readfields_load_seismogram, 'Load seismogram')
+  call test(test_readfields_read_meshes, 'Read meshes')
 
   ! test_rotations
   write(6,'(/,a)') 'TEST ROTATIONS MODULE'

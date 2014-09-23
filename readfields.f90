@@ -19,7 +19,7 @@ module readfields
 
     implicit none
     private
-    public                                 :: semdata_type
+    public                                 :: semdata_type, meshtype
 
     integer, parameter                     :: min_file_version = 2
 
@@ -73,22 +73,23 @@ module readfields
 
     type semdata_type
         private
-
         integer, public                    :: nsim_fwd, nsim_bwd
         type(ncparamtype), allocatable     :: fwd(:)
         type(ncparamtype), allocatable     :: bwd(:)
 
-        type(kdtree2), pointer             :: fwdtree, bwdtree
+        type(kdtree2), pointer, private    :: fwdtree, bwdtree
         type(meshtype)                     :: fwdmesh, bwdmesh
 
-        logical                            :: params_set
-        logical                            :: files_open
-        logical                            :: meshes_read
-        logical                            :: kdtree_built
+        logical, private                   :: params_set
+        logical, private                   :: files_open
+        logical, private                   :: meshes_read
+        logical, private                   :: kdtree_built
         
         character(len=32)                  :: strain_type  !< full tensor or straintrace
-        integer                            :: ndim          !< Number of dimensions which has to be read to calculate 
-                                                            !! Kernel on parameter model_param
+        integer                            :: ndim         !< Number of dimensions which 
+                                                           !! has to be read to calculate 
+                                                           !! Kernel on parameter 
+                                                           !! model_param
 
         real(kind=dp), public              :: dt
         integer,       public              :: ndumps, decimate_factor
@@ -112,9 +113,11 @@ module readfields
 
         contains 
             procedure, pass                :: get_ndim 
+            procedure, pass                :: get_mesh 
             procedure, pass                :: set_params
             procedure, pass                :: open_files
             procedure, pass                :: check_consistency
+            procedure, pass                :: check_mesh
             procedure, pass                :: read_meshes
             procedure, pass                :: build_kdtree
             procedure, pass                :: load_fw_points
@@ -137,6 +140,24 @@ function get_ndim(this)
     end if
     get_ndim = this%ndim
 end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_mesh(this, fwd_or_bwd)
+   class(semdata_type)           :: this
+   character(len=3), intent(in)  :: fwd_or_bwd
+   type(meshtype)                :: get_mesh
+
+   select case(fwd_or_bwd)
+   case('fwd')
+      get_mesh = this%fwdmesh
+   case('bwd')
+      get_mesh = this%bwdmesh
+   case default
+      write(*,*) 'ERROR: get_mesh can only get "fwd" or "bwd" mesh!'
+      call pabort(do_traceback=.false.)
+   end select
+end function get_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1222,10 +1243,10 @@ end function load_fw_points
 
 !-----------------------------------------------------------------------------------------
 function load_model_coeffs(mesh, ipoint) result(coeffs)
-   type(semdata_type), intent(in) :: mesh
-   integer, intent(in)            :: ipoint
-   real(kind=sp)                  :: coeffs(6)
-   real(kind=sp)                  :: coeff_buff(1)
+   class(semdata_type), intent(in) :: mesh
+   integer, intent(in)             :: ipoint
+   real(kind=sp)                   :: coeffs(6)
+   real(kind=sp)                   :: coeff_buff(1)
 
    
    ! Load model coefficients vp, vs and rho at point ipoint
@@ -2126,86 +2147,8 @@ subroutine read_meshes(this)
 
     endif
 
-    ! Mesh sanity checks
-    mesherror = .false.
-    if (allocated(this%fwdmesh%s)) then
-       if (maxval(abs(this%fwdmesh%s)) > 1e32) then
-          write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
-          write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
-          mesherror = .true.
-       end if
-    end if
-    if (allocated(this%fwdmesh%z)) then
-       if (maxval(abs(this%fwdmesh%z)) > 1e32) then
-          write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
-          write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
-          mesherror = .true.
-       end if
-    end if
-    if (allocated(this%fwdmesh%s_mp)) then
-       if (maxval(abs(this%fwdmesh%s_mp)) > 1e32) then
-          write(*,*) 'Maximum value of S_mp in the forward mesh is unreasonably large'
-          write(*,*) 'maxval(S_mp): ', this%fwdmesh%s_mp(maxloc(abs(this%fwdmesh%s_mp))), ' m'
-          mesherror = .true.
-       end if
-    end if
-    if (allocated(this%fwdmesh%z_mp)) then
-       if (maxval(abs(this%fwdmesh%z_mp)) > 1e32) then
-          write(*,*) 'Maximum value of Z_mp in the forward mesh is unreasonably large'
-          write(*,*) 'maxval(Z_mp): ', this%fwdmesh%z_mp(maxloc(abs(this%fwdmesh%z_mp))), ' m'
-          mesherror = .true.
-       end if
-    end if
-    if (maxval(this%fwdmesh%theta).gt.180.0) then
-       write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-       write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
-       write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
-       mesherror = .true.
-    end if
-
-    if (this%nsim_bwd > 0) then
-       if (allocated(this%bwdmesh%s)) then
-          if (maxval(abs(this%bwdmesh%s)) > 1e32) then
-             write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
-             write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
-             mesherror = .true.
-          end if
-       end if
-       if (allocated(this%bwdmesh%z)) then
-          if (maxval(abs(this%bwdmesh%z)) > 1e32) then
-             write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
-             write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
-             mesherror = .true.
-          end if
-       end if
-       if (allocated(this%bwdmesh%s_mp)) then
-          if (maxval(abs(this%bwdmesh%s_mp)) > 1e32) then
-             write(*,*) 'Maximum value of S_mp in the backward mesh is unreasonably large'
-             write(*,*) 'maxval(S_mp): ', this%bwdmesh%s_mp(maxloc(abs(this%bwdmesh%s_mp))), ' m'
-             mesherror = .true.
-          end if
-       end if
-       if (allocated(this%bwdmesh%z_mp)) then
-          if (maxval(abs(this%bwdmesh%z_mp)) > 1e32) then
-             write(*,*) 'Maximum value of Z_mp in the backward mesh is unreasonably large'
-             write(*,*) 'maxval(Z_mp): ', this%bwdmesh%z_mp(maxloc(abs(this%bwdmesh%z_mp))), ' m'
-             mesherror = .true.
-          end if
-       end if
-       if (maxval(this%bwdmesh%theta).gt.180.0) then
-          write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-          write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-          write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
-          mesherror = .true.
-       end if
-    endif
-
-
-    if (mesherror) then
-       write(*,*) 'ERROR: One or more mesh errors found!'
-       call pabort
-    end if
-
+   ! Check mesh sanity  
+   call this%check_mesh()
                                    
    this%meshes_read = .true.
 
@@ -2224,44 +2167,53 @@ subroutine cache_mesh(ncid, mesh, dump_type)
 
   write(lu_out, *) 'Reading mesh parameters...'
 
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_S',          &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_S',      &
+                         limits = [0., 1e9],     & 
                          values = mesh%s   )
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_Z',          &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_Z',      &
+                         limits = [-1e9, 1e9],   & 
                          values = mesh%z   )
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_vp',         &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_vp',     &
+                         limits = [0.0, 2e4],    & 
                          values = mesh%vp  )
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_vs',         &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_vs',     &
+                         limits = [0.0, 2e4],    & 
                          values = mesh%vs  )
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_rho',        &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_rho',    &
+                         limits = [0.0, 2e4],    & 
                          values = mesh%rho )
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_lambda',     &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_lambda', &
+                         limits = [1e9, 1e15],   & 
                          values = mesh%lambda)
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_mu',         &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_mu',     &
+                         limits = [0.0, 1e12],   & 
                          values = mesh%mu  )
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_phi',        &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_phi',    &
                          values = mesh%phi )
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_xi',         &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_xi',     &
+                         limits = [0.0, 3.0],    & 
                          values = mesh%xi  )
               
-  call nc_getvar_by_name(ncid   = ncid,  &
-                         name   = 'mesh_eta',         &
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         name   = 'mesh_eta',    &
+                         limits = [0.0, 1e12],   & 
                          values = mesh%eta )
 
   if (trim(dump_type) == 'displ_only') then
@@ -2276,10 +2228,12 @@ subroutine cache_mesh(ncid, mesh, dump_type)
 
       call nc_getvar_by_name(ncid   = ncid,  &
                              name   = 'mp_mesh_S',         &
+                             limits = [0., 1e9],     & 
                              values = mesh%s_mp )
                   
       call nc_getvar_by_name(ncid   = ncid,  &
                              name   = 'mp_mesh_Z',         &
+                             limits = [-1e9, 1e9],     & 
                              values = mesh%z_mp )
 
       call nc_getvar_by_name(ncid   = ncid,         &
@@ -2293,6 +2247,92 @@ subroutine cache_mesh(ncid, mesh, dump_type)
 
 end subroutine cache_mesh
 !-----------------------------------------------------------------------------------------
+
+subroutine check_mesh(this)
+  class(semdata_type), intent(in)   :: this 
+  logical                           :: mesherror
+
+  ! Mesh sanity checks
+  mesherror = .false.
+  if (allocated(this%fwdmesh%s)) then
+     if (maxval(abs(this%fwdmesh%s)) > 1e32) then
+        write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
+        write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
+        mesherror = .true.
+     end if
+  end if
+  if (allocated(this%fwdmesh%z)) then
+     if (maxval(abs(this%fwdmesh%z)) > 1e32) then
+        write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
+        write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
+        mesherror = .true.
+     end if
+  end if
+  if (allocated(this%fwdmesh%s_mp)) then
+     if (maxval(abs(this%fwdmesh%s_mp)) > 1e32) then
+        write(*,*) 'Maximum value of S_mp in the forward mesh is unreasonably large'
+        write(*,*) 'maxval(S_mp): ', this%fwdmesh%s_mp(maxloc(abs(this%fwdmesh%s_mp))), ' m'
+        mesherror = .true.
+     end if
+  end if
+  if (allocated(this%fwdmesh%z_mp)) then
+     if (maxval(abs(this%fwdmesh%z_mp)) > 1e32) then
+        write(*,*) 'Maximum value of Z_mp in the forward mesh is unreasonably large'
+        write(*,*) 'maxval(Z_mp): ', this%fwdmesh%z_mp(maxloc(abs(this%fwdmesh%z_mp))), ' m'
+        mesherror = .true.
+     end if
+  end if
+  if (maxval(this%fwdmesh%theta).gt.180.0) then
+     write(*,*) 'Maximum value of theta in the forward mesh is larger than 180°'
+     write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
+     write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
+     mesherror = .true.
+  end if
+ 
+  if (this%nsim_bwd > 0) then
+     if (allocated(this%bwdmesh%s)) then
+        if (maxval(abs(this%bwdmesh%s)) > 1e32) then
+           write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
+           mesherror = .true.
+        end if
+     end if
+     if (allocated(this%bwdmesh%z)) then
+        if (maxval(abs(this%bwdmesh%z)) > 1e32) then
+           write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
+           mesherror = .true.
+        end if
+     end if
+     if (allocated(this%bwdmesh%s_mp)) then
+        if (maxval(abs(this%bwdmesh%s_mp)) > 1e32) then
+           write(*,*) 'Maximum value of S_mp in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(S_mp): ', this%bwdmesh%s_mp(maxloc(abs(this%bwdmesh%s_mp))), ' m'
+           mesherror = .true.
+        end if
+     end if
+     if (allocated(this%bwdmesh%z_mp)) then
+        if (maxval(abs(this%bwdmesh%z_mp)) > 1e32) then
+           write(*,*) 'Maximum value of Z_mp in the backward mesh is unreasonably large'
+           write(*,*) 'maxval(Z_mp): ', this%bwdmesh%z_mp(maxloc(abs(this%bwdmesh%z_mp))), ' m'
+           mesherror = .true.
+        end if
+     end if
+     if (maxval(this%bwdmesh%theta).gt.180.0) then
+        write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
+        write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
+        write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
+        mesherror = .true.
+     end if
+  endif
+ 
+ 
+  if (mesherror) then
+     write(*,*) 'ERROR: One or more mesh errors found!'
+     call pabort
+  end if
+
+end subroutine check_mesh
  
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
