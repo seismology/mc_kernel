@@ -26,16 +26,16 @@ SERIAL = false
 # Meshes, i.e. <5s period. Uses up to 8 threads. Does not affect the SOLVER.
 #CC      = gcc                                # C compiler
 #FC      = mpif90                             # Fortran compiler
-#FFLAGS  = -O3 #-march=native -fopenmp        
-#CFLAGS  = -O3 #-march=native                
-#LDFLAGS = -O3 #-march=native -fopenmp      
+#FFLAGS  = -O3 -cpp #-march=native -fopenmp        
+#CFLAGS  = -O3 -cpp #-march=native                
+#LDFLAGS = -O3 -cpp #-march=native -fopenmp      
 
 # GFORTRAN (debug)
 CC      = gcc                                # C compiler
 FC      = mpif90                             # Fortran compiler
-FFLAGS  = -g -fbacktrace -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic
-CFLAGS  = -g -fbacktrace -Wall 
-LDFLAGS = -g -fbacktrace -Wall
+FFLAGS  = -g -fbacktrace -cpp -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic
+CFLAGS  = -g -fbacktrace -cpp -Wall 
+LDFLAGS = -g -fbacktrace -cpp -Wall
 
 # PORTLAND (fast)
 #CC      = pgcc 
