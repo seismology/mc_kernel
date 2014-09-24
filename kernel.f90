@@ -22,7 +22,8 @@ implicit none
         logical                              :: initialized = .false.
 
         integer                              :: nbasekernels
-        logical                              :: needs_basekernel(6) !< Which of the base
+        logical                              :: needs_basekernel(6) = .false.
+                                                                    !< Which of the base
                                                                     !! kernels does this
                                                                     !! phys. kernel need
                                                                     !! lam, mu, rho, a, b, c 
