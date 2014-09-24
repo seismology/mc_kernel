@@ -442,9 +442,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  end do
                  
                  ! Compute the kernels for the actual physical parameters of interest
-                 kernelvalue_physical(:, ikernel) = calc_physical_kernels( &
-                                      parameters%model_param,              &
-                                      kernelvalue_weighted(:, ikernel, :), &
+                 kernelvalue_physical(:, ikernel) = calc_physical_kernels(        &
+                                      parameters%kernel(ikernel)%model_parameter, &
+                                      kernelvalue_weighted(:, ikernel, :),        &
                                       bg_model = bg_model)
 
               end do
