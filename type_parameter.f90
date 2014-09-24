@@ -37,8 +37,7 @@ module type_parameter
         character(len=32)                    :: int_type
         character(len=32)                    :: dump_type
         character(len=32)                    :: fftw_plan = 'MEASURE'
-        character(len=16), allocatable       :: basekernel_id(:)
-        character(len=32)                    :: strain_type
+        character(len=32)                    :: strain_type_fwd
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
         integer                              :: nelems_per_task
@@ -46,7 +45,6 @@ module type_parameter
         integer                              :: max_iter
         integer                              :: strain_buffer_size
         integer                              :: displ_buffer_size
-        integer                              :: nbasekernels
         logical                              :: parameters_read      = .false.
         logical                              :: receiver_read        = .false.
         logical                              :: source_read          = .false.
@@ -313,7 +311,7 @@ subroutine read_receiver(this)
        write(lu_out,*)'Reading receivers from file ', trim(this%receiver_file)
        open(unit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) this%nrec
-       read(lu_receiver,*) this%model_param, this%component
+       read(lu_receiver,*) this%component
 
    else
       write(lu_out,*) 'Waiting for master to distribute receivers...'
@@ -323,15 +321,6 @@ subroutine read_receiver(this)
    call pbroadcast_int(this%nrec, 0)
    call pbroadcast_char(this%model_param, 0)
    call pbroadcast_char(this%component, 0)
-   this%model_param = to_lower(this%model_param)
-
-   call tabulate_kernels(this%model_param, this%nbasekernels, &
-                         this%basekernel_id, this%strain_type)
-
-
-   call pbroadcast_int(this%nbasekernels, 0)
-   call pbroadcast_char(this%strain_type, 0)
-   call pbroadcast_char_arr(this%basekernel_id, 0)
 
 
    fmtstring = '("  Using ", I5, " receivers")'
@@ -402,7 +391,7 @@ subroutine read_kernel(this, sem_data, filter)
    integer                        :: ikernel, ifilter
    integer                        :: lu_receiver
    real(kind=dp)                  :: timewindow(2)
-   character(len=4)               :: misfit_type
+   character(len=4)               :: misfit_type, model_parameter
    character(len=32)              :: kernelname, filtername, kernel_shortname
    character(len=80)              :: fmtstring
 
@@ -441,6 +430,8 @@ subroutine read_kernel(this, sem_data, filter)
 
    allocate(this%kernel(this%nkernel))
 
+   this%strain_type_fwd = 'straintensor_trace'
+
    if (.not. master) then
        nfilter = size(filter)
 
@@ -457,6 +448,9 @@ subroutine read_kernel(this, sem_data, filter)
       if (master) then
           read(lu_receiver, *)
       end if
+      
+      ! Start with the assumption that this receiver needs no base kernels at all
+      this%receiver(irec)%needs_basekernel = .false.
 
       fmtstring = '("  Receiver ", A, ", has ", I3, " kernel, first and last:", 2(I5))'
       write(lu_out,fmtstring) trim(this%receiver(irec)%name),  this%receiver(irec)%nkernel,   &
@@ -464,9 +458,10 @@ subroutine read_kernel(this, sem_data, filter)
 
       do ikernel = this%receiver(irec)%firstkernel, this%receiver(irec)%lastkernel
 
-         if (master) read(lu_receiver, *) kernel_shortname, filtername, misfit_type, timewindow
+         if (master) read(lu_receiver, *) kernel_shortname, filtername, & 
+                                          misfit_type, timewindow, model_parameter
 
-
+         call pbroadcast_char(model_parameter, 0)
          call pbroadcast_char(kernel_shortname, 0)
          call pbroadcast_char(filtername, 0)
          call pbroadcast_char(misfit_type, 0)
@@ -488,20 +483,38 @@ subroutine read_kernel(this, sem_data, filter)
              call this%kernel(ikernel)%init(name            = kernelname                , &
                                             time_window     = timewindow                , &
                                             filter          = filter(ifilter)           , &
-                                            misfit_type     = misfit_type               , &  
-                                            model_parameter = this%model_param          , &
+                                            misfit_type     = misfit_type               , &
+                                            model_parameter = model_parameter           , &
                                             seis            = sem_data%veloseis(:,irec) , &
                                             dt              = sem_data%dt               , &
                                             timeshift_fwd   = sem_data%timeshift_fwd    , &
                                             write_smgr      = this%write_smgr)
 
+         ! Update which base kernels are needed for this receiver
+         this%receiver(irec)%needs_basekernel =   &
+                              this%receiver(irec)%needs_basekernel &
+                         .or. this%kernel(ikernel)%needs_basekernel
          else
              this%kernel(ikernel)%name = kernelname
          end if
 
 
-      end do
-   end do
+      end do ! ikernel
+ 
+      ! TODO: This might allow a finer control over what has to be read. The final idea:
+      ! If any kernel of this receiver needs more than a lambda base kernel,
+      ! the whole strain tensor has to be read in. If only lambda, the trace is enough.
+      ! However, this would require some involved changes in readfields.f90. 
+
+
+      if (any(this%receiver(irec)%needs_basekernel(2:6))) then
+         this%receiver(irec)%strain_type = 'straintensor_full'
+         this%strain_type_fwd = 'straintensor_full'
+      else
+         this%receiver(irec)%strain_type = 'straintensor_trace'
+      end if
+
+   end do ! irec
    if (master) close(lu_receiver)
 
    this%nkernel = this%receiver(this%nrec)%lastkernel

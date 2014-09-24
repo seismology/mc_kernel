@@ -80,10 +80,10 @@ module readfields
         type(kdtree2), pointer, private    :: fwdtree, bwdtree
         type(meshtype)                     :: fwdmesh, bwdmesh
 
-        logical, private                   :: params_set
-        logical, private                   :: files_open
-        logical, private                   :: meshes_read
-        logical, private                   :: kdtree_built
+        logical, private                   :: params_set   = .false.
+        logical, private                   :: files_open   = .false.
+        logical, private                   :: meshes_read  = .false.
+        logical, private                   :: kdtree_built = .false.
         
         character(len=32)                  :: strain_type  !< full tensor or straintrace
         integer                            :: ndim          !< Number of dimensions which has to be read to calculate 

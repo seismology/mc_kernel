@@ -68,7 +68,7 @@ subroutine do_slave()
                              parameters%bwd_dir,     &
                              parameters%strain_buffer_size, & 
                              parameters%displ_buffer_size, & 
-                             parameters%strain_type)
+                             parameters%strain_type_fwd)
 
     call sem_data%open_files()
     call sem_data%read_meshes()
@@ -207,7 +207,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use fft,                         only: rfft_type, taperandzeropad
     use filtering,                   only: timeshift_type
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
-    use kernel,                      only: assemble_basekernel, calc_physical_kernels
+    use kernel,                      only: calc_basekernel, calc_physical_kernels
     use backgroundmodel,             only: backgroundmodel_type
     use clocks_mod,                  only: tick
 
@@ -254,7 +254,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     nomega = fft_data%get_nomega()
     nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
     nelements = inv_mesh%get_nelements()
-    nbasekernels = parameters%nbasekernels
+    nbasekernels = 6
 
     allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
@@ -370,20 +370,33 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  
               ! Loop over all base kernels
               ! Calculate the waveform kernel in the basic parameters 
-              ! (mu, lambda, rho, a, b, c)  
+              ! (lambda, mu, rho, a, b, c)  
               do ibasekernel = 1, nbasekernels
+                 ! Check whether any actual kernel on this receiver needs this base kernel
+                 if (.not.parameters%receiver(irec)%needs_basekernel(ibasekernel)) cycle
 
-                 ! Calculate base kernel number ibasekernel
-                 conv_field_fd = assemble_basekernel(parameters%basekernel_id(ibasekernel), &
-                                                     parameters%strain_type,                &
-                                                     fw_field_fd, bw_field_fd)
-
+                 ! Calculate base kernel numero ibasekernel
+                 ! TODO: It might be possible that the BWD field is only a trace, to
+                 !       save loading the full tensor, if there are only VP kernels at
+                 !       this receiver. 
+                 !       However, in the moment this is not implemented in readfields.f90
+                 conv_field_fd = calc_basekernel(ibasekernel,                           &
+                                                 parameters%strain_type_fwd,            &
+                                                 parameters%strain_type_fwd,            &
+                                                 !parameters%receiver(irec)%strain_type, &
+                                                 fw_field_fd, bw_field_fd)
+                  
 
                  iclockold = tick(id=id_filter_conv, since=iclockold)
                  
                  do ikernel = parameters%receiver(irec)%firstkernel, &
-                      parameters%receiver(irec)%lastkernel 
-                                           
+                              parameters%receiver(irec)%lastkernel 
+                             
+                       ! Check whether kernel (ikernel) actually needs the base kernel 
+                       ! (ibasekernel), otherwise cycle
+                       if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
+                        
+
                        ! If this kernel is already converged, go to the next one
                        if (allisconverged(int_kernel, ikernel)) cycle
                        niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
@@ -420,6 +433,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               do ikernel = 1, parameters%nkernel
 
                  do ibasekernel = 1, nbasekernels
+                    ! Check whether kernel (ikernel) actually needs the base kernel 
+                    ! (ibasekernel), otherwise cycle
+                    if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
                     kernelvalue_weighted(:, ikernel, ibasekernel) =    &
                          kernelvalue_basekers(:, ikernel, ibasekernel) &
                          * inv_mesh%weights(ielement, ibasisfunc, random_points)                 
