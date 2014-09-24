@@ -2,21 +2,12 @@
 module backgroundmodel
   use global_parameters, only: sp, dp
 
-<<<<<<< HEAD
   implicit none
 
-=======
->>>>>>> master
   type backgroundmodel_type
-    real(kind=sp), allocatable :: c_vp(:)  ! velocities at each point in m/s
-    real(kind=sp), allocatable :: c_vs(:)  ! velocities at each point in m/s
-    real(kind=sp), allocatable :: c_rho(:) ! densities at each point in kg/(m^3)
-
-<<<<<<< HEAD
-=======
-    !@ TODO : For now assume an isotropic background model
-    !         need to store xi in the netcdf files
->>>>>>> master
+    real(kind=sp), allocatable :: c_vs(:)
+    real(kind=sp), allocatable :: c_vp(:)
+    real(kind=sp), allocatable :: c_rho(:)
     real(kind=sp), allocatable :: c_vsh(:)
     real(kind=sp), allocatable :: c_vsv(:)
     real(kind=sp), allocatable :: c_vph(:)
@@ -25,32 +16,19 @@ module backgroundmodel
     real(kind=sp), allocatable :: c_phi(:)
     real(kind=sp), allocatable :: c_xi(:)
     contains 
-<<<<<<< HEAD
       procedure, pass            :: combine
-=======
-      procedure, pass            :: recombine
->>>>>>> master
   end type
 
 contains
 
 !-----------------------------------------------------------------------------------------
-<<<<<<< HEAD
 subroutine combine(this, coeffs)
   class(backgroundmodel_type) :: this
   real(kind=sp), intent(in)   :: coeffs(:,:)
   integer                     :: npoints
-=======
-subroutine recombine(this, coeffs)
-  class(backgroundmodel_type) :: this
-  real(kind=sp), intent(in)  :: coeffs(:,:)
-  integer                    :: npoints
->>>>>>> master
-
 
   npoints = size(coeffs, 2)
 
-<<<<<<< HEAD
   if (allocated(this%c_vp)) then
     if (size(this%c_vp).ne.npoints) then
       deallocate(this%c_vp )
@@ -80,16 +58,6 @@ subroutine recombine(this, coeffs)
     allocate(this%c_vpv(npoints))
     allocate(this%c_eta(npoints))
   end if
-=======
-  allocate(this%c_vp (npoints))
-  allocate(this%c_vs (npoints))
-  allocate(this%c_rho(npoints))
-  allocate(this%c_vsh(npoints))
-  allocate(this%c_vsv(npoints))
-  allocate(this%c_vph(npoints))
-  allocate(this%c_vpv(npoints))
-  allocate(this%c_eta(npoints))
->>>>>>> master
 
   ! Recombine this coefficients for chosen parameterization
   this%c_vp  = coeffs(1,:)
@@ -113,19 +81,10 @@ subroutine recombine(this, coeffs)
   this%c_vsh = this%c_vs
   this%c_vph = this%c_vp
 
-<<<<<<< HEAD
-  this%c_vsv = this%c_vsh / sqrt(coeffs(4,:))
-  this%c_vpv = this%c_vph * sqrt(coeffs(5,:))
-  !this%c_eta = 1.d0
+  this%c_vsv = this%c_vsh / sqrt(coeffs(5,:))
+  this%c_vpv = this%c_vph * sqrt(coeffs(4,:))
 
 end subroutine combine
-=======
-  this%c_vsv = this%c_vsh / xi**.5
-  this%c_vpv = this%c_vph * phi**.5
-  !this%c_eta = 1.d0
-
-end subroutine 
->>>>>>> master
 !-----------------------------------------------------------------------------------------
 
 end module backgroundmodel

@@ -111,6 +111,7 @@ module readfields
 
         contains 
             procedure, pass                :: get_ndim 
+            procedure, pass                :: get_mesh 
             procedure, pass                :: set_params
             procedure, pass                :: open_files
             procedure, pass                :: check_consistency
