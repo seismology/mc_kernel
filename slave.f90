@@ -1,17 +1,23 @@
 !=========================================================================================
 module slave_mod
 
-    use global_parameters,           only: sp, dp, pi, deg2rad, &
-                                           init_random_seed, myrank, lu_out
-    use work_type_mod
-    use mpi
-    implicit none
+  use global_parameters,           only: sp, dp, pi, deg2rad, &
+                                         init_random_seed, myrank, lu_out
+  use work_type_mod
+# ifndef include_mpi
+  use mpi
+# endif
+  implicit none
 
-    type slave_result_type  
-      real(kind=dp), allocatable :: kernel_values(:,:,:)
-      real(kind=dp), allocatable :: kernel_variance(:,:,:)
-      integer,       allocatable :: niterations(:,:)
-    end type
+# ifdef include_mpi
+  include 'mpif.h'
+# endif
+
+  type slave_result_type  
+    real(kind=dp), allocatable :: kernel_values(:,:,:)
+    real(kind=dp), allocatable :: kernel_variance(:,:,:)
+    integer,       allocatable :: niterations(:,:)
+  end type
 
 contains
 
@@ -22,7 +28,6 @@ subroutine do_slave()
     use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
     use fft,                         only: rfft_type, taperandzeropad
-    use mpi
     use clocks_mod,                  only: tick
 
     implicit none

@@ -9,10 +9,16 @@ contains
 
 !-----------------------------------------------------------------------------------------
 subroutine do_master()
+# ifndef include_mpi
   use mpi
+# endif
   use master_slave_parameters
   use work_type_mod
   use master_queue
+
+#ifdef include_mpi
+  include 'mpif.h'
+#endif
 
   integer               :: nslaves, rank, ierror
   integer, allocatable  :: output(:,:), sendrequest(:), work_done(:)

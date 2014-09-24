@@ -37,8 +37,14 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_elem, nbasisfuncs_per_elem)
 
+# ifndef include_mpi
   use mpi
+# endif
   
+# ifdef include_mpi
+  include 'mpif.h'
+# endif
+
   integer, intent(in)   :: nkernel, nelems_per_task, nvertices, nvertices_per_elem, nbasisfuncs_per_elem
   integer               :: ierr, i
   integer, allocatable  :: oldtypes(:), blocklengths(:)

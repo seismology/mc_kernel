@@ -1,6 +1,8 @@
 program kerner_code
 
+#ifndef include_mpi
     use mpi
+#endif
     use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
                                            master, lu_out, myrank
@@ -16,6 +18,11 @@ program kerner_code
     use plot_wavefields_mod,         only: plot_wavefields
 
     implicit none
+
+#ifdef include_mpi
+    include 'mpif.h'
+#endif
+
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
 

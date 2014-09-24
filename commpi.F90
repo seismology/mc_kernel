@@ -6,9 +6,16 @@ module commpi
   ! in case you have problems with the mpi module, you might try to use the
   ! include below, in which case you will have to specify the location in the 
   ! Makefile or copy to the build directory!
+
+# ifndef include_mpi
   use mpi
+# endif
   use global_parameters, only: dp, master, myrank, nproc, firstslave
   implicit none
+
+# ifdef include_mpi
+  include 'mpif.h'
+# endif
 
   private 
 
