@@ -91,6 +91,7 @@ subroutine test_kernel_cut_timewindow
 
 
 end subroutine test_kernel_cut_timewindow
+!-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
 subroutine test_kernel_init
@@ -240,4 +241,6 @@ subroutine test_tabulate_kernel()
 
 end subroutine test_tabulate_kernel
 !-------------------------------------------------------------------------------
+
 end module test_kernel
+!=========================================================================================
