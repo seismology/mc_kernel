@@ -125,7 +125,119 @@ subroutine test_kernel_init
    call assert_false(kernel%isinitialized(), 'Kernel not initialized')
 
 end subroutine test_kernel_init
-
 !-------------------------------------------------------------------------------
 
+!-------------------------------------------------------------------------------
+subroutine test_tabulate_kernel()
+   character(len=6)  :: model_param
+   logical           :: needs_basekernel(6)
+   character(len=32) :: strain_type
+
+   ! Taking the kernel definition from the Fichtner book and checking them 
+   ! one by one. N.B. They might not be applicable to our problem, but this
+   ! is a separate question
+
+   ! Lambda
+   model_param = 'lambda'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_true(needs_basekernel(1), model_param//' kernel needs lambda base kernel')
+   call assert_false(needs_basekernel(2), model_param//' kernel needs no mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_false(needs_basekernel(4), model_param//' kernel needs no a base kernel')
+   call assert_false(needs_basekernel(5), model_param//' kernel needs no b base kernel')
+   call assert_false(needs_basekernel(6), model_param//' kernel needs no c base kernel')
+
+   ! Mu 
+   model_param = 'Mu'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_false(needs_basekernel(1), model_param//' kernel needs no lambda base kernel')
+   call assert_true(needs_basekernel(2), model_param//' kernel needs mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_false(needs_basekernel(4), model_param//' kernel needs no a base kernel')
+   call assert_false(needs_basekernel(5), model_param//' kernel needs no b base kernel')
+   call assert_false(needs_basekernel(6), model_param//' kernel needs no c base kernel')
+
+   ! vp 
+   model_param = 'vp'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_true(needs_basekernel(1), model_param//' kernel needs lambda base kernel')
+   call assert_false(needs_basekernel(2), model_param//' kernel needs no mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_false(needs_basekernel(4), model_param//' kernel needs no a base kernel')
+   call assert_false(needs_basekernel(5), model_param//' kernel needs no b base kernel')
+   call assert_false(needs_basekernel(6), model_param//' kernel needs no c base kernel')
+
+   ! vs 
+   model_param = 'vs'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_true(needs_basekernel(1), model_param//' kernel needs lambda base kernel')
+   call assert_true(needs_basekernel(2), model_param//' kernel needs mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_false(needs_basekernel(4), model_param//' kernel needs no a base kernel')
+   call assert_false(needs_basekernel(5), model_param//' kernel needs no b base kernel')
+   call assert_false(needs_basekernel(6), model_param//' kernel needs no c base kernel')
+
+   ! vpv 
+   model_param = 'vpv'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_true(needs_basekernel(1), model_param//' kernel needs lambda base kernel')
+   call assert_false(needs_basekernel(2), model_param//' kernel needs no mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_true(needs_basekernel(4), model_param//' kernel needs a base kernel')
+   call assert_false(needs_basekernel(5), model_param//' kernel needs no b base kernel')
+   call assert_true(needs_basekernel(6), model_param//' kernel needs c base kernel')
+
+   ! vsv 
+   model_param = 'vsv'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_false(needs_basekernel(1), model_param//' kernel needs no lambda base kernel')
+   call assert_false(needs_basekernel(2), model_param//' kernel needs no mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_false(needs_basekernel(4), model_param//' kernel needs no a base kernel')
+   call assert_true(needs_basekernel(5), model_param//' kernel needs b base kernel')
+   call assert_false(needs_basekernel(6), model_param//' kernel needs no c base kernel')
+
+   ! vph 
+   model_param = 'vph'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_false(needs_basekernel(1), model_param//' kernel needs no lambda base kernel')
+   call assert_false(needs_basekernel(2), model_param//' kernel needs no mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_true(needs_basekernel(4), model_param//' kernel needs a base kernel')
+   call assert_false(needs_basekernel(5), model_param//' kernel needs no b base kernel')
+   call assert_true(needs_basekernel(6), model_param//' kernel needs c base kernel')
+
+   ! vsh 
+   model_param = 'vsh'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_true(needs_basekernel(1), model_param//' kernel needs lambda base kernel')
+   call assert_true(needs_basekernel(2), model_param//' kernel needs mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_false(needs_basekernel(4), model_param//' kernel needs no a base kernel')
+   call assert_true(needs_basekernel(5), model_param//' kernel needs b base kernel')
+   call assert_true(needs_basekernel(6), model_param//' kernel needs c base kernel')
+
+   ! eta 
+   model_param = 'eta'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_true(needs_basekernel(1), model_param//' kernel needs lambda base kernel')
+   call assert_false(needs_basekernel(2), model_param//' kernel needs no mu base kernel')
+   call assert_false(needs_basekernel(3), model_param//' kernel needs no rho base kernel')
+   call assert_true(needs_basekernel(4), model_param//' kernel needs a base kernel')
+   call assert_false(needs_basekernel(5), model_param//' kernel needs no b base kernel')
+   call assert_true(needs_basekernel(6), model_param//' kernel needs c base kernel')
+
+   ! rho 
+   model_param = 'rho'
+   call tabulate_kernels(model_param, needs_basekernel, strain_type)
+   call assert_true(needs_basekernel(1), model_param//' kernel needs lambda base kernel')
+   call assert_true(needs_basekernel(2), model_param//' kernel needs mu base kernel')
+   call assert_true(needs_basekernel(3), model_param//' kernel needs rho base kernel')
+   call assert_true(needs_basekernel(4), model_param//' kernel needs a base kernel')
+   call assert_true(needs_basekernel(5), model_param//' kernel needs b base kernel')
+   call assert_true(needs_basekernel(6), model_param//' kernel needs c base kernel')
+
+
+end subroutine test_tabulate_kernel
+!-------------------------------------------------------------------------------
 end module test_kernel

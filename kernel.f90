@@ -17,8 +17,15 @@ implicit none
         integer                              :: filter_type
         character(len=4)                     :: misfit_type
         character(len=16)                    :: model_parameter
+        character(len=32)                    :: strain_type 
         type(filter_type), pointer           :: filter
         logical                              :: initialized = .false.
+
+        integer                              :: nbasekernels
+        logical                              :: needs_basekernel(6) !< Which of the base
+                                                                    !! kernels does this
+                                                                    !! phys. kernel need
+                                                                    !! lam, mu, rho, a, b, c 
         contains 
            procedure, pass                   :: init 
            procedure, pass                   :: calc_misfit_kernel
@@ -95,16 +102,20 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(lu_out,'(A,2(F8.1))')    '   Time window:  ', this%time_window
       write(lu_out,'(2(A))')         '   Misfit type:  ', this%misfit_type
       write(lu_out,'(2(A))')         '   Model param:  ', this%model_parameter
-      write(lu_out,'(A,L)')          '   Initialized:  ', this%initialized
+      write(lu_out,'(A,L1)')         '   Initialized:  ', this%initialized
       write(lu_out,'(2(A))')         '   Filter type:  ', this%filter%filterclass
       write(lu_out,'(A,4(F8.3))')    '   Filter freq:  ', this%filter%frequencies
       if (present(timeshift_fwd)) then
-        write(lu_out,'(A,F8.3)')       '   Time shift :  ', timeshift_fwd
+        write(lu_out,'(A,F8.3)')     '   Time shift :  ', timeshift_fwd
       end if
-      write(lu_out,'(A,L)')          '   Deconvolve :  ', deconv_stf_loc
-      write(lu_out,'(A,L)')          '   Write smgrs:  ', write_smgr_loc
+      write(lu_out,'(A,L1)')         '   Deconvolve :  ', deconv_stf_loc
+      write(lu_out,'(A,L1)')         '   Write smgrs:  ', write_smgr_loc
    end if
 
+
+   ! Check and tabulate, which base kernels the model parameter for this 
+   ! specific kernel needs
+   call tabulate_kernels(this%model_parameter, this%needs_basekernel, this%strain_type)
 
    ! Save seismogram in the timewindow of this kernel
 
@@ -273,53 +284,63 @@ end function
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function assemble_basekernel(basekernel_id, strain_type, &
-                             fw_field_fd, bw_field_fd) result(conv_field_fd)
+function calc_basekernel(ibasekernel, strain_type_fwd, strain_type_bwd, &
+                         fw_field_fd, bw_field_fd) result(conv_field_fd)
 
-!< Assembles the basic (waveform) kernels from the forward and the backward field
+!< Calculates the basic (waveform) kernels from the forward and the backward field
 !! in frequency domain.
 !! readfields.f90 returns strain tensor in voigt notation
 !! elements 1,...,6 contain tt,pp,rr,pr,tr,tp. See Fichtner
 !! book, p. 168-169 how the fundamental kernels K_a, K_b and
 !! K_c are defined
 
-  character(len=*), intent(in)      :: basekernel_id, strain_type
+  integer,          intent(in)      :: ibasekernel
+  character(len=*), intent(in)      :: strain_type_fwd, strain_type_bwd
   complex(kind=dp), intent(in)      :: fw_field_fd(:,:,:), bw_field_fd(:,:,:)
   complex(kind=dp)                  :: conv_field_fd(size(fw_field_fd,1),size(fw_field_fd,3))
   
-  select case(trim(basekernel_id))
-  case('k_lambda')
-     select case(trim(strain_type))
+  select case(ibasekernel)
+  case(1) ! k_lambda
+     select case(trim(strain_type_fwd))
      case('straintensor_trace')
         conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
+
      case('straintensor_full')
-        ! Only convolve trace of fw and bw fields
-        conv_field_fd = fw_field_fd(:,1,:) * &
-                        fw_field_fd(:,2,:) * &
-                        fw_field_fd(:,3,:) * &
-                        bw_field_fd(:,1,:) * &
-                        bw_field_fd(:,2,:) * &
-                        bw_field_fd(:,3,:)
+        select case(trim(strain_type_bwd))
+        case('straintensor_trace') !This receiver has only trace base vectors
+           conv_field_fd = (fw_field_fd(:,1,:) +    &
+                            fw_field_fd(:,2,:) +    &
+                            fw_field_fd(:,3,:)  ) * &
+                            bw_field_fd(:,1,:) ! This row contains the trace
+        case('straintensor_full')
+           ! Only convolve trace of fw and bw fields
+           conv_field_fd = (fw_field_fd(:,1,:) +    &
+                            fw_field_fd(:,2,:) +    &
+                            fw_field_fd(:,3,:)  ) * &
+                           (bw_field_fd(:,1,:) +    &
+                            bw_field_fd(:,2,:) +    &
+                            bw_field_fd(:,3,:)  )
+        end select
      end select
-  case('k_mu')
+  case(2) ! k_mu
      conv_field_fd = sum(fw_field_fd * bw_field_fd, 2) * 2.d0
-  case('k_a')
+  case(3) ! k_rho
+     print*,"ERROR: Density kernels not yet implemented"
+     stop
+  case(4) ! k_a
      conv_field_fd = ( bw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
                      ( fw_field_fd(:,2,:) * bw_field_fd(:,1,:) )
-  case('k_b')
+  case(5) ! k_b
      conv_field_fd = ( ( bw_field_fd(:,5,:) * fw_field_fd(:,5,:) ) + &
                      ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
-  case('k_c')
+  case(6) ! k_c
      conv_field_fd = ( fw_field_fd(:,1,:) + fw_field_fd(:,2,:) ) * &
                        bw_field_fd(:,3,:) + &
                      ( bw_field_fd(:,1,:) * bw_field_fd(:,2,:) ) * &
                        fw_field_fd(:,3,:)
-  case('k_rho')
-     print*,"ERROR: Density kernels not yet implemented"
-     stop
   end select
 
-end function assemble_basekernel
+end function calc_basekernel
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
@@ -327,90 +348,56 @@ end function assemble_basekernel
 !! the physical kernels for a desired model parameter
 !! TODO: Move this to own module, together with assemble_basekernel, but wait for 
 !!       merge with Ludwigs branch - SCS 240914
-subroutine tabulate_kernels(model_param, nbasekernels, basekernel_id, strain_type)
-  character(len=*), intent(in)   :: model_param
-  integer, intent(out)           :: nbasekernels
-  character(len=16), allocatable :: basekernel_id(:)
+subroutine tabulate_kernels(model_param, needs_basekernel, strain_type)
+  use simple_routines, only       : to_lower
+  character(len=*),  intent(in)  :: model_param
+  logical,           intent(out) :: needs_basekernel(6)
   character(len=32), intent(out) :: strain_type
 
-  select case(trim(model_param))     
+  needs_basekernel = .false.
+  select case(trim(to_lower(model_param)))
   case('lambda')
-     nbasekernels     = 1
-     allocate(basekernel_id(nbasekernels))
-
-     basekernel_id(1) = 'k_lambda'
+     needs_basekernel(1)   = .true.   ! Lambda
      strain_type      = 'straintensor_trace'
 
   case('vp')
-     nbasekernels     = 1
-     allocate(basekernel_id(nbasekernels))
-     
-     basekernel_id(1) = 'k_lambda'     
+     needs_basekernel(1)   = .true.   ! Lambda
      strain_type      = 'straintensor_trace'
 
   case('vs')
-     nbasekernels     = 2
-     allocate(basekernel_id(nbasekernels))
-
-     basekernel_id(1) = 'k_lambda'
-     basekernel_id(2) = 'k_mu'      
+     needs_basekernel(1:2) = .true.   ! Lambda, mu
      strain_type      = 'straintensor_full'
   
   case('mu')
-     nbasekernels     = 1
-     allocate(basekernel_id(nbasekernels))
-
-     basekernel_id(1) = 'k_mu'
+     needs_basekernel(2)   = .true.   ! mu
      strain_type      = 'straintensor_full'
   
   case('vsh')
-     nbasekernels     = 4
-     allocate(basekernel_id(nbasekernels))
-
-     basekernel_id(1) = 'k_lambda'
-     basekernel_id(2) = 'k_mu'
-     basekernel_id(3) = 'k_b'
-     basekernel_id(4) = 'k_c'
+     needs_basekernel([1,2,5,6]) = .true. ! Lambda, mu, b, c
      strain_type      = 'straintensor_full'
   
   case('vsv')
-     nbasekernels     = 1
-     allocate(basekernel_id(nbasekernels))
-
-     basekernel_id(1) = 'k_b'
+     needs_basekernel(5)   = .true.   ! b
      strain_type      = 'straintensor_full'
   
   case('vph')
-     nbasekernels     = 2
-     allocate(basekernel_id(nbasekernels))
-
-     basekernel_id(1) = 'k_a'
-     basekernel_id(2) = 'k_b'
+     needs_basekernel([4,6]) = .true.   ! a, c
      strain_type      = 'straintensor_full'
 
   case('vpv')
-     nbasekernels     = 3
-     allocate(basekernel_id(nbasekernels))
-
-     basekernel_id(1) = 'k_lambda'
-     basekernel_id(2) = 'k_a'
-     basekernel_id(3) = 'k_c'
+     needs_basekernel([1,4,6]) = .true.! Lambda, a, c
      strain_type      = 'straintensor_full'
 
-  case('kappa')
-     write(*,*) "Error: Kappa kernels not yet implemented"
-     call pabort
   case('eta')
-     write(*,*) "Error: Eta kernels not yet implemented"
-     call pabort
-  case('xi')
-     write(*,*) "Error: Xi kernels not yet implemented"
-     call pabort
+     needs_basekernel([1,4,6]) = .true. !Lambda, a, c
+     strain_type      = 'straintensor_full'
+
   case('rho')
-     write(*,*) "Error: Density kernels not yet implemented"
-     call pabort
+     needs_basekernel(1:6) = .true. !Lambda, mu, rho, a, b, c
+     strain_type      = 'straintensor_full'
+
   case default
-     write(*,*) "Error in tabulate_kernels: Unknown model parameter", trim(model_param)
+     write(*,*) "Error in tabulate_kernels: Unknown model parameter: ", trim(model_param)
      call pabort      
   end select
 end subroutine tabulate_kernels
@@ -428,38 +415,40 @@ function calc_physical_kernels(model_param, base_kernel, bg_model)  &
 
   ! See Fichtner p. 169 how kernels are defined and type_parameter.f90
   ! how basekernels inside kernelvalue_weighted are ordered
+  ! base_kernel contains the following order: 
+  ! lambda, mu, rho, a, b, c
   select case(trim(model_param))
   case('lambda')
-     physical_kernel(:) =                                 &
-            base_kernel(:, 1)
+     physical_kernel(:) =                                         &
+            base_kernel(:, 1)                                ! lambda
   case('mu')
-     physical_kernel(:) =                                 & 
-            base_kernel(:, 1)
+     physical_kernel(:) =                                         & 
+            base_kernel(:, 2)                                ! Mu
   case('vp')
-     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vp *           &
-            base_kernel(:, 1)
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vp * &
+            base_kernel(:, 1)                                ! Lambda
   case('vs')
-     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vs *           &
-            base_kernel(:, 2) - 4.d0 * bg_model%c_rho * bg_model%c_vs * &
-            base_kernel(:, 1)
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vs * &
+          ( base_kernel(:, 2)                             &  ! Mu
+          - base_kernel(:, 1) * 2.d0)                        ! Lambda
   case('vsh')
-     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vsh *          &
-          ( base_kernel(:, 1) * 2 +                   &
-            base_kernel(:, 2) +                       &
-            base_kernel(:, 3) +                       &
-            base_kernel(:, 4) * 2*(1-bg_model%c_eta))
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vsh * &
+          (  2 * base_kernel(:, 1)                        &  ! Lambda
+           +     base_kernel(:, 2)                        &  ! Mu
+           +     base_kernel(:, 5)                        &  ! B
+           + 2 * base_kernel(:, 6) * (1-bg_model%c_eta))     ! C 
   case('vsv')
-     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vsv *          &
-            base_kernel(:, 1)
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vsv * &
+            base_kernel(:, 5)                                ! B
   case('vph')
-     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vph *          &
-          ( base_kernel(:, 1) +                       &
-            base_kernel(:, 2) * bg_model%c_eta )
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vph * &
+          ( base_kernel(:, 4) +                           &  ! A
+            base_kernel(:, 6) * bg_model%c_eta )             ! C
   case('vpv')
-     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vpv *          &
-          ( base_kernel(:, 1) +                       &
-            base_kernel(:, 2) +                       &
-            base_kernel(:, 3) )
+     physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vpv * &
+          ( base_kernel(:, 1) +                           &  ! Lambda
+            base_kernel(:, 4) +                           &  ! A
+            base_kernel(:, 6) )                              ! C 
   case('kappa')
      write(*,*) "Error: Kappa kernels not yet implemented"
      stop

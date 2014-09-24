@@ -154,6 +154,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST KERNEL MODULE'
   call test(test_kernel_init, 'Test Kernel initialization')
   call test(test_kernel_cut_timewindow, 'Test Time window cutting')
+  call test(test_tabulate_kernel, 'Test base kernel tabulation')
 
   ! test_tetrahedra
   write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'
