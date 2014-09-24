@@ -1,6 +1,6 @@
 !=========================================================================================
 module type_parameter
-    use global_parameters,  only : sp, dp, pi, deg2rad, verbose, lu_out, master
+    use global_parameters,  only : sp, dp, pi, deg2rad, verbose, lu_out, master, testing
     use source_class,       only : src_param_type
     use kernel,             only : kernelspec_type
     use receiver_class,     only : rec_param_type
@@ -32,7 +32,6 @@ module type_parameter
         character(len=512)                   :: mesh_file_face
         character(len=512)                   :: output_file = 'kerner'
         character(len=1)                     :: component
-        character(len=16)                    :: model_param
         character(len=32)                    :: whattodo
         character(len=32)                    :: int_type
         character(len=32)                    :: dump_type
@@ -40,6 +39,7 @@ module type_parameter
         character(len=32)                    :: strain_type_fwd
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
+        integer                              :: nfilter
         integer                              :: nelems_per_task
         integer                              :: npoints_per_step
         integer                              :: max_iter
@@ -180,7 +180,7 @@ subroutine read_parameters(this, input_file_in)
            read(keyvalue, *) this%write_smgr
 
         end select parameter_to_read
-        if (verbose>0) write(lu_out, "('  ', A32,' ',A)"), keyword, trim(keyvalue)
+        if (verbose>0) write(lu_out, "('  ', A32,' ',A)")  keyword, trim(keyvalue)
      end do
      close(lu_inparam_basic)
 
@@ -292,7 +292,7 @@ subroutine read_receiver(this)
    integer                       :: irec, firstkernel, lastkernel
    integer                       :: ikernel, recnkernel
    real(kind=dp)                 :: reclatd, reclond
-   character(len=16)             :: recname
+   character(len=16)             :: recname, trash(5), model_parameter
    character(len=80)             :: fmtstring
 
    if (.not.this%parameters_read) then
@@ -304,6 +304,8 @@ subroutine read_receiver(this)
        write(6,*) 'Source parameters not read. Call read_source before read_receiver!'
        call pabort
    end if
+
+   this%strain_type_fwd = 'straintensor_trace'
 
    call pbarrier
 
@@ -319,15 +321,14 @@ subroutine read_receiver(this)
    end if
 
    call pbroadcast_int(this%nrec, 0)
-   call pbroadcast_char(this%model_param, 0)
    call pbroadcast_char(this%component, 0)
 
 
    fmtstring = '("  Using ", I5, " receivers")'
    write(lu_out, fmtstring) this%nrec
 
-   fmtstring = '("  Kernel for parameter ", A, " on component ", A)'
-   write(lu_out, fmtstring) this%model_param, this%component
+   fmtstring = '("  Kernel on component ", A)'
+   write(lu_out, fmtstring) this%component
 
    allocate(this%receiver(this%nrec))
 
@@ -357,8 +358,13 @@ subroutine read_receiver(this)
       write(lu_out, fmtstring) trim(recname), reclatd, reclond
       if (master) then
           do ikernel = 1, recnkernel
-             ! Just to advance the receiver file
-             read(lu_receiver, *) 
+             ! Just get the model parameter
+             read(lu_receiver, *) trash(1:5), model_parameter
+             if ( (model_parameter.ne.'lambda') .and.      &
+                  (model_parameter.ne.'vp')          ) then
+               this%strain_type_fwd = 'straintensor_full'
+             end if
+                  
           end do
       end if
 
@@ -391,7 +397,8 @@ subroutine read_kernel(this, sem_data, filter)
    integer                        :: ikernel, ifilter
    integer                        :: lu_receiver
    real(kind=dp)                  :: timewindow(2)
-   character(len=4)               :: misfit_type, model_parameter
+   character(len=4)               :: misfit_type
+   character(len=16)              :: model_parameter
    character(len=32)              :: kernelname, filtername, kernel_shortname
    character(len=80)              :: fmtstring
 
@@ -421,7 +428,7 @@ subroutine read_kernel(this, sem_data, filter)
        write(6,*)'Reading kernels from file ', trim(this%receiver_file)
        open(newunit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) 
-       read(lu_receiver,*) this%model_param
+       read(lu_receiver,*) this%component
 
    else
       write(lu_out,*) 'Waiting for master to distribute kernels...'
@@ -430,9 +437,7 @@ subroutine read_kernel(this, sem_data, filter)
 
    allocate(this%kernel(this%nkernel))
 
-   this%strain_type_fwd = 'straintensor_trace'
-
-   if (.not. master) then
+   if ((.not.master).or.testing) then
        nfilter = size(filter)
 
        if (this%deconv_stf) then
@@ -466,10 +471,15 @@ subroutine read_kernel(this, sem_data, filter)
          call pbroadcast_char(filtername, 0)
          call pbroadcast_char(misfit_type, 0)
          call pbroadcast_dble_arr(timewindow, 0)
+         call pbroadcast_char(model_parameter, 0)
 
          kernelname = trim(this%receiver(irec)%name)//'_'//trim(kernel_shortname)
 
-         if (.not.master) then
+         if ((.not.master).or.(testing)) then
+             if (.not.(present(sem_data).and.present(filter))) then
+                write(*,*) 'ERROR: Only master may call read_kernel without sem_data and filter'
+                call pabort()
+             end if
              do ifilter = 1, nfilter
                 if (trim(filtername).eq.trim(filter(ifilter)%name)) exit
              end do
@@ -490,10 +500,10 @@ subroutine read_kernel(this, sem_data, filter)
                                             timeshift_fwd   = sem_data%timeshift_fwd    , &
                                             write_smgr      = this%write_smgr)
 
-         ! Update which base kernels are needed for this receiver
-         this%receiver(irec)%needs_basekernel =   &
-                              this%receiver(irec)%needs_basekernel &
-                         .or. this%kernel(ikernel)%needs_basekernel
+             ! Update which base kernels are needed for this receiver
+             this%receiver(irec)%needs_basekernel =   &
+                                  this%receiver(irec)%needs_basekernel &
+                             .or. this%kernel(ikernel)%needs_basekernel
          else
              this%kernel(ikernel)%name = kernelname
          end if
@@ -505,11 +515,9 @@ subroutine read_kernel(this, sem_data, filter)
       ! If any kernel of this receiver needs more than a lambda base kernel,
       ! the whole strain tensor has to be read in. If only lambda, the trace is enough.
       ! However, this would require some involved changes in readfields.f90. 
-
-
       if (any(this%receiver(irec)%needs_basekernel(2:6))) then
          this%receiver(irec)%strain_type = 'straintensor_full'
-         this%strain_type_fwd = 'straintensor_full'
+         !this%strain_type_fwd = 'straintensor_full'
       else
          this%receiver(irec)%strain_type = 'straintensor_trace'
       end if
@@ -534,7 +542,7 @@ subroutine read_filter(this, nomega, df)
    integer, intent(in), optional        :: nomega
    real(kind=dp), intent(in), optional  :: df
    integer                              :: lu_filter
-   integer                              :: ifilter, nfilter
+   integer                              :: ifilter
    character(len=32)                    :: filtername, filtertype
    character(len=80)                    :: fmtstring
    real(kind=dp)                        :: freqs(4)
@@ -547,22 +555,22 @@ subroutine read_filter(this, nomega, df)
    write(lu_out,*)'Reading filters from file ', trim(this%filter_file)
    if (master) then
        open(newunit=lu_filter, file=trim(this%filter_file), status='old')
-       read(lu_filter, *) nfilter
+       read(lu_filter, *) this%nfilter
 
    else
       write(lu_out,*) 'Waiting for master to distribute filters...'
 
    end if
 
-   call pbroadcast_int(nfilter, 0)
+   call pbroadcast_int(this%nfilter, 0)
 
-   allocate(this%filter(nfilter))
+   allocate(this%filter(this%nfilter))
   
    fmtstring = '("  Creating ", I5, " filters")'
-   write(lu_out,fmtstring) nfilter
+   write(lu_out,fmtstring) this%nfilter
 
    fmtstring = '("  Creating filter ", A, " of type ", A/, "   freqs: ", 4(F8.3))'
-   do ifilter = 1, nfilter
+   do ifilter = 1, this%nfilter
       if (master) read(lu_filter, *) filtername, filtertype, freqs
       call pbroadcast_char(filtername, 0)
       call pbroadcast_char(filtertype, 0)
@@ -570,7 +578,11 @@ subroutine read_filter(this, nomega, df)
 
       write(lu_out,fmtstring) trim(filtername), trim(filtertype), freqs
       
-      if(.not.master) then
+      if((.not.master).or.(testing)) then
+          if (.not.(present(df).and.present(nomega))) then
+             write(*,*) 'ERROR: Only master may call read_filter without nomega and df'
+             call pabort()
+          end if
           call this%filter(ifilter)%create(filtername, df, nomega, filtertype, freqs)
       end if
 
