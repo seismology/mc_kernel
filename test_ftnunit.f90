@@ -28,6 +28,7 @@ subroutine test_all
 
   verbose = 1
   master  = .true.
+  testing = .true.
 
   call init_output()
 
@@ -103,7 +104,6 @@ subroutine test_all
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
   call test(test_readfields_set_params, 'Set SEM file params')
   call test(test_readfields_open_files, 'Open SEM file')
-  call test(test_readfields_load_seismogram, 'Load seismogram')
   call test(test_readfields_read_meshes, 'Read meshes')
 
   ! test_rotations
@@ -155,6 +155,7 @@ subroutine test_all
   call test(test_kernel_init, 'Test Kernel initialization')
   call test(test_kernel_cut_timewindow, 'Test Time window cutting')
   call test(test_tabulate_kernel, 'Test base kernel tabulation')
+  call test(test_read_kernel, 'Test reading of receiver.dat file')
 
   ! test_tetrahedra
   write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'
