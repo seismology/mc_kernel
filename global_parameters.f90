@@ -16,6 +16,10 @@ module global_parameters
   integer, parameter         :: DIETAG  = 2
   
   logical                    :: master, firstslave
+  logical                    :: testing = .false. !< Set to true only for unit test, 
+                                                  !! because some routines require action
+                                                  !! from master or slave, which would not 
+                                                  !! be tested otherwise
   integer, protected         :: myrank, nproc
   integer, protected         :: lu_out !< Logical unit for output. 
                                        !! 6 (Screen) for master
