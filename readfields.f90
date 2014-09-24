@@ -10,8 +10,8 @@ module readfields
     use buffer,            only            : buffer_type
     use clocks_mod,        only            : tick
     use commpi,            only            : pabort
-    use nc_routines,       only            : getgrpid, getvarid, nc_open_for_read, nc_getvar, &
-                                             check, nc_getvar_by_name
+    use nc_routines,       only            : getgrpid, getvarid, nc_open_for_read,  &
+                                             nc_getvar, nc_getvar_by_name, check
 
     use rotations
     use netcdf
@@ -24,18 +24,17 @@ module readfields
     integer, parameter                     :: min_file_version = 2
 
     type meshtype
-        real(kind=sp), allocatable         :: s(:), z(:)            ! Coordinates of all GLL points
-        real(kind=sp), allocatable         :: s_mp(:), z_mp(:)      ! Coordinates of element midpoints
-        integer, allocatable               :: corner_point_ids(:,:) ! (4,nelem)
-        integer, allocatable               :: eltype(:)             ! (nelem)
-        real(kind=sp), allocatable         :: vp(:), vs(:), rho(:)  ! Model parameters
-        real(kind=sp), allocatable         :: lambda(:), mu(:)      ! Elastic parameters
-        real(kind=sp), allocatable         :: phi(:), xi(:), eta(:) ! Anisotropic parameters
-        integer, allocatable               :: isaxis(:)
-        integer, allocatable               :: gll_point_ids(:,:,:)
+        real(kind=sp), allocatable         :: s(:), z(:)            !< Coordinates of all GLL points
+        real(kind=sp), allocatable         :: s_mp(:), z_mp(:)      !< Coordinates of element midpoints
+        integer, allocatable               :: corner_point_ids(:,:) !< (4,nelem)
+        integer, allocatable               :: eltype(:)             !< (nelem)
+        real(kind=sp), allocatable         :: vp(:), vs(:), rho(:)  !< Model parameters
+        real(kind=sp), allocatable         :: lambda(:), mu(:)      !< Elastic parameters
+        real(kind=sp), allocatable         :: phi(:), xi(:), eta(:) !< Anisotropic parameters
+        integer, allocatable               :: isaxis(:)             !< Is this point at the axis?
+        integer, allocatable               :: gll_point_ids(:,:,:)  !< IDs of GLL points for this element
         integer                            :: npoints, nelem
-        real(kind=dp), allocatable         :: theta(:)
-        integer                            :: nsurfelem
+        real(kind=sp), allocatable         :: theta(:)              !< colatitude of surface elements
     end type
 
     type ncparamtype
@@ -117,7 +116,6 @@ module readfields
             procedure, pass                :: set_params
             procedure, pass                :: open_files
             procedure, pass                :: check_consistency
-            procedure, pass                :: check_mesh
             procedure, pass                :: read_meshes
             procedure, pass                :: build_kdtree
             procedure, pass                :: load_fw_points
@@ -472,9 +470,6 @@ subroutine open_files(this)
                                  this%fwd(isim))
         this%fwd(isim)%amplitude = real(temp, kind=dp)
 
-        !call check(nf90_inq_ncid( ncid     = this%fwd(isim)%ncid,   &
-        !                          name     = "Seismograms",         &
-        !                          grp_ncid = this%fwd(isim)%seis))
 
         call getvarid(            ncid     = this%fwd(isim)%surf,   &
                                   name     = "stf_dump",            &
@@ -602,9 +597,6 @@ subroutine open_files(this)
         call getgrpid( ncid     = this%bwd(isim)%ncid,   &
                        name     = "Mesh",                &
                        grp_ncid = this%bwd(isim)%mesh)
-        !call getgrpid( ncid     = this%bwd(isim)%ncid,   &
-        !               name     = "Seismograms",         &
-        !               grp_ncid = this%bwd(isim)%seis)
 
         call nc_read_att_int(     this%bwd(isim)%ndumps,            &
                                   'number of strain dumps',         &
@@ -1983,15 +1975,9 @@ end subroutine build_kdtree
 !-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
     use netcdf
-    use spectral_basis, only : zelegl, zemngl2, &
-                               def_lagrange_derivs_gll, def_lagrange_derivs_glj
 
     class(semdata_type)        :: this
-    integer                    :: ncvarid_mesh_s, ncvarid_mesh_z
-    integer                    :: surfdimid, ncvarid_theta
     integer                    :: isim
-    logical                    :: mesherror
-    real(kind=sp), allocatable :: theta(:)
    
     if (.not.this%files_open) then
         print *, 'ERROR in read_meshes(): Files have not been opened!'
@@ -2015,6 +2001,12 @@ subroutine read_meshes(this)
 
     call cache_mesh(this%fwd(1)%mesh, this%fwdmesh, this%dump_type) 
    
+    ! Read colatitudes of surface elements (aka theta) for forward mesh
+    call nc_getvar_by_name(ncid = this%fwd(1)%surf,      &
+                           name = 'elem_theta',          &
+                           values = this%fwdmesh%theta,  &
+                           limits = [0., 180.] )
+
     ! Backward SEM mesh                     
     if (this%nsim_bwd > 0) then
       write(lu_out,*) 'Read SEM mesh from first backward simulation'
@@ -2033,123 +2025,22 @@ subroutine read_meshes(this)
     
       call cache_mesh(this%bwd(1)%mesh, this%bwdmesh, this%dump_type) 
 
-    end if
+      ! Read colatitudes of surface elements (aka theta) for backward mesh
+      if (this%nsim_bwd > 0) then
+         call nc_getvar_by_name(ncid = this%bwd(1)%surf,      &
+                                name = 'elem_theta',          &
+                                values = this%bwdmesh%theta,  &
+                                limits = [0., 180.] )
 
+    end if !nsim_bwd>0
 
-
-    ! Read surface element theta
-    ! Forward mesh
-    call check( nf90_inq_dimid( ncid  = this%fwd(1)%surf, &
-                                name  = 'surf_elems',     &
-                                dimid = surfdimid) ) 
-
-    call check( nf90_inquire_dimension(ncid  = this%fwd(1)%surf,        & 
-                                       dimid = surfdimid,               &
-                                       len   = this%fwdmesh%nsurfelem) )
-
-    call  getvarid( ncid  = this%fwd(1)%surf, &
-                    name  = "elem_theta",     &
-                    varid = ncvarid_theta) 
-
-    allocate( this%fwdmesh%theta(this%fwdmesh%nsurfelem) )
-    allocate( theta(this%fwdmesh%nsurfelem) )
-    call nc_getvar( ncid   = this%fwd(1)%surf,   &
-                    varid  = ncvarid_theta,          &
-                    start  = 1,                      & 
-                    count  = this%fwdmesh%nsurfelem, &
-                    values = theta                    )
-    this%fwdmesh%theta = real(theta, kind=dp)
-    
-    ! Backward mesh
-    if (this%nsim_bwd > 0) then
-
-       call check( nf90_inq_dimid( ncid  = this%bwd(1)%surf, &
-                                   name  = 'surf_elems',     &
-                                   dimid = surfdimid) ) 
-
-       call check( nf90_inquire_dimension(ncid  = this%bwd(1)%surf,        & 
-                                          dimid = surfdimid,               &
-                                          len   = this%bwdmesh%nsurfelem) )
-
-       call  getvarid(ncid  = this%bwd(1)%surf, &
-                      name  = "elem_theta",     &
-                      varid = ncvarid_theta) 
-
-      allocate( this%bwdmesh%theta(this%bwdmesh%nsurfelem) )
-      ! sure that fwd is correct here??
-      call nc_getvar( ncid   = this%bwd(1)%surf,   &
-                      varid  = ncvarid_theta,          &
-                      start  = 1,                      & 
-                      count  = this%bwdmesh%nsurfelem, &
-                      values = theta                    )
-      this%bwdmesh%theta = real(theta, kind=dp)
-   endif
+   end if !dump_type == displ_only 
                              
-    ! define terms needed to compute gradient
-    if (trim(this%dump_type) == 'displ_only') then
-        allocate(this%G1(0:this%npol,0:this%npol))
-        allocate(this%G1T(0:this%npol,0:this%npol))
-        allocate(this%G2(0:this%npol,0:this%npol))
-        allocate(this%G2T(0:this%npol,0:this%npol))
-        allocate(this%G0(0:this%npol))
+   ! define terms needed to compute gradient
+   if (trim(this%dump_type) == 'displ_only') then
+      call calc_gradient_terms(this)
+   end if
 
-        allocate(this%gll_points(0:this%npol))
-        allocate(this%glj_points(0:this%npol))
-
-        this%gll_points = zelegl(this%npol)
-        this%glj_points = zemngl2(this%npol)
-
-        this%G1 = def_lagrange_derivs_glj(this%npol, this%G0)
-        this%G2 = def_lagrange_derivs_gll(this%npol)
-
-        this%G1T = transpose(this%G1)
-        this%G2T = transpose(this%G2)
-
-        do isim = 1, this%nsim_fwd
-           allocate(this%fwd(isim)%gll_points(0:this%npol))
-           allocate(this%fwd(isim)%glj_points(0:this%npol))
-
-           this%fwd(isim)%gll_points = this%gll_points
-           this%fwd(isim)%glj_points = this%glj_points
-
-           allocate(this%fwd(isim)%G1(0:this%npol,0:this%npol))
-           allocate(this%fwd(isim)%G1T(0:this%npol,0:this%npol))
-           allocate(this%fwd(isim)%G2(0:this%npol,0:this%npol))
-           allocate(this%fwd(isim)%G2T(0:this%npol,0:this%npol))
-           allocate(this%fwd(isim)%G0(0:this%npol))
-
-           this%fwd(isim)%G1 = this%G1
-           this%fwd(isim)%G2 = this%G2
-           this%fwd(isim)%G1T = this%G1T
-           this%fwd(isim)%G2T = this%G2T
-           this%fwd(isim)%G0 = this%G0
-        end do
-
-        do isim = 1, this%nsim_bwd
-           allocate(this%bwd(isim)%gll_points(0:this%npol))
-           allocate(this%bwd(isim)%glj_points(0:this%npol))
-           
-           this%bwd(isim)%gll_points = this%gll_points
-           this%bwd(isim)%glj_points = this%glj_points
-           
-           allocate(this%bwd(isim)%G1(0:this%npol,0:this%npol))
-           allocate(this%bwd(isim)%G1T(0:this%npol,0:this%npol))
-           allocate(this%bwd(isim)%G2(0:this%npol,0:this%npol))
-           allocate(this%bwd(isim)%G2T(0:this%npol,0:this%npol))
-           allocate(this%bwd(isim)%G0(0:this%npol))
-           
-           this%bwd(isim)%G1 = this%G1
-           this%bwd(isim)%G2 = this%G2
-           this%bwd(isim)%G1T = this%G1T
-           this%bwd(isim)%G2T = this%G2T
-           this%bwd(isim)%G0 = this%G0
-        end do
-
-    endif
-
-   ! Check mesh sanity  
-   call this%check_mesh()
-                                   
    this%meshes_read = .true.
 
    write(lu_out, *) 'Forward and backward SEM mesh reading succeeded'
@@ -2159,8 +2050,8 @@ end subroutine read_meshes
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
+!> Read and cache mesh variables
 subroutine cache_mesh(ncid, mesh, dump_type)
-!< Read and cache mesh variables
   integer, intent(in)           :: ncid
   type(meshtype)                :: mesh
   character(len=*), intent(in)  :: dump_type
@@ -2248,92 +2139,76 @@ subroutine cache_mesh(ncid, mesh, dump_type)
 end subroutine cache_mesh
 !-----------------------------------------------------------------------------------------
 
-subroutine check_mesh(this)
-  class(semdata_type), intent(in)   :: this 
-  logical                           :: mesherror
+!-----------------------------------------------------------------------------------------
+!> Calculates the terms G1, G2, G1T, G2T needed to compute gradients and assigns them
+!! to the variables of type ncparamtype of forward and backward field
+subroutine calc_gradient_terms(sem_var)
+  use spectral_basis, only : zelegl, zemngl2, &
+                             def_lagrange_derivs_gll, def_lagrange_derivs_glj
+  class(semdata_type)     :: sem_var
 
-  ! Mesh sanity checks
-  mesherror = .false.
-  if (allocated(this%fwdmesh%s)) then
-     if (maxval(abs(this%fwdmesh%s)) > 1e32) then
-        write(*,*) 'Maximum value of S in the forward mesh is unreasonably large'
-        write(*,*) 'maxval(S): ', this%fwdmesh%s(maxloc(abs(this%fwdmesh%s))), ' m'
-        mesherror = .true.
-     end if
-  end if
-  if (allocated(this%fwdmesh%z)) then
-     if (maxval(abs(this%fwdmesh%z)) > 1e32) then
-        write(*,*) 'Maximum value of Z in the forward mesh is unreasonably large'
-        write(*,*) 'maxval(Z): ', this%fwdmesh%z(maxloc(abs(this%fwdmesh%z))), ' m'
-        mesherror = .true.
-     end if
-  end if
-  if (allocated(this%fwdmesh%s_mp)) then
-     if (maxval(abs(this%fwdmesh%s_mp)) > 1e32) then
-        write(*,*) 'Maximum value of S_mp in the forward mesh is unreasonably large'
-        write(*,*) 'maxval(S_mp): ', this%fwdmesh%s_mp(maxloc(abs(this%fwdmesh%s_mp))), ' m'
-        mesherror = .true.
-     end if
-  end if
-  if (allocated(this%fwdmesh%z_mp)) then
-     if (maxval(abs(this%fwdmesh%z_mp)) > 1e32) then
-        write(*,*) 'Maximum value of Z_mp in the forward mesh is unreasonably large'
-        write(*,*) 'maxval(Z_mp): ', this%fwdmesh%z_mp(maxloc(abs(this%fwdmesh%z_mp))), ' m'
-        mesherror = .true.
-     end if
-  end if
-  if (maxval(this%fwdmesh%theta).gt.180.0) then
-     write(*,*) 'Maximum value of theta in the forward mesh is larger than 180°'
-     write(*,*) 'maxval(theta): ', this%fwdmesh%theta(maxloc(abs(this%fwdmesh%theta)))
-     write(*,*) 'maxloc(theta): ', maxloc(abs(this%fwdmesh%theta))
-     mesherror = .true.
-  end if
- 
-  if (this%nsim_bwd > 0) then
-     if (allocated(this%bwdmesh%s)) then
-        if (maxval(abs(this%bwdmesh%s)) > 1e32) then
-           write(*,*) 'Maximum value of S in the backward mesh is unreasonably large'
-           write(*,*) 'maxval(S): ', this%bwdmesh%s(maxloc(abs(this%bwdmesh%s))), ' m'
-           mesherror = .true.
-        end if
-     end if
-     if (allocated(this%bwdmesh%z)) then
-        if (maxval(abs(this%bwdmesh%z)) > 1e32) then
-           write(*,*) 'Maximum value of Z in the backward mesh is unreasonably large'
-           write(*,*) 'maxval(Z): ', this%bwdmesh%z(maxloc(abs(this%bwdmesh%z))), ' m'
-           mesherror = .true.
-        end if
-     end if
-     if (allocated(this%bwdmesh%s_mp)) then
-        if (maxval(abs(this%bwdmesh%s_mp)) > 1e32) then
-           write(*,*) 'Maximum value of S_mp in the backward mesh is unreasonably large'
-           write(*,*) 'maxval(S_mp): ', this%bwdmesh%s_mp(maxloc(abs(this%bwdmesh%s_mp))), ' m'
-           mesherror = .true.
-        end if
-     end if
-     if (allocated(this%bwdmesh%z_mp)) then
-        if (maxval(abs(this%bwdmesh%z_mp)) > 1e32) then
-           write(*,*) 'Maximum value of Z_mp in the backward mesh is unreasonably large'
-           write(*,*) 'maxval(Z_mp): ', this%bwdmesh%z_mp(maxloc(abs(this%bwdmesh%z_mp))), ' m'
-           mesherror = .true.
-        end if
-     end if
-     if (maxval(this%bwdmesh%theta).gt.180.0) then
-        write(*,*) 'Maximum value of theta in the backward mesh is larger than 180°'
-        write(*,*) 'maxval(theta): ', this%bwdmesh%theta(maxloc(abs(this%bwdmesh%theta)))
-        write(*,*) 'maxloc(theta): ', maxloc(abs(this%bwdmesh%theta))
-        mesherror = .true.
-     end if
-  endif
- 
- 
-  if (mesherror) then
-     write(*,*) 'ERROR: One or more mesh errors found!'
-     call pabort
-  end if
+  integer                 :: isim
 
-end subroutine check_mesh
- 
+  allocate(sem_var%G1(0:sem_var%npol,0:sem_var%npol))
+  allocate(sem_var%G1T(0:sem_var%npol,0:sem_var%npol))
+  allocate(sem_var%G2(0:sem_var%npol,0:sem_var%npol))
+  allocate(sem_var%G2T(0:sem_var%npol,0:sem_var%npol))
+  allocate(sem_var%G0(0:sem_var%npol))
+
+  allocate(sem_var%gll_points(0:sem_var%npol))
+  allocate(sem_var%glj_points(0:sem_var%npol))
+
+  sem_var%gll_points = zelegl(sem_var%npol)
+  sem_var%glj_points = zemngl2(sem_var%npol)
+
+  sem_var%G1 = def_lagrange_derivs_glj(sem_var%npol, sem_var%G0)
+  sem_var%G2 = def_lagrange_derivs_gll(sem_var%npol)
+
+  sem_var%G1T = transpose(sem_var%G1)
+  sem_var%G2T = transpose(sem_var%G2)
+
+  do isim = 1, sem_var%nsim_fwd
+     allocate(sem_var%fwd(isim)%gll_points(0:sem_var%npol))
+     allocate(sem_var%fwd(isim)%glj_points(0:sem_var%npol))
+
+     sem_var%fwd(isim)%gll_points = sem_var%gll_points
+     sem_var%fwd(isim)%glj_points = sem_var%glj_points
+
+     allocate(sem_var%fwd(isim)%G1(0:sem_var%npol,0:sem_var%npol))
+     allocate(sem_var%fwd(isim)%G1T(0:sem_var%npol,0:sem_var%npol))
+     allocate(sem_var%fwd(isim)%G2(0:sem_var%npol,0:sem_var%npol))
+     allocate(sem_var%fwd(isim)%G2T(0:sem_var%npol,0:sem_var%npol))
+     allocate(sem_var%fwd(isim)%G0(0:sem_var%npol))
+
+     sem_var%fwd(isim)%G1 = sem_var%G1
+     sem_var%fwd(isim)%G2 = sem_var%G2
+     sem_var%fwd(isim)%G1T = sem_var%G1T
+     sem_var%fwd(isim)%G2T = sem_var%G2T
+     sem_var%fwd(isim)%G0 = sem_var%G0
+  end do
+
+  do isim = 1, sem_var%nsim_bwd
+     allocate(sem_var%bwd(isim)%gll_points(0:sem_var%npol))
+     allocate(sem_var%bwd(isim)%glj_points(0:sem_var%npol))
+     
+     sem_var%bwd(isim)%gll_points = sem_var%gll_points
+     sem_var%bwd(isim)%glj_points = sem_var%glj_points
+     
+     allocate(sem_var%bwd(isim)%G1(0:sem_var%npol,0:sem_var%npol))
+     allocate(sem_var%bwd(isim)%G1T(0:sem_var%npol,0:sem_var%npol))
+     allocate(sem_var%bwd(isim)%G2(0:sem_var%npol,0:sem_var%npol))
+     allocate(sem_var%bwd(isim)%G2T(0:sem_var%npol,0:sem_var%npol))
+     allocate(sem_var%bwd(isim)%G0(0:sem_var%npol))
+     
+     sem_var%bwd(isim)%G1 = sem_var%G1
+     sem_var%bwd(isim)%G2 = sem_var%G2
+     sem_var%bwd(isim)%G1T = sem_var%G1T
+     sem_var%bwd(isim)%G2T = sem_var%G2T
+     sem_var%bwd(isim)%G0 = sem_var%G0
+  end do
+end subroutine calc_gradient_terms
+!-----------------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
 subroutine nc_read_att_int(attribute_value, attribute_name, nc)
