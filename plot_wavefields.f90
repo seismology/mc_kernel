@@ -21,6 +21,7 @@ subroutine plot_wavefields()
     type(semdata_type)                  :: sem_data
     type(rfft_type)                     :: fft_data
     type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
+    type(backgroundmodel_type)          :: bg_model
 
     integer                             :: nelems, ntimes, nomega, nrec
     integer                             :: idump, ndumps, irec
@@ -32,7 +33,7 @@ subroutine plot_wavefields()
     complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:)
-    type(backgroundmodel_type)          :: modelcoeffs
+    real(kind=dp),    allocatable       :: modelcoeffs(:,:)
     real(kind=dp)                       :: df
     character(len=64)                   :: fmtstring
 
@@ -98,7 +99,7 @@ subroutine plot_wavefields()
 
     write(*,*) ' Read in forward field'
     allocate(fw_field(ndumps, ndim, nvertices))
-    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source, model=modelcoeffs)
+    fw_field(:,:,:) = sem_data%load_fw_points(dble(co_points), parameters%source, model=bg_model)
 
     write(*,*) ' FFT forward field'
     allocate(fw_field_fd(nomega, ndim, nvertices))

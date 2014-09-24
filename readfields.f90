@@ -72,6 +72,7 @@ module readfields
 
     type semdata_type
         private
+
         integer, public                    :: nsim_fwd, nsim_bwd
         type(ncparamtype), allocatable     :: fwd(:)
         type(ncparamtype), allocatable     :: bwd(:)
@@ -85,10 +86,8 @@ module readfields
         logical, private                   :: kdtree_built
         
         character(len=32)                  :: strain_type  !< full tensor or straintrace
-        integer                            :: ndim         !< Number of dimensions which 
-                                                           !! has to be read to calculate 
-                                                           !! Kernel on parameter 
-                                                           !! model_param
+        integer                            :: ndim          !< Number of dimensions which has to be read to calculate 
+                                                            !! Kernel on parameter model_param
 
         real(kind=dp), public              :: dt
         integer,       public              :: ndumps, decimate_factor
@@ -112,7 +111,6 @@ module readfields
 
         contains 
             procedure, pass                :: get_ndim 
-            procedure, pass                :: get_mesh 
             procedure, pass                :: set_params
             procedure, pass                :: open_files
             procedure, pass                :: check_consistency
@@ -1163,11 +1161,11 @@ function load_fw_points(this, coordinates, source_params, model)
                  utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
                       xi, eta, this%strain_type, &
                       corner_points, eltype(1), axis, &
-                      id_elem = id_elem) !/ this%fwd(isim)%amplitude
+                      id_elem = id_elem) 
               else
                  utemp = load_strain_point(this%fwd(isim),      &
                       pointid(ipoint),     &
-                      this%strain_type)  !/ this%fwd(isim)%amplitude
+                      this%strain_type)  
               endif
               
               iclockold = tick()
@@ -2003,6 +2001,7 @@ subroutine read_meshes(this)
                            values = this%fwdmesh%theta,  &
                            limits = [0., 180.] )
 
+
     ! Backward SEM mesh                     
     if (this%nsim_bwd > 0) then
       write(lu_out,*) 'Read SEM mesh from first backward simulation'
@@ -2205,6 +2204,7 @@ subroutine calc_gradient_terms(sem_var)
 end subroutine calc_gradient_terms
 !-----------------------------------------------------------------------------------------
 
+ 
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
 subroutine nc_read_att_int(attribute_value, attribute_name, nc)

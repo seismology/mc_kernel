@@ -432,7 +432,7 @@ subroutine read_kernel(this, sem_data, filter)
        write(6,*)'Reading kernels from file ', trim(this%receiver_file)
        open(newunit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) 
-       read(lu_receiver,*)
+       read(lu_receiver,*) this%model_param
 
    else
       write(lu_out,*) 'Waiting for master to distribute kernels...'
