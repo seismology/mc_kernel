@@ -164,7 +164,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
     character(len=512), intent(in) :: fwd_dir, bwd_dir
     integer,            intent(in) :: strain_buffer_size
     integer,            intent(in) :: displ_buffer_size
-    character(len=32),   intent(in), optional :: strain_type
+    character(len=*),   intent(in) :: strain_type
     character(len=512)             :: dirnam
     logical                        :: moment=.false., force=.false., single=.false.
 
@@ -271,11 +271,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
 
     end select
     
-    if (present(strain_type)) then
-       this%strain_type = strain_type
-    else
-       this%strain_type = 'straintensor_full'
-    end if
+    this%strain_type = strain_type
 
     select case(trim(this%strain_type))
     case('straintensor_trace')
