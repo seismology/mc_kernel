@@ -21,7 +21,7 @@ module readfields
     private
     public                                 :: semdata_type, meshtype
 
-    integer, parameter                     :: min_file_version = 2
+    integer, parameter                     :: min_file_version = 3
 
     type meshtype
         real(kind=sp), allocatable         :: s(:), z(:)            !< Coordinates of all GLL points
