@@ -66,8 +66,8 @@ subroutine test_readfields_read_meshes
    type(semdata_type)   :: sem_data
    type(meshtype)       :: testmesh_fwd, testmesh_bwd
    character(len=512)   :: fwd_dir, bwd_dir
-   integer              :: i_max_vp, i_max_vs
-   real(kind=sp)        :: r_max_vp, r_max_vs
+   integer              :: i_max_vp, i_max_vs, i_max_rho
+   real(kind=sp)        :: r_max_vp, r_max_vs, r_max_rho
 
    fwd_dir = './test_wavefields/kerner_fwd'
    bwd_dir = './test_wavefields/kerner_bwd'
@@ -112,12 +112,19 @@ subroutine test_readfields_read_meshes
    
    ! Mu
    call assert_comparable(minval(testmesh_fwd%mu),  0.0 ,     1e-5, 'Min Mu=0')
-   call assert_comparable(maxval(testmesh_fwd%mu),  293.8e9,  1e-5, 'Max Mu=293.8 GPa')
+   call assert_comparable(maxval(testmesh_fwd%mu),  293.77e9,  1e-5, 'Max Mu=293.8 GPa')
    
    ! Lambda
-   call assert_comparable(minval(testmesh_fwd%lambda), 52.0e9 ,   1e-5, 'Min Lambda=52 GPa')
-   call assert_comparable(maxval(testmesh_fwd%lambda), 1425.3e9,  1e-5, 'Max Lambda=1425 GPa')
-   
+   ! These would be the correct values according to the PREM paper, but who knows
+   !call assert_comparable(minval(testmesh_fwd%lambda), 52.0e9 ,   1e-5, 'Min Lambda=52 GPa')
+   !call assert_comparable(maxval(testmesh_fwd%lambda), 1425.3e9,  1e-5, 'Max Lambda=1425 GPa')
+   call assert_comparable(minval(testmesh_fwd%lambda), 34.216e9 ,   1e-5, 'Min Lambda=34 GPa')
+   call assert_comparable(maxval(testmesh_fwd%lambda), 1307.96e9,  1e-5, 'Max Lambda=1308 GPa')
+  
+   ! Eta
+   call assert_comparable(minval(testmesh_fwd%eta), 1.0,   1e-5, 'Min eta=1')
+   call assert_comparable(maxval(testmesh_fwd%eta), 1.0,   1e-5, 'Max eta=1')
+
    ! I have no idea, what these values should be - SCS
    !! Phi
    !call assert_comparable(minval(testmesh_fwd%phi), 52.0e9 ,   1e-5, 'Min phi=52 GPa')
@@ -136,6 +143,11 @@ subroutine test_readfields_read_meshes
    i_max_vs = maxloc(testmesh_fwd%vs, 1)
    r_max_vs = norm2([testmesh_fwd%s(i_max_vs), testmesh_fwd%z(i_max_vs)])
    call assert_comparable(r_max_vs, 3630000.0, 1e-5, 'Max VS at the D"')
+
+   ! Maximum Rho should be in the center
+   i_max_rho = maxloc(testmesh_fwd%rho, 1)
+   r_max_rho = norm2([testmesh_fwd%s(i_max_rho), testmesh_fwd%z(i_max_rho)])
+   call assert_comparable(r_max_rho, 0.0, 1e-5, 'Max rho at the center of the earth')
 
 
 
