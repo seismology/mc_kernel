@@ -11,7 +11,7 @@ MPIRUN  = mpirun
 
 # Enable NetCDF
 USE_NETCDF = true
-NETCDF_PATH =  $(HOME)/local_ifort      # e.g. $(HOME)/local, uses /usr/include if not defined
+NETCDF_PATH =  $(HOME)/local # e.g. $(HOME)/local, uses /usr/include if not defined
 
 # compile without MPI (possible values: 'false', 'true')
 # make sure to build mesh with one processor
@@ -31,11 +31,11 @@ SERIAL = false
 #LDFLAGS = -O3 #-march=native -fopenmp      
 
 # GFORTRAN (debug)
-#CC      = gcc                                # C compiler
-#FC      = mpif90                             # Fortran compiler
-#FFLAGS  = -g -fbacktrace -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic
-#CFLAGS  = -g -fbacktrace -Wall 
-#LDFLAGS = -g -fbacktrace -Wall
+CC      = gcc                                # C compiler
+FC      = mpif90                             # Fortran compiler
+FFLAGS  = -g -fbacktrace -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic
+CFLAGS  = -g -fbacktrace -Wall 
+LDFLAGS = -g -fbacktrace -Wall
 
 # PORTLAND (fast)
 #CC      = pgcc 
@@ -52,11 +52,11 @@ SERIAL = false
 #LDFLAGS = --Mbounds --traceback -g
 
 # Intel Compiler suite (fast)
-CC      = icc
-FC      = mpif90
-FFLAGS  = -vec-report:0 -shared-intel  -assume realloc_lhs -heap-arrays 10 -O3 -xHOST
-CFLAGS  = -O3
-LDFLAGS = -O3 
+#CC      = icc
+#FC      = mpif90
+#FFLAGS  = -vec-report:0 -shared-intel  -assume realloc_lhs -heap-arrays 10 -O3 -xHOST
+#CFLAGS  = -O3
+#LDFLAGS = -O3 
 
 # Intel Compiler suite (debug)
 #CC      = mpiicc
