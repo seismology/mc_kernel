@@ -19,6 +19,7 @@ module unit_tests
   use test_spectral_basis
   use test_sem_derivatives
   use test_simple_routines
+  use test_type_parameter
 
   implicit none
 
@@ -155,7 +156,10 @@ subroutine test_all
   call test(test_kernel_init, 'Test Kernel initialization')
   call test(test_kernel_cut_timewindow, 'Test Time window cutting')
   call test(test_tabulate_kernel, 'Test base kernel tabulation')
-  call test(test_read_kernel, 'Test reading of receiver.dat file')
+
+  ! test type_parameter
+  write(6,'(/,a)') 'TEST TYPE_PARAMETER MODULE'
+  call test(test_parameter_reading, 'Reading in all parameters')
 
   ! test_tetrahedra
   write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'
