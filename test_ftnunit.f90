@@ -27,6 +27,7 @@ contains
 subroutine test_all
 
   verbose = 1
+  master  = .true.
 
   call init_output()
 
