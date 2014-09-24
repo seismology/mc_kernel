@@ -60,6 +60,16 @@ subroutine init(this, lat, lon, mij, depth)
    this%z = dsin(this%lat) * this%radius
 
    this%mij    = mij
+
+   ! CMTSOLUTION : Mrr Mtt Mpp Mrt Mrp Mtp
+   ! voigt in tpr: Mtt Mpp Mrr Mrp Mrt Mtp
+   this%mij_voigt(1) = this%mij(2)
+   this%mij_voigt(2) = this%mij(3)
+   this%mij_voigt(3) = this%mij(1)
+   this%mij_voigt(4) = this%mij(5)
+   this%mij_voigt(5) = this%mij(4)
+   this%mij_voigt(6) = this%mij(6)
+
    call this%def_rot_matrix()
 
    this%have_stf = .false.

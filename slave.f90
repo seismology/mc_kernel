@@ -69,7 +69,8 @@ subroutine do_slave()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
 
-    call sem_data%load_seismogram(parameters%receiver, parameters%source)
+!    call sem_data%load_seismogram(parameters%receiver, parameters%source)
+    call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
 
     ndumps = sem_data%ndumps
 
@@ -202,8 +203,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use fft,                         only: rfft_type, taperandzeropad
     use filtering,                   only: timeshift_type
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
-    use kernel,                      only: assemble_basekernel, calc_physical_kernels
-    use backgroundmodel,             only: backgroundmodel_type
     use clocks_mod,                  only: tick
 
     type(inversion_mesh_data_type), intent(in)    :: inv_mesh
