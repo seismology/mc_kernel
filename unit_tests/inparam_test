@@ -1,5 +1,5 @@
-FWD_DIR         'test_wavefield/fwd/'
-BWD_DIR         'test_wavefield/bwd/'
+FWD_DIR         'test_wavefields/kerner_fwd/'
+BWD_DIR         'test_wavefields/kerner_bwd/'
 ALLOWED_ERROR   1e-1
 SOURCE_FILE     'unit_tests/CMTSOLUTION'
 RECEIVER_FILE   'unit_tests/receiver.dat'
