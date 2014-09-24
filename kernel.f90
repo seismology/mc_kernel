@@ -323,6 +323,100 @@ end function assemble_basekernel
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
+!> Here the we tabulate the base kernels required to assemble 
+!! the physical kernels for a desired model parameter
+!! TODO: Move this to own module, together with assemble_basekernel, but wait for 
+!!       merge with Ludwigs branch - SCS 240914
+subroutine tabulate_kernels(model_param, nbasekernels, basekernel_id, strain_type)
+  character(len=*), intent(in)   :: model_param
+  integer, intent(out)           :: nbasekernels
+  character(len=16), allocatable :: basekernel_id(:)
+  character(len=32), intent(out) :: strain_type
+
+  select case(trim(model_param))     
+  case('lambda')
+     nbasekernels     = 1
+     allocate(basekernel_id(nbasekernels))
+
+     basekernel_id(1) = 'k_lambda'
+     strain_type      = 'straintensor_trace'
+
+  case('vp')
+     nbasekernels     = 1
+     allocate(basekernel_id(nbasekernels))
+     
+     basekernel_id(1) = 'k_lambda'     
+     strain_type      = 'straintensor_trace'
+
+  case('vs')
+     nbasekernels     = 2
+     allocate(basekernel_id(nbasekernels))
+
+     basekernel_id(1) = 'k_lambda'
+     basekernel_id(2) = 'k_mu'      
+     strain_type      = 'straintensor_full'
+  
+  case('mu')
+     nbasekernels     = 1
+     allocate(basekernel_id(nbasekernels))
+
+     basekernel_id(1) = 'k_mu'
+     strain_type      = 'straintensor_full'
+  
+  case('vsh')
+     nbasekernels     = 4
+     allocate(basekernel_id(nbasekernels))
+
+     basekernel_id(1) = 'k_lambda'
+     basekernel_id(2) = 'k_mu'
+     basekernel_id(3) = 'k_b'
+     basekernel_id(4) = 'k_c'
+     strain_type      = 'straintensor_full'
+  
+  case('vsv')
+     nbasekernels     = 1
+     allocate(basekernel_id(nbasekernels))
+
+     basekernel_id(1) = 'k_b'
+     strain_type      = 'straintensor_full'
+  
+  case('vph')
+     nbasekernels     = 2
+     allocate(basekernel_id(nbasekernels))
+
+     basekernel_id(1) = 'k_a'
+     basekernel_id(2) = 'k_b'
+     strain_type      = 'straintensor_full'
+
+  case('vpv')
+     nbasekernels     = 3
+     allocate(basekernel_id(nbasekernels))
+
+     basekernel_id(1) = 'k_lambda'
+     basekernel_id(2) = 'k_a'
+     basekernel_id(3) = 'k_c'
+     strain_type      = 'straintensor_full'
+
+  case('kappa')
+     write(*,*) "Error: Kappa kernels not yet implemented"
+     call pabort
+  case('eta')
+     write(*,*) "Error: Eta kernels not yet implemented"
+     call pabort
+  case('xi')
+     write(*,*) "Error: Xi kernels not yet implemented"
+     call pabort
+  case('rho')
+     write(*,*) "Error: Density kernels not yet implemented"
+     call pabort
+  case default
+     write(*,*) "Error in tabulate_kernels: Unknown model parameter", trim(model_param)
+     call pabort      
+  end select
+end subroutine tabulate_kernels
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 function calc_physical_kernels(model_param, base_kernel, bg_model)  &
                                result(physical_kernel)
 
