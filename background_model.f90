@@ -39,6 +39,8 @@ subroutine combine(this, coeffs)
       deallocate(this%c_vph)
       deallocate(this%c_vpv)
       deallocate(this%c_eta)
+      deallocate(this%c_phi)
+      deallocate(this%c_xi)
       allocate(this%c_vp (npoints))
       allocate(this%c_vs (npoints))
       allocate(this%c_rho(npoints))
@@ -47,6 +49,8 @@ subroutine combine(this, coeffs)
       allocate(this%c_vph(npoints))
       allocate(this%c_vpv(npoints))
       allocate(this%c_eta(npoints))
+      allocate(this%c_phi(npoints))
+      allocate(this%c_xi(npoints))
     end if
   else
     allocate(this%c_vp (npoints))
@@ -57,6 +61,8 @@ subroutine combine(this, coeffs)
     allocate(this%c_vph(npoints))
     allocate(this%c_vpv(npoints))
     allocate(this%c_eta(npoints))
+    allocate(this%c_phi(npoints))
+    allocate(this%c_xi(npoints))
   end if
 
   ! Recombine this coefficients for chosen parameterization

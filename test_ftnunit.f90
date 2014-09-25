@@ -14,6 +14,7 @@ module unit_tests
   use test_filter
   use test_kernel
   use test_readfields
+  use test_background_models
   use test_rotations
   use test_finite_elem_mapping
   use test_spectral_basis
@@ -100,12 +101,16 @@ subroutine test_all
   call test(test_jacobian_subpar, 'jacobian subpar')
   call test(test_inv_jacobian_subpar, 'inverse jacobian subpar')
 
+  ! test_background_models
+  write(6,'(/,a)') 'TEST BACKGROUND_MODELS MODULE'
+  call test(test_background_models_combine, 'Combine model parameters')
 
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
   call test(test_readfields_set_params, 'Set SEM file params')
   call test(test_readfields_open_files, 'Open SEM file')
   call test(test_readfields_read_meshes, 'Read meshes')
+  call test(test_readfields_load_fw_points, 'Read FWD points')
 
   ! test_rotations
   write(6,'(/,a)') 'TEST ROTATIONS MODULE'
