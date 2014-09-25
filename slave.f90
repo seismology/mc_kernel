@@ -74,7 +74,8 @@ subroutine do_slave()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
 
-    call sem_data%load_seismogram(parameters%receiver, parameters%source)
+!    call sem_data%load_seismogram(parameters%receiver, parameters%source)
+    call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
 
     ndumps = sem_data%ndumps
 
@@ -491,4 +492,3 @@ end function slave_work
 
 end module
 !=========================================================================================
-
