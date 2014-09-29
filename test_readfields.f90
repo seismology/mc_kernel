@@ -161,5 +161,38 @@ subroutine test_readfields_read_meshes
 end subroutine  test_readfields_read_meshes
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+!> For now, this test only checks, whether something crashes while reading points
+subroutine test_readfields_load_fw_points
+   use readfields,     only : semdata_type
+   use type_parameter, only : parameter_type
+   type(parameter_type)    :: parameters
+   type(semdata_type)      :: sem_data
+   real(kind=dp)           :: u(73, 6, 2), coordinates(3,2)
+   
+   call parameters%read_parameters('unit_tests/inparam_test')
+   call parameters%read_source()
+   call parameters%read_receiver()
+
+   call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100,  &
+                            parameters%strain_type_fwd)
+   call sem_data%open_files()
+   call sem_data%read_meshes()
+   call sem_data%build_kdtree()
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
+
+   call parameters%read_filter(nomega=129, df=0.1d0)
+     
+   call parameters%read_kernel(sem_data, parameters%filter)
+
+   coordinates(:,1) = [ 1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 1d6, 1d6]
+   u = sem_data%load_fw_points(coordinates, parameters%source)
+
+   call sem_data%close_files()
+
+end subroutine test_readfields_load_fw_points
+
+
 end module
 !=========================================================================================

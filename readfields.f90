@@ -1040,6 +1040,11 @@ function load_fw_points(this, coordinates, source_params, model)
     real(kind=sp), allocatable        :: coeffs(:,:)
     real(kind=dp)                     :: xi, eta
 
+
+    if (.not.this%kdtree_built) then
+       print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
+       call pabort()
+    end if
     
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
@@ -1123,7 +1128,6 @@ function load_fw_points(this, coordinates, source_params, model)
                enddo                        
                write(6,*) 'eltype     = ', eltype
                write(6,*) 'xi, eta    = ', xi, eta
-               write(6,*) 'element id = ', nextpoint(inext_point)%idx
                call pabort(do_traceback = .false.)
                this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
                cycle
@@ -1404,6 +1408,11 @@ subroutine load_seismogram_rdbm(this, rec_in, src_in)
    character(len=1)                 :: component   
    character(len=256)               :: fname
 
+   if (.not.this%kdtree_built) then
+      print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
+      call pabort()
+   end if
+
    nrec=size(rec_in)
 
    ! just need 1 source, this is just a hook
@@ -1462,6 +1471,12 @@ function load_bw_points(this, coordinates, receiver)
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
     real(kind=dp)                     :: xi, eta
+
+    
+    if (.not.this%kdtree_built) then
+       print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
+       call pabort()
+    end if
 
     if (size(coordinates,1).ne.3) then
        write(*,*) ' Error in load_bw_points: input variable coordinates has to be a '
@@ -1699,6 +1714,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
 
     character(len=256) :: fname
     integer :: lu_seis,ii
+    
+    if (.not.this%kdtree_built) then
+       print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
+       call pabort()
+    end if
 
     if (trim(this%dump_type) == 'displ_only') then
         nnext_points = 6 ! 6, because this is the maximum valence in the mesh
@@ -1740,6 +1760,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
         if (trim(this%dump_type) == 'displ_only') then
             do inext_point = 1, nnext_points
                 ! get cornerpoints of finite element
+                corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
                 eltype = this%fwdmesh%eltype(nextpoint(inext_point)%idx)
                 
                 do icp = 1, 4
@@ -2534,6 +2555,16 @@ subroutine build_kdtree(this)
         call pabort
     end if
 
+    ! Destroy kdtree
+    if (this%kdtree_built) then
+      if (verbose>0) then 
+         print *, 'WARNING in build_kdtree(): Meshes have already been built'
+         print *, 'Destroying the old trees...'
+      end if
+      call kdtree2_destroy(this%fwdtree)
+      call kdtree2_destroy(this%bwdtree)
+    end if
+
     write(lu_out,*) ' Reshaping mesh variables'
     call flush(lu_out)
 
@@ -2581,6 +2612,8 @@ subroutine build_kdtree(this)
     endif
 
     call flush(lu_out)
+
+    this%kdtree_built = .true.
 
 end subroutine build_kdtree
 !-----------------------------------------------------------------------------------------
