@@ -169,7 +169,7 @@ function tick( string, id, name, since )
             clocks(id)%ticks = clocks(id)%ticks + current_tick - ref_tick
             clocks(id)%calls = clocks(id)%calls + 1
         else
-            print *, 'CLOCKS ERROR: invalid id=', id
+            write(lu_out,*) 'CLOCKS ERROR: invalid id=', id
         end if
     else if( PRESENT(name) )then
         nid = clock_id(name)
@@ -178,7 +178,7 @@ function tick( string, id, name, since )
             clocks(nid)%ticks = clocks(nid)%ticks + current_tick - ref_tick
             clocks(nid)%calls = clocks(nid)%calls + 1
         else
-            print *, 'CLOCKS ERROR: invalid id=', nid
+            write(lu_out,*) 'CLOCKS ERROR: invalid id=', id
         end if
     end if
     !reset reference tick
@@ -203,7 +203,7 @@ subroutine get_clock( id, ticks, calls, total_time, time_per_call )
         if( PRESENT(time_per_call) )time_per_call = &
              clocks(id)%ticks*tick_rate/clocks(id)%calls
     else
-        print *, 'CLOCKS ERROR: invalid id=', id
+        write(lu_out, *) 'CLOCKS ERROR: invalid id=', id
     end if
 
     return
