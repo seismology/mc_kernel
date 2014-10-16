@@ -122,6 +122,7 @@ module readfields
             procedure, pass                :: load_fw_points
             procedure, pass                :: load_fw_points_rdbm
             procedure, pass                :: load_bw_points
+            procedure, pass                :: load_model_coeffs
             procedure, pass                :: close_files
             procedure, pass                :: load_seismogram
             procedure, pass                :: load_seismogram_rdbm
@@ -1159,7 +1160,7 @@ function load_fw_points(this, coordinates, source_params, model)
         endif
     
         if (present(model)) then
-          coeffs(:, ipoint) = load_model_coeffs(this, pointid(ipoint))
+          coeffs(:, ipoint) = this%load_model_coeffs(pointid(ipoint))
         end if
 
         select case(trim(this%strain_type))
@@ -1237,8 +1238,8 @@ end function load_fw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_model_coeffs(mesh, ipoint) result(coeffs)
-   class(semdata_type), intent(in) :: mesh
+function load_model_coeffs(this, ipoint) result(coeffs)
+   class(semdata_type), intent(in) :: this
    integer, intent(in)             :: ipoint
    real(kind=sp)                   :: coeffs(6)
    real(kind=sp)                   :: coeff_buff(1)
@@ -1246,17 +1247,17 @@ function load_model_coeffs(mesh, ipoint) result(coeffs)
    
    ! Load model coefficients vp, vs and rho at point ipoint
    ! Load coefficient vp
-   coeffs(1) = mesh%fwdmesh%vp(ipoint)
+   coeffs(1) = this%fwdmesh%vp(ipoint)
    ! Load coefficient vs
-   coeffs(2) = mesh%fwdmesh%vs(ipoint)
+   coeffs(2) = this%fwdmesh%vs(ipoint)
    ! Load coefficient rho
-   coeffs(3) = mesh%fwdmesh%rho(ipoint)
+   coeffs(3) = this%fwdmesh%rho(ipoint)
    ! Load coefficient phi
-   coeffs(4) = mesh%fwdmesh%phi(ipoint)
+   coeffs(4) = this%fwdmesh%phi(ipoint)
    ! Load coefficient xi
-   coeffs(5) = mesh%fwdmesh%xi(ipoint)
+   coeffs(5) = this%fwdmesh%xi(ipoint)
    ! Load coefficient eta
-   coeffs(6) = mesh%fwdmesh%eta(ipoint)
+   coeffs(6) = this%fwdmesh%eta(ipoint)
 
 end function load_model_coeffs
 !-----------------------------------------------------------------------------------------
