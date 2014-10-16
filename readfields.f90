@@ -1157,10 +1157,10 @@ function load_fw_points(this, coordinates, source_params, model)
                write(6,*) 'axis = ', axis
 
             iclockold = tick(id=id_find_point_fwd, since=iclockold)
-        endif
+        endif ! dump_type == displ_only
     
         if (present(model)) then
-          coeffs(:, ipoint) = this%load_model_coeffs(pointid(ipoint))
+          coeffs(:, ipoint) = get_model_coeffs(this, pointid(ipoint))
         end if
 
         select case(trim(this%strain_type))
@@ -1238,7 +1238,8 @@ end function load_fw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_model_coeffs(this, ipoint) result(coeffs)
+!> Gets the model coefficients for a selected point
+function get_model_coeffs(this, ipoint) result(coeffs)
    class(semdata_type), intent(in) :: this
    integer, intent(in)             :: ipoint
    real(kind=sp)                   :: coeffs(6)
@@ -1258,6 +1259,42 @@ function load_model_coeffs(this, ipoint) result(coeffs)
    coeffs(5) = this%fwdmesh%xi(ipoint)
    ! Load coefficient eta
    coeffs(6) = this%fwdmesh%eta(ipoint)
+
+end function get_model_coeffs
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Loads the model coefficients for a selected coordinate 
+function load_model_coeffs(this, coordinates_xyz) result(model)
+   use backgroundmodel, only          : backgroundmodel_type
+   class(semdata_type)               :: this
+   real(kind=dp), intent(in)         :: coordinates_xyz(:,:)
+   type(backgroundmodel_type)        :: model
+
+   type(kdtree2_result), allocatable :: nextpoint(:)
+   integer, parameter                :: nnext_points = 1
+   integer                           :: npoints, ipoint
+   integer                           :: pointid(size(coordinates_xyz,2))
+   real(kind=sp)                     :: coordinates_sz(2, size(coordinates_xyz,2)) 
+   real(kind=sp)                     :: coeffs(6, size(coordinates_xyz,2)) 
+
+   coordinates_sz(1,:) = sqrt(coordinates_xyz(1,:)**2 + coordinates_xyz(2,:)**2) ! S
+   coordinates_sz(2,:) = coordinates_xyz(3,:) ! Z
+
+   allocate(nextpoint(nnext_points))
+
+   npoints = size(coordinates_xyz, 2)
+   do ipoint = 1, npoints
+      call kdtree2_n_nearest( this%fwdtree,              &
+                              coordinates_sz(:, ipoint), &
+                              nn = nnext_points,         &
+                              results = nextpoint )
+      pointid(ipoint) = nextpoint(1)%idx
+
+      coeffs(:, ipoint) = get_model_coeffs(this, pointid(ipoint))
+   end do ! ipoint
+
+   call model%combine(coeffs)
 
 end function load_model_coeffs
 !-----------------------------------------------------------------------------------------

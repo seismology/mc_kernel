@@ -162,6 +162,54 @@ end subroutine  test_readfields_read_meshes
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_readfields_load_model_coeffs
+   use backgroundmodel, only   : backgroundmodel_type
+   use global_parameters, only : pi, sp, dp
+   type(semdata_type)         :: sem_data
+   type(meshtype)             :: testmesh_fwd, testmesh_bwd
+   type(backgroundmodel_type) :: model
+   character(len=512)         :: fwd_dir, bwd_dir
+   integer, parameter         :: npoints = 100
+   real(kind=dp)              :: coordinates(3,npoints), phi(npoints), z(npoints)
+   integer                    :: ipoint
+
+   fwd_dir = './test_wavefields/kerner_fwd'
+   bwd_dir = './test_wavefields/kerner_bwd'
+   
+   call sem_data%set_params(fwd_dir, bwd_dir, 100, 100, 'straintensor_trace') 
+
+   call sem_data%open_files()
+
+   call sem_data%read_meshes()
+
+   call random_number(phi)
+   call random_number(z)
+   phi = phi * 2.d0 * pi
+
+   do ipoint = 1, npoints
+      coordinates(:, ipoint) = [cos(phi(ipoint)), sin(phi(ipoint)), (z(ipoint)-0.5)*2] & 
+                               * 6.371d6
+   end do
+
+   model = sem_data%load_model_coeffs(coordinates)
+
+   call assert_true(all(abs(model%c_vp(1)-model%c_vp(2:))<1e-10), 'vP is identical for same radius')
+   call assert_true(all(abs(model%c_vpv(1)-model%c_vpv(2:))<1e-10), 'vPv is identical for same radius')
+   call assert_true(all(abs(model%c_vph(1)-model%c_vph(2:))<1e-10), 'vPh is identical for same radius')
+   call assert_true(all(abs(model%c_vs(1)-model%c_vs(2:))<1e-10), 'vS is identical for same radius')
+   call assert_true(all(abs(model%c_vsv(1)-model%c_vsv(2:))<1e-10), 'vSv is identical for same radius')
+   call assert_true(all(abs(model%c_vsh(1)-model%c_vsh(2:))<1e-10), 'vSh is identical for same radius')
+   call assert_true(all(abs(model%c_xi(1)-model%c_xi(2:))<1e-10), 'Xi is identical for same radius')
+   call assert_true(all(abs(model%c_phi(1)-model%c_phi(2:))<1e-10), 'Phi is identical for same radius')
+   call assert_true(all(abs(model%c_eta(1)-model%c_eta(2:))<1e-10), 'eta is identical for same radius')
+   call assert_true(all(abs(model%c_rho(1)-model%c_rho(2:))<1e-10), 'eta is identical for same radius')
+
+   call sem_data%close_files()
+
+end subroutine test_readfields_load_model_coeffs
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 !> For now, this test only checks, whether something crashes while reading points
 subroutine test_readfields_load_fw_points
    use readfields,     only : semdata_type
@@ -192,7 +240,7 @@ subroutine test_readfields_load_fw_points
    call sem_data%close_files()
 
 end subroutine test_readfields_load_fw_points
-
+!-----------------------------------------------------------------------------------------
 
 end module
 !=========================================================================================
