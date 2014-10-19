@@ -360,16 +360,21 @@ subroutine read_receiver(this)
           do ikernel = 1, recnkernel
              ! Just get the model parameter
              read(lu_receiver, *) trash(1:5), model_parameter
+             
              if ( (model_parameter.ne.'lambda') .and.      &
                   (model_parameter.ne.'vp')          ) then
                this%strain_type_fwd = 'straintensor_full'
              end if
                   
           end do
-      end if
+       end if
 
-      call this%receiver(irec)%rotate_receiver( this%source%trans_rot_mat )
+
+       call this%receiver(irec)%rotate_receiver( this%source%trans_rot_mat )
    end do
+
+   call pbroadcast_char(this%strain_type_fwd, 0)
+
    if (master) then 
        close(lu_receiver)
    end if
