@@ -4,6 +4,10 @@ module backgroundmodel
 
   implicit none
 
+  integer, parameter           :: nmodel_parameters = 6 !< Number of basic model parameters
+                                                        !! which are stored in the mesh
+                                                        !! Currently: vp, vs, rho, xi, phi, eta
+
   type backgroundmodel_type
     real(kind=sp), allocatable :: c_vs(:)
     real(kind=sp), allocatable :: c_vp(:)
@@ -16,7 +20,7 @@ module backgroundmodel
     real(kind=sp), allocatable :: c_phi(:)
     real(kind=sp), allocatable :: c_xi(:)
     contains 
-      procedure, pass            :: combine
+      procedure, pass          :: combine
   end type
 
 contains
@@ -91,6 +95,34 @@ subroutine combine(this, coeffs)
   this%c_vpv = this%c_vph * sqrt(coeffs(4,:))
 
 end subroutine combine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function weight_parameters(model, weights) result(all_coeffs)
+  type(backgroundmodel_type)  :: model
+  real(kind=dp), intent(in)   :: weights(:)
+  real(kind=dp)               :: all_coeffs(size(weights), nmodel_parameters)
+
+  integer                     :: npoint, ipoint
+
+  npoint = size(weights)
+
+  all_coeffs(1,  :) = model%c_vp (:) 
+  all_coeffs(2,  :) = model%c_vs (:) 
+  all_coeffs(3,  :) = model%c_rho(:) 
+  all_coeffs(4,  :) = model%c_vsh(:) 
+  all_coeffs(5,  :) = model%c_vsv(:) 
+  all_coeffs(6,  :) = model%c_vph(:) 
+  all_coeffs(7,  :) = model%c_vpv(:) 
+  all_coeffs(8,  :) = model%c_eta(:) 
+  all_coeffs(9,  :) = model%c_phi(:) 
+  all_coeffs(10, :) = model%c_xi (:) 
+
+  do ipoint = 1, npoint
+     all_coeffs(:, ipoint)  = all_coeffs(:, ipoint) * weights(ipoint)
+  end do
+
+end function weight_parameters
 !-----------------------------------------------------------------------------------------
 
 end module backgroundmodel
