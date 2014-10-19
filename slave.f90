@@ -17,6 +17,7 @@ module slave_mod
     real(kind=dp), allocatable :: kernel_values(:,:,:)
     real(kind=dp), allocatable :: kernel_variance(:,:,:)
     integer,       allocatable :: niterations(:,:)
+    real(kind=dp), allocatable :: model(:,:,:)
   end type
 
 contains
@@ -145,6 +146,7 @@ subroutine do_slave()
        wt%kernel_values   = slave_result%kernel_values
        wt%kernel_variance = slave_result%kernel_variance
        wt%niterations     = slave_result%niterations
+       wt%model           = slave_result%model
 
        ! Finished writing my part of the mesh
        call inv_mesh%freeme
@@ -209,7 +211,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use filtering,                   only: timeshift_type
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
     use kernel,                      only: calc_basekernel, calc_physical_kernels
-    use backgroundmodel,             only: backgroundmodel_type
+    use backgroundmodel,             only: backgroundmodel_type, nmodel_parameters, &
+                                           weight_parameters
     use clocks_mod,                  only: tick
 
     type(inversion_mesh_data_type), intent(in)    :: inv_mesh
@@ -219,7 +222,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     type(slave_result_type)                       :: slave_result
 
     type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
-    type(integrated_type), allocatable  :: int_kernel(:)
+    type(integrated_type), allocatable  :: int_kernel(:), int_model(:)
     type(backgroundmodel_type)          :: bg_model
 
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
@@ -233,6 +236,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:,:) 
     real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
     integer,          allocatable       :: niterations(:,:)
+    real(kind=dp),    allocatable       :: model_random_points(:,:) 
 
     real(kind=dp)                       :: volume
 
@@ -245,6 +249,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer, parameter                  :: taper_length = 10! This is the bare minimum. It does 
                                                             ! not produce artifacts yet, at least 
                                                             ! no obvious ones
+    integer, parameter                  :: nptperstep_model = 100 !< Points per MC iteration for 
+                                                                  !! Integration of model parameters
+                                                                  !! Larger than for kernels, since
+                                                                  !! evaluation is very cheap
 
     iclockold = tick()
 
@@ -260,6 +268,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%niterations(parameters%nkernel, nelements))
+    allocate(slave_result%model(nmodel_parameters, nbasisfuncs_per_elem, nelements))
     
     allocate(fw_field(ndumps, ndim, nptperstep))
     allocate(bw_field(ndumps, ndim, nptperstep))
@@ -275,6 +284,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(kernelvalue_weighted(nptperstep, parameters%nkernel, nbasekernels))
     allocate(kernelvalue_physical(nptperstep, parameters%nkernel))
 
+    allocate(model_random_points(nptperstep_model, nmodel_parameters))
 
     volume = 0.0
 
@@ -292,18 +302,40 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     allocate(random_points(3, nptperstep))
     allocate(int_kernel(nbasisfuncs_per_elem))
+    allocate(int_model(nbasisfuncs_per_elem))
 
     iclockold = tick(id=id_init, since=iclockold)
 
     do ielement = 1, nelements 
 
-        iclockold = tick()
 
         ! Get volume of current element
+        iclockold = tick()
         volume = inv_mesh%get_volume(ielement)
+        iclockold = tick(id=id_inv_mesh)
+
+        ! Calculate integrated model parameters for this element
+        do ibasisfunc = 1, nbasisfuncs_per_elem
+           call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters,   & 
+                                                            volume = volume,              &
+                                                            allowed_error = 1d-8,         &
+                                                            allowed_relerror = 1d-2)
+        end do
+        do while (.not.allallconverged(int_model))
+           random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, &
+                                                               parameters%quasirandom)
+           do ibasisfunc = 1, nbasisfuncs_per_elem
+              model_random_points = weight_parameters(sem_data%load_model_coeffs(random_points), &
+                                                      inv_mesh%weights(ielement,                 &  
+                                                                       ibasisfunc,               &
+                                                                       random_points) )
+
+              call int_model(ibasisfunc)%check_montecarlo_integral(model_random_points)
+           end do
+        end do
 
         ! Initialize basis kernel Monte Carlo integrals for current element
-        iclockold = tick(id=id_inv_mesh)
+        iclockold = tick()
         do ibasisfunc = 1, nbasisfuncs_per_elem
            call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel, &
                                                              volume,                         &
@@ -480,6 +512,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
            slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
            slave_result%niterations(:,ielement)                  = niterations(:,ielement)
+           slave_result%model(:, ibasisfunc, ielement)           = int_model(ibasisfunc)%getintegral()
            call int_kernel(ibasisfunc)%freeme()
         end do
 

@@ -1240,11 +1240,10 @@ end function load_fw_points
 !-----------------------------------------------------------------------------------------
 !> Gets the model coefficients for a selected point
 function get_model_coeffs(this, ipoint) result(coeffs)
+   use backgroundmodel, only        : nmodel_parameters
    class(semdata_type), intent(in) :: this
    integer, intent(in)             :: ipoint
-   real(kind=sp)                   :: coeffs(6)
-   real(kind=sp)                   :: coeff_buff(1)
-
+   real(kind=sp)                   :: coeffs(nmodel_parameters)
    
    ! Load model coefficients vp, vs and rho at point ipoint
    ! Load coefficient vp
@@ -1266,7 +1265,7 @@ end function get_model_coeffs
 !-----------------------------------------------------------------------------------------
 !> Loads the model coefficients for a selected coordinate 
 function load_model_coeffs(this, coordinates_xyz) result(model)
-   use backgroundmodel, only          : backgroundmodel_type
+   use backgroundmodel, only          : backgroundmodel_type, nmodel_parameters
    class(semdata_type)               :: this
    real(kind=dp), intent(in)         :: coordinates_xyz(:,:)
    type(backgroundmodel_type)        :: model
@@ -1276,7 +1275,7 @@ function load_model_coeffs(this, coordinates_xyz) result(model)
    integer                           :: npoints, ipoint
    integer                           :: pointid(size(coordinates_xyz,2))
    real(kind=sp)                     :: coordinates_sz(2, size(coordinates_xyz,2)) 
-   real(kind=sp)                     :: coeffs(6, size(coordinates_xyz,2)) 
+   real(kind=sp)                     :: coeffs(nmodel_parameters, size(coordinates_xyz,2)) 
 
    coordinates_sz(1,:) = sqrt(coordinates_xyz(1,:)**2 + coordinates_xyz(2,:)**2) ! S
    coordinates_sz(2,:) = coordinates_xyz(3,:) ! Z
