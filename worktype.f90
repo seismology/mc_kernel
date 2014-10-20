@@ -54,7 +54,7 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   integer               :: ierr, i
   integer, allocatable  :: oldtypes(:), blocklengths(:)
   integer(kind=MPI_ADDRESS_KIND), allocatable  :: offsets(:)
-  integer, parameter    :: nblocks = 6
+  integer, parameter    :: nblocks = 7
   character(len=64)     :: fmtstring
 
   wt%ntotal_kernel        = nkernel
