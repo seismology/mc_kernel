@@ -44,8 +44,17 @@ subroutine check_montecarlo_integral(this, func_values)
        write(*,*) 'Initialize this MC type first'
        call pabort 
     end if
+
+    if (size(func_values, 2).ne.this%nfuncs) then
+      print *, 'Wrong number of functions in check_montecarlo_integral'
+      print *, 'Type was initialized with: ', this%nfuncs
+      print *, 'but func_values has size:  ', size(func_values, 2)
+      call pabort()
+    end if
+
     npoints = size(func_values, 1)
     this%nmodels = this%nmodels + npoints
+
     do ifuncs = 1, this%nfuncs
         if(this%converged(ifuncs)) cycle
         ! https://en.wikipedia.org/wiki/Monte_Carlo_Integration
@@ -62,15 +71,28 @@ subroutine check_montecarlo_integral(this, func_values)
         if (this%integral(ifuncs).ne.this%integral(ifuncs)) then
            print *, 'Monte Carlo Integration:'
            print *, 'Integral of function ', ifuncs, ' is NaN'
+           print *, 'int:   ', this%integral(ifuncs)
+           print *, 'var:   ', this%variance(ifuncs)
            print *, 'fsum:  ', this%fsum(ifuncs)
            print *, 'f2sum: ', this%f2sum(ifuncs)
+           print *, 'current value: ', func_values(:, ifuncs)
+           call pabort
+        end if
+        if (this%variance(ifuncs).ne.this%variance(ifuncs)) then
+           print *, 'Monte Carlo Integration:'
+           print *, 'Variance of function ', ifuncs, ' is NaN'
+           print *, 'int:   ', this%integral(ifuncs)
+           print *, 'var:   ', this%variance(ifuncs)
+           print *, 'fsum:  ', this%fsum(ifuncs)
+           print *, 'f2sum: ', this%f2sum(ifuncs)
+           print *, 'current value: ', func_values(:, ifuncs)
            call pabort
         end if
         ! Check absolute error
         if (this%variance(ifuncs) < this%allowed_variance(ifuncs)) then
            this%converged(ifuncs) = .true.
         ! Check relative error
-        elseif (this%variance(ifuncs) < &
+        elseif (sqrt(this%variance(ifuncs)) < &
                 this%allowed_relerror(ifuncs)*this%integral(ifuncs)) then
            this%converged(ifuncs) = .true.
         end if

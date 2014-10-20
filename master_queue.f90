@@ -179,6 +179,7 @@ subroutine finalize()
   integer                       :: ikernel, imodel_parameter
   real(kind=sp), allocatable    :: rel_error(:)
   character(len=64)             :: xdmf_varname
+  real(kind=dp)                 :: total_time
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
@@ -196,7 +197,7 @@ subroutine finalize()
      ! Distiguish between volumetric and node-based mode
      select case(trim(parameters%int_type))
      case ('onvertices')
-        call inv_mesh%init_node_data(parameters%nkernel*2)
+        call inv_mesh%init_node_data(parameters%nkernel*2+parameters%nmodel_parameter)
         do ikernel = 1, parameters%nkernel
            xdmf_varname = 'K_x_'//parameters%kernel(ikernel)%name
            call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
@@ -297,6 +298,12 @@ subroutine finalize()
   call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel_stat')
 
   call inv_mesh%freeme()
+
+  ! Multiply kernels with model
+  do ikernel = 1, parameters%nkernel
+    total_time = sum(K_x(:, ikernel) * Bg_model(:, ikernel))
+    print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, total_time
+  end do
 
 end subroutine
 !-----------------------------------------------------------------------------------------

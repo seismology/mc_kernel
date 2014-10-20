@@ -243,7 +243,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: ielement, irec, ikernel, ibasisfunc, ibasekernel
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nbasisfuncs_per_elem, nbasekernels
-    integer                             :: iclockold
+    integer                             :: iclockold, istep_model
     integer                             :: ndim
     integer, parameter                  :: taper_length = 10! This is the bare minimum. It does 
                                                             ! not produce artifacts yet, at least 
@@ -314,23 +314,27 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         iclockold = tick(id=id_inv_mesh)
 
         ! Calculate integrated model parameters for this element
+        write(lu_out,*) ' Integrate model parameters for element ', ielement
+        istep_model = 0
         do ibasisfunc = 1, nbasisfuncs_per_elem
            call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = parameters%nmodel_parameter, & 
-                                                            volume = volume,                      &
+                                                            volume = 1d0, & !volume,                      &
                                                             allowed_error = 1d-8,                 &
-                                                            allowed_relerror = 1d-2)
+                                                            allowed_relerror = 1d-1)
         end do
         do while (.not.allallconverged(int_model))
            random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, &
-                                                               parameters%quasirandom)
+                                                            parameters%quasirandom)
            do ibasisfunc = 1, nbasisfuncs_per_elem
               coeffs_random_points = sem_data%load_model_coeffs(random_points)
               model_random_points  = coeffs_random_points%weight(inv_mesh%weights(ielement,      &  
                                                                                   ibasisfunc,    & 
                                                                                   random_points) )
-
-              call int_model(ibasisfunc)%check_montecarlo_integral(model_random_points)
+              !write(lu_out, *), ibasisfunc, model_random_points
+              call int_model(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points))
            end do
+           istep_model = istep_model + 1
+           !write(lu_out, *) ' ...step', istep_model, sqrt(int_model(1)%getvariance()) / int_model(1)%getintegral() ! /volume !, sqrt(int_model(1)%getvariance())/volume
         end do
 
         ! Initialize basis kernel Monte Carlo integrals for current element
