@@ -104,6 +104,7 @@ subroutine test_all
   ! test_background_models
   write(6,'(/,a)') 'TEST BACKGROUND_MODELS MODULE'
   call test(test_background_models_combine, 'Combine model parameters')
+  call test(test_background_models_weight,  'Weight model parameters')
   call test(test_background_models_get_parameter_names, 'Get model parameter names')
 
   ! test_readfields

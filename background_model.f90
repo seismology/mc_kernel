@@ -114,7 +114,7 @@ end function get_parameter_names
 function weight(this, weights) result(all_coeffs)
   class(backgroundmodel_type) :: this
   real(kind=dp), intent(in)   :: weights(:)
-  real(kind=dp)               :: all_coeffs(size(weights), this%nmodel_parameters)
+  real(kind=dp)               :: all_coeffs(this%nmodel_parameters, size(weights,1))
 
   integer                     :: npoint, ipoint
 
