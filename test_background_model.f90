@@ -83,5 +83,20 @@ subroutine test_background_models_combine
 end subroutine test_background_models_combine
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_background_models_get_parameter_names()
+  type(backgroundmodel_type)    :: bg_model
+  character(len=3), allocatable :: parameter_names(:)
+  character(len=3), parameter   :: parameter_names_ref(10) =            &
+                                  ['vp ', 'vs ', 'rho', 'vph', 'vpv',  &
+                                   'vsh', 'vsv', 'eta', 'phi', 'xi ']
+  
+  parameter_names = bg_model%get_parameter_names()
+
+  call assert_true(parameter_names==parameter_names_ref, 'Model parameter names are correct')
+
+end subroutine test_background_models_get_parameter_names
+!-----------------------------------------------------------------------------------------
+
 end module test_background_models
 !=========================================================================================
