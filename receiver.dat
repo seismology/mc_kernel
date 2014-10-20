@@ -1,5 +1,5 @@
 1                                  # Nr of receivers
-vp Z                               # model parameter, seismogram component
+Z                               # model parameter, seismogram component
 30deg  60.0000   00.0000  4       # Name, lat, lon, nr of kernels
 P_40s Gabor_40 CC 345.0 405.0  vp      # Kernel name, Filter name, misfit, time window begin and end, model parameter
 P_30s Gabor_30 CC 345.0 390.0  vp     
