@@ -4,11 +4,13 @@ module backgroundmodel
 
   implicit none
 
-  integer, parameter           :: nmodel_parameters = 6 !< Number of basic model parameters
-                                                        !! which are stored in the mesh
-                                                        !! Currently: vp, vs, rho, xi, phi, eta
-
   type backgroundmodel_type
+    integer, private             :: nmodel_parameters = 10 !< Number of basic model parameters
+                                                           !! which are availabe in backgroundmodel_type
+    character(len=3), private    :: parameter_name(10) =                 &
+                                    ['vp ', 'vs ', 'rho', 'vph', 'vpv',  &
+                                     'vsh', 'vsv', 'eta', 'phi', 'xi ']
+
     real(kind=sp), allocatable :: c_vs(:)
     real(kind=sp), allocatable :: c_vp(:)
     real(kind=sp), allocatable :: c_rho(:)
@@ -21,6 +23,8 @@ module backgroundmodel
     real(kind=sp), allocatable :: c_xi(:)
     contains 
       procedure, pass          :: combine
+      procedure, pass          :: get_parameter_names
+      procedure, pass          :: weight
   end type
 
 contains
@@ -98,31 +102,40 @@ end subroutine combine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function weight_parameters(model, weights) result(all_coeffs)
-  type(backgroundmodel_type)  :: model
+function get_parameter_names(this) result (parameter_name)
+  class(backgroundmodel_type) :: this
+  character(len=3)            :: parameter_name(this%nmodel_parameters)
+
+  parameter_name = this%parameter_name
+end function get_parameter_names
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function weight(this, weights) result(all_coeffs)
+  class(backgroundmodel_type) :: this
   real(kind=dp), intent(in)   :: weights(:)
-  real(kind=dp)               :: all_coeffs(size(weights), nmodel_parameters)
+  real(kind=dp)               :: all_coeffs(size(weights), this%nmodel_parameters)
 
   integer                     :: npoint, ipoint
 
   npoint = size(weights)
 
-  all_coeffs(1,  :) = model%c_vp (:) 
-  all_coeffs(2,  :) = model%c_vs (:) 
-  all_coeffs(3,  :) = model%c_rho(:) 
-  all_coeffs(4,  :) = model%c_vsh(:) 
-  all_coeffs(5,  :) = model%c_vsv(:) 
-  all_coeffs(6,  :) = model%c_vph(:) 
-  all_coeffs(7,  :) = model%c_vpv(:) 
-  all_coeffs(8,  :) = model%c_eta(:) 
-  all_coeffs(9,  :) = model%c_phi(:) 
-  all_coeffs(10, :) = model%c_xi (:) 
+  all_coeffs(1,  :) = this%c_vp (:) 
+  all_coeffs(2,  :) = this%c_vs (:) 
+  all_coeffs(3,  :) = this%c_rho(:) 
+  all_coeffs(4,  :) = this%c_vph(:) 
+  all_coeffs(5,  :) = this%c_vpv(:) 
+  all_coeffs(6,  :) = this%c_vsh(:) 
+  all_coeffs(7,  :) = this%c_vsv(:) 
+  all_coeffs(8,  :) = this%c_eta(:) 
+  all_coeffs(9,  :) = this%c_phi(:) 
+  all_coeffs(10, :) = this%c_xi (:) 
 
   do ipoint = 1, npoint
      all_coeffs(:, ipoint)  = all_coeffs(:, ipoint) * weights(ipoint)
   end do
 
-end function weight_parameters
+end function weight
 !-----------------------------------------------------------------------------------------
 
 end module backgroundmodel

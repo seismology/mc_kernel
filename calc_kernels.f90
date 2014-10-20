@@ -16,7 +16,6 @@ program kerner_code
     use master_module,               only: do_master
     use work_type_mod,               only: init_work_type
     use plot_wavefields_mod,         only: plot_wavefields
-    use backgroundmodel,             only: nmodel_parameters
 
     implicit none
 
@@ -91,11 +90,11 @@ program kerner_code
        write(lu_out,*) '***************************************************************'
 
 
-        call init_work_type(nkernel            = parameters%nkernel,          &
-                            nelems_per_task    = parameters%nelems_per_task,  &
-                            nvertices          = nvertices_per_task,          &
-                            nvertices_per_elem = nvertices_per_elem,          &
-                            nmodel_parameters    = nmodel_parameters,         &
+        call init_work_type(nkernel              = parameters%nkernel,          &
+                            nelems_per_task      = parameters%nelems_per_task,  &
+                            nvertices            = nvertices_per_task,          &
+                            nvertices_per_elem   = nvertices_per_elem,          &
+                            nmodel_parameters    = parameters%nmodel_parameter, &
                             nbasisfuncs_per_elem = nbasisfuncs_per_elem)
       
 

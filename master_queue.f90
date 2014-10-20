@@ -12,7 +12,7 @@ module master_queue
   type(inversion_mesh_data_type)      :: inv_mesh
   type(parameter_type)                :: parameters
   integer, allocatable                :: tasks(:), elems_in_task(:,:)
-  real(kind=dp), allocatable          :: K_x(:,:), Var(:,:)
+  real(kind=dp), allocatable          :: K_x(:,:), Var(:,:), Bg_model(:,:)
   integer,       allocatable          :: connectivity(:,:)
   integer,       allocatable          :: niterations(:,:), element_proc(:)
 
@@ -95,6 +95,9 @@ subroutine init_queue(ntasks)
   K_x = 0.0
   allocate(Var(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
   Var = 0.0
+  allocate(Bg_model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
+                                             parameters%nmodel_parameter))
+  Bg_Model = 0.0
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Starting to distribute the work'
@@ -149,14 +152,16 @@ subroutine extract_receive_buffer(itask, irank)
             K_x(connectivity(ibasisfunc, ielement),:) = K_x(connectivity(ibasisfunc, ielement),:) &
                                                         + wt%kernel_values(:, ibasisfunc, iel)
             Var(connectivity(ibasisfunc, ielement),:) = Var(connectivity(ibasisfunc, ielement),:) &
-                                                        + wt%kernel_variance(:, ibasisfunc, iel) !    &
-                                                        !/ abs(wt%kernel_values(:, ibasisfunc, iel))
+                                                        + wt%kernel_variance(:, ibasisfunc, iel) 
+            Bg_Model(connectivity(ibasisfunc, ielement),:) = Bg_Model(connectivity(ibasisfunc, ielement),:) &
+                                                        + wt%model(:, ibasisfunc, iel) 
          case('volumetric')
-            K_x(ielement,:) = K_x(ielement,:) &
-                              + wt%kernel_values(:, ibasisfunc, iel) 
-            Var(ielement,:) = Var(ielement,:) &
-                              + wt%kernel_variance(:, ibasisfunc, iel)   ! &
-                              !/ abs(wt%kernel_values(:, ibasisfunc, iel))
+            K_x(ielement,:)      = K_x(ielement,:) &
+                                   + wt%kernel_values(:, ibasisfunc, iel) 
+            Var(ielement,:)      = Var(ielement,:) &
+                                   + wt%kernel_variance(:, ibasisfunc, iel)   
+            Bg_Model(ielement,:) = Bg_Model(ielement,:) &
+                                   + wt%model(:, ibasisfunc, iel)   
          end select
 
 
@@ -171,7 +176,9 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine finalize()
-  integer       :: ikernel
+  integer                       :: ikernel, imodel_parameter
+  real(kind=sp), allocatable    :: rel_error(:)
+  character(len=64)             :: xdmf_varname
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
@@ -191,24 +198,41 @@ subroutine finalize()
      case ('onvertices')
         call inv_mesh%init_node_data(parameters%nkernel*2)
         do ikernel = 1, parameters%nkernel
+           xdmf_varname = 'K_x_'//parameters%kernel(ikernel)%name
            call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
-                ikernel, 'K_x_'//parameters%kernel(ikernel)%name )        
-           call inv_mesh%set_node_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
-                kind=sp),                                 &
-                ikernel+parameters%nkernel,                    &
-                'err_'//parameters%kernel(ikernel)%name )
+                                            ikernel,                       &     
+                                            trim(xdmf_varname))
 
+           rel_error = real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), kind=sp)
+           xdmf_varname = 'err_'//parameters%kernel(ikernel)%name 
+           call inv_mesh%set_node_data_snap(rel_error,                          &
+                                            ikernel+parameters%nkernel,         &
+                                            trim(xdmf_varname))
+                                           
         end do
+        
+        do imodel_parameter = 1, parameters%nmodel_parameter
+           xdmf_varname = 'Bg_model_'//parameters%bgmodel_parameter_names(imodel_parameter)
+           call inv_mesh%set_node_data_snap(real(Bg_Model(:, imodel_parameter), kind=sp), &
+                                            imodel_parameter+parameters%nkernel*2,  &
+                                            trim(xdmf_varname))
+        end do
+
         call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
+
      case ('volumetric')
         call inv_mesh%init_cell_data(parameters%nkernel*2)
         do ikernel = 1, parameters%nkernel
+           xdmf_varname = 'K_x_'//parameters%kernel(ikernel)%name
            call inv_mesh%set_cell_data_snap(real(K_x(:,ikernel), kind=sp), &
-                ikernel, 'K_x_'//parameters%kernel(ikernel)%name )
-           call inv_mesh%set_cell_data_snap(real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), &
-                kind=sp),                                 &
-                ikernel+parameters%nkernel,                    &
-                'err_'//parameters%kernel(ikernel)%name )
+                                            ikernel,                       &
+                                            trim(xdmf_varname))
+
+           rel_error = real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), kind=sp)
+           xdmf_varname = 'err_'//parameters%kernel(ikernel)%name
+           call inv_mesh%set_cell_data_snap(rel_error,                   &
+                                            ikernel+parameters%nkernel,  &
+                                            trim(xdmf_varname))
         end do
         call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel')
      end select

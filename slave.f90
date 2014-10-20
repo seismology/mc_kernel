@@ -211,8 +211,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use filtering,                   only: timeshift_type
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
     use kernel,                      only: calc_basekernel, calc_physical_kernels
-    use backgroundmodel,             only: backgroundmodel_type, nmodel_parameters, &
-                                           weight_parameters
+    use backgroundmodel,             only: backgroundmodel_type
     use clocks_mod,                  only: tick
 
     type(inversion_mesh_data_type), intent(in)    :: inv_mesh
@@ -223,7 +222,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
     type(integrated_type), allocatable  :: int_kernel(:), int_model(:)
-    type(backgroundmodel_type)          :: bg_model
+    type(backgroundmodel_type)          :: bg_model, coeffs_random_points
 
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
     real(kind=dp),    allocatable       :: bw_field(:,:,:)
@@ -268,7 +267,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%niterations(parameters%nkernel, nelements))
-    allocate(slave_result%model(nmodel_parameters, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%model(parameters%nmodel_parameter, nbasisfuncs_per_elem, nelements))
     
     allocate(fw_field(ndumps, ndim, nptperstep))
     allocate(bw_field(ndumps, ndim, nptperstep))
@@ -284,7 +283,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(kernelvalue_weighted(nptperstep, parameters%nkernel, nbasekernels))
     allocate(kernelvalue_physical(nptperstep, parameters%nkernel))
 
-    allocate(model_random_points(nptperstep_model, nmodel_parameters))
+    allocate(model_random_points(nptperstep_model, parameters%nmodel_parameter))
 
     volume = 0.0
 
@@ -316,19 +315,19 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
         ! Calculate integrated model parameters for this element
         do ibasisfunc = 1, nbasisfuncs_per_elem
-           call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters,   & 
-                                                            volume = volume,              &
-                                                            allowed_error = 1d-8,         &
+           call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = parameters%nmodel_parameter, & 
+                                                            volume = volume,                      &
+                                                            allowed_error = 1d-8,                 &
                                                             allowed_relerror = 1d-2)
         end do
         do while (.not.allallconverged(int_model))
            random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, &
                                                                parameters%quasirandom)
            do ibasisfunc = 1, nbasisfuncs_per_elem
-              model_random_points = weight_parameters(sem_data%load_model_coeffs(random_points), &
-                                                      inv_mesh%weights(ielement,                 &  
-                                                                       ibasisfunc,               &
-                                                                       random_points) )
+              coeffs_random_points = sem_data%load_model_coeffs(random_points)
+              model_random_points  = coeffs_random_points%weight(inv_mesh%weights(ielement,      &  
+                                                                                  ibasisfunc,    & 
+                                                                                  random_points) )
 
               call int_model(ibasisfunc)%check_montecarlo_integral(model_random_points)
            end do

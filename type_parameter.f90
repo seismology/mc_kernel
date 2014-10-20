@@ -37,6 +37,8 @@ module type_parameter
         character(len=32)                    :: dump_type
         character(len=32)                    :: fftw_plan = 'MEASURE'
         character(len=32)                    :: strain_type_fwd
+        character(len=3), allocatable        :: bgmodel_parameter_names(:)
+        integer                              :: nmodel_parameter
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
         integer                              :: nfilter
@@ -66,7 +68,9 @@ contains
 
 !-----------------------------------------------------------------------------------------
 subroutine read_parameters(this, input_file_in)
+   use backgroundmodel, only        : backgroundmodel_type
    class(parameter_type)           :: this
+   type(backgroundmodel_type)      :: bg_model
    character(len=*), intent(in), optional :: input_file_in
    character(len=256)              :: input_file
    integer                         :: lu_inparam_basic, ioerr, narg
@@ -223,6 +227,9 @@ subroutine read_parameters(this, input_file_in)
 
   write(lu_out,*)
   call flush(lu_out)
+
+  this%bgmodel_parameter_names = bg_model%get_parameter_names()
+  this%nmodel_parameter = size(this%bgmodel_parameter_names)
 
   this%parameters_read = .true.
 
