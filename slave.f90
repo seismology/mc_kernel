@@ -514,6 +514,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            slave_result%niterations(:,ielement)                  = niterations(:,ielement)
            slave_result%model(:, ibasisfunc, ielement)           = int_model(ibasisfunc)%getintegral()
            call int_kernel(ibasisfunc)%freeme()
+           call int_model(ibasisfunc)%freeme()
         end do
 
     end do ! ielement
