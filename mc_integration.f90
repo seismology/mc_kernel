@@ -93,7 +93,7 @@ subroutine check_montecarlo_integral(this, func_values)
            this%converged(ifuncs) = .true.
         ! Check relative error
         elseif (sqrt(this%variance(ifuncs)) < &
-                this%allowed_relerror(ifuncs)*this%integral(ifuncs)) then
+                this%allowed_relerror(ifuncs)*abs(this%integral(ifuncs))) then
            this%converged(ifuncs) = .true.
         end if
 
