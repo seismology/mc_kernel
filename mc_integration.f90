@@ -134,7 +134,7 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_re
     this%converged        = .false.
     this%nmodels          = 0
     if(present(allowed_relerror)) then
-       this%allowed_relerror = allowed_relerror**2
+       this%allowed_relerror = allowed_relerror
     else
        this%allowed_relerror = 1d-100
     end if
