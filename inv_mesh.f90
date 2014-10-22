@@ -1397,6 +1397,12 @@ subroutine set_node_data_snap(this, data_snap, isnap, data_name)
      call pabort 
   end if
 
+  if (isnap > size(this%datat_node,2)) then
+    write(*,*) 'ERROR: XDMF file was initialized for ', size(this%datat_node,2), ' snaps.'
+    write(*,*) '       Trying to dump snap with isnap ', isnap
+    call pabort()
+  end if
+
   this%datat_node(:,isnap) = data_snap(:)
 
   if (present(data_name)) then
@@ -1438,6 +1444,12 @@ subroutine set_cell_data_snap(this, data_snap, isnap, data_name)
      write(*,*) 'data_name:', trim(data_name), '; isnap:', isnap
      write(*,*) 'ERROR: wrong dimensions of input data_snap for writing cell data'
      call pabort 
+  end if
+
+  if (isnap > size(this%datat_cell, 2)) then
+    write(*,*) 'ERROR: XDMF file was initialized for ', size(this%datat_cell,2), ' snaps.'
+    write(*,*) '       Trying to dump snap with isnap ', isnap
+    call pabort()
   end if
 
   this%datat_cell(:,isnap) = data_snap(:)
