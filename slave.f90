@@ -314,13 +314,14 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         iclockold = tick(id=id_inv_mesh)
 
         ! Calculate integrated model parameters for this element
-        write(lu_out,*) ' Integrate model parameters for element ', ielement
+        write(lu_out,'(A,I10)', advance='no') ' Integrate model parameters for element ', ielement
+        call flush(lu_out)
         istep_model = 0
         do ibasisfunc = 1, nbasisfuncs_per_elem
            call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = parameters%nmodel_parameter, & 
                                                             volume = 1d0, & !volume,                      &
                                                             allowed_error = 1d-8,                 &
-                                                            allowed_relerror = 1d-1)
+                                                            allowed_relerror = 1d-2)
         end do
         do while (.not.allallconverged(int_model))
            random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, &
@@ -332,10 +333,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                                                                                   random_points) )
               !write(lu_out, *), ibasisfunc, model_random_points
               call int_model(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points))
+              !write(lu_out, *) ' ...step', istep_model, ', bf:', ibasisfunc, &
+              !                 sqrt(int_model(ibasisfunc)%getvariance()) / int_model(ibasisfunc)%getintegral() ! /volume !, sqrt(int_model(1)%getvariance())/volume
            end do
            istep_model = istep_model + 1
-           !write(lu_out, *) ' ...step', istep_model, sqrt(int_model(1)%getvariance()) / int_model(1)%getintegral() ! /volume !, sqrt(int_model(1)%getvariance())/volume
+           !write(lu_out,*) '****************************************************************'
         end do
+
+        write(lu_out, '(A,I5,A)') ' ...done after ', istep_model, ' steps.'
+        call flush(lu_out)
 
         ! Initialize basis kernel Monte Carlo integrals for current element
         iclockold = tick()
@@ -498,6 +504,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
                                       int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
                                       int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
+              call flush(lu_out)
            end if
 
         end do ! End of Monte Carlo loop
