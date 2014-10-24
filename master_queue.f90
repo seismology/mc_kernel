@@ -198,6 +198,8 @@ subroutine finalize()
      select case(trim(parameters%int_type))
      case ('onvertices')
         call inv_mesh%init_node_data(parameters%nkernel*2+parameters%nmodel_parameter)
+        allocate(rel_error(size(Var,1)))
+
         do ikernel = 1, parameters%nkernel
            xdmf_varname = 'K_x_'//parameters%kernel(ikernel)%name
            call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
@@ -222,7 +224,9 @@ subroutine finalize()
         call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
 
      case ('volumetric')
-        call inv_mesh%init_cell_data(parameters%nkernel*2)
+        call inv_mesh%init_cell_data(parameters%nkernel*2+parameters%nmodel_parameter)
+        allocate(rel_error(size(Var,1)))
+
         do ikernel = 1, parameters%nkernel
            xdmf_varname = 'K_x_'//parameters%kernel(ikernel)%name
            call inv_mesh%set_cell_data_snap(real(K_x(:,ikernel), kind=sp), &
@@ -235,6 +239,14 @@ subroutine finalize()
                                             ikernel+parameters%nkernel,  &
                                             trim(xdmf_varname))
         end do
+        
+        do imodel_parameter = 1, parameters%nmodel_parameter
+           xdmf_varname = 'Bg_model_'//parameters%bgmodel_parameter_names(imodel_parameter)
+           call inv_mesh%set_cell_data_snap(real(Bg_Model(:, imodel_parameter), kind=sp), &
+                                            imodel_parameter+parameters%nkernel*2,  &
+                                            trim(xdmf_varname))
+        end do
+
         call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel')
      end select
   
