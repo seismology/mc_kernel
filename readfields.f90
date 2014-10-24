@@ -82,7 +82,8 @@ module readfields
         type(ncparamtype), allocatable     :: fwd(:)
         type(ncparamtype), allocatable     :: bwd(:)
 
-        type(kdtree2), pointer, private    :: fwdtree, bwdtree
+        type(kdtree2), pointer, private    :: fwdtree, bwdtree        !< Contain all points
+        type(kdtree2), pointer, private    :: fwdtree_mp, bwdtree_mp  !< Contain only midpoints
         type(meshtype)                     :: fwdmesh, bwdmesh
 
         logical, private                   :: params_set   = .false.
@@ -731,6 +732,10 @@ subroutine close_files(this)
     if (this%kdtree_built) then
       call kdtree2_destroy(this%fwdtree)
       call kdtree2_destroy(this%bwdtree)
+      if (trim(this%dump_type).eq.'displ_only') then
+        call kdtree2_destroy(this%fwdtree_mp)
+        call kdtree2_destroy(this%bwdtree_mp)
+      end if
     end if
 
     ! Free buffers
@@ -1085,17 +1090,21 @@ function load_fw_points(this, coordinates, source_params, model)
            rotmesh_s(ipoint) = rotmesh_s_buff
         endif
 
-        iclockold = tick()
-        call kdtree2_n_nearest( this%fwdtree,                           &
-                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                nn = nnext_points,                            &
-                                results = nextpoint )
-        iclockold = tick(id=id_kdtree, since=iclockold)
-        
-        pointid(ipoint) = nextpoint(1)%idx
 
-        if (trim(this%dump_type) == 'displ_only') then
+        select case(trim(this%dump_type))
+        case('displ_only')
+
+            ! Find the six closest midpoints first
             iclockold = tick()
+            call kdtree2_n_nearest( this%fwdtree_mp,                              &
+                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                    nn = nnext_points,                            &
+                                    results = nextpoint )
+            iclockold = tick(id=id_kdtree, since=iclockold)
+            
+            pointid(ipoint) = nextpoint(1)%idx
+
+            ! Check, whether point is in any of the six closest elements
             do inext_point = 1, nnext_points
                 corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
                 eltype = this%fwdmesh%eltype(nextpoint(inext_point)%idx)
@@ -1160,7 +1169,18 @@ function load_fw_points(this, coordinates, source_params, model)
                write(6,*) 'axis = ', axis
 
             iclockold = tick(id=id_find_point_fwd, since=iclockold)
-        endif ! dump_type == displ_only
+
+        case default
+            ! Can just take the next point without any in-element mapping
+            iclockold = tick()
+            call kdtree2_n_nearest( this%fwdtree,                           &
+                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                    nn = nnext_points,                            &
+                                    results = nextpoint )
+            iclockold = tick(id=id_kdtree, since=iclockold)
+            
+            pointid(ipoint) = nextpoint(1)%idx
+        end select ! dump_type
     
         if (present(model)) then
           coeffs(:, ipoint) = get_model_coeffs(this, pointid(ipoint))
@@ -1261,40 +1281,64 @@ function get_model_coeffs(this, ipoint) result(coeffs)
    ! Load coefficient eta
    coeffs(6) = this%fwdmesh%eta(ipoint)
 
+   !print *, 'S', this%fwdmesh%s(ipoint)
+   !print *, 'Z', this%fwdmesh%z(ipoint)
+   !print *, 'VP', this%fwdmesh%vp(ipoint)
+   !print *, 'VS', this%fwdmesh%vs(ipoint)
 end function get_model_coeffs
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> Loads the model coefficients for a selected coordinate 
-function load_model_coeffs(this, coordinates_xyz) result(model)
+function load_model_coeffs(this, coordinates_xyz, s, z) result(model)
    use backgroundmodel, only          : backgroundmodel_type
    class(semdata_type)               :: this
    real(kind=dp), intent(in)         :: coordinates_xyz(:,:)
    type(backgroundmodel_type)        :: model
+   real(kind=sp), intent(out), optional :: s(size(coordinates_xyz,2)), z(size(coordinates_xyz,2))
 
    type(kdtree2_result), allocatable :: nextpoint(:)
    integer, parameter                :: nnext_points = 1
    integer                           :: npoints, ipoint
-   integer                           :: pointid(size(coordinates_xyz,2))
+   integer                           :: pointid
    real(kind=sp)                     :: coordinates_sz(2, size(coordinates_xyz,2)) 
    real(kind=sp)                     :: coeffs(nmodel_parameters_sem_file, size(coordinates_xyz,2)) 
+
+   if (.not.this%kdtree_built) then
+      print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
+      call pabort()
+   end if
 
    coordinates_sz(1,:) = sqrt(coordinates_xyz(1,:)**2 + coordinates_xyz(2,:)**2) ! S
    coordinates_sz(2,:) = coordinates_xyz(3,:) ! Z
 
+   !print *, 'S: ', coordinates_sz(1,:)
+   !print *, 'Z: ', coordinates_sz(2,:)
+   call flush(6)
+
+   ! nextpoint has to be allocatable in kdtree module
    allocate(nextpoint(nnext_points))
 
    npoints = size(coordinates_xyz, 2)
    do ipoint = 1, npoints
+      ! Find nearest point
       call kdtree2_n_nearest( this%fwdtree,              &
                               coordinates_sz(:, ipoint), &
                               nn = nnext_points,         &
                               results = nextpoint )
-      pointid(ipoint) = nextpoint(1)%idx
+      pointid = nextpoint(1)%idx
 
-      coeffs(:, ipoint) = get_model_coeffs(this, pointid(ipoint))
+      ! Get model coefficients of nearest point
+      coeffs(:, ipoint) = get_model_coeffs(this, pointid)
+
+      ! For debugging purposes, s and z of the next point may be returned
+      if (present(s)) s(ipoint) = this%fwdmesh%s(pointid)
+      if (present(z)) z(ipoint) = this%fwdmesh%z(pointid)
+
    end do ! ipoint
 
+   !print *, 'S_next_point: ', s
+   !print *, 'Z_next_point: ', z
    call model%combine(coeffs)
 
 end function load_model_coeffs
@@ -1550,17 +1594,20 @@ function load_bw_points(this, coordinates, receiver)
                                * this%bwd(1)%planet_radius
            rotmesh_s(ipoint) = rotmesh_s_buff
         endif
-        iclockold = tick()
-        call kdtree2_n_nearest( this%bwdtree,                           &
-                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)], kind=sp), &
-                                nn = nnext_points,                            &
-                                results = nextpoint )
-        iclockold = tick(id=id_kdtree, since=iclockold)
-    
-        pointid(ipoint) = nextpoint(1)%idx
-        if (trim(this%dump_type) == 'displ_only') then
+
+        select case(trim(this%dump_type))
+        case('displ_only')
+            ! Find the six closest midpoints first
             iclockold = tick()
+            call kdtree2_n_nearest( this%bwdtree_mp,                           &
+                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)], kind=sp), &
+                                    nn = nnext_points,                            &
+                                    results = nextpoint )
+            iclockold = tick(id=id_kdtree, since=iclockold)
+    
+            pointid(ipoint) = nextpoint(1)%idx
           
+            ! Check, whether point is in any of the six closest elements
             do inext_point = 1, nnext_points
                 ! get cornerpoints of finite element
                 corner_point_ids = this%bwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
@@ -1620,7 +1667,18 @@ function load_bw_points(this, coordinates, receiver)
                write(6,*) 'axis = ', axis
 
             iclockold = tick(id=id_find_point_bwd, since=iclockold)
-        endif
+
+        case default  !dump_type not displ_only
+            ! Can just take the next point without any in-element mapping
+            iclockold = tick()
+            call kdtree2_n_nearest( this%bwdtree,                           &
+                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)], kind=sp), &
+                                    nn = nnext_points,                            &
+                                    results = nextpoint )
+            iclockold = tick(id=id_kdtree, since=iclockold)
+    
+            pointid(ipoint) = nextpoint(1)%idx
+        end select ! dump_type 
     
         select case(receiver%component)
         case('Z')
@@ -1783,20 +1841,23 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
 
     allocate(nextpoint(nnext_points))
     do ipoint = 1, npoints
-        call kdtree2_n_nearest( this%fwdtree, &
-                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                nn = nnext_points, &
-                                results = nextpoint )
         
-        pointid(ipoint) = nextpoint(1)%idx
-
         if (verbose > 1) &
             write(6,*) 'nearest point', nextpoint(1)%dis**.5, nextpoint(1)%idx, &
                        (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
                        (this%fwdmesh%s_mp(pointid(ipoint))**2  &
                             + this%fwdmesh%z_mp(pointid(ipoint))**2)**.5 
 
-        if (trim(this%dump_type) == 'displ_only') then
+        select case(trim(this%dump_type))
+        case('displ_only')
+
+            ! Find the six closest midpoints first
+            call kdtree2_n_nearest( this%fwdtree_mp, &
+                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                    nn = nnext_points, &
+                                    results = nextpoint )
+            pointid(ipoint) = nextpoint(1)%idx
+
             do inext_point = 1, nnext_points
                 ! get cornerpoints of finite element
                 corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
@@ -1904,11 +1965,17 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
             !else
             !   call pabort
             !endif
-
             if (verbose > 1) &
                write(6,*) 'axis = ', axis
-
-        endif
+        
+        case default
+            ! Find the closest point
+            call kdtree2_n_nearest( this%fwdtree, &
+                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                    nn = nnext_points, &
+                                    results = nextpoint )
+            pointid(ipoint) = nextpoint(1)%idx
+        end select ! dump_type
     
         if (this%strain_type == 'straintensor_trace') then
             select case(component)
@@ -2607,15 +2674,9 @@ subroutine build_kdtree(this)
     write(lu_out,*) ' Reshaping mesh variables'
     call flush(lu_out)
 
-    if (trim(this%dump_type) == 'displ_only') then
-        allocate(mesh(2, this%fwdmesh%nelem)) ! midpoints only
-        mesh = transpose(reshape([this%fwdmesh%s_mp, this%fwdmesh%z_mp], &
-                                 [this%fwdmesh%nelem, 2]))
-    else
-        allocate(mesh(2, this%fwdmesh%npoints))
-        mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z],       &
-                                 [this%fwdmesh%npoints, 2]))
-    endif
+    allocate(mesh(2, this%fwdmesh%npoints))
+    mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z],       &
+                             [this%fwdmesh%npoints, 2]))
 
 
     write(lu_out,*) ' Building forward KD-Tree'
@@ -2625,21 +2686,30 @@ subroutine build_kdtree(this)
                                    dim = 2,           &
                                    sort = .true.,     &
                                    rearrange = .true.)
-    
     deallocate(mesh)                           
+
+
+    write(lu_out,*) ' Building forward midpoint-only KD-Tree'
+    if (trim(this%dump_type) == 'displ_only') then
+        allocate(mesh(2, this%fwdmesh%nelem)) ! midpoints only
+        mesh = transpose(reshape([this%fwdmesh%s_mp, this%fwdmesh%z_mp], &
+                                 [this%fwdmesh%nelem, 2]))
+        ! KDtree in forward field
+        this%fwdtree_mp => kdtree2_create(mesh,              &
+                                          dim = 2,           &
+                                          sort = .true.,     &
+                                          rearrange = .true.)
+        deallocate(mesh)                           
+    endif
+
+    
 
     ! KDtree in backward field
     if (this%nsim_bwd > 0) then
 
-        if (trim(this%dump_type) == 'displ_only') then
-            allocate(mesh(2, this%bwdmesh%nelem)) ! midpoints only
-            mesh = transpose(reshape([this%bwdmesh%s_mp, this%bwdmesh%z_mp], &
-                                     [this%bwdmesh%nelem, 2]))
-        else
-            allocate(mesh(2, this%bwdmesh%npoints))
-            mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z],       &
-                                     [this%bwdmesh%npoints, 2]))
-        endif
+        allocate(mesh(2, this%bwdmesh%npoints))
+        mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z],       &
+                                 [this%bwdmesh%npoints, 2]))
 
         write(lu_out,*) ' Building backward KD-Tree'
         call flush(lu_out)
@@ -2648,6 +2718,20 @@ subroutine build_kdtree(this)
                                        sort = .true.,     &
                                        rearrange = .true.)
         deallocate(mesh)                           
+
+        write(lu_out,*) ' Building backward midpoint-only KD-Tree'
+        if (trim(this%dump_type) == 'displ_only') then
+            allocate(mesh(2, this%bwdmesh%nelem)) ! midpoints only
+            mesh = transpose(reshape([this%bwdmesh%s_mp, this%bwdmesh%z_mp], &
+                                     [this%bwdmesh%nelem, 2]))
+            ! KDtree in forward field
+            this%bwdtree_mp => kdtree2_create(mesh,              &
+                                              dim = 2,           &
+                                              sort = .true.,     &
+                                              rearrange = .true.)
+            deallocate(mesh)
+        endif
+
     endif
 
     call flush(lu_out)
