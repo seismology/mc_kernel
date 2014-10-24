@@ -305,15 +305,19 @@ subroutine assert_comparable_dble( value1, value2, margin, text )
 
     if (value1 > infinity .or. -value1 > infinity) then
         write(*,*) '   value1 is infinite - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (value2 > infinity .or. -value2 > infinity) then
         write(*,*) '   value2 is infinite - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (isnan(value1)) then
         write(*,*) '   value1 is NAN - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (isnan(value2)) then
         write(*,*) '   value2 is NAN - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     endif
 
@@ -351,15 +355,19 @@ subroutine assert_comparable_dble1d( array1, array2, margin, text )
     else
         if (any(array1 > infinity) .or. any(-array1 > infinity)) then
             write(*,*) '   array1 contains infinite values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(array2 > infinity) .or. any(-array2 > infinity)) then
             write(*,*) '   array2 contains infinite values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(isnan(array1))) then
             write(*,*) '   array1 contains NAN values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(isnan(array2))) then
             write(*,*) '   array2 contains NAN values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         endif
 
@@ -402,15 +410,19 @@ subroutine assert_comparable_real( value1, value2, margin, text )
 
     if (value1 > infinity .or. -value1 > infinity) then
         write(*,*) '   value1 is infinite - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (value2 > infinity .or. -value2 > infinity) then
         write(*,*) '   value2 is infinite - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (isnan(value1)) then
         write(*,*) '   value1 is NAN - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (isnan(value2)) then
         write(*,*) '   value2 is NAN - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     endif
 
@@ -448,15 +460,19 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
     else
         if (any(array1 > infinity) .or. any(-array1 > infinity)) then
             write(*,*) '   array1 contains infinite values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(array2 > infinity) .or. any(-array2 > infinity)) then
             write(*,*) '   array2 contains infinite values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(isnan(array1))) then
             write(*,*) '   array1 contains NAN values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(isnan(array2))) then
             write(*,*) '   array2 contains NAN values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         endif
 
