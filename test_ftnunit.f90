@@ -113,6 +113,7 @@ subroutine test_all
   call test(test_readfields_open_files, 'Open SEM file')
   call test(test_readfields_read_meshes, 'Read meshes')
   call test(test_readfields_load_fw_points, 'Read FWD points')
+  call test(test_readfields_load_model_coeffs, 'Read Model coefficients from SEM mesh')
 
   ! test_rotations
   write(6,'(/,a)') 'TEST ROTATIONS MODULE'

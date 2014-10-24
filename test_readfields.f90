@@ -162,54 +162,6 @@ end subroutine  test_readfields_read_meshes
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_readfields_load_model_coeffs
-   use backgroundmodel, only   : backgroundmodel_type
-   use global_parameters, only : pi, sp, dp
-   type(semdata_type)         :: sem_data
-   type(meshtype)             :: testmesh_fwd, testmesh_bwd
-   type(backgroundmodel_type) :: model
-   character(len=512)         :: fwd_dir, bwd_dir
-   integer, parameter         :: npoints = 100
-   real(kind=dp)              :: coordinates(3,npoints), phi(npoints), z(npoints)
-   integer                    :: ipoint
-
-   fwd_dir = './test_wavefields/kerner_fwd'
-   bwd_dir = './test_wavefields/kerner_bwd'
-   
-   call sem_data%set_params(fwd_dir, bwd_dir, 100, 100, 'straintensor_trace') 
-
-   call sem_data%open_files()
-
-   call sem_data%read_meshes()
-
-   call random_number(phi)
-   call random_number(z)
-   phi = phi * 2.d0 * pi
-
-   do ipoint = 1, npoints
-      coordinates(:, ipoint) = [cos(phi(ipoint)), sin(phi(ipoint)), (z(ipoint)-0.5)*2] & 
-                               * 6.371d6
-   end do
-
-   model = sem_data%load_model_coeffs(coordinates)
-
-   call assert_true(all(abs(model%c_vp(1)-model%c_vp(2:))<1e-10), 'vP is identical for same radius')
-   call assert_true(all(abs(model%c_vpv(1)-model%c_vpv(2:))<1e-10), 'vPv is identical for same radius')
-   call assert_true(all(abs(model%c_vph(1)-model%c_vph(2:))<1e-10), 'vPh is identical for same radius')
-   call assert_true(all(abs(model%c_vs(1)-model%c_vs(2:))<1e-10), 'vS is identical for same radius')
-   call assert_true(all(abs(model%c_vsv(1)-model%c_vsv(2:))<1e-10), 'vSv is identical for same radius')
-   call assert_true(all(abs(model%c_vsh(1)-model%c_vsh(2:))<1e-10), 'vSh is identical for same radius')
-   call assert_true(all(abs(model%c_xi(1)-model%c_xi(2:))<1e-10), 'Xi is identical for same radius')
-   call assert_true(all(abs(model%c_phi(1)-model%c_phi(2:))<1e-10), 'Phi is identical for same radius')
-   call assert_true(all(abs(model%c_eta(1)-model%c_eta(2:))<1e-10), 'eta is identical for same radius')
-   call assert_true(all(abs(model%c_rho(1)-model%c_rho(2:))<1e-10), 'eta is identical for same radius')
-
-   call sem_data%close_files()
-
-end subroutine test_readfields_load_model_coeffs
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
 !> For now, this test only checks, whether something crashes while reading points
 subroutine test_readfields_load_fw_points
    use readfields,     only : semdata_type
@@ -242,5 +194,228 @@ subroutine test_readfields_load_fw_points
 end subroutine test_readfields_load_fw_points
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_readfields_load_model_coeffs
+   use backgroundmodel, only   : backgroundmodel_type
+   use global_parameters, only : pi, sp, dp
+   type(semdata_type)         :: sem_data
+   type(meshtype)             :: testmesh_fwd, testmesh_bwd
+   type(backgroundmodel_type) :: model, model_ref
+   character(len=512)         :: fwd_dir, bwd_dir
+   integer, parameter         :: npoints = 1, nradius = 11
+   real(kind=dp)              :: coordinates(3,npoints), phi(npoints), theta(npoints), r(nradius)
+   integer                    :: ipoint, iradius
+   real(kind=sp)              :: s(npoints), z(npoints)
+
+   ! Test in all 11 domains of PREM
+   r = [6370d3, & ! within upper crust
+        6352d3, & !        lower crust
+        6250d3, & !        upper mantle
+        6050d3, & !        upper transition zone 
+        5850d3, & !        lower transition zone
+        5730d3, & ! directly above 670       
+        5650d3, & ! directly below 670       
+        4000d3, & !        lower mantle
+        3550d3, & !        lowermost mantle
+        2500d3, & !        outer core
+        1000d3]   !        inner core
+
+
+   fwd_dir = './wavefield/fwd_do' !'./test_wavefields/kerner_fwd'
+   bwd_dir = './wavefield/bwd_do' !'./test_wavefields/kerner_bwd'
+
+   call sem_data%set_params(fwd_dir, bwd_dir, 100, 100, 'straintensor_trace') 
+
+   call sem_data%open_files()
+
+   call sem_data%read_meshes()
+   
+   call sem_data%build_kdtree()
+
+   !do iradius = 600, 637
+   !  coordinates(:,1) = [0.d0, 0.d0, iradius * 1.d4]
+   !  model = sem_data%load_model_coeffs(coordinates, s, z)
+   !  print *, iradius, ', Vp: ', model%c_vp(1), ', Vs: ', model%c_vs(1), ', Rho: ', model%c_rho(1)
+   !end do
+
+   do iradius = 1, nradius
+
+     call random_number(phi)
+     call random_number(theta)
+     phi = phi * 2.d0 * pi
+     theta = (theta - 0.5) * pi
+
+     !print *, 'Radius :', iradius, '(', r(iradius), ')'
+
+     do ipoint = 1, npoints
+        coordinates(:, ipoint) = [cos(phi(ipoint)) * sin(theta(ipoint)), &
+                                  sin(phi(ipoint)) * sin(theta(ipoint)), &
+                                  cos(theta(ipoint))] * r(iradius)
+        !print *, coordinates(:, ipoint), norm2(coordinates(:, ipoint))                       
+     end do
+     call flush(6)
+
+     model = sem_data%load_model_coeffs(coordinates, s, z)
+     model_ref = prem_ani_sub(r(iradius), iradius)
+
+     do ipoint = 1, npoints 
+       call assert_comparable(model_ref%c_vp(1) , model%c_vp(ipoint),  1e-1, &
+                              'vP is identical for same radius')
+       call assert_comparable(model_ref%c_vpv(1), model%c_vpv(ipoint), 1e-1, &
+                              'vPv is identical for same radius')
+       call assert_comparable(model_ref%c_vph(1), model%c_vph(ipoint), 1e-1, &
+                              'vPh is identical for same radius')
+       call assert_comparable(model_ref%c_vs(1) , model%c_vs(ipoint),  1e-1, &
+                              'vS is identical for same radius')
+       call assert_comparable(model_ref%c_vsv(1), model%c_vsv(ipoint), 1e-1, &
+                              'vSv is identical for same radius')
+       call assert_comparable(model_ref%c_vsh(1), model%c_vsh(ipoint), 1e-1, &
+                              'vSh is identical for same radius')
+       call assert_comparable(model_ref%c_xi(1) , model%c_xi(ipoint),  1e-1, &
+                              'Xi is identical for same radius')
+       call assert_comparable(model_ref%c_phi(1), model%c_phi(ipoint), 1e-1, &
+                              'Phi is identical for same radius')
+       call assert_comparable(model_ref%c_eta(1), model%c_eta(ipoint), 1e-1, &
+                              'eta is identical for same radius')
+       call assert_comparable(model_ref%c_rho(1), model%c_rho(ipoint), 1e-1, &
+                              'rho is identical for same radius')
+     end do
+
+   end do ! iradius
+
+   call sem_data%close_files()
+
+end subroutine test_readfields_load_model_coeffs
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> The wicked PREM subroutine from background_models.f90 in the AxiSEM MESHER
+function prem_ani_sub(r0, idom) result(model)
+  use backgroundmodel, only     : backgroundmodel_type
+  real(kind=dp), intent(in)    :: r0
+  integer, intent(in)          :: idom
+  type(backgroundmodel_type)   :: model
+
+  real(kind=dp)                :: r,x_prem
+  real(kind=dp)                :: eta_aniso, Qmu, Qkappa
+
+  r = r0 / 1000.
+
+  call model%init(1)
+  
+  x_prem = r / 6371.     ! Radius (normalized to x(surface)=1 )
+  model%c_eta = 1.
+
+  IF(idom==1)THEN       ! upper crustal layer
+     model%c_rho  = 2.6
+     model%c_vpv = 5.8
+     model%c_vsv = 3.2
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 600.0
+     Qkappa = 57827.0
+  ELSEIF(idom==2)THEN   ! lower crustal layer
+     model%c_rho  = 2.9
+     model%c_vpv = 6.8
+     model%c_vsv = 3.9
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 600.0
+     Qkappa = 57827.0
+  ELSEIF(idom==3)THEN   ! upper mantle
+     model%c_rho   =  2.6910 + 0.6924 * x_prem
+     model%c_vpv  =  0.8317 + 7.2180 * x_prem
+     model%c_vph  =  3.5908 + 4.6172 * x_prem
+     model%c_vsv  =  5.8582 - 1.4678 * x_prem
+     model%c_vsh  = -1.0839 + 5.7176 * x_prem
+     eta_aniso =  3.3687 - 2.4778 * x_prem
+     Qmu = 600.0
+     Qkappa = 57827.0
+  ELSEIF(idom==4)THEN
+     model%c_rho  =  7.1089 -  3.8045 * x_prem
+     model%c_vpv = 20.3926 - 12.2569 * x_prem
+     model%c_vsv =  8.9496 -  4.4597 * x_prem
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 143.0
+     Qkappa = 57827.0
+  ELSEIF(idom==5)THEN
+     model%c_rho  = 11.2494 -  8.0298 * x_prem
+     model%c_vpv = 39.7027 - 32.6166 * x_prem
+     model%c_vsv = 22.3512 - 18.5856 * x_prem
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 143.0
+     Qkappa = 57827.0
+  ELSEIF(idom==6)THEN
+     model%c_rho  =  5.3197 - 1.4836 * x_prem
+     model%c_vpv = 19.0957 - 9.8672 * x_prem
+     model%c_vsv =  9.9839 - 4.9324 * x_prem
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 143.0
+     Qkappa = 57827.0
+  ELSEIF(idom==7)THEN   !lower mantle
+     model%c_rho  =  7.9565 - 6.4761 * x_prem + 5.5283 * x_prem**2 - 3.0807 * x_prem**3
+     model%c_vpv = 29.2766 -23.6027 * x_prem + 5.5242 * x_prem**2 - 2.5514 * x_prem**3
+     model%c_vsv = 22.3459 -17.2473 * x_prem - 2.0834 * x_prem**2 + 0.9783 * x_prem**3
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 312.0
+     Qkappa = 57827.0
+  ELSEIF(idom==8)THEN
+     model%c_rho  =  7.9565 -  6.4761 * x_prem +  5.5283 * x_prem**2 -  3.0807 * x_prem**3
+     model%c_vpv = 24.9520 - 40.4673 * x_prem + 51.4832 * x_prem**2 - 26.6419 * x_prem**3
+     model%c_vsv = 11.1671 - 13.7818 * x_prem + 17.4575 * x_prem**2 -  9.2777 * x_prem**3
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 312.0
+     Qkappa = 57827.0
+  ELSEIF(idom==9)THEN
+     model%c_rho  =  7.9565 - 6.4761 * x_prem + 5.5283 * x_prem**2 - 3.0807 * x_prem**3
+     model%c_vpv = 15.3891 - 5.3181 * x_prem + 5.5242 * x_prem**2 - 2.5514 * x_prem**3
+     model%c_vsv =  6.9254 + 1.4672 * x_prem - 2.0834 * x_prem**2 + 0.9783 * x_prem**3
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 312.0
+     Qkappa = 57827.0
+  ELSEIF(idom==10)THEN  ! outer core
+     model%c_rho  = 12.5815 - 1.2638 * x_prem - 3.6426 * x_prem**2 -  5.5281 * x_prem**3
+     model%c_vpv = 11.0487 - 4.0362 * x_prem + 4.8023 * x_prem**2 - 13.5732 * x_prem**3
+     model%c_vsv =  0.0
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 0.0
+     Qkappa = 57827.0
+  ELSEIF(idom==11)THEN                        ! inner core
+     model%c_rho  = 13.0885 - 8.8381 * x_prem**2
+     model%c_vpv = 11.2622 - 6.3640 * x_prem**2
+     model%c_vsv =  3.6678 - 4.4475 * x_prem**2
+     model%c_vph = model%c_vpv
+     model%c_vsh = model%c_vsv
+     Qmu = 84.6
+     Qkappa = 1327.7
+  ENDIF
+
+  if (model%c_vsh(1)*model%c_vsv(1)==0) then
+    model%c_xi = 1
+  else
+    model%c_xi = (model%c_vsh/model%c_vsv)**2 
+  end if
+  model%c_phi= (model%c_vpv/model%c_vph)**2
+  model%c_vp = model%c_vph 
+  model%c_vs = model%c_vsh
+
+  ! All values should be returned in SI units, not some bollocks
+  model%c_vp  = model%c_vp  * 1E3
+  model%c_vs  = model%c_vs  * 1E3
+  model%c_vph = model%c_vph * 1E3
+  model%c_vpv = model%c_vpv * 1E3
+  model%c_vsh = model%c_vsh * 1E3
+  model%c_vsv = model%c_vsv * 1E3
+  model%c_rho = model%c_rho * 1E3
+
+end function prem_ani_sub
+!-----------------------------------------------------------------------------------------
 end module
 !=========================================================================================
