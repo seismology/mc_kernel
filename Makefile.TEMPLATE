@@ -13,10 +13,11 @@ SRCS =	commpi.F90 background_model.f90 buffer.f90 calc_kernels.f90 \
 	spectral_basis.f90 test_background_model.f90 test_buffer.f90 \
 	test_fft_type.f90 test_filter.f90 test_finite_elem_mapping.f90 \
 	test_ftnunit.f90 test_halton.f90 test_inv_mesh.f90 test_kernel.f90 \
-	test_mc.f90 test_readfields.f90 test_rotations.f90 \
-	test_sem_derivatives.f90 test_simple_routines.f90 test_source.f90 \
-	test_spectral_basis.f90 test_tetrahedra.f90 test_type_parameter.f90 \
-	test_voxel.f90 type_parameter.f90 worktype.f90
+	test_mc.f90 test_nc_routines.f90 test_readfields.f90 \
+	test_rotations.f90 test_sem_derivatives.f90 test_simple_routines.f90 \
+	test_source.f90 test_spectral_basis.f90 test_tetrahedra.f90 \
+	test_type_parameter.f90 test_voxel.f90 type_parameter.f90 \
+	worktype.f90
 
 OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	fft_type.o filtering.o finite_elem_mapping.o ftnunit.o \
@@ -27,10 +28,11 @@ OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	sem_derivatives.o simple_routines.o slave.o source.o spectral_basis.o \
 	test_background_model.o test_buffer.o test_fft_type.o test_filter.o \
 	test_finite_elem_mapping.o test_ftnunit.o test_halton.o \
-	test_inv_mesh.o test_kernel.o test_mc.o test_readfields.o \
-	test_rotations.o test_sem_derivatives.o test_simple_routines.o \
-	test_source.o test_spectral_basis.o test_tetrahedra.o \
-	test_type_parameter.o test_voxel.o type_parameter.o worktype.o
+	test_inv_mesh.o test_kernel.o test_mc.o test_nc_routines.o \
+	test_readfields.o test_rotations.o test_sem_derivatives.o \
+	test_simple_routines.o test_source.o test_spectral_basis.o \
+	test_tetrahedra.o test_type_parameter.o test_voxel.o type_parameter.o \
+	worktype.o
 
 ifeq ($(strip $(USE_NETCDF)),true)
    FFLAGS += -Dunc
@@ -116,18 +118,19 @@ test_finite_elem_mapping.o: finite_elem_mapping.o ftnunit.o \
 test_ftnunit.o: ftnunit.o global_parameters.o test_background_model.o \
 	test_buffer.o test_fft_type.o test_filter.o \
 	test_finite_elem_mapping.o test_halton.o test_inv_mesh.o \
-	test_kernel.o test_mc.o test_readfields.o test_rotations.o \
-	test_sem_derivatives.o test_simple_routines.o test_source.o \
-	test_spectral_basis.o test_tetrahedra.o test_type_parameter.o \
-	test_voxel.o Makefile make_kerner.macros 
+	test_kernel.o test_mc.o test_nc_routines.o test_readfields.o \
+	test_rotations.o test_sem_derivatives.o test_simple_routines.o \
+	test_source.o test_spectral_basis.o test_tetrahedra.o \
+	test_type_parameter.o test_voxel.o Makefile make_kerner.macros 
 test_halton.o: ftnunit.o global_parameters.o halton.o Makefile make_kerner.macros 
 test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o \
 	random_tetrahedron.o Makefile make_kerner.macros 
 test_kernel.o: ftnunit.o global_parameters.o kernel.o Makefile make_kerner.macros 
 test_mc.o: ftnunit.o global_parameters.o mc_integration.o \
 	random_tetrahedron.o Makefile make_kerner.macros 
-test_readfields.o: ftnunit.o global_parameters.o readfields.o \
-	type_parameter.o Makefile make_kerner.macros 
+test_nc_routines.o: ftnunit.o global_parameters.o nc_routines.o Makefile make_kerner.macros 
+test_readfields.o: background_model.o ftnunit.o global_parameters.o \
+	readfields.o type_parameter.o Makefile make_kerner.macros 
 test_rotations.o: ftnunit.o global_parameters.o rotations.o Makefile make_kerner.macros 
 test_sem_derivatives.o: finite_elem_mapping.o ftnunit.o global_parameters.o \
 	sem_derivatives.o spectral_basis.o Makefile make_kerner.macros 
@@ -139,8 +142,8 @@ test_tetrahedra.o: ftnunit.o global_parameters.o halton.o inv_mesh.o \
 test_type_parameter.o: ftnunit.o global_parameters.o readfields.o \
 	type_parameter.o Makefile make_kerner.macros 
 test_voxel.o: ftnunit.o global_parameters.o inv_mesh.o random_voxel.o Makefile make_kerner.macros 
-type_parameter.o: commpi.o filtering.o global_parameters.o kernel.o \
-	readfields.o receiver.o simple_routines.o source.o Makefile make_kerner.macros 
+type_parameter.o: background_model.o commpi.o filtering.o global_parameters.o \
+	kernel.o readfields.o receiver.o simple_routines.o source.o Makefile make_kerner.macros 
 worktype.o: global_parameters.o Makefile make_kerner.macros 
 commpi.o: global_parameters.o Makefile make_kerner.macros 
 kdtree2.o:  Makefile make_kerner.macros
