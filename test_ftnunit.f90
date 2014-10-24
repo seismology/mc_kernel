@@ -13,6 +13,7 @@ module unit_tests
   use test_buffer
   use test_filter
   use test_kernel
+  use test_nc_routines
   use test_readfields
   use test_background_models
   use test_rotations
@@ -106,6 +107,17 @@ subroutine test_all
   call test(test_background_models_combine, 'Combine model parameters')
   call test(test_background_models_weight,  'Weight model parameters')
   call test(test_background_models_get_parameter_names, 'Get model parameter names')
+
+  ! test_nc_routines
+  write(6,'(/,a)') 'TEST NC_ROUTINES MODULE'
+  call test_nc_routines_create_testfile()
+  call test(test_nc_open_for_read, 'Open NetCDF file for reading')
+  call test(test_nc_routines_getvar_1d_float, 'Read 1D Float by name')
+  call test(test_nc_routines_getvar_2d_float, 'Read 2D Float by name')
+  call test(test_nc_routines_getvar_3d_float, 'Read 3D Float by name')
+  call test(test_nc_routines_getvar_1d_int, 'Read 1D Integer by name')
+  call test(test_nc_routines_getvar_2d_int, 'Read 2D Integer by name')
+  call test(test_nc_routines_getvar_3d_int, 'Read 3D Integer by name')
 
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
