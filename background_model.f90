@@ -22,6 +22,7 @@ module backgroundmodel
     real(kind=sp), allocatable :: c_phi(:)
     real(kind=sp), allocatable :: c_xi(:)
     contains 
+      procedure, pass          :: init
       procedure, pass          :: combine
       procedure, pass          :: get_parameter_names
       procedure, pass          :: weight
@@ -30,6 +31,55 @@ module backgroundmodel
 contains
 
 !-----------------------------------------------------------------------------------------
+!> Just allocate the members of backgroundmodel_type to size npoints
+subroutine init(this, npoints)
+  class(backgroundmodel_type) :: this
+  integer, intent(in)         :: npoints
+
+  if (allocated(this%c_vp)) then
+    if (size(this%c_vp).ne.npoints) then
+      deallocate(this%c_vp )
+      deallocate(this%c_vs )
+      deallocate(this%c_rho)
+      deallocate(this%c_vsh)
+      deallocate(this%c_vsv)
+      deallocate(this%c_vph)
+      deallocate(this%c_vpv)
+      deallocate(this%c_eta)
+      deallocate(this%c_phi)
+      deallocate(this%c_xi)
+      allocate(this%c_vp (npoints))
+      allocate(this%c_vs (npoints))
+      allocate(this%c_rho(npoints))
+      allocate(this%c_vsh(npoints))
+      allocate(this%c_vsv(npoints))
+      allocate(this%c_vph(npoints))
+      allocate(this%c_vpv(npoints))
+      allocate(this%c_eta(npoints))
+      allocate(this%c_phi(npoints))
+      allocate(this%c_xi(npoints))
+    end if
+  else
+    allocate(this%c_vp (npoints))
+    allocate(this%c_vs (npoints))
+    allocate(this%c_rho(npoints))
+    allocate(this%c_vsh(npoints))
+    allocate(this%c_vsv(npoints))
+    allocate(this%c_vph(npoints))
+    allocate(this%c_vpv(npoints))
+    allocate(this%c_eta(npoints))
+    allocate(this%c_phi(npoints))
+    allocate(this%c_xi(npoints))
+  end if
+
+end subroutine init
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Allocate the members of backgroundmodel_type to size npoints and fill with the
+!! values given in coeffs (these are the values stored in the SEM mesh for an anisotropic
+!! run). Where necessary, these values are combined to calculate the ones not stored 
+!! directly in the file (like vpv...)
 subroutine combine(this, coeffs)
   class(backgroundmodel_type) :: this
   real(kind=sp), intent(in)   :: coeffs(:,:)
