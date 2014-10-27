@@ -13,7 +13,8 @@ subroutine test_mesh_read
   type(inversion_mesh_type)    :: inv_mesh
   integer                      :: npoints, nelems
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   npoints = inv_mesh%get_nvertices()
   nelems = inv_mesh%get_nelements()
@@ -40,7 +41,8 @@ subroutine test_mesh_dump
   open(newunit=myunit, file='unit_tests/testmesh_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh')
 
@@ -137,7 +139,8 @@ subroutine test_mesh_data_dump
   open(newunit=myunit, file='unit_tests_output/testcelldata_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   call inv_mesh%init_node_data(3)
 
@@ -614,7 +617,8 @@ subroutine test_mesh_tracedata_dump
   open(newunit=myunit, file='unit_tests_output/testcelltracedata_tracedata.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   call inv_mesh%init_node_data(3, 'tracedata')
 
@@ -672,7 +676,8 @@ end subroutine test_mesh_tracedata_dump
 subroutine test_valence
   type(inversion_mesh_type)    :: inv_mesh
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   call assert_equal(inv_mesh%get_valence(1), 2, 'valence of first vertex in facets.TEST')
   call assert_equal(inv_mesh%get_valence(2), 2, 'valence of second vertex in facets.TEST')
@@ -689,7 +694,8 @@ subroutine test_get_connected_elements
   type(inversion_mesh_type)    :: inv_mesh
   integer, allocatable         :: cn_elems(:)
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   ! uncomment to NOT use automatic allocation
   allocate(cn_elems(inv_mesh%get_valence(1)))

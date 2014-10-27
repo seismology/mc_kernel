@@ -329,7 +329,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         do ibasisfunc = 1, nbasisfuncs_per_elem
            call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = parameters%nmodel_parameter, & 
                                                             volume = 1d0, & !volume,                      &
-                                                            allowed_error = 1d-8,                 &
+                                                            allowed_error = 1d-2,                 &
                                                             allowed_relerror = 1d-2)
         end do
         do while (.not.allallconverged(int_model))
@@ -349,7 +349,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            !write(lu_out,*) '****************************************************************'
         end do
 
-        iclockold = tick(id=id_int_model)
+        iclockold = tick(id=id_int_model, since=iclockold)
         write(lu_out, '(A,I5,A)') ' ...done after ', istep_model, ' steps.'
         call flush(lu_out)
 

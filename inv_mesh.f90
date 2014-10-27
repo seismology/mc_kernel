@@ -477,10 +477,11 @@ end function generate_random_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
+subroutine read_tet_mesh(this, filename_vertices, filename_connectivity, int_type)
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename_vertices
   character(len=*), intent(in)      :: filename_connectivity
+  character(len=*), intent(in)      :: int_type
   integer                           :: iinput_vertices, iinput_connectivity
   integer                           :: i, ierr, ndim
 
@@ -555,6 +556,13 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity)
     write(lu_out, *) 'Assuming the vertex locations are in km!'
     this%vertices = this%vertices * 1D3 ! Vertices are set in km
   end if
+
+  select case(trim(int_type))
+  case('onvertices')
+     this%nbasisfuncs_per_elem = this%nvertices_per_elem    
+  case('volumetric')
+     this%nbasisfuncs_per_elem = 1     
+  end select
 
   ! Initialize weigths and calculate base vectors for each element
   call this%init_weight_tet_mesh()

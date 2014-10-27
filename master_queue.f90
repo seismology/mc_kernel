@@ -48,9 +48,12 @@ subroutine init_queue(ntasks)
   write(lu_out,'(A)') '***************************************************************'
   select case(lowtrim(parameters%mesh_file_type))
   case('tetrahedral') 
-    call inv_mesh%read_tet_mesh(parameters%mesh_file_vert, parameters%mesh_file_face)
+    call inv_mesh%read_tet_mesh(parameters%mesh_file_vert, &
+                                parameters%mesh_file_face, &
+                                parameters%int_type)
   case('abaqus')
-    call inv_mesh%read_abaqus_mesh(parameters%mesh_file, parameters%int_type)
+    call inv_mesh%read_abaqus_mesh(parameters%mesh_file, &
+                                   parameters%int_type)
   end select
   
   wt%ielement_type = inv_mesh%get_element_type()
@@ -190,7 +193,7 @@ subroutine extract_receive_buffer(itask, irank)
 
   iclockold = tick(id=id_extract, since=iclockold)
 
-end subroutine
+end subroutine extract_receive_buffer
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
