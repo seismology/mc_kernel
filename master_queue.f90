@@ -9,13 +9,13 @@ module master_queue
   
   public :: init_queue, get_next_task, extract_receive_buffer, finalize
 
-  type(inversion_mesh_data_type)      :: inv_mesh
-  type(parameter_type)                :: parameters
-  integer, allocatable                :: tasks(:), elems_in_task(:,:)
-  real(kind=dp), allocatable          :: K_x(:,:), Var(:,:), Bg_model(:,:)
-  integer,       allocatable          :: connectivity(:,:)
-  integer,       allocatable          :: niterations(:,:), element_proc(:)
-  integer, save                       :: iclockold_mpi
+  type(inversion_mesh_data_type), save :: inv_mesh
+  type(parameter_type),           save :: parameters
+  integer, allocatable,           save :: tasks(:), elems_in_task(:,:)
+  real(kind=dp), allocatable,     save :: K_x(:,:), Var(:,:), Bg_model(:,:)
+  integer,       allocatable,     save :: connectivity(:,:)
+  integer,       allocatable,     save :: niterations(:,:), element_proc(:)
+  integer,                        save :: iclockold_mpi
 
 contains
 
@@ -152,7 +152,7 @@ subroutine extract_receive_buffer(itask, irank)
   use global_parameters, only: id_extract, id_mpi
   use work_type_mod, only    : wt
   integer, intent(in)       :: itask, irank
-  integer                   :: iel, ielement, ibasisfunc, iclockold
+  integer                   :: iel, ielement, ibasisfunc, iclockold, ipoint
 
   if (.not.iclockold_mpi==-1) then
     iclockold = tick(id=id_mpi, since=iclockold_mpi)
@@ -163,32 +163,29 @@ subroutine extract_receive_buffer(itask, irank)
 
   ! extract from receive buffer
   do iel = 1, parameters%nelems_per_task
-      ielement = elems_in_task(itask, iel)
-      if (ielement.eq.-1) cycle
-      do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
+    ielement = elems_in_task(itask, iel)
+    if (ielement.eq.-1) cycle
+    do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
 
-         ! are we in volumetric or vertex mode?
-         select case(trim(parameters%int_type))
-         case('onvertices')         
-            K_x(connectivity(ibasisfunc, ielement),:) = K_x(connectivity(ibasisfunc, ielement),:) &
-                                                        + wt%kernel_values(:, ibasisfunc, iel)
-            Var(connectivity(ibasisfunc, ielement),:) = Var(connectivity(ibasisfunc, ielement),:) &
-                                                        + wt%kernel_variance(:, ibasisfunc, iel) 
-            Bg_Model(connectivity(ibasisfunc, ielement),:) = Bg_Model(connectivity(ibasisfunc, ielement),:) &
-                                                        + wt%model(:, ibasisfunc, iel) 
-         case('volumetric')
-            K_x(ielement,:)      = K_x(ielement,:) &
-                                   + wt%kernel_values(:, ibasisfunc, iel) 
-            Var(ielement,:)      = Var(ielement,:) &
-                                   + wt%kernel_variance(:, ibasisfunc, iel)   
-            Bg_Model(ielement,:) = Bg_Model(ielement,:) &
-                                   + wt%model(:, ibasisfunc, iel)   
-         end select
+      ! are we in volumetric or vertex mode?
+      select case(trim(parameters%int_type))
+      case('onvertices')         
+        ipoint = connectivity(ibasisfunc, ielement)
+        K_x(ipoint, :)      = K_x(ipoint,:)      + wt%kernel_values(:, ibasisfunc, iel)
+        Var(ipoint, :)      = Var(ipoint,:)      + wt%kernel_variance(:, ibasisfunc, iel) 
+        Bg_Model(ipoint, :) = Bg_Model(ipoint,:) + wt%model(:, ibasisfunc, iel) 
+      case('volumetric')
+        K_x(ielement,:)      = K_x(ielement,:) &
+                               + wt%kernel_values(:, ibasisfunc, iel) 
+        Var(ielement,:)      = Var(ielement,:) &
+                               + wt%kernel_variance(:, ibasisfunc, iel)   
+        Bg_Model(ielement,:) = Bg_Model(ielement,:) &
+                               + wt%model(:, ibasisfunc, iel)   
+      end select
 
-
-      end do
-      niterations(:,ielement)  = wt%niterations(:,iel)
-      element_proc(ielement) = irank 
+    end do
+    niterations(:,ielement)  = wt%niterations(:,iel)
+    element_proc(ielement) = irank 
   end do
 
   iclockold = tick(id=id_extract, since=iclockold)
