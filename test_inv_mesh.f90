@@ -22,7 +22,7 @@ subroutine test_mesh_read
   call assert_equal(nelems, 2, 'number of elements in facets.TEST')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_read
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -42,14 +42,14 @@ subroutine test_mesh_dump
   
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
 
-  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh')
+  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh')
 
-  call assert_file_exists('unit_tests/testmesh.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_grid.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_grid.dat', 'test xdmf dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_dump
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -58,25 +58,25 @@ subroutine test_mesh_dump2
   integer                      :: myunit, ierr
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
   call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
 
-  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh_abaqus')
+  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus')
 
-  call assert_file_exists('unit_tests/testmesh_abaqus.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_abaqus_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_abaqus_grid.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_grid.dat', 'test xdmf dump')
   
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_dump2
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -85,25 +85,25 @@ subroutine test_mesh_dump3
   integer                      :: myunit, ierr
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
   call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
 
-  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh_abaqus_merge')
+  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_merge')
 
-  call assert_file_exists('unit_tests/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
   
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_dump3
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -113,28 +113,28 @@ subroutine test_mesh_data_dump
   integer                           :: npoints, nelements, myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testdata.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testdata.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testdata_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testdata_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testdata_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testdata_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testdata_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testdata_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcelldata.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcelldata.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcelldata_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcelldata_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcelldata_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcelldata_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcelldata_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcelldata_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
@@ -149,12 +149,12 @@ subroutine test_mesh_data_dump
   call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'y')
   call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'z')
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testdata')
+  call inv_mesh%dump_node_data_xdmf('unit_tests_output/testdata')
 
-  call assert_file_exists('unit_tests/testdata.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testdata_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testdata_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testdata_data.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testdata.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testdata_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testdata_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testdata_data.dat', 'test xdmf data dump')
 
 
   call inv_mesh%init_cell_data(3)
@@ -172,16 +172,16 @@ subroutine test_mesh_data_dump
   call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
   call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcelldata')
+  call inv_mesh%dump_cell_data_xdmf('unit_tests_output/testcelldata')
 
-  call assert_file_exists('unit_tests/testcelldata.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcelldata_points.dat', &
+  call assert_file_exists('unit_tests_output/testcelldata.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests_output/testcelldata_points.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcelldata_grid.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcelldata_data.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests_output/testcelldata_grid.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests_output/testcelldata_data.dat', 'test xdmf cell data dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_data_dump
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -191,28 +191,28 @@ subroutine test_mesh_data_dump2
   integer                           :: npoints, nelements, myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testcircle.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcircle.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcircle_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcircle_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcircle_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcircle_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcircle_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcircle_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcellcircle.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcellcircle.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcellcircle_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcellcircle_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcellcircle_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcellcircle_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcellcircle_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcellcircle_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%read_abaqus_mesh('unit_tests/circle.inp','onvertices')
@@ -226,12 +226,12 @@ subroutine test_mesh_data_dump2
   call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
   call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testcircle')
+  call inv_mesh%dump_node_data_xdmf('unit_tests_output/testcircle')
 
-  call assert_file_exists('unit_tests/testcircle.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_data.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testcircle.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testcircle_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testcircle_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testcircle_data.dat', 'test xdmf data dump')
 
 
   call inv_mesh%init_cell_data(3)
@@ -249,18 +249,18 @@ subroutine test_mesh_data_dump2
   call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
   call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcellcircle')
+  call inv_mesh%dump_cell_data_xdmf('unit_tests_output/testcellcircle')
 
-  call assert_file_exists('unit_tests/testcellcircle.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_points.dat', &
+  call assert_file_exists('unit_tests_output/testcellcircle.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests_output/testcellcircle_points.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_grid.dat', &
+  call assert_file_exists('unit_tests_output/testcellcircle_grid.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_data.dat', &
+  call assert_file_exists('unit_tests_output/testcellcircle_data.dat', &
                           'test xdmf cell data dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_data_dump2
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -270,28 +270,28 @@ subroutine test_mesh_data_dump3
   integer                           :: npoints, nelements, myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testcircle_quad.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcircle_quad.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcircle_quad_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcircle_quad_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcircle_quad_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcircle_quad_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcircle_quad_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcircle_quad_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcellcircle_quad.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcellcircle_quad.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcellcircle_quad_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcellcircle_quad_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcellcircle_quad_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcellcircle_quad_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcellcircle_quad_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcellcircle_quad_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
 
@@ -306,12 +306,12 @@ subroutine test_mesh_data_dump3
   call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
   call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testcircle_quad')
+  call inv_mesh%dump_node_data_xdmf('unit_tests_output/testcircle_quad')
 
-  call assert_file_exists('unit_tests/testcircle_quad.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_quad_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_quad_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_quad_data.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testcircle_quad.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testcircle_quad_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testcircle_quad_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testcircle_quad_data.dat', 'test xdmf data dump')
 
 
   call inv_mesh%init_cell_data(3)
@@ -329,19 +329,19 @@ subroutine test_mesh_data_dump3
   call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
   call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcellcircle_quad')
+  call inv_mesh%dump_cell_data_xdmf('unit_tests_output/testcellcircle_quad')
 
-  call assert_file_exists('unit_tests/testcellcircle_quad.xdmf', &
+  call assert_file_exists('unit_tests_output/testcellcircle_quad.xdmf', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_points.dat', &
+  call assert_file_exists('unit_tests_output/testcellcircle_quad_points.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_grid.dat', &
+  call assert_file_exists('unit_tests_output/testcellcircle_quad_grid.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_data.dat', &
+  call assert_file_exists('unit_tests_output/testcellcircle_quad_data.dat', &
                           'test xdmf cell data dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_data_dump3
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -351,28 +351,28 @@ subroutine test_mesh_data_dump4
   integer                           :: npoints, nelements, myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testsphere.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testsphere.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testsphere_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testsphere_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testsphere_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testsphere_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testsphere_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testsphere_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testspherecell.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testspherecell.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testspherecell_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testspherecell_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testspherecell_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testspherecell_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testspherecell_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testspherecell_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%read_abaqus_mesh('unit_tests/sphere.inp','onvertices')
@@ -386,12 +386,12 @@ subroutine test_mesh_data_dump4
   call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
   call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testsphere')
+  call inv_mesh%dump_node_data_xdmf('unit_tests_output/testsphere')
 
-  call assert_file_exists('unit_tests/testsphere.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testsphere_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testsphere_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testsphere_data.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testsphere.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testsphere_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testsphere_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testsphere_data.dat', 'test xdmf data dump')
 
 
   call inv_mesh%init_cell_data(3)
@@ -409,19 +409,19 @@ subroutine test_mesh_data_dump4
   call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
   call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testspherecell')
+  call inv_mesh%dump_cell_data_xdmf('unit_tests_output/testspherecell')
 
-  call assert_file_exists('unit_tests/testspherecell.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_points.dat', &
+  call assert_file_exists('unit_tests_output/testspherecell.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests_output/testspherecell_points.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_grid.dat', &
+  call assert_file_exists('unit_tests_output/testspherecell_grid.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_data.dat', &
+  call assert_file_exists('unit_tests_output/testspherecell_data.dat', &
                           'test xdmf cell data dump')
 
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_data_dump4
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -431,28 +431,28 @@ subroutine test_mesh_data_dump5
   integer                           :: npoints, nelements, myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testtetrahedrons.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtetrahedrons.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testtetrahedrons_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtetrahedrons_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testtetrahedrons_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtetrahedrons_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testtetrahedrons_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtetrahedrons_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testtetrahedronscell.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtetrahedronscell.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testtetrahedronscell_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtetrahedronscell_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testtetrahedronscell_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtetrahedronscell_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testtetrahedronscell_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtetrahedronscell_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp', 'onvertices')
@@ -466,12 +466,12 @@ subroutine test_mesh_data_dump5
   call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
   call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testtetrahedrons')
+  call inv_mesh%dump_node_data_xdmf('unit_tests_output/testtetrahedrons')
 
-  call assert_file_exists('unit_tests/testtetrahedrons.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testtetrahedrons_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testtetrahedrons_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testtetrahedrons_data.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testtetrahedrons.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testtetrahedrons_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testtetrahedrons_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testtetrahedrons_data.dat', 'test xdmf data dump')
 
 
   call inv_mesh%init_cell_data(3)
@@ -489,19 +489,19 @@ subroutine test_mesh_data_dump5
   call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
   call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testtetrahedronscell')
+  call inv_mesh%dump_cell_data_xdmf('unit_tests_output/testtetrahedronscell')
 
-  call assert_file_exists('unit_tests/testtetrahedronscell.xdmf', &
+  call assert_file_exists('unit_tests_output/testtetrahedronscell.xdmf', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_points.dat', &
+  call assert_file_exists('unit_tests_output/testtetrahedronscell_points.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_grid.dat', &
+  call assert_file_exists('unit_tests_output/testtetrahedronscell_grid.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_data.dat', &
+  call assert_file_exists('unit_tests_output/testtetrahedronscell_data.dat', &
                           'test xdmf cell data dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_data_dump5
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -511,28 +511,28 @@ subroutine test_mesh_data_blocks
   integer                           :: npoints, nelements, myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testblocknode.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testblocknode.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testblocknode_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testblocknode_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testblocknode_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testblocknode_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testblocknode_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testblocknode_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testblockcell.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testblockcell.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testblockcell_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testblockcell_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testblockcell_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testblockcell_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testblockcell_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testblockcell_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
@@ -546,12 +546,12 @@ subroutine test_mesh_data_blocks
   call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
   call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testblocknode')
+  call inv_mesh%dump_node_data_xdmf('unit_tests_output/testblocknode')
 
-  call assert_file_exists('unit_tests/testblocknode.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testblocknode_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testblocknode_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testblocknode_data.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testblocknode.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testblocknode_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testblocknode_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testblocknode_data.dat', 'test xdmf data dump')
 
 
   call inv_mesh%init_cell_data(3)
@@ -569,18 +569,18 @@ subroutine test_mesh_data_blocks
   call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
   call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testblockcell')
+  call inv_mesh%dump_cell_data_xdmf('unit_tests_output/testblockcell')
 
-  call assert_file_exists('unit_tests/testblockcell.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testblockcell_points.dat', &
+  call assert_file_exists('unit_tests_output/testblockcell.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests_output/testblockcell_points.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testblockcell_grid.dat', &
+  call assert_file_exists('unit_tests_output/testblockcell_grid.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testblockcell_data.dat', &
+  call assert_file_exists('unit_tests_output/testblockcell_data.dat', &
                           'test xdmf cell data dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_data_blocks
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -590,28 +590,28 @@ subroutine test_mesh_tracedata_dump
   integer                           :: npoints, nelements, myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testtracedata.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtracedata.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testtracedata_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtracedata_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testtracedata_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtracedata_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testtracedata_tracedata.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testtracedata_tracedata.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcelltracedata.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcelltracedata.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcelltracedata_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcelltracedata_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcelltracedata_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcelltracedata_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  open(newunit=myunit, file='unit_tests/testcelltracedata_tracedata.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testcelltracedata_tracedata.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
@@ -626,15 +626,15 @@ subroutine test_mesh_tracedata_dump
      call inv_mesh%set_node_data_trace(datat_node(:,i), i, 'tracedata')
   enddo
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testtracedata')
+  call inv_mesh%dump_node_data_xdmf('unit_tests_output/testtracedata')
 
-  call assert_file_exists('unit_tests/testtracedata.xdmf', &
+  call assert_file_exists('unit_tests_output/testtracedata.xdmf', &
                           'test xdmf tracedata dump')
-  call assert_file_exists('unit_tests/testtracedata_points.dat', &
+  call assert_file_exists('unit_tests_output/testtracedata_points.dat', &
                           'test xdmf tracedata dump')
-  call assert_file_exists('unit_tests/testtracedata_grid.dat', &
+  call assert_file_exists('unit_tests_output/testtracedata_grid.dat', &
                           'test xdmf tracedata dump')
-  call assert_file_exists('unit_tests/testtracedata_data.dat', &
+  call assert_file_exists('unit_tests_output/testtracedata_data.dat', &
                           'test xdmf tracedata dump')
 
 
@@ -653,19 +653,19 @@ subroutine test_mesh_tracedata_dump
      call inv_mesh%set_cell_data_trace(datat_cell(:,i), i)
   enddo
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcelltracedata')
+  call inv_mesh%dump_cell_data_xdmf('unit_tests_output/testcelltracedata')
 
-  call assert_file_exists('unit_tests/testcelltracedata.xdmf', &
+  call assert_file_exists('unit_tests_output/testcelltracedata.xdmf', &
                           'test xdmf cell tracedata dump')
-  call assert_file_exists('unit_tests/testcelltracedata_points.dat', &
+  call assert_file_exists('unit_tests_output/testcelltracedata_points.dat', &
                           'test xdmf cell tracedata dump')
-  call assert_file_exists('unit_tests/testcelltracedata_grid.dat', &
+  call assert_file_exists('unit_tests_output/testcelltracedata_grid.dat', &
                           'test xdmf cell tracedata dump')
-  call assert_file_exists('unit_tests/testcelltracedata_data.dat', &
+  call assert_file_exists('unit_tests_output/testcelltracedata_data.dat', &
                           'test xdmf cell tracedata dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_tracedata_dump
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -681,7 +681,7 @@ subroutine test_valence
   call assert_equal(inv_mesh%get_valence(5), 1, 'valence of fifth vertex in facets.TEST')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_valence
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -705,7 +705,7 @@ subroutine test_get_connected_elements
   call assert_equal(inv_mesh%get_connected_elements(5), (/2/), 'get connected elements')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_get_connected_elements
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -715,21 +715,21 @@ subroutine test_voxel_mesh_io
   integer                           :: npoints, nelements, myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testvoxeldata.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testvoxeldata.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxeldata_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testvoxeldata_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxeldata_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testvoxeldata_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxeldata_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testvoxeldata_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxelcelldata.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testvoxelcelldata.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxelcelldata_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testvoxelcelldata_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxelcelldata_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testvoxelcelldata_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxelcelldata_data.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testvoxelcelldata_data.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
   call inv_mesh%read_abaqus_mesh('unit_tests/vox_15l_5deg.dat','onvertices')
@@ -743,12 +743,12 @@ subroutine test_voxel_mesh_io
   call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
   call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testvoxeldata')
+  call inv_mesh%dump_node_data_xdmf('unit_tests_output/testvoxeldata')
 
-  call assert_file_exists('unit_tests/testvoxeldata.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testvoxeldata_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testvoxeldata_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testvoxeldata_data.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testvoxeldata.xdmf', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testvoxeldata_points.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testvoxeldata_grid.dat', 'test xdmf data dump')
+  call assert_file_exists('unit_tests_output/testvoxeldata_data.dat', 'test xdmf data dump')
 
   call inv_mesh%init_cell_data(3)
 
@@ -765,14 +765,14 @@ subroutine test_voxel_mesh_io
   call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
   call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testvoxelcelldata')
+  call inv_mesh%dump_cell_data_xdmf('unit_tests_output/testvoxelcelldata')
 
-  call assert_file_exists('unit_tests/testvoxelcelldata.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_points.dat', &
+  call assert_file_exists('unit_tests_output/testvoxelcelldata.xdmf', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests_output/testvoxelcelldata_points.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_grid.dat', &
+  call assert_file_exists('unit_tests_output/testvoxelcelldata_grid.dat', &
                           'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_data.dat', &
+  call assert_file_exists('unit_tests_output/testvoxelcelldata_data.dat', &
                           'test xdmf cell data dump')
 
   call inv_mesh%freeme()
@@ -861,9 +861,9 @@ subroutine test_initialize_mesh
 
   call inv_mesh%freeme()
 
-end subroutine
+end subroutine test_initialize_mesh
 !-----------------------------------------------------------------------------------------
 
 
-end module
+end module test_inversion_mesh
 !=========================================================================================

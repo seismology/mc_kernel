@@ -6,7 +6,7 @@ module test_nc_routines
 
   implicit none
 
-  character(len=128), save         :: nc_filename='unit_tests/test_nc_routines.nc'
+  character(len=128), save         :: nc_filename='unit_tests_output/test_nc_routines.nc'
   integer                          :: dim_size(3) 
   real(kind=sp), allocatable, save :: testdata_fp(:,:,:)
   integer      , allocatable, save :: testdata_int(:,:,:)
