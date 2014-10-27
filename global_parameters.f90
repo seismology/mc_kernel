@@ -26,10 +26,13 @@ module global_parameters
                                        !! File 'OUTPUT_#rank' for slaves
 
   integer                    :: id_read, id_fft, id_fwd, id_bwd, id_mc, id_mpi,&
-                                id_filter_conv, id_inv_mesh, id_kernel, id_init, &
-                                id_buffer, id_netcdf, id_rotate, id_load_strain, &
-                                id_kdtree, id_calc_strain, id_find_point_fwd,    &
-                                id_find_point_bwd, id_lagrange
+                                id_filter_conv, id_inv_mesh, id_kernel, id_init,   &
+                                id_buffer, id_netcdf, id_rotate, id_load_strain,   &
+                                id_kdtree, id_calc_strain, id_find_point_fwd,      &
+                                id_find_point_bwd, id_lagrange, id_int_model,      &
+                                id_read_params, id_create_tasks, id_get_next_task, &
+                                id_extract, id_write_kernel, id_mult_kernel,       &
+                                id_init_fft
   integer                    :: id_load, id_resamp, id_out
 
   contains

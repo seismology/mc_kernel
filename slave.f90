@@ -24,7 +24,7 @@ contains
 
 !-----------------------------------------------------------------------------------------
 subroutine do_slave() 
-    use global_parameters,           only: DIETAG, id_mpi
+    use global_parameters,           only: DIETAG, id_mpi, id_read_params, id_init_fft
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
@@ -50,6 +50,8 @@ subroutine do_slave()
     write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
     write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
+
+    iclockold = tick()
 
     call parameters%read_parameters()
     call parameters%read_source()
@@ -80,6 +82,8 @@ subroutine do_slave()
 
     ndumps = sem_data%ndumps
 
+    iclockold = tick(id=id_read_params, since=iclockold)
+
     write(lu_out,'(A)') '***************************************************************'
     write(lu_out,'(A)') ' Initialize FFT'
     write(lu_out,'(A)') '***************************************************************'
@@ -96,8 +100,11 @@ subroutine do_slave()
     fmtstring = '(A, F8.3, A, F8.3, A)'
     write(lu_out,fmtstring) '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
 
+    iclockold = tick(id=id_init_fft, since=iclockold)
+
     ! Master and slave synchronize again
 
+    iclockold = tick()
     write(lu_out,'(A)') '***************************************************************'
     write(lu_out,'(A)') ' Define filters'
     write(lu_out,'(A)') '***************************************************************'
@@ -112,7 +119,8 @@ subroutine do_slave()
 
     call parameters%read_kernel(sem_data, parameters%filter)
     
-    
+    iclockold = tick(id=id_read_params, since=iclockold)
+
     itask = 0
     do 
        write(lu_out,'(A)') '***************************************************************'
@@ -202,7 +210,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     use global_parameters,           only: sp, dp, pi, deg2rad, myrank, &
                                            id_fwd, id_bwd, id_fft, id_mc, id_filter_conv, &
-                                           id_inv_mesh, id_kernel, id_init
+                                           id_inv_mesh, id_kernel, id_init, id_int_model
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
@@ -316,6 +324,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         ! Calculate integrated model parameters for this element
         write(lu_out,'(A,I10)', advance='no') ' Integrate model parameters for element ', ielement
         call flush(lu_out)
+        iclockold = tick()
         istep_model = 0
         do ibasisfunc = 1, nbasisfuncs_per_elem
            call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = parameters%nmodel_parameter, & 
@@ -340,6 +349,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            !write(lu_out,*) '****************************************************************'
         end do
 
+        iclockold = tick(id=id_int_model)
         write(lu_out, '(A,I5,A)') ' ...done after ', istep_model, ' steps.'
         call flush(lu_out)
 

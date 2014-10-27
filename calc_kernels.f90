@@ -47,7 +47,11 @@ program kerner_code
     write(lu_out,*) ' MPI communication initialized, I have rank', myrank
     write(lu_out,*) '***************************************************************'
    
-    if (.not.master) call start_clock()
+    if (master) then
+      call start_clock_master()
+    else
+      call start_clock_slave()
+    end if
 
     call parameters%read_parameters()
     call parameters%read_source()
@@ -108,11 +112,11 @@ program kerner_code
         endif
  
         call ppend()
-        if (.not.master) call end_clock()   
+        call end_clock()   
   
     case('plot_wavefield')
         if (master) then
-            call start_clock()
+            call start_clock_slave()
             call plot_wavefields()
             call end_clock()
         else
@@ -127,11 +131,8 @@ contains
 
 
 !-----------------------------------------------------------------------------
-subroutine start_clock
-  !
-  ! Driver routine to start the timing, using the clocks_mod module.
-  !
-  !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- 
+!> Driver routine to start the timing for the master, using the clocks_mod module.
+subroutine start_clock_master
   use global_parameters
   use clocks_mod, only : clock_id, clocks_init
   
@@ -148,7 +149,39 @@ subroutine start_clock
 
   call clocks_init(0)
 
-  !id_read = clock_id('read_parameters')
+  id_read_params     = clock_id('Read parameters')
+  id_create_tasks    = clock_id('Create tasks for slaves')
+  id_get_next_task   = clock_id('Get next task for Slave')
+  id_extract         = clock_id('Extract receive buffer')
+  id_mpi             = clock_id('MPI communication with Slaves')
+  id_write_kernel    = clock_id('Write Kernels to disk')
+  id_mult_kernel     = clock_id('Multiply Kernels with Model')
+
+
+end subroutine start_clock_master
+!=============================================================================
+
+!-----------------------------------------------------------------------------
+!> Driver routine to start the timing for the slave, using the clocks_mod module.
+subroutine start_clock_slave
+  use global_parameters
+  use clocks_mod, only : clock_id, clocks_init
+  
+  implicit none
+  
+  character(len=8)  :: mydate
+  character(len=10) :: mytime
+
+  call date_and_time(mydate,mytime) 
+  write(lu_out,11) mydate(5:6), mydate(7:8), mydate(1:4), mytime(1:2), mytime(3:4)
+
+11 format('     Kerner started on ', A2,'/',A2,'/',A4,' at ', A2,'h ',A2,'min',/)
+
+
+  call clocks_init(0)
+
+  id_read_params     = clock_id('Read parameters')
+  id_init_fft        = clock_id('Initialize FFT plan')
   id_fft             = clock_id('FFT routines')
   id_bwd             = clock_id('Reading bwd field')
   id_fwd             = clock_id('Reading fwd field')
@@ -164,12 +197,13 @@ subroutine start_clock
   id_mc              = clock_id('Monte Carlo routines')
   id_filter_conv     = clock_id('Filtering and convolution')
   id_inv_mesh        = clock_id('Inversion mesh routines')
+  id_int_model       = clock_id('Integrate model paramaters')
   id_kernel          = clock_id('Kernel routines')
   id_init            = clock_id('Initialization per task')
   id_mpi             = clock_id('MPI communication with Master')
 
 
-end subroutine start_clock
+end subroutine start_clock_slave
 !=============================================================================
 
 !-----------------------------------------------------------------------------

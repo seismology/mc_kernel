@@ -15,6 +15,7 @@ module master_queue
   real(kind=dp), allocatable          :: K_x(:,:), Var(:,:), Bg_model(:,:)
   integer,       allocatable          :: connectivity(:,:)
   integer,       allocatable          :: niterations(:,:), element_proc(:)
+  integer, save                       :: iclockold_mpi
 
 contains
 
@@ -23,11 +24,15 @@ subroutine init_queue(ntasks)
 ! anything that should be done before starting the loop over the work. for now,
 ! the number of tasks is fixed here
 
+  use clocks_mod,    only    : tick
+  use global_parameters, only: id_read_params, id_create_tasks
   use work_type_mod, only    : wt
   integer, intent(out)      :: ntasks
-  integer                   :: itask, nelems, iel
+  integer                   :: itask, nelems, iel, iclockold
   character(len=64)         :: fmtstring
   
+  iclockold = tick()
+
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
   write(lu_out,'(A)') '***************************************************************'
@@ -67,6 +72,8 @@ subroutine init_queue(ntasks)
   write(lu_out,'(A)') '***************************************************************'
   call parameters%read_kernel()
 
+  iclockold = tick(id=id_read_params, since=iclockold)
+
   allocate(niterations(parameters%nkernel, nelems))
   allocate(element_proc(nelems))
   
@@ -99,6 +106,8 @@ subroutine init_queue(ntasks)
                                              parameters%nmodel_parameter))
   Bg_Model = 0.0
 
+  iclockold = tick(id=id_create_tasks, since=iclockold)
+
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Starting to distribute the work'
   write(lu_out,'(A)') '***************************************************************'
@@ -109,12 +118,14 @@ end subroutine init_queue
 !-----------------------------------------------------------------------------------------
 subroutine get_next_task(itask)
 ! put a new piece of work in the send buffer
-  
+  use clocks_mod,    only    : tick
   use work_type_mod, only    : wt
-  integer, intent(in)   :: itask
-  integer               :: iel, ielement, ivert
-  integer, allocatable  :: ivertex(:)
+  use global_parameters, only: id_get_next_task
+  integer, intent(in)       :: itask
+  integer                   :: iel, ielement, ivert, iclockold
+  integer, allocatable      :: ivertex(:)
 
+  iclockold = tick()
   allocate(ivertex(inv_mesh%nvertices_per_elem))
 
   wt%itask = itask
@@ -127,7 +138,8 @@ subroutine get_next_task(itask)
       wt%vertices(:, ivertex) = inv_mesh%get_element(ielement)
       wt%connectivity(:, iel) = ivertex
   end do
-
+  
+  iclockold_mpi = tick(id=id_get_next_task, since=iclockold)
 
 end subroutine get_next_task
 !-----------------------------------------------------------------------------------------
@@ -136,9 +148,18 @@ end subroutine get_next_task
 subroutine extract_receive_buffer(itask, irank)
 ! extract information received back from a slave
 
+  use clocks_mod,    only    : tick
+  use global_parameters, only: id_extract, id_mpi
   use work_type_mod, only    : wt
   integer, intent(in)       :: itask, irank
-  integer                   :: iel, ielement, ibasisfunc
+  integer                   :: iel, ielement, ibasisfunc, iclockold
+
+  if (.not.iclockold_mpi==-1) then
+    iclockold = tick(id=id_mpi, since=iclockold_mpi)
+    iclockold_mpi = -1
+  else
+    iclockold = tick()
+  end if
 
   ! extract from receive buffer
   do iel = 1, parameters%nelems_per_task
@@ -170,6 +191,7 @@ subroutine extract_receive_buffer(itask, irank)
       element_proc(ielement) = irank 
   end do
 
+  iclockold = tick(id=id_extract, since=iclockold)
 
 end subroutine
 !-----------------------------------------------------------------------------------------
