@@ -65,6 +65,7 @@ subroutine getvarid(ncid, name, varid)
                              varid = varid )
     if (status.ne.NF90_NOERR) then
         write(6,100) myrank, trim(name), ncid
+        call flush(6)
         call pabort 
     elseif (verbose>1) then
         write(lu_out,101) trim(name), ncid, varid
@@ -87,6 +88,7 @@ subroutine getgrpid(ncid, name, grp_ncid)
                             grp_ncid = grp_ncid )
     if (status.ne.NF90_NOERR) then
         write(6,100) myrank, trim(name), ncid
+        call flush(6)
         call pabort
     elseif (verbose>1) then
         write(lu_out,101) trim(name), ncid, grp_ncid
@@ -98,14 +100,17 @@ end subroutine getgrpid
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_1d_int(ncid, name, values)
+subroutine nc_getvar_by_name_1d_int(ncid, name, values, limits)
 !< Looks up a 1D variable name and returns the complete variable
-  integer, intent(in)           :: ncid
-  character(len=*), intent(in)  :: name
+  integer, intent(in)                :: ncid
+  character(len=*), intent(in)       :: name
   integer, allocatable, intent(out)  :: values(:)
+  integer, intent(in), optional      :: limits(2)
 
-  integer                       :: variable_id, dimid(1), npoints, variable_type
-  integer                       :: status
+  integer                            :: variable_id, dimid(1), npoints, variable_type
+  integer                            :: status
+  integer                            :: limits_loc(2)
+  logical                            :: have_limits = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 1D variable ', A, '...')") trim(name)
@@ -134,9 +139,29 @@ subroutine nc_getvar_by_name_1d_int(ncid, name, values)
                    count  = npoints,              &
                    values = values(:)) 
   case default
-    write(*,*) 'get_mesh_variable is only implemented for NF90_INT variables'
+    write(*,*) 'nc_getvar_by_name_1d_int works only for NF90_INT variables'
+    call flush(6)
     call pabort()
   end select
+
+  if (have_limits) then
+     if (minval(values).lt.(minval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', minloc(values)
+        write(*,*) 'Element value: ', minval(values)
+        write(*,*) 'Lower limit  : ', minval(limits_loc)
+     end if
+     if (maxval(values).gt.(maxval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', maxloc(values)
+        write(*,*) 'Element value: ', maxval(values)
+        write(*,*) 'Upper limit  : ', maxval(limits_loc)
+     end if
+     call flush(6)
+     call pabort(do_traceback=.false.)
+  end if
 
 end subroutine nc_getvar_by_name_1d_int
 !-----------------------------------------------------------------------------------------
@@ -149,10 +174,10 @@ subroutine nc_getvar_by_name_1d(ncid, name, values, limits)
   real(kind=sp), allocatable, intent(inout)  :: values(:)
   real(kind=sp), intent(in), optional        :: limits(2)
 
-  integer                        :: variable_id, dimid(1), npoints, variable_type
-  integer                        :: status
-  real(kind=sp)                  :: limits_loc(2)
-  logical                        :: have_limits = .false.
+  integer                                    :: variable_id, dimid(1), npoints, variable_type
+  integer                                    :: status
+  real(kind=sp)                              :: limits_loc(2)
+  logical                                    :: have_limits = .false.
 
 
   if (verbose>1) then
@@ -185,7 +210,8 @@ subroutine nc_getvar_by_name_1d(ncid, name, values, limits)
                    count  = npoints,              &
                    values = values) 
   case default
-    write(*,*) 'get_mesh_variable is only implemented for NF90_FLOAT and NF90_DBLE variables'
+    write(*,*) 'nc_getvar_by_name_1d is only implemented for NF90_FLOAT'
+    call flush(6)
     call pabort()
   end select
 
@@ -216,20 +242,25 @@ subroutine nc_getvar_by_name_1d(ncid, name, values, limits)
         write(*,*) 'Element value: ', maxval(values)
         write(*,*) 'Upper limit  : ', maxval(limits_loc)
      end if
+     call flush(6)
+     call pabort(do_traceback=.false.)
   end if
 
 end subroutine nc_getvar_by_name_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_2d_int(ncid, name, values)
+subroutine nc_getvar_by_name_2d_int(ncid, name, values, limits)
 !< Looks up a 2D variable name and returns the complete variable
-  integer, intent(in)           :: ncid
-  character(len=*), intent(in)  :: name
+  integer, intent(in)                :: ncid
+  character(len=*), intent(in)       :: name
   integer, allocatable, intent(out)  :: values(:,:)
+  integer, intent(in), optional      :: limits(2)
 
-  integer                       :: variable_id, dimid(2), len_dim1, len_dim2, variable_type
-  integer                       :: status
+  integer                            :: variable_id, dimid(2), len_dim1, len_dim2, variable_type
+  integer                            :: status
+  integer                            :: limits_loc(2)
+  logical                            :: have_limits = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 2D variable ', A, '...')") trim(name)
@@ -262,22 +293,45 @@ subroutine nc_getvar_by_name_2d_int(ncid, name, values)
                    count  = [len_dim1, len_dim2], &
                    values = values)
   case default
-    write(*,*) 'get_mesh_variable is only implemented for NF90_INT variables'
+    write(*,*) 'nc_getvar_by_name_2d_int is only implemented for NF90_INT variables'
     call pabort()
   end select
+
+  if (have_limits) then
+     if (minval(values).lt.(minval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', minloc(values)
+        write(*,*) 'Element value: ', minval(values)
+        write(*,*) 'Lower limit  : ', minval(limits_loc)
+     end if
+     if (maxval(values).gt.(maxval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', maxloc(values)
+        write(*,*) 'Element value: ', maxval(values)
+        write(*,*) 'Upper limit  : ', maxval(limits_loc)
+     end if
+     call flush(6)
+     call pabort(do_traceback=.false.)
+  end if
 
 end subroutine nc_getvar_by_name_2d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_2d(ncid, name, values)
+subroutine nc_getvar_by_name_2d(ncid, name, values, limits)
 !< Looks up a 2D variable name and returns the complete variable
-  integer, intent(in)           :: ncid
-  character(len=*), intent(in)  :: name
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: name
   real(kind=sp), allocatable, intent(inout)  :: values(:,:)
+  real(kind=sp), intent(in), optional        :: limits(2)
 
-  integer                       :: variable_id, dimid(2), len_dim1, len_dim2, variable_type
-  integer                       :: status
+  integer                                    :: variable_id, dimid(2), len_dim1, len_dim2
+  integer                                    :: variable_type
+  integer                                    :: status
+  real(kind=sp)                              :: limits_loc(2)
+  logical                                    :: have_limits = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 2D variable ', A, '...')") trim(name)
@@ -310,22 +364,45 @@ subroutine nc_getvar_by_name_2d(ncid, name, values)
                    count  = [len_dim1, len_dim2], &
                    values = values) 
   case default
-    write(*,*) 'get_mesh_variable is only implemented for NF90_FLOAT variables'
+    write(*,*) 'nc_getvar_by_name_2d is only implemented for NF90_FLOAT variables'
+    call flush(6)
     call pabort()
   end select
+
+  if (have_limits) then
+     if (minval(values).lt.(minval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', minloc(values)
+        write(*,*) 'Element value: ', minval(values)
+        write(*,*) 'Lower limit  : ', minval(limits_loc)
+     end if
+     if (maxval(values).gt.(maxval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', maxloc(values)
+        write(*,*) 'Element value: ', maxval(values)
+        write(*,*) 'Upper limit  : ', maxval(limits_loc)
+     end if
+     call flush(6)
+     call pabort(do_traceback=.false.)
+  end if
 
 end subroutine nc_getvar_by_name_2d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_3d_int(ncid, name, values)
+subroutine nc_getvar_by_name_3d_int(ncid, name, values, limits)
 !< Looks up a 3D variable name and returns the complete variable
   integer, intent(in)                :: ncid
   character(len=*), intent(in)       :: name
   integer, allocatable, intent(out)  :: values(:,:,:)
+  integer, intent(in), optional      :: limits(2)
 
-  integer                       :: variable_id, dimid(3), len_dim(3), variable_type
-  integer                       :: status, i_dim
+  integer                            :: variable_id, dimid(3), len_dim(3), variable_type
+  integer                            :: status, i_dim
+  integer                            :: limits_loc(2)
+  logical                            :: have_limits = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 3D variable ', A, '...')") trim(name)
@@ -359,21 +436,44 @@ subroutine nc_getvar_by_name_3d_int(ncid, name, values)
                    values = values)
   case default
     write(*,*) 'get_mesh_variable is only implemented for NF90_INT variables'
+    call flush(6)
     call pabort()
   end select
+
+  if (have_limits) then
+     if (minval(values).lt.(minval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', minloc(values)
+        write(*,*) 'Element value: ', minval(values)
+        write(*,*) 'Lower limit  : ', minval(limits_loc)
+     end if
+     if (maxval(values).gt.(maxval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', maxloc(values)
+        write(*,*) 'Element value: ', maxval(values)
+        write(*,*) 'Upper limit  : ', maxval(limits_loc)
+     end if
+     call flush(6)
+     call pabort(do_traceback=.false.)
+  end if
 
 end subroutine nc_getvar_by_name_3d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_3d(ncid, name, values)
+subroutine nc_getvar_by_name_3d(ncid, name, values, limits)
 !< Looks up a 3D variable name and returns the complete variable
-  integer, intent(in)                      :: ncid
-  character(len=*), intent(in)             :: name
-  real(kind=sp), allocatable, intent(out)  :: values(:,:,:)
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: name
+  real(kind=sp), allocatable, intent(out)    :: values(:,:,:)
+  real(kind=sp), intent(in), optional        :: limits(2)
 
-  integer                       :: variable_id, dimid(3), len_dim(3), variable_type
-  integer                       :: status, i_dim
+  integer                                    :: variable_id, dimid(3), len_dim(3), variable_type
+  integer                                    :: status, i_dim
+  real(kind=sp)                              :: limits_loc(2)
+  logical                                    :: have_limits = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 3D variable ', A, '...')") trim(name)
@@ -410,6 +510,25 @@ subroutine nc_getvar_by_name_3d(ncid, name, values)
     call pabort()
   end select
 
+  if (have_limits) then
+     if (minval(values).lt.(minval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', minloc(values)
+        write(*,*) 'Element value: ', minval(values)
+        write(*,*) 'Lower limit  : ', minval(limits_loc)
+     end if
+     if (maxval(values).gt.(maxval(limits_loc))) then
+        write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
+        write(*,*) 'Variable name: ', trim(name) 
+        write(*,*) 'Element nr   : ', maxloc(values)
+        write(*,*) 'Element value: ', maxval(values)
+        write(*,*) 'Upper limit  : ', maxval(limits_loc)
+     end if
+     call flush(6)
+     call pabort(do_traceback=.false.)
+  end if
+
 end subroutine nc_getvar_by_name_3d
 !-----------------------------------------------------------------------------------------
 
@@ -430,8 +549,7 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
 
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
-       print *, trim(nf90_strerror(status))
-       stop
+       call check(status)
    end if
 
    if (size(values).ne.count) then
@@ -453,8 +571,7 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
                                       ndims = ndims)
        if (ndims.ne.1) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
-           stop
+           call check(status)
        end if
        status = nf90_inquire_variable(ncid   = ncid,     &
                                       varid  = varid,    &
@@ -467,15 +584,14 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
                                        dimid = dimid(1), &
                                        name  = dimname,  &
                                        len   = dimsize )
+
        if (start + count - 1 > dimsize) then
            write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
-           stop
+           call check(status)
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-       print *, trim(nf90_strerror(status))
-       stop
+       call check(status)
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -515,8 +631,7 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
 
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
-       print *, trim(nf90_strerror(status))
-       stop
+       call check(status)
    end if
 
    if (size(values).ne.count) then
@@ -538,8 +653,7 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
                                       ndims = ndims)
        if (ndims.ne.1) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
-           stop
+           call check(status)
        end if
        status = nf90_inquire_variable(ncid   = ncid,     &
                                       varid  = varid,    &
@@ -552,15 +666,14 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
                                        dimid = dimid(1), &
                                        name  = dimname,  &
                                        len   = dimsize )
+
        if (start + count - 1 > dimsize) then
            write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
-           stop
+           call check(status)
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-       print *, trim(nf90_strerror(status))
-       stop
+       call check(status)
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -600,8 +713,7 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
 
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
-       print *, trim(nf90_strerror(status))
-       stop
+       call check(status)
    end if
 
    if (size(values).ne.count) then
@@ -623,8 +735,7 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
                                       ndims = ndims)
        if (ndims.ne.1) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
-           stop
+           call check(status)
        end if
        status = nf90_inquire_variable(ncid   = ncid,     &
                                       varid  = varid,    &
@@ -639,13 +750,11 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
                                        len   = dimsize )
        if (start + count - 1 > dimsize) then
            write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
-           stop
+           call check(status)
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-       print *, trim(nf90_strerror(status))
-       stop
+       call check(status)
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -686,13 +795,14 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
 
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
-       print *, trim(nf90_strerror(status))
-       stop
+       call check(status)
    end if
+
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 2
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
+           call flush(lu_out)
            stop
        end if
    end do
@@ -715,8 +825,7 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
        ! Check whether variable in NetCDF file has more or less than three dimensions
        if (ndims.ne.2) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
-           stop
+           call check(status)
        end if
 
        ! Check whether dimension sizes are compatible with amount of data written
@@ -735,14 +844,13 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
            if (start(idim) + count(idim) - 1 > dimsize) then
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
-               print *, trim(nf90_strerror(status))
-               stop 2
+               call check(status)
            end if
 
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           call check(status)
 
        end do
 
@@ -890,12 +998,14 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
+       call flush(6)
        stop
    end if
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 3
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
+           call flush(6)
            stop
        end if
    end do
@@ -919,6 +1029,7 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
        if (ndims.ne.3) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status))
+           call flush(6)
            stop
        end if
 
@@ -938,6 +1049,7 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
            if (start(idim) + count(idim) - 1 > dimsize) then
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
+               call flush(6)
                print *, trim(nf90_strerror(status))
                stop
            end if
@@ -946,6 +1058,7 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
            print *, trim(nf90_strerror(status))
+           call flush(6)
 
        end do
 
