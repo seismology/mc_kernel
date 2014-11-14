@@ -10,27 +10,45 @@ module test_readfields
 contains
 
 !-----------------------------------------------------------------------------------------
-! Fails for some involved reason. Its functionality is in other tests
-!subroutine test_readfields_load_seismogram()
-!   use type_parameter, only : parameter_type
-!   type(semdata_type)      :: sem_data
-!   type(parameter_type)    :: parameters
-!
-!   call parameters%read_parameters('unit_tests/inparam_test')
-!   call parameters%read_source()
-!   call parameters%read_receiver()
-!   call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100, parameters%strain_type_fwd)
-!   call sem_data%open_files()
-!   call sem_data%read_meshes()
-!
-!   call parameters%read_filter(nomega = 512, df = 1d0)
-!   call parameters%read_kernel(sem_data, parameters%filter)
-!   
-!   call sem_data%load_seismogram(parameters%receiver, parameters%source)
-!   
-!   call sem_data%close_files()
-!
-!end subroutine test_readfields_load_seismogram
+subroutine test_get_chunk_bounds()
+   integer  :: npoints, chunksize, ipoint, start_chunk, count_chunk, i, iinchunk
+   integer  :: start_chunk_ref, count_chunk_ref
+   character(len=80) :: err_msg
+
+   ! This should have 20 chunks
+   npoints = 99
+   chunksize = 5
+
+   do iinchunk = 0, chunksize - 1
+
+     do i = 1, 20
+       
+       start_chunk_ref = (i-1) * chunksize + 1
+       if (i<20) then
+         count_chunk_ref = 5
+       else 
+         count_chunk_ref = 4
+       end if
+
+       ipoint = start_chunk_ref + iinchunk 
+
+       if (ipoint > npoints) cycle
+
+       call get_chunk_bounds(pointid     = ipoint,        &
+                             chunksize   = chunksize,     &
+                             npoints     = npoints,       & 
+                             start_chunk = start_chunk,   &
+                             count_chunk = count_chunk)
+
+       write(err_msg, "('Start of chunk correct for point: ', I4)") ipoint
+       call assert_equal(start_chunk, start_chunk_ref, trim(err_msg))
+       write(err_msg, "('Count of chunk correct for point: ', I4)") ipoint
+       call assert_equal(count_chunk, count_chunk_ref, trim(err_msg))
+
+     end do
+   end do
+     
+end subroutine test_get_chunk_bounds
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

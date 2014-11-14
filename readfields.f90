@@ -21,7 +21,7 @@ module readfields
 
     implicit none
     private
-    public                                 :: semdata_type, meshtype
+    public                                 :: semdata_type, meshtype, get_chunk_bounds
 
     integer, parameter                     :: min_file_version = 3
     integer, parameter                     :: nmodel_parameters_sem_file = 6 !< For the anisotropic
@@ -2372,10 +2372,12 @@ function load_strain_point(sem_obj, pointid, strain_type)
 
         status = sem_obj%buffer%get(pointid, utemp)
         if (status.ne.0) then
-            start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-            
-            ! Only read to last point, not further
-            gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+
+            call get_chunk_bounds(pointid     = pointid,              &
+                                  chunksize   = sem_obj%chunk_gll,    &
+                                  npoints     = sem_obj%ngll,         &
+                                  start_chunk = start_chunk,          &   
+                                  count_chunk = gll_to_read )
             do istrainvar = 1, 6
 
                 if (sem_obj%strainvarid(istrainvar).eq.-1) then
@@ -2530,10 +2532,12 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
             status = sem_obj%buffer_disp%get(pointids(ipol,jpol), ubuff(:,:))
             iclockold = tick(id=id_buffer, since=iclockold)
             if (status.ne.0) then
-               start_chunk &
-                    = (pointids(ipol,jpol) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
-               ! Only read to last point, not further
-               gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
+
+               call get_chunk_bounds(pointid     = pointids(ipol, jpol), &
+                                     chunksize   = sem_obj%chunk_gll,    &
+                                     npoints     = sem_obj%ngll,         &
+                                     start_chunk = start_chunk,          &   
+                                     count_chunk = gll_to_read )
 
                do idisplvar = 1, 3
 
@@ -2543,12 +2547,21 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
                    endif
 
                    iclockold = tick()
-                   call check(nf90_get_var( ncid   = sem_obj%snap,           & 
-                                            varid  = sem_obj%displvarid(idisplvar), &
-                                            start  = [start_chunk, 1],       &
-                                            count  = [gll_to_read, sem_obj%ndumps], &
-                                            values = utemp_chunk(1:gll_to_read, :, idisplvar)))
+                   !print *, 'Trying to read data!'
+                   !print *, 'pointid:      ', pointids(ipol, jpol)
+                   !print *, 'start_chunk:  ', start_chunk
+                   !print *, 'gll_to_read:  ', gll_to_read
+                   !print *, 'last_element: ', start_chunk + gll_to_read - 1
+                   !call flush(6)
 
+                   call nc_getvar( ncid   = sem_obj%snap,                  & 
+                                   varid  = sem_obj%displvarid(idisplvar), &
+                                   start  = [start_chunk, 1],              &
+                                   count  = [gll_to_read, sem_obj%ndumps], &
+                                   values = utemp_chunk(1:gll_to_read, :, idisplvar))
+
+                   !print *, 'suceeded'
+                   !call flush(6)
                    iclockold = tick(id=id_netcdf, since=iclockold)
                    utemp(:,ipol,jpol, idisplvar) &
                         = utemp_chunk(pointids(ipol,jpol) - start_chunk + 2,:,idisplvar)
@@ -2979,6 +2992,34 @@ subroutine calc_gradient_terms(sem_var)
 end subroutine calc_gradient_terms
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+!> Calculates start and count to read one chunk (and not exceed size of variable)
+subroutine get_chunk_bounds(pointid, chunksize, npoints, start_chunk, count_chunk)
+  integer, intent(in)       :: pointid      !< ID of point to read
+  integer, intent(in)       :: chunksize    !< Chunk size of variable
+  integer, intent(in)       :: npoints      !< Size of variable
+  integer, intent(out)      :: start_chunk  !< Start of chunk in which pointid is
+  integer, intent(out)      :: count_chunk  !< Size of chunk in which pointid is 
+                                            !! Normally == chunksize, but should not be larger
+                                            !! than npoints
+  integer                   :: ichunk       !< Number of chunk to read (starting from 0)
+
+  if ((pointid > npoints).or.(pointid<1)) then
+    print *, 'ERROR: Requesting chunk for point ', pointid
+    print *, '       variable has only', npoints, 'points'
+    call pabort()
+  end if
+
+  ! Chunk 1 ranges from 1 to chunksize, 
+  ! Chunk i from (i-1)*chunksize+1 to i*chunksize
+  ichunk = (pointid - 1) / chunksize  ! Integer division
+
+  start_chunk = ichunk * chunksize + 1
+  
+  count_chunk = min(chunksize, npoints - start_chunk + 1)
+                                            
+end subroutine get_chunk_bounds
+!-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
