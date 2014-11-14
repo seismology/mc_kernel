@@ -34,7 +34,7 @@ subroutine ppinit
 
   use global_parameters,  only : set_lu_out, set_myrank, set_nproc
   integer            :: ierror, lu_out_loc, myrank_loc, nproc_loc
-  character(len=10)  :: fnam
+  character(len=11)  :: fnam
   
   call MPI_INIT( ierror)
   call MPI_COMM_RANK( MPI_COMM_WORLD, myrank_loc, ierror )
@@ -51,7 +51,7 @@ subroutine ppinit
   else
       master = .false.
       if (myrank == 1) firstslave = .true.
-      write(fnam,"('OUTPUT_', I3.3)") myrank
+      write(fnam,"('OUTPUT_', I4.4)") myrank
       open(newunit=lu_out_loc, file=fnam, status='replace')
       call set_lu_out(lu_out_loc)
   end if
@@ -233,9 +233,15 @@ end subroutine ppend
 subroutine pabort(do_traceback)
 !< Calls MPI_ABORT
 !! By default, does also a traceback. Can be suppressed by the argument do_traceback=.false
+# if defined(__INTEL_COMPILER)
+  use ifcore, only: tracebackqq ! Ifort helper routines
+# endif  
   logical, intent(in), optional :: do_traceback
   integer                       :: ierror
   logical                       :: isinitialized, do_traceback_loc
+  character(len=80)             :: msg
+
+  print *, 'Processor ', myrank, ' has found an error and aborts computation'
 
   do_traceback_loc = .true.
   if (present(do_traceback)) do_traceback_loc = do_traceback
@@ -247,14 +253,14 @@ subroutine pabort(do_traceback)
 #   endif
 #   endif
 #   if defined(__INTEL_COMPILER)
-     call tracebackqq()
+     write(msg,"('Processor ', I5, ' found an error in line:')") myrank
+     call tracebackqq(string=msg, status=ierror)
 #   endif
   end if
 
   call MPI_Initialized(isinitialized, ierror)
 
   if (isinitialized) then
-     print *, 'Processor ', myrank, ' has found an error and aborts computation'
      call MPI_ABORT(MPI_COMM_WORLD, 0, ierror)
   else
      stop
