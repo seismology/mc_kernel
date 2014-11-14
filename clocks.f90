@@ -92,8 +92,8 @@ subroutine clocks_init(flag)
     tick_rate = 1./ticks_per_sec
     start_tick = ref_tick
     if( verbose )then
-        write(6,*) '    CLOCKS module '//trim(version)
-        write(6,*) '    Realtime clock resolution=', tick_rate, '(', &
+        write(lu_out,*) '    CLOCKS module '//trim(version)
+        write(lu_out,*) '    Realtime clock resolution=', tick_rate, '(', &
                    ticks_per_sec, ' ticks/sec)'
     end if
 
