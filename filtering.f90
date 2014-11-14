@@ -289,13 +289,13 @@ function apply_1d(this, freq_series)
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
 
    if (size(freq_series, 1).ne.this%nfreq) then
       write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', &
                     size(freq_series, 1)
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
 
    apply_1d = freq_series * this%transferfunction
@@ -313,13 +313,13 @@ function apply_2d(this, freq_series)
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
 
    if (size(freq_series, 1).ne.this%nfreq) then
       write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', &
                     size(freq_series, 1)
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
    
    do itrace = 1, (size(freq_series, 2))
@@ -342,7 +342,7 @@ function apply_3d(this, freq_series)
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
 
    if (size(freq_series, 1).ne.this%nfreq) then
