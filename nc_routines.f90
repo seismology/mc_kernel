@@ -1363,7 +1363,6 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 3D variable in NCID', I7, ', with ID:', I7)
 end subroutine putvar_real3d
-
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1373,7 +1372,11 @@ subroutine check(status)
   integer, intent (in) :: status
 
   if(status /= nf90_noerr) then 
+     print *, '************************************************************************'
+     print *, 'Problem with NetCDF on node', myrank
      print *, trim(nf90_strerror(status))
+     print *, '************************************************************************'
+     call flush(6)
      call pabort
      !call tracebackqq()
   end if
