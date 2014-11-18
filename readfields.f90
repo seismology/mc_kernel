@@ -1173,7 +1173,7 @@ function load_fw_points(this, coordinates, source_params, model)
         case default
             ! Can just take the next point without any in-element mapping
             iclockold = tick()
-            call kdtree2_n_nearest( this%fwdtree,                           &
+            call kdtree2_n_nearest( this%fwdtree,                                 &
                                     real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
                                     nn = nnext_points,                            &
                                     results = nextpoint )
@@ -1191,21 +1191,21 @@ function load_fw_points(this, coordinates, source_params, model)
            
            do isim = 1, this%nsim_fwd
               if (trim(this%dump_type) == 'displ_only') then
-                 utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                      xi, eta, this%strain_type, &
-                      corner_points, eltype(1), axis, &
-                      id_elem = id_elem) 
+                 utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
+                                                  xi, eta, this%strain_type,      &
+                                                  corner_points, eltype(1), axis, &
+                                                  id_elem = id_elem) 
               else
                  utemp = load_strain_point(this%fwd(isim),      &
-                      pointid(ipoint),     &
-                      this%strain_type)  
+                                           pointid(ipoint),     &
+                                           this%strain_type)  
               endif
               
               iclockold = tick()
               
-              load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)                   &
-                   + utemp * azim_factor(rotmesh_phi(ipoint),     &
-                   source_params%mij, isim, 1) 
+              load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)   &
+                   + utemp * azim_factor(rotmesh_phi(ipoint),             &
+                                         source_params%mij, isim, 1) 
               iclockold = tick(id=id_rotate, since=iclockold)
            end do !isim
 
@@ -1214,14 +1214,16 @@ function load_fw_points(this, coordinates, source_params, model)
            do isim = 1, this%nsim_fwd
 
               if (trim(this%dump_type) == 'displ_only') then
-                 utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids, &
-                      xi, eta, this%strain_type, &
-                      corner_points, eltype(1), axis, &
-                      id_elem = id_elem) / this%fwd(isim)%amplitude
+                 utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
+                                                  xi, eta, this%strain_type,      &
+                                                  corner_points, eltype(1), axis, &
+                                                  id_elem = id_elem)              &
+                         / this%fwd(isim)%amplitude
               else
                  utemp = load_strain_point(this%fwd(isim),      &
-                      pointid(ipoint),     &
-                      this%strain_type)  / this%fwd(isim)%amplitude
+                                           pointid(ipoint),     &
+                                           this%strain_type)    &
+                         / this%fwd(isim)%amplitude
               endif
               
               iclockold = tick()
@@ -2372,7 +2374,6 @@ function load_strain_point(sem_obj, pointid, strain_type)
 
         status = sem_obj%buffer%get(pointid, utemp)
         if (status.ne.0) then
-
             call get_chunk_bounds(pointid     = pointid,              &
                                   chunksize   = sem_obj%chunk_gll,    &
                                   npoints     = sem_obj%ngll,         &
@@ -2481,7 +2482,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
     if (trim(sem_obj%dump_type) /= 'displ_only') then
         write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
         write(6,*) '       written with dump_type "displ_only"'
-        call pabort
+        call pabort()
     endif
 
     if (axis) then
