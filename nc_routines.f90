@@ -21,7 +21,6 @@ module nc_routines
       module procedure  :: getvar_int2d
       module procedure  :: getvar_real3d
       module procedure  :: getvar_int3d
-      !module procedure  :: getvar_real1d_from_3d
     end interface nc_getvar
 
     interface nc_putvar
@@ -66,7 +65,7 @@ subroutine getvarid(ncid, name, varid)
     if (status.ne.NF90_NOERR) then
         write(6,100) myrank, trim(name), ncid
         call flush(6)
-        call pabort 
+        call pabort()
     elseif (verbose>1) then
         write(lu_out,101) trim(name), ncid, varid
         call flush(lu_out)
@@ -110,7 +109,7 @@ subroutine nc_getvar_by_name_1d_int(ncid, name, values, limits)
   integer                            :: variable_id, dimid(1), npoints, variable_type
   integer                            :: status
   integer                            :: limits_loc(2)
-  logical                            :: have_limits = .false.
+  logical                            :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 1D variable ', A, '...')") trim(name)
@@ -144,6 +143,17 @@ subroutine nc_getvar_by_name_1d_int(ncid, name, values, limits)
     call pabort()
   end select
 
+  if (present(limits)) then
+     limits_loc = limits
+     have_limits = .true.
+  else
+     status = nf90_get_att(ncid   = ncid,          &
+                           varid  = variable_id,   &
+                           name   = 'valid_range', &
+                           values = limits_loc) 
+     if (status.eq.NF90_NOERR) have_limits = .true.
+  end if
+
   if (have_limits) then
      if (minval(values).lt.(minval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
@@ -151,6 +161,7 @@ subroutine nc_getvar_by_name_1d_int(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', minloc(values)
         write(*,*) 'Element value: ', minval(values)
         write(*,*) 'Lower limit  : ', minval(limits_loc)
+        out_of_limit = .true.
      end if
      if (maxval(values).gt.(maxval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
@@ -158,9 +169,12 @@ subroutine nc_getvar_by_name_1d_int(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', maxloc(values)
         write(*,*) 'Element value: ', maxval(values)
         write(*,*) 'Upper limit  : ', maxval(limits_loc)
+        out_of_limit = .true.
      end if
-     call flush(6)
-     call pabort(do_traceback=.false.)
+     if (out_of_limit) then
+       call flush(6)
+       call pabort(do_traceback=.false.)
+     end if
   end if
 
 end subroutine nc_getvar_by_name_1d_int
@@ -177,7 +191,7 @@ subroutine nc_getvar_by_name_1d(ncid, name, values, limits)
   integer                                    :: variable_id, dimid(1), npoints, variable_type
   integer                                    :: status
   real(kind=sp)                              :: limits_loc(2)
-  logical                                    :: have_limits = .false.
+  logical                                    :: have_limits = .false., out_of_limit = .false.
 
 
   if (verbose>1) then
@@ -215,7 +229,6 @@ subroutine nc_getvar_by_name_1d(ncid, name, values, limits)
     call pabort()
   end select
 
-  have_limits = .false.
   if (present(limits)) then
      limits_loc = limits
      have_limits = .true.
@@ -234,6 +247,7 @@ subroutine nc_getvar_by_name_1d(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', minloc(values)
         write(*,*) 'Element value: ', minval(values)
         write(*,*) 'Lower limit  : ', minval(limits_loc)
+        out_of_limit = .true.
      end if
      if (maxval(values).gt.(maxval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
@@ -241,9 +255,12 @@ subroutine nc_getvar_by_name_1d(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', maxloc(values)
         write(*,*) 'Element value: ', maxval(values)
         write(*,*) 'Upper limit  : ', maxval(limits_loc)
+        out_of_limit = .true.
      end if
-     call flush(6)
-     call pabort(do_traceback=.false.)
+     if (out_of_limit) then
+       call flush(6)
+       call pabort(do_traceback=.false.)
+     end if
   end if
 
 end subroutine nc_getvar_by_name_1d
@@ -260,7 +277,7 @@ subroutine nc_getvar_by_name_2d_int(ncid, name, values, limits)
   integer                            :: variable_id, dimid(2), len_dim1, len_dim2, variable_type
   integer                            :: status
   integer                            :: limits_loc(2)
-  logical                            :: have_limits = .false.
+  logical                            :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 2D variable ', A, '...')") trim(name)
@@ -297,6 +314,17 @@ subroutine nc_getvar_by_name_2d_int(ncid, name, values, limits)
     call pabort()
   end select
 
+  if (present(limits)) then
+     limits_loc = limits
+     have_limits = .true.
+  else
+     status = nf90_get_att(ncid   = ncid,          &
+                           varid  = variable_id,   &
+                           name   = 'valid_range', &
+                           values = limits_loc) 
+     if (status.eq.NF90_NOERR) have_limits = .true.
+  end if
+
   if (have_limits) then
      if (minval(values).lt.(minval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
@@ -304,6 +332,7 @@ subroutine nc_getvar_by_name_2d_int(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', minloc(values)
         write(*,*) 'Element value: ', minval(values)
         write(*,*) 'Lower limit  : ', minval(limits_loc)
+        out_of_limit = .true.
      end if
      if (maxval(values).gt.(maxval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
@@ -311,9 +340,12 @@ subroutine nc_getvar_by_name_2d_int(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', maxloc(values)
         write(*,*) 'Element value: ', maxval(values)
         write(*,*) 'Upper limit  : ', maxval(limits_loc)
+        out_of_limit = .true.
      end if
-     call flush(6)
-     call pabort(do_traceback=.false.)
+     if (out_of_limit) then
+       call flush(6)
+       call pabort(do_traceback=.false.)
+     end if
   end if
 
 end subroutine nc_getvar_by_name_2d_int
@@ -331,7 +363,7 @@ subroutine nc_getvar_by_name_2d(ncid, name, values, limits)
   integer                                    :: variable_type
   integer                                    :: status
   real(kind=sp)                              :: limits_loc(2)
-  logical                                    :: have_limits = .false.
+  logical                                    :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 2D variable ', A, '...')") trim(name)
@@ -369,6 +401,17 @@ subroutine nc_getvar_by_name_2d(ncid, name, values, limits)
     call pabort()
   end select
 
+  if (present(limits)) then
+     limits_loc = limits
+     have_limits = .true.
+  else
+     status = nf90_get_att(ncid   = ncid,          &
+                           varid  = variable_id,   &
+                           name   = 'valid_range', &
+                           values = limits_loc) 
+     if (status.eq.NF90_NOERR) have_limits = .true.
+  end if
+
   if (have_limits) then
      if (minval(values).lt.(minval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
@@ -376,6 +419,7 @@ subroutine nc_getvar_by_name_2d(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', minloc(values)
         write(*,*) 'Element value: ', minval(values)
         write(*,*) 'Lower limit  : ', minval(limits_loc)
+        out_of_limit = .true.
      end if
      if (maxval(values).gt.(maxval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
@@ -383,9 +427,12 @@ subroutine nc_getvar_by_name_2d(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', maxloc(values)
         write(*,*) 'Element value: ', maxval(values)
         write(*,*) 'Upper limit  : ', maxval(limits_loc)
+        out_of_limit = .true.
      end if
-     call flush(6)
-     call pabort(do_traceback=.false.)
+     if (out_of_limit) then
+       call flush(6)
+       call pabort(do_traceback=.false.)
+     end if
   end if
 
 end subroutine nc_getvar_by_name_2d
@@ -402,7 +449,7 @@ subroutine nc_getvar_by_name_3d_int(ncid, name, values, limits)
   integer                            :: variable_id, dimid(3), len_dim(3), variable_type
   integer                            :: status, i_dim
   integer                            :: limits_loc(2)
-  logical                            :: have_limits = .false.
+  logical                            :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 3D variable ', A, '...')") trim(name)
@@ -440,6 +487,17 @@ subroutine nc_getvar_by_name_3d_int(ncid, name, values, limits)
     call pabort()
   end select
 
+  if (present(limits)) then
+     limits_loc = limits
+     have_limits = .true.
+  else
+     status = nf90_get_att(ncid   = ncid,          &
+                           varid  = variable_id,   &
+                           name   = 'valid_range', &
+                           values = limits_loc) 
+     if (status.eq.NF90_NOERR) have_limits = .true.
+  end if
+
   if (have_limits) then
      if (minval(values).lt.(minval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file smaller than limit!'
@@ -447,6 +505,7 @@ subroutine nc_getvar_by_name_3d_int(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', minloc(values)
         write(*,*) 'Element value: ', minval(values)
         write(*,*) 'Lower limit  : ', minval(limits_loc)
+        out_of_limit = .true.
      end if
      if (maxval(values).gt.(maxval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
@@ -454,9 +513,12 @@ subroutine nc_getvar_by_name_3d_int(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', maxloc(values)
         write(*,*) 'Element value: ', maxval(values)
         write(*,*) 'Upper limit  : ', maxval(limits_loc)
+        out_of_limit = .true.
      end if
-     call flush(6)
-     call pabort(do_traceback=.false.)
+     if (out_of_limit) then
+       call flush(6)
+       call pabort(do_traceback=.false.)
+     end if
   end if
 
 end subroutine nc_getvar_by_name_3d_int
@@ -473,7 +535,7 @@ subroutine nc_getvar_by_name_3d(ncid, name, values, limits)
   integer                                    :: variable_id, dimid(3), len_dim(3), variable_type
   integer                                    :: status, i_dim
   real(kind=sp)                              :: limits_loc(2)
-  logical                                    :: have_limits = .false.
+  logical                                    :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
     write(lu_out,"(' Trying to read 3D variable ', A, '...')") trim(name)
@@ -507,8 +569,20 @@ subroutine nc_getvar_by_name_3d(ncid, name, values, limits)
                    values = values)
   case default
     write(*,*) 'get_mesh_variable is only implemented for NF90_FLOAT variables'
+    call flush(6)
     call pabort()
   end select
+
+  if (present(limits)) then
+     limits_loc = limits
+     have_limits = .true.
+  else
+     status = nf90_get_att(ncid   = ncid,          &
+                           varid  = variable_id,   &
+                           name   = 'valid_range', &
+                           values = limits_loc) 
+     if (status.eq.NF90_NOERR) have_limits = .true.
+  end if
 
   if (have_limits) then
      if (minval(values).lt.(minval(limits_loc))) then
@@ -517,6 +591,7 @@ subroutine nc_getvar_by_name_3d(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', minloc(values)
         write(*,*) 'Element value: ', minval(values)
         write(*,*) 'Lower limit  : ', minval(limits_loc)
+        out_of_limit = .true.
      end if
      if (maxval(values).gt.(maxval(limits_loc))) then
         write(*,*) 'ERROR: Value in NetCDF file larger than limit!'
@@ -524,9 +599,12 @@ subroutine nc_getvar_by_name_3d(ncid, name, values, limits)
         write(*,*) 'Element nr   : ', maxloc(values)
         write(*,*) 'Element value: ', maxval(values)
         write(*,*) 'Upper limit  : ', maxval(limits_loc)
+        out_of_limit = .true.
      end if
-     call flush(6)
-     call pabort(do_traceback=.false.)
+     if (out_of_limit) then
+       call flush(6)
+       call pabort(do_traceback=.false.)
+     end if
   end if
 
 end subroutine nc_getvar_by_name_3d
@@ -1490,8 +1568,7 @@ subroutine check(status)
      print *, trim(nf90_strerror(status))
      print *, '************************************************************************'
      call flush(6)
-     call pabort
-     !call tracebackqq()
+     call pabort()
   end if
 end subroutine check  
 !-----------------------------------------------------------------------------------------
