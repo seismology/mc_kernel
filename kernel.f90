@@ -1,6 +1,6 @@
 !=========================================================================================
 module kernel
-use global_parameters,                    only: sp, dp, verbose, lu_out, firstslave
+use global_parameters,                    only: sp, dp, verbose, lu_out, firstslave, myrank
 use filtering,                            only: filter_type
 use commpi,                               only: pabort
 implicit none
@@ -224,8 +224,8 @@ function calc_misfit_kernel(this, timeseries)
    real(kind=dp), intent(in)               :: timeseries(:,:)
    real(kind=dp)                           :: calc_misfit_kernel(size(timeseries,2))
    real(kind=dp), allocatable              :: cut_timeseries(:)
-   integer                                 :: itrace, ntrace, lu_errorlog
-   character(len=64)                       :: fmtstring
+   integer                                 :: itrace, ntrace, lu_errorlog, it
+   character(len=64)                       :: fmtstring, fnam_errorlog
 
    ntrace = size(timeseries,2)
 
@@ -234,9 +234,6 @@ function calc_misfit_kernel(this, timeseries)
 
       do itrace = 1, ntrace
          
-         ! print*,"TEST99",timeseries(:,itrace)
-         ! print*,"TEST88",this%seis
-
          call cut_timewindow(this%t,                 &
                              timeseries(:, itrace),  &
                              this%time_window,       &
@@ -265,6 +262,7 @@ function calc_misfit_kernel(this, timeseries)
 
    if (any(calc_misfit_kernel.ne.calc_misfit_kernel)) then ! Kernel is NaN
        print *, 'ERROR Kernel has value NaN!'
+       write(lu_out, *) 'ERROR Kernel has value NaN! Aborting calculation...'
        print *, 'Values of Kernel:'
        write(fmtstring, "('(',I6,'(ES11.3))')") ntrace
        print fmtstring, calc_misfit_kernel
@@ -272,10 +270,33 @@ function calc_misfit_kernel(this, timeseries)
        print *, this%normalization
        print *, 'Convolved time series is written into "errorlog_timeseries",'
        print *, 'seismogram is written into "errorlog_seismogram"'
-       open(newunit=lu_errorlog, file='errorlog_timeseries', status='replace')
-       write(lu_errorlog, *) cut_timeseries
-       close(lu_errorlog)
-       open(newunit=lu_errorlog, file='errorlog_seismogram', status='replace')
+       do itrace = 1, ntrace
+         if (calc_misfit_kernel(itrace).ne.calc_misfit_kernel(itrace)) then !is NaN
+           call cut_timewindow(this%t,                 &
+                               timeseries(:, itrace),  &
+                               this%time_window,       &
+                               cut_timeseries)
+
+           calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
+                                        * this%normalization
+
+           write(fnam_errorlog,'(I06, "_errorlog_timeseries_full")') myrank                             
+           open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
+           do it = 1, size(this%t)
+             write(lu_errorlog, '(ES11.3, ES15.8)') this%t(it), timeseries(it,itrace)
+           end do
+           close(lu_errorlog)
+
+           write(fnam_errorlog,'(I06, "_errorlog_timeseries_cut")') myrank                             
+           open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
+           write(lu_errorlog, '(ES15.8)') cut_timeseries
+           close(lu_errorlog)
+
+           exit ! Only the first time series is written out, exit the loop
+         end if
+       end do
+       write(fnam_errorlog,'(I06, "_errorlog_seismogram")') myrank                             
+       open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
        write(lu_errorlog, *) this%seis
        close(lu_errorlog)
        call pabort
