@@ -588,7 +588,7 @@ subroutine initialize_mesh(this, ielem_type, vertices, connectivity, nbasisfuncs
   this%nvertices = size(vertices,2)
   this%nelements = size(connectivity,2)
 
-  fmtstring = "('  Initialize mesh with ', I5, ' vertices and ', I5, 'elements')"
+  fmtstring = "('  Initialize mesh with ', I5, ' vertices and ', I5, ' elements')"
   write(lu_out,fmtstring) this%nvertices, this%nelements
 
   select case(ielem_type)
@@ -925,6 +925,8 @@ end subroutine init_weight_tet_mesh
 !-----------------------------------------------------------------------------------------
 function invert(A, nrows) result(A_inv)
 !< Inverts a square matrix of dimension nrows using LAPACK routines
+!use lapack95
+
   integer, intent(in)           :: nrows 
   real(kind=dp), intent(in)     :: A(nrows, nrows)
   real(kind=dp)                 :: A_inv(nrows, nrows)
