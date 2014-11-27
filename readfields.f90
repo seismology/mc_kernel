@@ -1024,6 +1024,7 @@ end subroutine check_consistency
 function load_fw_points(this, coordinates, source_params, model)
     use finite_elem_mapping, only      : inside_element
     use backgroundmodel, only          : backgroundmodel_type
+    use simple_routines, only          : check_NaN
 
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
@@ -1041,6 +1042,8 @@ function load_fw_points(this, coordinates, source_params, model)
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
     integer                           :: id_elem
+    integer                           :: nan_loc(2)
+    logical                           :: isnan
     real(kind=dp)                     :: corner_points(4,2)
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2)), rotmesh_s_buff
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
@@ -1225,6 +1228,19 @@ function load_fw_points(this, coordinates, source_params, model)
                                            this%strain_type)    &
                          / this%fwd(isim)%amplitude
               endif
+
+              call check_NaN(utemp, isnan, nan_loc)
+
+              if (isnan) then
+                print *, myrank, ': ERROR: NaN found in utemp:'
+                print *, 'isim:      ', isim
+                print *, 'point:     ', pointid(ipoint)
+                print *, 'amplitude: ', this%fwd(isim)%amplitude
+                print *, 'xi:        ', xi
+                print *, 'eta:       ', eta
+                print *, 'axis:      ', axis
+                print *, 'NaN index: ', nan_loc
+              end if
               
               iclockold = tick()
 
@@ -1245,10 +1261,12 @@ function load_fw_points(this, coordinates, source_params, model)
               
            end do !isim
 
-           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_src_to_xyz(load_fw_points(:,:,ipoint), &
-                                          source_params%lon, this%ndumps)
+           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_src_to_xyz( &
+                                          load_fw_points(:,:,ipoint),        &
+                                          source_params%lon, this%ndumps    )
 
-           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(load_fw_points(:,:,ipoint), &
+           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(        &
+                                          load_fw_points(:,:,ipoint),                         &
                                           source_params%lon, source_params%colat, this%ndumps)
 
 
@@ -1536,6 +1554,7 @@ end subroutine load_seismogram_rdbm
 !-----------------------------------------------------------------------------------------
 function load_bw_points(this, coordinates, receiver)
     use finite_elem_mapping, only      : inside_element
+    use simple_routines, only          : check_NaN
 
     class(semdata_type)                :: this
     real(kind=dp), intent(in)          :: coordinates(:,:)
@@ -1548,6 +1567,8 @@ function load_bw_points(this, coordinates, receiver)
     integer                           :: pointid(size(coordinates,2))
     integer                           :: ipoint, inext_point, iclockold, icp
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
+    integer                           :: nan_loc(2)
+    logical                           :: isnan
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
     real(kind=dp)                     :: corner_points(4,2)
@@ -1694,6 +1715,20 @@ function load_bw_points(this, coordinates, receiver)
             endif
             load_bw_points(:,:,ipoint) &
                 =                               utemp / this%bwd(1)%amplitude
+
+            ! Check for NaNs
+            call check_NaN(utemp, isnan, nan_loc)
+            if (isnan) then
+              print *, myrank, ': ERROR: NaN found in utemp:'
+              print *, 'isim:      ', isim
+              print *, 'point:     ', pointid(ipoint)
+              print *, 'amplitude: ', this%fwd(isim)%amplitude
+              print *, 'xi:        ', xi
+              print *, 'eta:       ', eta
+              print *, 'axis:      ', axis
+              print *, 'NaN index: ', nan_loc
+            end if
+
         case('R') 
             isim = 2
             if (trim(this%dump_type) == 'displ_only') then
