@@ -2343,10 +2343,12 @@ function load_strain_point(sem_obj, pointid, strain_type)
         iclockold = tick(id=id_buffer, since=iclockold)
 
         if (status.ne.0) then
-           start_chunk = ((pointid-1) / sem_obj%chunk_gll) * sem_obj%chunk_gll + 1
+            call get_chunk_bounds(pointid     = pointid,              &
+                                  chunksize   = sem_obj%chunk_gll,    &
+                                  npoints     = sem_obj%ngll,         &
+                                  start_chunk = start_chunk,          &   
+                                  count_chunk = gll_to_read )
 
-           ! Only read to last point, not further
-           gll_to_read = min(sem_obj%chunk_gll, sem_obj%ngll + 1 - start_chunk)
            iclockold = tick()
            call nc_getvar( ncid   = sem_obj%snap,           & 
                            varid  = sem_obj%strainvarid(6), &
