@@ -466,7 +466,8 @@ function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by 
     real(kind=dp)               :: f_c
 
     f_c = 1 / p_c
-    loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )
+    loggabor = 0
+    where (f>0.0d0) loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )
     ! G(f,k) = exp( -(ln(f/f_k))^2 / (2*ln(sigmaIfc)^2)  )
 
 end function loggabor
