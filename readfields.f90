@@ -15,9 +15,13 @@ module readfields
 
     use receivers_rdbm,    only            : receivers_rdbm_type
 
-    use rotations
-    use netcdf
-    use kdtree2_module                     
+    use rotations,         only            : azim_factor, azim_factor_bw,                   &
+                                             rotate_symm_tensor_voigt_src_to_xyz,           &
+                                             rotate_symm_tensor_voigt_xyz_src_to_xyz_earth, &
+                                             rotate_symm_tensor_voigt_xyz_earth_to_xyz_src, &
+                                             rotate_symm_tensor_voigt_xyz_to_src,           &    
+                                             rotate_frame_rd
+    use kdtree2_module,    only            : kdtree2
 
     implicit none
     private
@@ -301,6 +305,8 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine open_files(this)
+    use netcdf, only                  : nf90_inq_varid, nf90_inquire_variable, &
+                                        nf90_get_var, NF90_NOERR
 
     class(semdata_type)              :: this
     integer                          :: status, isim, chunks(2), deflev
@@ -628,12 +634,6 @@ subroutine open_files(this)
                                  this%bwd(isim))
         this%bwd(isim)%amplitude = real(temp, kind=dp)
         
-        ! call getvarid(            ncid     = this%bwd(isim)%surf,   &
-        !                           name     = "stf_dump",            &
-        !                           varid    = this%bwd(isim)%stf_varid)
-
-
-
         call getvarid(            ncid     = this%bwd(isim)%surf,   &
                                   name     = "stf_dump",            &
                                   varid    = this%bwd(isim)%stf_varid)
@@ -725,8 +725,10 @@ end subroutine open_files
 
 !-----------------------------------------------------------------------------------------
 subroutine close_files(this)
-    class(semdata_type)   :: this
-    integer              :: status, isim
+    use kdtree2_module, only : kdtree2_destroy
+    use netcdf,         only : nf90_close
+    class(semdata_type)     :: this
+    integer                 :: status, isim
 
     ! Destroy kdtree
     if (this%kdtree_built) then
@@ -1025,6 +1027,7 @@ function load_fw_points(this, coordinates, source_params, model)
     use finite_elem_mapping, only      : inside_element
     use backgroundmodel, only          : backgroundmodel_type
     use simple_routines, only          : check_NaN
+    use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest
 
     class(semdata_type)               :: this
     real(kind=dp), intent(in)         :: coordinates(:,:)
@@ -1036,7 +1039,7 @@ function load_fw_points(this, coordinates, source_params, model)
 
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points
-    integer                           :: pointid(size(coordinates,2))
+    integer                           :: pointid
     integer                           :: ipoint, inext_point, isim, iclockold, icp
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
     logical                           :: axis
@@ -1105,7 +1108,7 @@ function load_fw_points(this, coordinates, source_params, model)
                                     results = nextpoint )
             iclockold = tick(id=id_kdtree, since=iclockold)
             
-            pointid(ipoint) = nextpoint(1)%idx
+            pointid = nextpoint(1)%idx
 
             ! Check, whether point is in any of the six closest elements
             do inext_point = 1, nnext_points
@@ -1155,7 +1158,9 @@ function load_fw_points(this, coordinates, source_params, model)
             gll_point_ids = -1
             if (verbose > 1) &
                 write(6,*) 'element id = ', id_elem !nextpoint(inext_point)%idx
-            gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem)
+
+            ! gll_point_ids starts at 0 in NetCDF file
+            gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem) + 1
             if (verbose > 1) &
                 write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
@@ -1173,7 +1178,7 @@ function load_fw_points(this, coordinates, source_params, model)
 
             iclockold = tick(id=id_find_point_fwd, since=iclockold)
 
-        case default
+        case default !dump_type
             ! Can just take the next point without any in-element mapping
             iclockold = tick()
             call kdtree2_n_nearest( this%fwdtree,                                 &
@@ -1182,11 +1187,11 @@ function load_fw_points(this, coordinates, source_params, model)
                                     results = nextpoint )
             iclockold = tick(id=id_kdtree, since=iclockold)
             
-            pointid(ipoint) = nextpoint(1)%idx
+            pointid = nextpoint(1)%idx
         end select ! dump_type
     
         if (present(model)) then
-          coeffs(:, ipoint) = get_model_coeffs(this, pointid(ipoint))
+          coeffs(:, ipoint) = get_model_coeffs(this, pointid)
         end if
 
         select case(trim(this%strain_type))
@@ -1200,9 +1205,25 @@ function load_fw_points(this, coordinates, source_params, model)
                                                   id_elem = id_elem) 
               else
                  utemp = load_strain_point(this%fwd(isim),      &
-                                           pointid(ipoint),     &
+                                           pointid,     &
                                            this%strain_type)  
               endif
+
+              call check_NaN(utemp, isnan, nan_loc)
+              if (isnan) then
+                print *, myrank, ': ERROR: NaN found in utemp:'
+                print *, 'isim:      ', isim
+                print *, 'point:     ', pointid
+                print *, 'amplitude: ', this%fwd(isim)%amplitude
+                print *, 'eltype:    ', eltype(1)
+                print *, 'xi:        ', xi
+                print *, 'eta:       ', eta
+                print *, 'axis:      ', axis
+                print *, 'NaN index: ', nan_loc
+              end if
+
+              ! Set NaNs to zero
+              where(utemp.ne.utemp) utemp = 0.0
               
               iclockold = tick()
               
@@ -1224,17 +1245,16 @@ function load_fw_points(this, coordinates, source_params, model)
                          / this%fwd(isim)%amplitude
               else
                  utemp = load_strain_point(this%fwd(isim),      &
-                                           pointid(ipoint),     &
+                                           pointid,             &
                                            this%strain_type)    &
                          / this%fwd(isim)%amplitude
               endif
 
               call check_NaN(utemp, isnan, nan_loc)
-
               if (isnan) then
                 print *, myrank, ': ERROR: NaN found in utemp:'
                 print *, 'isim:      ', isim
-                print *, 'point:     ', pointid(ipoint)
+                print *, 'point:     ', pointid
                 print *, 'amplitude: ', this%fwd(isim)%amplitude
                 print *, 'xi:        ', xi
                 print *, 'eta:       ', eta
@@ -1312,6 +1332,8 @@ end function get_model_coeffs
 !> Loads the model coefficients for a selected coordinate 
 function load_model_coeffs(this, coordinates_xyz, s, z) result(model)
    use backgroundmodel, only          : backgroundmodel_type
+   use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest
+
    class(semdata_type)               :: this
    real(kind=dp), intent(in)         :: coordinates_xyz(:,:)
    type(backgroundmodel_type)        :: model
@@ -1449,12 +1471,6 @@ subroutine load_seismogram(this, receivers, src)
                 'Sim: ', isim, ' Read element', isurfelem, &
                                                ', component: ', reccomp, ', no of samples:', this%ndumps
          ! Displacement seismogram
-         !call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
-         !                          varid  = this%fwd(isim)%seis_disp,   &
-         !                          start  = [1, reccomp, isurfelem],    &
-         !                          count  = [this%ndumps, 1, 1],        &
-         !                          values = utemp) )
-      
          call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
                          varid  = this%fwd(isim)%seis_disp,   &
                          start  = [1, reccomp, isurfelem],    &
@@ -1464,12 +1480,6 @@ subroutine load_seismogram(this, receivers, src)
          seismogram_disp = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_disp
 
          ! Velocity seismogram
-         !call check( nf90_get_var( ncid   = this%fwd(isim)%surf,        & 
-         !                          varid  = this%fwd(isim)%seis_velo,   &
-         !                          start  = [1, reccomp, isurfelem],    &
-         !                          count  = [this%ndumps, 1, 1],        &
-         !                          values = utemp) )
-      
          call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
                          varid  = this%fwd(isim)%seis_velo,   &
                          start  = [1, reccomp, isurfelem],    &
@@ -1555,11 +1565,12 @@ end subroutine load_seismogram_rdbm
 function load_bw_points(this, coordinates, receiver)
     use finite_elem_mapping, only      : inside_element
     use simple_routines, only          : check_NaN
+    use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest
 
-    class(semdata_type)                :: this
-    real(kind=dp), intent(in)          :: coordinates(:,:)
-    type(rec_param_type)               :: receiver
-    real(kind=dp)                      :: load_bw_points(this%ndumps, this%ndim, &
+    class(semdata_type)               :: this
+    real(kind=dp), intent(in)         :: coordinates(:,:)
+    type(rec_param_type)              :: receiver
+    real(kind=dp)                     :: load_bw_points(this%ndumps, this%ndim, &
                                                          size(coordinates,2))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
@@ -1673,7 +1684,8 @@ function load_bw_points(this, coordinates, receiver)
             if (verbose > 1) &
                 write(6,*) 'element id = ', nextpoint(inext_point)%idx
             
-            gll_point_ids = this%bwdmesh%gll_point_ids(:,:,id_elem)
+            ! gll_point_ids starts at 0 in NetCDF file
+            gll_point_ids = this%bwdmesh%gll_point_ids(:,:,id_elem) + 1
             if (verbose > 1) &
                 write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
@@ -1821,6 +1833,7 @@ end function load_bw_points
 !-----------------------------------------------------------------------------------------
 function load_fw_points_rdbm(this, source_params, reci_source_params, component, mu)
     use finite_elem_mapping, only       : inside_element
+    use kdtree2_module, only            : kdtree2_result, kdtree2_n_nearest
 
     class(semdata_type)                     :: this
     type(src_param_type), intent(in)        :: source_params(:)
@@ -1879,11 +1892,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
     allocate(nextpoint(nnext_points))
     do ipoint = 1, npoints
         
-        if (verbose > 1) &
-            write(6,*) 'nearest point', nextpoint(1)%dis**.5, nextpoint(1)%idx, &
-                       (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
-                       (this%fwdmesh%s_mp(pointid(ipoint))**2  &
-                            + this%fwdmesh%z_mp(pointid(ipoint))**2)**.5 
+        !if (verbose > 1) &
+        !    write(6,*) 'nearest point', nextpoint(1)%dis**.5, nextpoint(1)%idx, &
+        !               (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
+        !               (this%fwdmesh%s_mp(pointid(ipoint))**2  &
+        !                    + this%fwdmesh%z_mp(pointid(ipoint))**2)**.5 
 
         select case(trim(this%dump_type))
         case('displ_only')
@@ -1905,34 +1918,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                     corner_points(icp, 2) = this%fwdmesh%z(corner_point_ids(icp)+1)
                 enddo                        
 
-                !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                !                        varid  = this%fwd(1)%fem_mesh_varid, &
-                !                        start  = [1, nextpoint(inext_point)%idx], &
-                !                        count  = [4, 1], &
-                !                        values = corner_point_ids))
-                !
-                !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                !                        varid  = this%fwd(1)%eltype_varid, &
-                !                        start  = [nextpoint(inext_point)%idx], &
-                !                        count  = [1], &
-                !                        values = eltype))
-                ! 
-                !do icp = 1, 4
-                !    call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                !                            varid  = this%fwd(1)%mesh_s_varid, &
-                !                            start  = [corner_point_ids(icp) + 1], &
-                !                            count  = [1], &
-                !                            values = cps))
-                !    
-                !    call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                !                            varid  = this%fwd(1)%mesh_z_varid, &
-                !                            start  = [corner_point_ids(icp) + 1], &
-                !                            count  = [1], &
-                !                            values = cpz))
-
-                !    corner_points(icp, 1) = cps(1)
-                !    corner_points(icp, 2) = cpz(1)
-                !enddo                        
                 ! test point to be inside, if so, exit
                 if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
                                    corner_points, eltype(1), xi=xi, eta=eta, &
@@ -1960,30 +1945,14 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
             gll_point_ids = -1
             if (verbose > 1) &
                 write(6,*) 'element id = ', nextpoint(inext_point)%idx
-            gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem)
-            !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-            !                        varid  = this%fwd(1)%sem_mesh_varid, &
-            !                        start  = [1, 1, nextpoint(inext_point)%idx], &
-            !                        count  = [this%npol+1, this%npol+1, 1], &
-            !                        values = gll_point_ids))
+
+            ! gll_point_ids starts at 0 in NetCDF file
+            gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem) + 1
             if (verbose > 1) &
                 write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
-            !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-            !                        varid  = this%fwd(1)%axis_varid, &
-            !                        start  = [nextpoint(inext_point)%idx], &
-            !                        count  = [1], &
-            !                        values = axis_int))
-
+            ! get mu of midpoint
             if (present(mu)) then
-                ! TODO: for now return the value of mu at the midpoint. Might be useful to
-                !       interpolate in case of long period meshes (MvD)
-                !call check(nf90_get_var(ncid   = this%fwd(1)%mesh,   &
-                !                        varid  = this%fwd(1)%mesh_mu_varid, &
-                !                        start  = [gll_point_ids(this%npol/2, this%npol/2)], &
-                !                        count  = [1], &
-                !                        values = mu_buff))
-                !mu(ipoint) = mu_buff(1)
                 mu(ipoint) = this%fwdmesh%mu(gll_point_ids(this%npol/2, this%npol/2))
             endif
 
@@ -1995,13 +1964,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                call pabort
             endif
 
-            !if (axis_int(1) == 1) then
-            !   axis = .true.
-            !elseif (axis_int(1) == 0) then
-            !   axis = .false.
-            !else
-            !   call pabort
-            !endif
             if (verbose > 1) &
                write(6,*) 'axis = ', axis
         
@@ -2345,6 +2307,7 @@ end function load_fw_points_rdbm
 
 !-----------------------------------------------------------------------------------------
 function load_strain_point(sem_obj, pointid, strain_type)
+    use simple_routines, only        : check_limits
 
     type(ncparamtype), intent(in)   :: sem_obj
     integer, intent(in)             :: pointid
@@ -2357,6 +2320,7 @@ function load_strain_point(sem_obj, pointid, strain_type)
     integer                         :: status, istrainvar
     real(kind=sp), allocatable      :: utemp(:,:)
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
+    logical                         :: strain_nan
 
     if (trim(sem_obj%dump_type) /= 'fullfields') then
         write(6,*) 'ERROR: trying to read strain from a file that was not'
@@ -2371,7 +2335,6 @@ function load_strain_point(sem_obj, pointid, strain_type)
     case('straintensor_trace')
         allocate(load_strain_point(sem_obj%ndumps, 1))
         allocate(utemp(sem_obj%ndumps, 1))
-        allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 1))
 
         iclockold = tick()
         status = sem_obj%buffer%get(pointid, utemp)
@@ -2383,13 +2346,20 @@ function load_strain_point(sem_obj, pointid, strain_type)
                                   npoints     = sem_obj%ngll,         &
                                   start_chunk = start_chunk,          &   
                                   count_chunk = gll_to_read )
+           allocate(utemp_chunk(gll_to_read, sem_obj%ndumps, 1))
 
            iclockold = tick()
            call nc_getvar( ncid   = sem_obj%snap,           & 
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
-                           values = utemp_chunk(1:gll_to_read, :, 1)) 
+                           values = utemp_chunk(:, :, 1)) 
+
+           strain_nan = check_limits(utemp_chunk, &
+                                     array_name='straintrace')
+
+           ! Set NaNs in utemp_chunk to zero
+           where (utemp_chunk.ne.utemp_chunk) utemp_chunk=0
 
            iclockold = tick(id=id_netcdf, since=iclockold)
 
@@ -2406,7 +2376,6 @@ function load_strain_point(sem_obj, pointid, strain_type)
 
     case('straintensor_full')
         allocate(utemp(sem_obj%ndumps, 6))
-        allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 6))
         allocate(strain_buff(sem_obj%ndumps, 6))
 
         status = sem_obj%buffer%get(pointid, utemp)
@@ -2416,10 +2385,12 @@ function load_strain_point(sem_obj, pointid, strain_type)
                                   npoints     = sem_obj%ngll,         &
                                   start_chunk = start_chunk,          &   
                                   count_chunk = gll_to_read )
+            allocate(utemp_chunk(gll_to_read, sem_obj%ndumps, 6))
+
             do istrainvar = 1, 6
 
                 if (sem_obj%strainvarid(istrainvar).eq.-1) then
-                    strain_buff(:, istrainvar) = 0
+                    utemp_chunk(:, :, istrainvar) = 0
                     cycle ! For monopole source which does not have this component.
                 endif
 
@@ -2429,13 +2400,19 @@ function load_strain_point(sem_obj, pointid, strain_type)
                                 varid  = sem_obj%strainvarid(istrainvar), &
                                 start  = [start_chunk, 1],       &
                                 count  = [gll_to_read, sem_obj%ndumps], &
-                                values = utemp_chunk(1:gll_to_read, :, istrainvar)) 
+                                values = utemp_chunk(:, :, istrainvar)) 
 
                 iclockold = tick(id=id_netcdf, since=iclockold)
-                strain_buff(:,istrainvar) &
-                     = real(utemp_chunk(pointid-start_chunk+1, :, istrainvar), kind=dp)
 
             end do
+
+            strain_nan = check_limits(utemp_chunk, array_name='strain')
+
+            !Set NaNs in utemp_chunk to zero
+            where (utemp_chunk.ne.utemp_chunk) utemp_chunk=0
+
+            strain_buff(:,:) = real(utemp_chunk(pointid-start_chunk+1, :, :), kind=dp)
+
             do iread = 0, gll_to_read - 1
                 status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
             end do
@@ -2473,6 +2450,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
     !! (order of magnitude faster)
     use sem_derivatives
     use spectral_basis, only : lagrange_interpol_2D_td
+    use simple_routines, only        : check_limits
 
     type(ncparamtype), intent(in)   :: sem_obj
     integer,           intent(in)   :: pointids(0:sem_obj%npol, 0:sem_obj%npol) 
@@ -2497,7 +2475,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
     integer                         :: iclockold, status, idisplvar
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
     real(kind=sp), allocatable      :: ubuff(:,:)
-    real(kind=sp)                   :: utemp(1:sem_obj%ndumps, &
+    real(kind=dp)                   :: utemp(1:sem_obj%ndumps, &
                                              0:sem_obj%npol,   &
                                              0:sem_obj%npol,   &
                                              3)
@@ -2511,6 +2489,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
     real(kind=dp), allocatable      :: G(:,:), GT(:,:)
     real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
     integer                         :: ipol, jpol, i, iclockold_total
+    logical                         :: strain_nan
 
     iclockold_total = tick()
 
@@ -2560,7 +2539,9 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
     if (status.ne.0) then
 
       allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
+      utemp_chunk = 0
       allocate(ubuff(sem_obj%ndumps, 3))
+      ubuff = 0
 
       ! load displacements from all GLL points
       do ipol = 0, sem_obj%npol
@@ -2598,18 +2579,25 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
                                    count  = [gll_to_read, sem_obj%ndumps], &
                                    values = utemp_chunk(1:gll_to_read, :, idisplvar))
 
+                   strain_nan = check_limits(utemp_chunk(1:gll_to_read,:,idisplvar), &
+                                             array_name='strain')
+
+                   ! Set NaNs in utemp_chunk to zero
+                   where (utemp_chunk.ne.utemp_chunk) utemp_chunk=0.0
+
                    !print *, 'suceeded'
                    !call flush(6)
                    iclockold = tick(id=id_netcdf, since=iclockold)
                    utemp(:,ipol,jpol, idisplvar) &
-                        = utemp_chunk(pointids(ipol,jpol) - start_chunk + 2,:,idisplvar)
+                        = utemp_chunk(pointids(ipol,jpol) - start_chunk + 1,:,idisplvar)
                enddo
+
                do iread = 0, sem_obj%chunk_gll - 1
-                   status = sem_obj%buffer_disp%put(start_chunk + iread - 1, &
+                   status = sem_obj%buffer_disp%put(start_chunk + iread, &
                                                     utemp_chunk(iread+1,:,:) )
                end do
             else
-               utemp(:,ipol,jpol,:) = ubuff(:,:)
+               utemp(:,ipol,jpol,:) = real(ubuff(:,:), kind=dp)
             endif
          enddo
       enddo
@@ -2619,19 +2607,19 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
       case('straintensor_trace')
           ! compute straintrace
           if (sem_obj%excitation_type == 'monopole') then
-              straintrace = real(straintrace_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = straintrace_monopole(utemp, G, GT, col_points_xi, &
                                                  col_points_eta, sem_obj%npol, &
-                                                 sem_obj%ndumps, nodes, element_type, axis), kind=sp)
+                                                 sem_obj%ndumps, nodes, element_type, axis)
 
           elseif (sem_obj%excitation_type == 'dipole') then
-              straintrace = real(straintrace_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = straintrace_dipole(utemp, G, GT, col_points_xi, &
                                                col_points_eta, sem_obj%npol, sem_obj%ndumps, &
-                                               nodes, element_type, axis), kind=sp)
+                                               nodes, element_type, axis)
 
           elseif (sem_obj%excitation_type == 'quadpole') then
-              straintrace = real(straintrace_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              straintrace = straintrace_quadpole(utemp, G, GT, col_points_xi, &
                                                  col_points_eta, sem_obj%npol, &
-                                                 sem_obj%ndumps, nodes, element_type, axis), kind=sp)
+                                                 sem_obj%ndumps, nodes, element_type, axis)
           else
               print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
               call pabort
@@ -2644,19 +2632,19 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
       case('straintensor_full')
           ! compute full strain tensor
           if (sem_obj%excitation_type == 'monopole') then
-              strain = real(strain_monopole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = strain_monopole(utemp, G, GT, col_points_xi, &
                                        col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                       element_type, axis), kind=sp)
+                                       element_type, axis)
 
           elseif (sem_obj%excitation_type == 'dipole') then
-              strain = real(strain_dipole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = strain_dipole(utemp, G, GT, col_points_xi, &
                                      col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                     element_type, axis), kind=sp)
+                                     element_type, axis)
 
           elseif (sem_obj%excitation_type == 'quadpole') then
-              strain = real(strain_quadpole(real(utemp, kind=dp), G, GT, col_points_xi, &
+              strain = strain_quadpole(utemp, G, GT, col_points_xi, &
                                        col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
-                                       element_type, axis), kind=sp)
+                                       element_type, axis)
           else
               print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
               call pabort
@@ -2703,6 +2691,7 @@ end function load_strain_point_interp
 
 !-----------------------------------------------------------------------------------------
 subroutine build_kdtree(this)
+    use kdtree2_module, only    : kdtree2_create, kdtree2_destroy
     class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
 
@@ -2877,7 +2866,8 @@ subroutine cache_mesh(ncid, mesh, dump_type)
   type(meshtype)                :: mesh
   character(len=*), intent(in)  :: dump_type
 
-  write(lu_out, *) 'Reading mesh parameters...'
+  write(lu_out, '(A)', advance='no') 'Reading mesh parameters...'
+  call flush(lu_out)
 
   call nc_getvar_by_name(ncid   = ncid,          &
                          name   = 'mesh_S',      &
@@ -2930,32 +2920,39 @@ subroutine cache_mesh(ncid, mesh, dump_type)
 
   if (trim(dump_type) == 'displ_only') then
       
-      call nc_getvar_by_name(ncid   = ncid,  &
-                             name   = 'eltype',          &
+      call nc_getvar_by_name(ncid   = ncid,         &
+                             name   = 'eltype',     &
+                             limits = [0, 1],       &
                              values = mesh%eltype)
 
-      call nc_getvar_by_name(ncid   = ncid,  &
-                             name   = 'axis',            &
+      call nc_getvar_by_name(ncid   = ncid,         &
+                             name   = 'axis',       &
+                             limits = [0, 1],       &
                              values = mesh%isaxis)
 
-      call nc_getvar_by_name(ncid   = ncid,  &
-                             name   = 'mp_mesh_S',         &
-                             limits = [0., 1e9],     & 
+      call nc_getvar_by_name(ncid   = ncid,         &
+                             name   = 'mp_mesh_S',  &
+                             limits = [0., 1e9],    & 
                              values = mesh%s_mp )
                   
-      call nc_getvar_by_name(ncid   = ncid,  &
-                             name   = 'mp_mesh_Z',         &
-                             limits = [-1e9, 1e9],     & 
+      call nc_getvar_by_name(ncid   = ncid,         &
+                             name   = 'mp_mesh_Z',  &
+                             limits = [-1e9, 1e9],  & 
                              values = mesh%z_mp )
 
       call nc_getvar_by_name(ncid   = ncid,         &
                              name   = 'fem_mesh',   &
+                             limits = [0, size(mesh%s)-1], &
                              values = mesh%corner_point_ids )
 
       call nc_getvar_by_name(ncid   = ncid,         &
                              name   = 'sem_mesh',   &
+                             limits = [0, size(mesh%s)-1], &
                              values = mesh%gll_point_ids)
+
   endif
+
+  write(lu_out, *) ' done'
 
 end subroutine cache_mesh
 !-----------------------------------------------------------------------------------------
@@ -3044,7 +3041,7 @@ subroutine get_chunk_bounds(pointid, chunksize, npoints, start_chunk, count_chun
 
   if ((pointid > npoints).or.(pointid<1)) then
     print *, 'ERROR: Requesting chunk for point ', pointid
-    print *, '       variable has only', npoints, 'points'
+    print *, '        variable bounds are 0 and ', npoints
     call pabort()
   end if
 
@@ -3062,6 +3059,7 @@ end subroutine get_chunk_bounds
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
 subroutine nc_read_att_int(attribute_value, attribute_name, nc)
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
   character(len=*),  intent(in)     :: attribute_name
   integer, intent(out)              :: attribute_value
   type(ncparamtype), intent(in)     :: nc
@@ -3080,6 +3078,7 @@ end subroutine nc_read_att_int
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Character
 subroutine nc_read_att_char(attribute_value, attribute_name, nc)
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
   character(len=*),  intent(in)     :: attribute_name
   character(len=*), intent(out)     :: attribute_value
   type(ncparamtype), intent(in)     :: nc
@@ -3098,6 +3097,7 @@ end subroutine nc_read_att_char
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Real
 subroutine nc_read_att_real(attribute_value, attribute_name, nc)
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
   character(len=*),  intent(in)     :: attribute_name
   real, intent(out)                 :: attribute_value
   type(ncparamtype), intent(in)     :: nc
@@ -3116,6 +3116,7 @@ end subroutine nc_read_att_real
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Double
 subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
   character(len=*),  intent(in)     :: attribute_name
   real(kind=dp), intent(out)        :: attribute_value
   type(ncparamtype), intent(in)     :: nc
