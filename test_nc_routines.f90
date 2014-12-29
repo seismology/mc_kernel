@@ -102,7 +102,7 @@ subroutine test_nc_routines_getvar_1d_float
 
   call nc_open_for_read(filename = nc_filename, ncid = ncid)
 
-  call nc_getvar_by_name(ncid = ncid, name = 'var_1d_float', values = readdata_fp)
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_1d_float', values = readdata_fp)
 
   call assert_comparable(readdata_fp, testdata_fp(:,1,1), 1e-8, 'Retrieve 1D Float')
 
@@ -118,7 +118,7 @@ subroutine test_nc_routines_getvar_2d_float
 
   call nc_open_for_read(filename = nc_filename, ncid = ncid)
 
-  call nc_getvar_by_name(ncid = ncid, name = 'var_2d_float', values = readdata_fp)
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_2d_float', values = readdata_fp)
 
   do idim_2 = 1, size(readdata_fp, 2)
     call assert_comparable(readdata_fp(:, idim_2), &
@@ -138,7 +138,7 @@ subroutine test_nc_routines_getvar_3d_float
 
   call nc_open_for_read(filename = nc_filename, ncid = ncid)
 
-  call nc_getvar_by_name(ncid = ncid, name = 'var_3d_float', values = readdata_fp)
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_float', values = readdata_fp)
 
   do idim_2 = 1, size(readdata_fp, 2)
     do idim_3 = 1, size(readdata_fp, 3)
@@ -160,7 +160,7 @@ subroutine test_nc_routines_getvar_1d_int
 
   call nc_open_for_read(filename = nc_filename, ncid = ncid)
 
-  call nc_getvar_by_name(ncid = ncid, name = 'var_1d_int', values = readdata_int)
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_1d_int', values = readdata_int)
 
   call assert_equal(readdata_int, testdata_int(:,1,1), 'Retrieve 1D int')
 
@@ -176,7 +176,7 @@ subroutine test_nc_routines_getvar_2d_int
 
   call nc_open_for_read(filename = nc_filename, ncid = ncid)
 
-  call nc_getvar_by_name(ncid = ncid, name = 'var_2d_int', values = readdata_int)
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_2d_int', values = readdata_int)
 
   do idim_2 = 1, size(readdata_int, 2)
     call assert_equal(readdata_int(:, idim_2), & 
@@ -196,7 +196,7 @@ subroutine test_nc_routines_getvar_3d_int
 
   call nc_open_for_read(filename = nc_filename, ncid = ncid)
 
-  call nc_getvar_by_name(ncid = ncid, name = 'var_3d_int', values = readdata_int)
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_int', values = readdata_int)
 
   do idim_2 = 1, size(readdata_int, 2)
     do idim_3 = 1, size(readdata_int, 3)
@@ -209,6 +209,137 @@ subroutine test_nc_routines_getvar_3d_int
   call check(nf90_close(ncid))
 
 end subroutine test_nc_routines_getvar_3d_int
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_nc_routines_putvar_1d
+  integer                       :: ncid, idim_1, idim_2, idim_3
+  character(len=128)            :: nc_filename_local='unit_tests_output/test_nc_routines_write.nc'
+  real(kind=sp), allocatable    :: readdata_fp(:)
+  
+  
+  dim_size = [10, 20, 30]
+
+  if (allocated(testdata_fp)) deallocate(testdata_fp)
+  allocate(testdata_fp(dim_size(1), dim_size(2), dim_size(3) ))
+
+  do idim_1 = 1, dim_size(1)
+    do idim_2 = 1, dim_size(2)
+      do idim_3 = 1, dim_size(3)
+        testdata_fp(idim_1, idim_2, idim_3) =   idim_1                       &
+                                              + dim_size(1) * idim_2         &
+                                              + product(dim_size(1:2)) * idim_3
+      end do
+    end do
+  end do
+
+  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+
+  call nc_putvar_by_name(ncid = ncid, varname = 'var_1d_float', values = testdata_fp(:,1,1))
+
+  call nc_close_file(ncid = ncid)
+
+  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_1d_float', values = readdata_fp)
+
+  call assert_comparable(readdata_fp(:),       &
+                         testdata_fp(:, 1, 1), &
+                         1e-8, 'Retrieve 1D Float')
+
+  call nc_close_file(ncid = ncid)
+
+end subroutine test_nc_routines_putvar_1d
+!-----------------------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------------------
+subroutine test_nc_routines_putvar_2d
+  integer                       :: ncid, idim_1, idim_2, idim_3
+  character(len=128)            :: nc_filename_local='unit_tests_output/test_nc_routines_write.nc'
+  real(kind=sp), allocatable    :: readdata_fp(:,:)
+  
+  
+  dim_size = [10, 20, 30]
+
+  if (allocated(testdata_fp)) deallocate(testdata_fp)
+  allocate(testdata_fp(dim_size(1), dim_size(2), dim_size(3) ))
+
+  do idim_1 = 1, dim_size(1)
+    do idim_2 = 1, dim_size(2)
+      do idim_3 = 1, dim_size(3)
+        testdata_fp(idim_1, idim_2, idim_3) =   idim_1                       &
+                                              + dim_size(1) * idim_2         &
+                                              + product(dim_size(1:2)) * idim_3
+      end do
+    end do
+  end do
+
+  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+
+  call nc_putvar_by_name(ncid = ncid, varname = 'var_2d_float', values = testdata_fp)
+
+  call nc_close_file(ncid = ncid)
+
+  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_2d_float', values = readdata_fp)
+
+  do idim_2 = 1, size(readdata_fp, 2)
+    call assert_comparable(readdata_fp(:, idim_2),    &
+                           testdata_fp(:, idim_2, 1), &
+                           1e-8, 'Retrieve 2D Float')
+  end do
+
+  call nc_close_file(ncid = ncid)
+
+end subroutine test_nc_routines_putvar_2d
+!-----------------------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------------------
+subroutine test_nc_routines_putvar_3d
+  integer                       :: ncid, idim_1, idim_2, idim_3
+  character(len=128)            :: nc_filename_local='unit_tests_output/test_nc_routines_write.nc'
+  real(kind=sp), allocatable    :: readdata_fp(:,:,:)
+  
+  
+  dim_size = [10, 20, 30]
+
+  if (allocated(testdata_fp)) deallocate(testdata_fp)
+  allocate(testdata_fp(dim_size(1), dim_size(2), dim_size(3) ))
+
+  do idim_1 = 1, dim_size(1)
+    do idim_2 = 1, dim_size(2)
+      do idim_3 = 1, dim_size(3)
+        testdata_fp(idim_1, idim_2, idim_3) =   idim_1                       &
+                                              + dim_size(1) * idim_2         &
+                                              + product(dim_size(1:2)) * idim_3
+      end do
+    end do
+  end do
+
+  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+
+  call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_float', values = testdata_fp)
+
+  call nc_close_file(ncid = ncid)
+
+  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+
+  call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_float', values = readdata_fp)
+
+  do idim_2 = 1, size(readdata_fp, 2)
+    do idim_3 = 1, size(readdata_fp, 3)
+      call assert_comparable(readdata_fp(:, idim_2, idim_3), &
+                             testdata_fp(:, idim_2, idim_3), &
+                             1e-8, 'Retrieve 3D Float')
+    end do
+  end do
+
+  call nc_close_file(ncid = ncid)
+
+end subroutine test_nc_routines_putvar_3d
 !-----------------------------------------------------------------------------------------
 
 end module test_nc_routines
