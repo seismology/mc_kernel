@@ -1,7 +1,7 @@
 !=========================================================================================
 module slave_mod
 
-  use global_parameters,           only: sp, dp, pi, deg2rad, &
+  use global_parameters,           only: sp, dp, long, pi, deg2rad, &
                                          init_random_seed, myrank, lu_out
   use work_type_mod
 # ifndef include_mpi
@@ -39,7 +39,8 @@ subroutine do_slave()
     type(slave_result_type)             :: slave_result
 
     integer                             :: ndumps, ntimes, nomega
-    integer                             :: ikernel, ierror, iclockold
+    integer                             :: ikernel, ierror
+    integer(kind=long)                  :: iclockold
     integer                             :: mpistatus(MPI_STATUS_SIZE)
     real(kind=dp)                       :: df
     integer                             :: itask
@@ -251,7 +252,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: ielement, irec, ikernel, ibasisfunc, ibasekernel
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nbasisfuncs_per_elem, nbasekernels
-    integer                             :: iclockold, istep_model
+    integer                             :: istep_model
+    integer(kind=long)                  :: iclockold
     integer                             :: ndim
     integer, parameter                  :: taper_length = 10! This is the bare minimum. It does 
                                                             ! not produce artifacts yet, at least 
