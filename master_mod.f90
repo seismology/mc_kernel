@@ -24,6 +24,7 @@ subroutine do_master()
   integer, allocatable  :: output(:,:), sendrequest(:), work_done(:)
   integer               :: mpistatus(MPI_STATUS_SIZE)
   integer               :: itask, ntasks, ioutput, iclock, iclock_ref, ticks_per_sec
+  integer               :: itask_result
   real(kind=sp)         :: time
   character(len=64)     :: fmtstring
 
@@ -40,7 +41,7 @@ subroutine do_master()
   ! Format string for plotting status of slaves
   allocate(work_done(nslaves))
   work_done = 0
-  write(fmtstring,"('(',I3,'('' '', I5),'' | '' F6.2,''%'', F10.1, ''sec'')')") nslaves + 1
+  write(fmtstring,"('(',I5,'('' '', I5),'' | '' F6.2,''%'', F10.1, ''sec'')')") nslaves + 1
 
   if (nslaves > ntasks) then
      write(6,*) 'ERROR: more slaves then tasks'
@@ -88,17 +89,9 @@ subroutine do_master()
                    mpistatus,        & ! info about the received message
                    ierror)
 
-     call extract_receive_buffer(wt%itask, mpistatus(MPI_SOURCE))
+     itask_result = wt%itask              
+     call extract_receive_buffer(itask_result, mpistatus(MPI_SOURCE))
      
-     ! Plot status of slaves
-     work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
-     
-     !Get time elapsed since start
-     call system_clock(count=iclock)
-     time = real(iclock-iclock_ref) / real(ticks_per_sec)
-
-     write(6,fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
-
      ! fill sendbuffer
      call get_next_task(itask)
 
@@ -111,6 +104,23 @@ subroutine do_master()
                    MPI_COMM_WORLD,   & ! default communicator
                    sendrequest(mpistatus(MPI_SOURCE)), &
                    ierror)
+
+     ! Some more stuff before waiting for next result
+     ! 1. Plot status of slaves to stdout
+     ! 2. Save intermediate results to NetCDF file
+
+     ! Plot status of slaves
+     work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
+     
+     !Get time elapsed since start
+     call system_clock(count=iclock)
+     time = real(iclock-iclock_ref) / real(ticks_per_sec)
+
+     write(6,fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
+
+     ! Save intermediate results to NetCDF file
+     call dump_intermediate(itask_result)
+
   enddo
 
   ! There's no more work to be distributed, so receive all the outstanding results 
