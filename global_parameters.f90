@@ -7,6 +7,9 @@ module global_parameters
   integer, parameter         :: dp = selected_real_kind(15, 307)
   integer, parameter         :: qp = selected_real_kind(33, 4931)
 
+  integer,parameter          :: int4 = selected_int_kind(5)
+  integer,parameter          :: long = selected_int_kind(15)
+
   real(kind=dp), parameter   :: pi = 3.1415926535898D0
   real(kind=dp), parameter   :: deg2rad = pi / 180.d0
   real(kind=dp), parameter   :: rad2deg = 180.d0 / pi
