@@ -1,13 +1,15 @@
 !=========================================================================================
 module master_queue
-  use global_parameters,           only: sp, dp, lu_out
+  use global_parameters,           only: sp, dp, lu_out, long
   use inversion_mesh,              only: inversion_mesh_data_type
   use type_parameter,              only: parameter_type
   use simple_routines,             only: lowtrim
+  use nc_routines,                 only: nc_open_for_write, nc_close_file, &
+                                         nc_putvar_by_name
   implicit none
   private
   
-  public :: init_queue, get_next_task, extract_receive_buffer, finalize
+  public :: init_queue, get_next_task, extract_receive_buffer, finalize, dump_intermediate
 
   type(inversion_mesh_data_type), save :: inv_mesh
   type(parameter_type),           save :: parameters
@@ -15,7 +17,8 @@ module master_queue
   real(kind=dp), allocatable,     save :: K_x(:,:), Var(:,:), Bg_model(:,:)
   integer,       allocatable,     save :: connectivity(:,:)
   integer,       allocatable,     save :: niterations(:,:), element_proc(:)
-  integer,                        save :: iclockold_mpi
+  integer(kind=long),             save :: iclockold_mpi
+  integer,                        save :: ncid_intermediate
 
 contains
 
@@ -28,8 +31,9 @@ subroutine init_queue(ntasks)
   use global_parameters, only: id_read_params, id_create_tasks
   use work_type_mod, only    : wt
   integer, intent(out)      :: ntasks
-  integer                   :: itask, nelems, iel, iclockold
-  character(len=64)         :: fmtstring
+  integer                   :: itask, nelems, iel
+  integer(kind=long)        :: iclockold
+  character(len=64)         :: fmtstring, filename
   
   iclockold = tick()
 
@@ -79,6 +83,8 @@ subroutine init_queue(ntasks)
 
   allocate(niterations(parameters%nkernel, nelems))
   allocate(element_proc(nelems))
+  niterations  = -1
+  element_proc = -1
   
   fmtstring = '(A, I8, A, I8)'
   ! Calculate number of tasks
@@ -98,6 +104,7 @@ subroutine init_queue(ntasks)
      end do
   enddo
   
+
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Allocate variables to store result'
   write(lu_out,'(A)') '***************************************************************'
@@ -110,6 +117,29 @@ subroutine init_queue(ntasks)
   Bg_Model = 0.0
 
   iclockold = tick(id=id_create_tasks, since=iclockold)
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Create file for intermediate results '
+  write(lu_out,'(A)') '***************************************************************'
+  filename = 'intermediate_results.nc'
+  call nc_open_for_write(filename = filename, ncid = ncid_intermediate)
+
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'K_x',             & 
+                         values  = real(K_x, kind=sp) )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'Var',             & 
+                         values  = real(Var, kind=sp) )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'Bg_Model',        & 
+                         values  = real(Bg_Model, kind=sp) )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'niterations',     & 
+                         values  = niterations )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'element_proc',    & 
+                         values  = element_proc )
+
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Starting to distribute the work'
@@ -125,7 +155,8 @@ subroutine get_next_task(itask)
   use work_type_mod, only    : wt
   use global_parameters, only: id_get_next_task
   integer, intent(in)       :: itask
-  integer                   :: iel, ielement, ivert, iclockold
+  integer                   :: iel, ielement, ivert
+  integer(kind=long)        :: iclockold
   integer, allocatable      :: ivertex(:)
 
   iclockold = tick()
@@ -155,7 +186,8 @@ subroutine extract_receive_buffer(itask, irank)
   use global_parameters, only: id_extract, id_mpi
   use work_type_mod, only    : wt
   integer, intent(in)       :: itask, irank
-  integer                   :: iel, ielement, ibasisfunc, iclockold, ipoint
+  integer                   :: iel, ielement, ibasisfunc, ipoint
+  integer(kind=long)        :: iclockold
 
   if (.not.iclockold_mpi==-1) then
     iclockold = tick(id=id_mpi, since=iclockold_mpi)
@@ -202,6 +234,12 @@ subroutine finalize()
   real(kind=sp), allocatable    :: rel_error(:)
   character(len=64)             :: xdmf_varname
   real(kind=dp)                 :: total_time
+
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') 'Finalize intermediate file'
+  write(lu_out,'(A)') '***************************************************************'
+  call nc_close_file(ncid = ncid_intermediate)
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
@@ -339,7 +377,69 @@ subroutine finalize()
     print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, total_time
   end do
 
-end subroutine
+end subroutine finalize
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine dump_intermediate(itask)
+  integer, intent(in)   :: itask
+  integer               :: iel, ielement, ibasisfunc, ipoint
+
+
+  do iel = 1, parameters%nelems_per_task
+    ielement = elems_in_task(itask, iel)
+    if (ielement.eq.-1) cycle
+    do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
+
+      ! are we in volumetric or vertex mode?
+      select case(trim(parameters%int_type))
+      case('onvertices')         
+        ipoint = connectivity(ibasisfunc, ielement)
+        call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                               varname = 'K_x',             & 
+                               values  = real(K_x(ipoint:ipoint, :), kind=sp),    &
+                               start   = [ipoint, 1],       &
+                               count   = [1, parameters%nkernel] )
+        call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                               varname = 'Var',             & 
+                               values  = real(Var(ipoint, :), kind=sp),    &
+                               start   = [ipoint, 1],       &
+                               count   = [1, parameters%nkernel] )
+        call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                               varname = 'Bg_Model',        & 
+                               values  = real(Bg_Model(ipoint, :), kind=sp),&
+                               start   = [ipoint, 1],        &
+                               count   = [1, parameters%nkernel] )
+      case('volumetric')
+        call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                               varname = 'K_x',             & 
+                               values  = real(K_x(ielement, :), kind=sp),    &
+                               start   = [ielement, 1],       &
+                               count   = [1, parameters%nkernel] )
+        call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                               varname = 'Var',             & 
+                               values  = real(Var(ielement, :), kind=sp),    &
+                               start   = [ielement, 1],       &
+                               count   = [1, parameters%nkernel] )
+        call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                               varname = 'Bg_Model',        & 
+                               values  = real(Bg_Model(ielement, :), kind=sp),&
+                               start   = [ielement, 1],        &
+                               count   = [1, parameters%nkernel] )
+      end select
+
+    end do
+    call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                           varname = 'niterations',        & 
+                           values  = niterations(:, ielement),&
+                           start   = [1, ielement],        &
+                           count   = [parameters%nkernel, 1] )
+    call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                           varname = 'element_proc',        & 
+                           values  = element_proc)
+  end do
+
+end subroutine dump_intermediate
 !-----------------------------------------------------------------------------------------
 
 end module
