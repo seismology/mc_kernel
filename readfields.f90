@@ -1,7 +1,8 @@
 !=========================================================================================
 module readfields
     use global_parameters, only            : sp, dp, pi, deg2rad, rad2deg, verbose, lu_out, &
-                                             myrank, id_buffer, id_netcdf, id_rotate,       &
+                                             myrank, long,                                  &
+                                             id_buffer, id_netcdf, id_rotate,               &
                                              id_load_strain, id_kdtree, id_calc_strain,     &
                                              id_find_point_fwd, id_find_point_bwd, id_lagrange
 
@@ -1040,7 +1041,8 @@ function load_fw_points(this, coordinates, source_params, model)
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points
     integer                           :: pointid
-    integer                           :: ipoint, inext_point, isim, iclockold, icp
+    integer                           :: ipoint, inext_point, isim, icp
+    integer(kind=long)                :: iclockold
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
@@ -1576,7 +1578,8 @@ function load_bw_points(this, coordinates, receiver)
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points, id_elem, isim
     integer                           :: pointid(size(coordinates,2))
-    integer                           :: ipoint, inext_point, iclockold, icp
+    integer                           :: ipoint, inext_point, icp
+    integer(kind=long)                :: iclockold
     integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
     integer                           :: nan_loc(2)
     logical                           :: isnan
@@ -2316,7 +2319,7 @@ function load_strain_point(sem_obj, pointid, strain_type)
     real(kind=dp), allocatable      :: strain_buff(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold, iclockold_total
+    integer(kind=long)              :: iclockold, iclockold_total
     integer                         :: status, istrainvar
     real(kind=sp), allocatable      :: utemp(:,:)
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
@@ -2472,7 +2475,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
 
     logical                         :: use_strainbuffer
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: iclockold, status, idisplvar
+    integer                         :: status, idisplvar
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
     real(kind=sp), allocatable      :: ubuff(:,:)
     real(kind=dp)                   :: utemp(1:sem_obj%ndumps, &
@@ -2488,7 +2491,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
                                                    0:sem_obj%npol)
     real(kind=dp), allocatable      :: G(:,:), GT(:,:)
     real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
-    integer                         :: ipol, jpol, i, iclockold_total
+    integer                         :: ipol, jpol, i
+    integer(kind=long)              :: iclockold, iclockold_total
     logical                         :: strain_nan
 
     iclockold_total = tick()
@@ -2812,7 +2816,7 @@ subroutine read_meshes(this)
    
     ! Read colatitudes of surface elements (aka theta) for forward mesh
     call nc_getvar_by_name(ncid = this%fwd(1)%surf,      &
-                           name = 'elem_theta',          &
+                           varname = 'elem_theta',          &
                            values = this%fwdmesh%theta,  &
                            limits = [0., 180.] )
 
@@ -2838,7 +2842,7 @@ subroutine read_meshes(this)
       ! Read colatitudes of surface elements (aka theta) for backward mesh
       if (this%nsim_bwd > 0) then
          call nc_getvar_by_name(ncid = this%bwd(1)%surf,      &
-                                name = 'elem_theta',          &
+                                varname = 'elem_theta',          &
                                 values = this%bwdmesh%theta,  &
                                 limits = [0., 180.] )
 
@@ -2870,83 +2874,83 @@ subroutine cache_mesh(ncid, mesh, dump_type)
   call flush(lu_out)
 
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_S',      &
+                         varname   = 'mesh_S',      &
                          limits = [0., 1e9],     & 
                          values = mesh%s   )
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_Z',      &
+                         varname   = 'mesh_Z',      &
                          limits = [-1e9, 1e9],   & 
                          values = mesh%z   )
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_vp',     &
+                         varname   = 'mesh_vp',     &
                          limits = [0.0, 2e4],    & 
                          values = mesh%vp  )
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_vs',     &
+                         varname   = 'mesh_vs',     &
                          limits = [0.0, 2e4],    & 
                          values = mesh%vs  )
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_rho',    &
+                         varname   = 'mesh_rho',    &
                          limits = [0.0, 2e4],    & 
                          values = mesh%rho )
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_lambda', &
+                         varname   = 'mesh_lambda', &
                          limits = [1e9, 1e15],   & 
                          values = mesh%lambda)
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_mu',     &
+                         varname   = 'mesh_mu',     &
                          limits = [0.0, 1e12],   & 
                          values = mesh%mu  )
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_phi',    &
+                         varname   = 'mesh_phi',    &
                          values = mesh%phi )
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_xi',     &
+                         varname   = 'mesh_xi',     &
                          limits = [0.0, 3.0],    & 
                          values = mesh%xi  )
               
   call nc_getvar_by_name(ncid   = ncid,          &
-                         name   = 'mesh_eta',    &
+                         varname   = 'mesh_eta',    &
                          limits = [0.0, 1e12],   & 
                          values = mesh%eta )
 
   if (trim(dump_type) == 'displ_only') then
       
       call nc_getvar_by_name(ncid   = ncid,         &
-                             name   = 'eltype',     &
-                             limits = [0, 1],       &
+                             varname   = 'eltype',     &
+                             limits = [0, 3],       &
                              values = mesh%eltype)
 
       call nc_getvar_by_name(ncid   = ncid,         &
-                             name   = 'axis',       &
+                             varname   = 'axis',       &
                              limits = [0, 1],       &
                              values = mesh%isaxis)
 
       call nc_getvar_by_name(ncid   = ncid,         &
-                             name   = 'mp_mesh_S',  &
+                             varname   = 'mp_mesh_S',  &
                              limits = [0., 1e9],    & 
                              values = mesh%s_mp )
                   
       call nc_getvar_by_name(ncid   = ncid,         &
-                             name   = 'mp_mesh_Z',  &
+                             varname   = 'mp_mesh_Z',  &
                              limits = [-1e9, 1e9],  & 
                              values = mesh%z_mp )
 
       call nc_getvar_by_name(ncid   = ncid,         &
-                             name   = 'fem_mesh',   &
+                             varname   = 'fem_mesh',   &
                              limits = [0, size(mesh%s)-1], &
                              values = mesh%corner_point_ids )
 
       call nc_getvar_by_name(ncid   = ncid,         &
-                             name   = 'sem_mesh',   &
+                             varname   = 'sem_mesh',   &
                              limits = [0, size(mesh%s)-1], &
                              values = mesh%gll_point_ids)
 
