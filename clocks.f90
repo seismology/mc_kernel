@@ -44,13 +44,13 @@ module clocks_mod
 !           675 Mass Ave, Cambridge, MA 02139, USA.  
 !-----------------------------------------------------------------------
 
-    use global_parameters, only    : lu_out
+    use global_parameters, only    : lu_out, sp, dp, int4, long
     implicit none
 
     private
 
-    integer, private              :: ticks_per_sec, max_ticks, ref_tick, start_tick, end_tick
-    real(kind=4), private         :: tick_rate
+    integer(kind=long), private   :: ticks_per_sec, max_ticks, ref_tick, start_tick, end_tick
+    real(kind=dp), private        :: tick_rate
     integer, private, parameter   :: max_clocks = 256
     integer, private              :: clock_num = 0
     logical, private              :: clocks_initialized = .FALSE.
@@ -58,7 +58,7 @@ module clocks_mod
     !clocks are stored in this internal type
     type, private                 :: clock
        character(len=32)          :: name
-       integer(8)                 :: ticks, calls
+       integer(kind=long)         :: ticks, calls
     end type clock
 
     type(clock)                   :: clocks(0:max_clocks)
@@ -77,8 +77,8 @@ subroutine clocks_init(flag)
     !for instance, flag could be set to pe number by the calling program
     !to have only PE 0 in a parallel run print clocks
     integer, intent(in), optional :: flag
-    integer :: i
-    logical :: verbose
+    integer                       :: i
+    logical                       :: verbose
 
     verbose = .FALSE.
 
@@ -91,7 +91,7 @@ subroutine clocks_init(flag)
     call system_clock( ref_tick, ticks_per_sec, max_ticks )
     tick_rate = 1./ticks_per_sec
     start_tick = ref_tick
-    if( verbose )then
+    if (verbose) then
         write(lu_out,*) '    CLOCKS module '//trim(version)
         write(lu_out,*) '    Realtime clock resolution=', tick_rate, '(', &
                    ticks_per_sec, ' ticks/sec)'
@@ -99,16 +99,15 @@ subroutine clocks_init(flag)
 
     !default clock name is Clock001, etc
 
-    if( verbose ) then
-       do i = 1,max_clocks
-          write( clocks(i)%name,"(a5,i3.3)") 'Clock', i
+    if (verbose) then
+       do i = 1, max_clocks
+          write(clocks(i)%name,"(a5,i3.3)") 'Clock', i
        end do
     end if
 
     clocks%ticks = 0
     clocks%calls = 0
 
-    return
 end subroutine clocks_init
 !-----------------------------------------------------------------------
 
@@ -135,18 +134,20 @@ function clock_id(name)
            end if
        end if
     end do
-    return
+
 end function clock_id
 !-----------------------------------------------------------------------
 
 
 !-----------------------------------------------------------------------
 function tick( string, id, name, since )
-    integer                                 :: tick
-    character(len=*), intent(in), optional  :: string
-    character(len=*), intent(in), optional  :: name
-    integer, intent(in), optional           :: id, since
-    integer                                 :: current_tick, nid
+    integer(kind=long)                       :: tick
+    character(len=*), intent(in), optional   :: string
+    character(len=*), intent(in), optional   :: name
+    integer, intent(in), optional            :: id
+    integer(kind=long), intent(in), optional :: since
+    integer(kind=long)                       :: current_tick
+    integer                                  :: nid
 
     !take time first, so that this routine's overhead isn't included
     call system_clock(current_tick)
@@ -163,6 +164,7 @@ function tick( string, id, name, since )
         !print time since reference tick
         print '(a,f14.6)', &
             'CLOCKS: '//trim(string), (current_tick-ref_tick)*tick_rate
+
     else if( PRESENT(id) )then
         !accumulate time on clock id
         if( 0.LT.id .AND. id.LE.max_clocks )then
@@ -171,9 +173,10 @@ function tick( string, id, name, since )
         else
             write(lu_out,*) 'CLOCKS ERROR: invalid id=', id
         end if
+
     else if( PRESENT(name) )then
         nid = clock_id(name)
-    !accumulate time on clock id
+        !accumulate time on clock id
         if( 0.LT.nid .AND. nid.LE.max_clocks )then
             clocks(nid)%ticks = clocks(nid)%ticks + current_tick - ref_tick
             clocks(nid)%calls = clocks(nid)%calls + 1
@@ -185,16 +188,15 @@ function tick( string, id, name, since )
     call system_clock(ref_tick)
     tick = ref_tick
 
-    return
 end function tick
 !-----------------------------------------------------------------------
 
 
 !-----------------------------------------------------------------------
 subroutine get_clock( id, ticks, calls, total_time, time_per_call )
-    integer, intent(in)                 :: id
-    integer(8), intent(out), optional   :: ticks, calls
-    real(kind=4), intent(out), optional :: total_time, time_per_call
+    integer, intent(in)                        :: id
+    integer(kind=long), intent(out), optional  :: ticks, calls
+    real(kind=dp), intent(out), optional       :: total_time, time_per_call
 
     if( 0.LT.id .AND. id.LE.max_clocks )then
         if( PRESENT(ticks) )ticks = clocks(id)%ticks
@@ -206,7 +208,6 @@ subroutine get_clock( id, ticks, calls, total_time, time_per_call )
         write(lu_out, *) 'CLOCKS ERROR: invalid id=', id
     end if
 
-    return
 end subroutine get_clock
 !-----------------------------------------------------------------------
 
@@ -216,11 +217,11 @@ subroutine clocks_exit(flag)
     !if flag is set, only print if flag=0
     !for instance, flag could be set to pe number by the calling program
     !to have only PE 0 print clocks
-    integer, intent(in), optional :: flag
-    integer :: i
+    integer, intent(in), optional   :: flag
+    integer                         :: i
     !total_time is for one clock
     !cumul_time is total measured time between clocks_init and clocks_exit
-    real(kind=4) :: total_time, time_per_call, cumul_time
+    real(kind=dp)                   :: total_time, time_per_call, cumul_time
 
     if( PRESENT(flag) )then
         if( flag.NE.0 )return
@@ -233,14 +234,12 @@ subroutine clocks_exit(flag)
        if( clocks(i)%calls.NE.0 )then
            total_time = clocks(i)%ticks*tick_rate
            time_per_call = total_time/clocks(i)%calls
-           write(lu_out,"(a40,i8,2f14.6,f7.3)") &
+           write(lu_out,"(a40,i12,2f15.6,f7.3)") &
                 'CLOCKS: '//clocks(i)%name, &
                 clocks(i)%calls, time_per_call, total_time, total_time/cumul_time
        end if
     end do
     write(lu_out,"(a,f14.6)") 'CLOCKS: Total measured time: ', cumul_time
-
-    return
 
 end subroutine clocks_exit
 !--------------------------------------------------------------------
