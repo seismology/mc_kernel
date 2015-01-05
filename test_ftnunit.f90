@@ -118,6 +118,10 @@ subroutine test_all
   call test(test_nc_routines_getvar_1d_int, 'Read 1D Integer by name')
   call test(test_nc_routines_getvar_2d_int, 'Read 2D Integer by name')
   call test(test_nc_routines_getvar_3d_int, 'Read 3D Integer by name')
+  call test(test_nc_routines_putvar_1d, 'Write 1D Float by name')
+  call test(test_nc_routines_putvar_2d, 'Write 2D Float by name')
+  call test(test_nc_routines_putvar_3d, 'Write 3D Float by name')
+  call test(test_nc_routines_putvar_1d_into_nd, 'Write 1D slices into 3D variable by name')
 
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
