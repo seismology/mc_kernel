@@ -18,6 +18,11 @@ module nc_routines
       module procedure  :: nc_putvar_by_name_1d
       module procedure  :: nc_putvar_by_name_2d
       module procedure  :: nc_putvar_by_name_3d
+      module procedure  :: nc_putvar_by_name_1d_into_nd
+      module procedure  :: nc_putvar_by_name_1d_int
+      module procedure  :: nc_putvar_by_name_2d_int
+      module procedure  :: nc_putvar_by_name_3d_int
+      module procedure  :: nc_putvar_by_name_1d_into_nd_int
     end interface nc_putvar_by_name
 
     interface nc_getvar
@@ -507,7 +512,7 @@ subroutine nc_getvar_by_name_3d_int(ncid, varname, values, limits)
                    count  = [len_dim(1), len_dim(2), len_dim(3)], &
                    values = values)
   case default
-    write(*,*) 'get_mesh_variable is only implemented for NF90_INT variables'
+    write(*,*) 'nc_getvar_by_name_3d_int is only implemented for NF90_INT variables'
     call flush(6)
     call pabort()
   end select
@@ -594,7 +599,7 @@ subroutine nc_getvar_by_name_3d(ncid, varname, values, limits)
                    count  = [len_dim(1), len_dim(2), len_dim(3)], &
                    values = values)
   case default
-    write(*,*) 'get_mesh_variable is only implemented for NF90_FLOAT variables'
+    write(*,*) 'nc_getvar_by_name_3d get_mesh_variable is only implemented for NF90_FLOAT variables'
     call flush(6)
     call pabort()
   end select
@@ -695,12 +700,70 @@ end subroutine nc_putvar_by_name_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine nc_putvar_by_name_1d_int(ncid, varname, values, start, count)
+!< Write data into a 1D variable, or create it, if necessary
+  integer, parameter                         :: ndim = 1
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: varname
+  integer, intent(in)                        :: values(:)
+  integer, intent(in), optional              :: start, count
+  character(len=nf90_max_name)               :: dimname
+  character(len=80)                          :: fmtstring
+  integer                                    :: i, variable_id, dimid(ndim), status
+
+  call  getvarid( ncid  = ncid,      &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  if (variable_id==-1) then
+    if (present(start).and.present(count)) then
+      fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
+      print fmtstring, trim(varname)
+      print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
+      stop
+    else
+      call check(nf90_redef(ncid = ncid))
+      do i = 1, ndim
+        write(dimname, '(A,"_",I1)') trim(varname), i
+        status = nf90_def_dim(ncid  = ncid,     &
+                              name  = dimname,          &
+                              len   = size(values, i),  &
+                              dimid = dimid(i))
+      end do
+
+      status = nf90_def_var( ncid   = ncid,          &
+                             name   = trim(varname), &
+                             xtype  = NF90_INT,      &
+                             dimids = dimid,         &
+                             varid  = variable_id) 
+      call check(nf90_enddef(ncid = ncid))
+    end if
+  end if
+
+  if (present(start).and.present(count)) then
+    call putvar_int1d( ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = values,      &
+                       start  = start,       &
+                       count  = count)
+  else
+    call putvar_int1d (ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = values,      &
+                       start  = 1,           &
+                       count  = size(values, 1) )
+  end if
+
+end subroutine nc_putvar_by_name_1d_int
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine nc_putvar_by_name_2d(ncid, varname, values, start, count)
 !< Write data into a 2D variable, or create it, if necessary
   integer, parameter                         :: ndim = 2
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
-  real(kind=sp), allocatable, intent(in)     :: values(:,:)
+  real(kind=sp), intent(in)                  :: values(:,:)
   integer, intent(in), optional              :: start(ndim), count(ndim)
 
   character(len=nf90_max_name)               :: dimname
@@ -755,12 +818,72 @@ end subroutine nc_putvar_by_name_2d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine nc_putvar_by_name_2d_int(ncid, varname, values, start, count)
+!< Write data into a 2D variable, or create it, if necessary
+  integer, parameter                         :: ndim = 2
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: varname
+  integer, intent(in)                        :: values(:,:)
+  integer, intent(in), optional              :: start(ndim), count(ndim)
+
+  character(len=nf90_max_name)               :: dimname
+  character(len=80)                          :: fmtstring
+  integer                                    :: i, variable_id, dimid(ndim), status
+
+  call  getvarid( ncid  = ncid,      &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  if (variable_id==-1) then
+    if (present(start).and.present(count)) then
+      fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
+      print fmtstring, trim(varname)
+      print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
+      stop
+    else
+      call check(nf90_redef(ncid = ncid))
+      do i = 1, ndim
+        write(dimname, '(A,"_",I1)') trim(varname), i
+        status = nf90_def_dim(ncid  = ncid,     &
+                              name  = dimname,          &
+                              len   = size(values, i),  &
+                              dimid = dimid(i))
+      end do
+
+      status = nf90_def_var( ncid   = ncid,          &
+                             name   = trim(varname), &
+                             xtype  = NF90_INT,      &
+                             dimids = dimid,         &
+                             varid  = variable_id) 
+      call check(nf90_enddef(ncid = ncid))
+    end if
+  end if
+
+  if (present(start).and.present(count)) then
+    call putvar_int2d( ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = values,      &
+                       start  = start,       &
+                       count  = count)
+  else
+    call putvar_int2d( ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = values,      &
+                       start  = [1, 1],      &
+                       count  = [size(values, 1), size(values, 2)])
+  end if
+
+
+end subroutine nc_putvar_by_name_2d_int
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine nc_putvar_by_name_3d(ncid, varname, values, start, count)
 !< Write data into a 3D variable, or create it, if necessary
   integer, parameter                         :: ndim = 3
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
-  real(kind=sp), allocatable, intent(in)     :: values(:,:,:)
+  real(kind=sp), intent(in)                  :: values(:,:,:)
   integer, intent(in), optional              :: start(ndim), count(ndim)
   character(len=nf90_max_name)               :: dimname
   character(len=80)                          :: fmtstring
@@ -811,6 +934,167 @@ subroutine nc_putvar_by_name_3d(ncid, varname, values, start, count)
 
 
 end subroutine nc_putvar_by_name_3d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine nc_putvar_by_name_3d_int(ncid, varname, values, start, count)
+!< Write data into a 3D variable, or create it, if necessary
+  integer, parameter                         :: ndim = 3
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: varname
+  integer, intent(in)                        :: values(:,:,:)
+  integer, intent(in), optional              :: start(ndim), count(ndim)
+  character(len=nf90_max_name)               :: dimname
+  character(len=80)                          :: fmtstring
+  integer                                    :: i, variable_id, dimid(ndim), status
+
+  call  getvarid( ncid  = ncid,      &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  if (variable_id==-1) then
+    if (present(start).and.present(count)) then
+      fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
+      print fmtstring, trim(varname)
+      print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
+      stop
+    else
+      call check(nf90_redef(ncid = ncid))
+      do i = 1, ndim
+        write(dimname, '(A,"_",I1)') trim(varname), i
+        status = nf90_def_dim(ncid  = ncid,     &
+                              name  = dimname,          &
+                              len   = size(values, i),  &
+                              dimid = dimid(i))
+      end do
+
+      status = nf90_def_var( ncid   = ncid,          &
+                             name   = trim(varname), &
+                             xtype  = NF90_INT,      &
+                             dimids = dimid,         &
+                             varid  = variable_id) 
+      call check(nf90_enddef(ncid = ncid))
+    end if
+  end if
+
+  if (present(start).and.present(count)) then
+    call putvar_int3d( ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = values,      &
+                       start  = start,       &
+                       count  = count)
+  else
+    call putvar_int3d( ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = values,      &
+                       start  = [1, 1, 1],   &
+                       count  = [size(values, 1), size(values, 2), size(values, 3)])
+  end if
+
+
+end subroutine nc_putvar_by_name_3d_int
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine nc_putvar_by_name_1d_into_nd(ncid, varname, values, start, count)
+!< Write data into a 3D variable, or create it, if necessary
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: varname
+  real(kind=sp), intent(in)                  :: values(:)
+  integer, intent(in)                        :: start(:), count(:)
+  character(len=80)                          :: fmtstring
+  integer                                    :: variable_id 
+
+  call  getvarid( ncid  = ncid,      &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  ! A rather preculiar way of determining that count is larger 1 on all but one dimensio
+  ! We can't use the FORTRAN intrinsic 'count' here, well, because we have a variable
+  ! of this name. sucks
+  if (product(count).ne.maxval(count)) then
+    fmtstring = "('ERROR: Variable with name ', A, ' cannot be written.')"
+    print fmtstring, trim(varname)
+    print '(A)', "Argument ''count'' must be 1 at all but one dimension. "
+    print *, 'count: ', count
+    print *, 'start: ', start
+  end if
+                  
+  if (variable_id==-1) then
+    fmtstring = "('ERROR: Variable with name ', A, ' does not exist.')"
+    print fmtstring, trim(varname)
+    print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
+    stop
+  end if
+
+  select case (size(start,1))
+  case(2)
+    call putvar_real2d(ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = reshape(values, count(1:2)),     &
+                       start  = start,       &
+                       count  = count)
+  case(3)
+    call putvar_real3d(ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = reshape(values, count(1:3)),     &
+                       start  = start,       &
+                       count  = count)
+  end select
+
+
+end subroutine nc_putvar_by_name_1d_into_nd
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine nc_putvar_by_name_1d_into_nd_int(ncid, varname, values, start, count)
+!< Write data into a 3D variable, or create it, if necessary
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: varname
+  integer, intent(in)                        :: values(:)
+  integer, intent(in)                        :: start(:), count(:)
+  character(len=80)                          :: fmtstring
+  integer                                    :: variable_id 
+
+  call  getvarid( ncid  = ncid,      &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  ! A rather preculiar way of determining that count is larger 1 on all but one dimensio
+  ! We can't use the FORTRAN intrinsic 'count' here, well, because we have a variable
+  ! of this name. sucks
+  if (product(count).ne.maxval(count)) then
+    fmtstring = "('ERROR: Variable with name ', A, ' cannot be written.')"
+    print fmtstring, trim(varname)
+    print '(A)', "Argument ''count'' must be 1 at all but one dimension. "
+    print *, 'count: ', count
+    print *, 'start: ', start
+  end if
+                  
+  if (variable_id==-1) then
+    fmtstring = "('ERROR: Variable with name ', A, ' does not exist.')"
+    print fmtstring, trim(varname)
+    print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
+    stop
+  end if
+
+  select case (size(start,1))
+  case(2)
+    call putvar_int2d( ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = reshape(values, count(1:2)),     &
+                       start  = start,       &
+                       count  = count)
+  case(3)
+    call putvar_int3d( ncid   = ncid,        &
+                       varid  = variable_id, &
+                       values = reshape(values, count(1:3)),     &
+                       start  = start,       &
+                       count  = count)
+  end select
+
+
+end subroutine nc_putvar_by_name_1d_into_nd_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1755,6 +2039,296 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 3D variable in NCID', I7, ', with ID:', I7)
 end subroutine putvar_real3d
+!-----------------------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------------------
+subroutine putvar_int1d(ncid, varid, values, start, count)
+!< Help interpret the inane NetCDF error messages
+   integer, intent(in)          :: ncid, varid, start, count
+   integer, intent(in)          :: values(:)
+   integer                      :: xtype, ndims, status, dimsize
+   integer                      :: dimid(10)
+   character(len=nf90_max_name) :: varname, dimname
+
+
+   status = nf90_inquire_variable(ncid  = ncid,     &
+                                  varid = varid,    &
+                                  name  = varname )
+
+   if (status.ne.NF90_NOERR) then
+       write(*,99) myrank, varid, ncid
+       print *, trim(nf90_strerror(status))
+       stop
+   end if
+
+   if (size(values).ne.count) then
+       write(*,100) myrank, trim(varname), varid, ncid, size(values), count
+       stop
+   end if
+
+   status = nf90_put_var(ncid   = ncid,           &
+                         varid  = varid,          &
+                         values = values,         &
+                         start  = [start],        &
+                         count  = [count] )
+
+                      
+   if (status.ne.NF90_NOERR) then
+       status = nf90_inquire_variable(ncid  =  ncid,    &
+                                      varid = varid,    &
+                                      name  = varname,  &
+                                      ndims = ndims)
+       if (ndims.ne.1) then
+           write(*,101) myrank, trim(varname), varid, ncid, ndims
+           print *, trim(nf90_strerror(status))
+           stop
+       end if
+       status = nf90_inquire_variable(ncid   = ncid,     &
+                                      varid  = varid,    &
+                                      name   = varname,  &
+                                      xtype  = xtype,    &
+                                      ndims  = ndims,    &
+                                      dimids = dimid  )
+
+       status = nf90_inquire_dimension(ncid  = ncid,     &
+                                       dimid = dimid(1), &
+                                       name  = dimname,  &
+                                       len   = dimsize )
+       if (start + count - 1 > dimsize) then
+           write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
+           print *, trim(nf90_strerror(status))
+           stop
+       end if
+
+       write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status))
+       stop
+   
+   elseif (verbose>1) then
+       write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
+   end if
+    
+99  format('ERROR: CPU ', I4, ' could not find 1D variable: ',I7,' in NCID', I7)
+100 format('ERROR: CPU ', I4, ' could not write 1D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       was given ', I10, ' values, but ''count'' is ', I10)
+101 format('ERROR: CPU ', I4, ' could not write 1D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       Variable has ', I2,' dimensions instead of one')
+102 format('ERROR: CPU ', I4, ' could not write 1D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
+           '       of dimension ', A)
+103 format('ERROR: CPU ', I4, ' could not write 1D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       start:   ', I10, / &
+           '       count:   ', I10, / &
+           '       dimsize: ', I10, / &
+           '       dimname: ', A)
+200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 1D variable in NCID', I7, ', with ID:', I7)
+end subroutine putvar_int1d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine putvar_int2d(ncid, varid, values, start, count)
+!< Help interpret the inane NetCDF error messages
+   integer, intent(in)          :: ncid, varid
+   integer, intent(in)          :: start(2), count(2)
+   integer, intent(in)          :: values(:,:)
+   integer                      :: xtype, ndims, status, dimsize, idim
+   integer                      :: dimid(10)
+   character(len=nf90_max_name) :: varname, dimname
+
+
+   status = nf90_inquire_variable(ncid  = ncid,     &
+                                  varid = varid,    &
+                                  name  = varname )
+
+   if (status.ne.NF90_NOERR) then
+       write(*,99) myrank, varid, ncid
+       print *, trim(nf90_strerror(status))
+       stop
+   end if
+   ! Check if variable size is consistent with values of 'count'
+   do idim = 1, 2
+       if (size(values,idim).ne.count(idim)) then
+           write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
+           stop
+       end if
+   end do
+
+   ! Write data to file
+   status = nf90_put_var(ncid   = ncid,           &
+                         varid  = varid,          &
+                         values = values,         &
+                         start  = start,          &
+                         count  = count )
+
+                      
+   ! If an error has occurred, try to find a reason                  
+   if (status.ne.NF90_NOERR) then
+       status = nf90_inquire_variable(ncid  =  ncid,    &
+                                      varid = varid,    &
+                                      name  = varname,  &
+                                      ndims = ndims)
+
+       ! Check whether variable in NetCDF file has more or less than three dimensions
+       if (ndims.ne.2) then
+           write(*,101) myrank, trim(varname), varid, ncid, ndims
+           print *, trim(nf90_strerror(status))
+           stop
+       end if
+
+       ! Check whether dimension sizes are compatible with amount of data written
+       status = nf90_inquire_variable(ncid   = ncid,     &
+                                      varid  = varid,    &
+                                      name   = varname,  &
+                                      xtype  = xtype,    &
+                                      ndims  = ndims,    &
+                                      dimids = dimid  )
+
+       do idim = 1, 2
+           status = nf90_inquire_dimension(ncid  = ncid,        &
+                                           dimid = dimid(idim), &
+                                           name  = dimname,     &
+                                           len   = dimsize )
+           if (start(idim) + count(idim) - 1 > dimsize) then
+               write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                            dimsize, trim(dimname), idim 
+               print *, trim(nf90_strerror(status))
+               stop
+           end if
+
+           ! Otherwise just dump as much information as possible and stop
+           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                        dimsize, trim(dimname)
+           print *, trim(nf90_strerror(status))
+
+       end do
+
+       stop
+   
+   elseif (verbose>1) then
+       ! Everything okay
+       write(lu_out,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
+   end if
+    
+99  format('ERROR: CPU ', I4, ' could not find 2D variable: ',I7,' in NCID', I7)
+100 format('ERROR: CPU ', I4, ' could not write 2D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       dimension ', I1,' was given ', I10, ' values, but ''count'' is ', I10)
+101 format('ERROR: CPU ', I4, ' could not write 2D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       Variable has ', I2,' dimensions instead of two')
+102 format('ERROR: CPU ', I4, ' could not write 2D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
+           '       of dimension ', A, ' (', I1, ')')
+103 format('ERROR: CPU ', I4, ' could not write 2D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       start:   ', I10, / &
+           '       count:   ', I10, / &
+           '       dimsize: ', I10, / &
+           '       dimname: ', A)
+200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 2D variable in NCID', I7, ', with ID:', I7)
+end subroutine putvar_int2d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine putvar_int3d(ncid, varid, values, start, count)
+!< Help interpret the inane NetCDF error messages
+   integer, intent(in)          :: ncid, varid
+   integer, intent(in)          :: start(3), count(3)
+   integer, intent(in)          :: values(:,:,:)
+   integer                      :: xtype, ndims, status, dimsize, idim
+   integer                      :: dimid(10)
+   character(len=nf90_max_name) :: varname, dimname
+
+
+   status = nf90_inquire_variable(ncid  = ncid,     &
+                                  varid = varid,    &
+                                  name  = varname )
+
+   if (status.ne.NF90_NOERR) then
+       write(*,99) myrank, varid, ncid
+       print *, trim(nf90_strerror(status))
+       stop
+   end if
+   ! Check if variable size is consistent with values of 'count'
+   do idim = 1, 3
+       if (size(values,idim).ne.count(idim)) then
+           write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
+           stop
+       end if
+   end do
+
+   ! Write data to file
+   status = nf90_put_var(ncid   = ncid,           &
+                         varid  = varid,          &
+                         values = values,         &
+                         start  = start,          &
+                         count  = count )
+
+                      
+   ! If an error has occurred, try to find a reason                  
+   if (status.ne.NF90_NOERR) then
+       status = nf90_inquire_variable(ncid  =  ncid,    &
+                                      varid = varid,    &
+                                      name  = varname,  &
+                                      ndims = ndims)
+
+       ! Check whether variable in NetCDF file has more or less than three dimensions
+       if (ndims.ne.3) then
+           write(*,101) myrank, trim(varname), varid, ncid, ndims
+           print *, trim(nf90_strerror(status))
+           stop
+       end if
+
+       ! Check whether dimension sizes are compatible with amount of data written
+       status = nf90_inquire_variable(ncid   = ncid,     &
+                                      varid  = varid,    &
+                                      name   = varname,  &
+                                      xtype  = xtype,    &
+                                      ndims  = ndims,    &
+                                      dimids = dimid  )
+
+       do idim = 1, 3
+           status = nf90_inquire_dimension(ncid  = ncid,        &
+                                           dimid = dimid(idim), &
+                                           name  = dimname,     &
+                                           len   = dimsize )
+           if (start(idim) + count(idim) - 1 > dimsize) then
+               write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                            dimsize, trim(dimname), idim 
+               print *, trim(nf90_strerror(status))
+               stop
+           end if
+
+           ! Otherwise just dump as much information as possible and stop
+           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                        dimsize, trim(dimname)
+           print *, trim(nf90_strerror(status))
+
+       end do
+
+       stop
+   
+   elseif (verbose>1) then
+       ! Everything okay
+       write(lu_out,200) myrank, real(product(count)) * 4. / 1048576., ncid, varid
+       call flush(lu_out)
+   end if
+    
+99  format('ERROR: CPU ', I4, ' could not find 3D variable: ',I7,' in NCID', I7)
+100 format('ERROR: CPU ', I4, ' could not write 3D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       dimension ', I1,' was given ', I10, ' values, but ''count'' is ', I10)
+101 format('ERROR: CPU ', I4, ' could not write 3D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       Variable has ', I2,' dimensions instead of three')
+102 format('ERROR: CPU ', I4, ' could not write 3D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
+           '       of dimension ', A, ' (', I1, ')')
+103 format('ERROR: CPU ', I4, ' could not write 3D variable: ''', A, '''(',I7,') in NCID', I7, / &
+           '       start:   ', I10, / &
+           '       count:   ', I10, / &
+           '       dimsize: ', I10, / &
+           '       dimname: ', A)
+200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 3D variable in NCID', I7, ', with ID:', I7)
+end subroutine putvar_int3d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
