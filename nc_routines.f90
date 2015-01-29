@@ -657,6 +657,7 @@ subroutine nc_putvar_by_name_1d(ncid, varname, values, start, count)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! if variable not found              
   if (variable_id==-1) then
     if (present(start).and.present(count)) then
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
@@ -715,6 +716,7 @@ subroutine nc_putvar_by_name_1d_int(ncid, varname, values, start, count)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! if variable not found              
   if (variable_id==-1) then
     if (present(start).and.present(count)) then
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
@@ -774,6 +776,7 @@ subroutine nc_putvar_by_name_2d(ncid, varname, values, start, count)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! if variable not found              
   if (variable_id==-1) then
     if (present(start).and.present(count)) then
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
@@ -834,6 +837,7 @@ subroutine nc_putvar_by_name_2d_int(ncid, varname, values, start, count)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! if variable not found              
   if (variable_id==-1) then
     if (present(start).and.present(count)) then
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
@@ -893,6 +897,7 @@ subroutine nc_putvar_by_name_3d(ncid, varname, values, start, count)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! if variable not found              
   if (variable_id==-1) then
     if (present(start).and.present(count)) then
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
@@ -952,6 +957,7 @@ subroutine nc_putvar_by_name_3d_int(ncid, varname, values, start, count)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! if variable not found              
   if (variable_id==-1) then
     if (present(start).and.present(count)) then
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
@@ -1005,10 +1011,6 @@ subroutine nc_putvar_by_name_1d_into_nd(ncid, varname, values, start, count)
   character(len=80)                          :: fmtstring
   integer                                    :: variable_id 
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
-
   ! A rather preculiar way of determining that count is larger 1 on all but one dimensio
   ! We can't use the FORTRAN intrinsic 'count' here, well, because we have a variable
   ! of this name. sucks
@@ -1018,8 +1020,24 @@ subroutine nc_putvar_by_name_1d_into_nd(ncid, varname, values, start, count)
     print '(A)', "Argument ''count'' must be 1 at all but one dimension. "
     print *, 'count: ', count
     print *, 'start: ', start
+    stop
+  end if
+
+  ! Check whether variable size and values of count are compatible
+  if (product(count).ne.size(values, 1)) then
+    fmtstring = "('ERROR: Variable with name ', A, ' cannot be written.')"
+    print fmtstring, trim(varname)
+    print '(A)', "Value of ''count'' must fit size of variable to dump. "
+    print *, 'count:          ', count
+    print *, 'size(variable): ', start
+    stop
   end if
                   
+  call  getvarid( ncid  = ncid,      &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  ! if variable not found -> ERROR
   if (variable_id==-1) then
     fmtstring = "('ERROR: Variable with name ', A, ' does not exist.')"
     print fmtstring, trim(varname)
@@ -1056,10 +1074,6 @@ subroutine nc_putvar_by_name_1d_into_nd_int(ncid, varname, values, start, count)
   character(len=80)                          :: fmtstring
   integer                                    :: variable_id 
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
-
   ! A rather preculiar way of determining that count is larger 1 on all but one dimensio
   ! We can't use the FORTRAN intrinsic 'count' here, well, because we have a variable
   ! of this name. sucks
@@ -1069,8 +1083,24 @@ subroutine nc_putvar_by_name_1d_into_nd_int(ncid, varname, values, start, count)
     print '(A)', "Argument ''count'' must be 1 at all but one dimension. "
     print *, 'count: ', count
     print *, 'start: ', start
+    stop
+  end if
+
+  ! Check whether variable size and values of count are compatible
+  if (product(count).ne.size(values, 1)) then
+    fmtstring = "('ERROR: Variable with name ', A, ' cannot be written.')"
+    print fmtstring, trim(varname)
+    print '(A)', "Value of ''count'' must fit size of variable to dump. "
+    print *, 'count:          ', count
+    print *, 'size(variable): ', start
+    stop
   end if
                   
+  call  getvarid( ncid  = ncid,      &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  ! if variable not found -> ERROR
   if (variable_id==-1) then
     fmtstring = "('ERROR: Variable with name ', A, ' does not exist.')"
     print fmtstring, trim(varname)
@@ -2348,4 +2378,4 @@ subroutine check(status)
 end subroutine check  
 !-----------------------------------------------------------------------------------------
 
-end module
+end module nc_routines
