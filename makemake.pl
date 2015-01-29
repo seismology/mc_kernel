@@ -57,6 +57,7 @@ print MAKEFILE "\n\n";
 #
 # Define common macros
 #
+print MAKEFILE "# Handle NetCDF and other library paths\n";
 print MAKEFILE "ifeq (\$(strip \$(USE_NETCDF)),true)\n";
 print MAKEFILE "   FFLAGS += -Dunc\n";
 print MAKEFILE "   ifdef NETCDF_PATH\n";
@@ -70,6 +71,11 @@ print MAKEFILE "else\n";
 print MAKEFILE "   LIBS = \n";
 print MAKEFILE "   INCLUDE = \n";
 print MAKEFILE "endif\n\n";
+
+print MAKEFILE "# If the MPI module comes from another compiler version\n";
+print MAKEFILE "ifeq (\$(strip \$(INCLUDE_MPI)),true) \n";
+print MAKEFILE "  FFLAGS += -Dinclude_mpi \n";
+print MAKEFILE "endif \n";
 
 print MAKEFILE "\n\n";
 print MAKEFILE "# cancel m2c implicit rule \n";
