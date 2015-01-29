@@ -34,6 +34,7 @@ module type_parameter
         character(len=1)                     :: component
         character(len=32)                    :: whattodo
         character(len=32)                    :: int_type
+        character(len=32)                    :: int_scheme = 'PARSEVAL'
         character(len=32)                    :: dump_type
         character(len=32)                    :: fftw_plan = 'MEASURE'
         character(len=32)                    :: strain_type_fwd
@@ -183,6 +184,9 @@ subroutine read_parameters(this, input_file_in)
         case('WRITE_SEISMOGRAMS')
            read(keyvalue, *) this%write_smgr
 
+        case('INTEGRATION_SCHEME')
+           read(keyvalue, *) this%int_scheme
+
         end select parameter_to_read
         if (verbose>0) write(lu_out, "('  ', A32,' ',A)")  keyword, trim(keyvalue)
      end do
@@ -217,6 +221,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
   call pbroadcast_char(this%int_type, 0)
+  call pbroadcast_char(this%int_scheme, 0)
 
   if (lowtrim(this%mesh_file_type)=='abaqus') then
      call pbroadcast_char(this%mesh_file, 0)
@@ -613,8 +618,9 @@ subroutine read_filter(this, nomega, df)
    call flush(lu_out)
 
    this%filter_read = .true.
-end subroutine
+
+end subroutine read_filter
 !-----------------------------------------------------------------------------------------
 
-end module
+end module type_parameter
 !=========================================================================================

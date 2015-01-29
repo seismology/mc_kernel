@@ -2,48 +2,57 @@
 module kernel
 use global_parameters,                    only: sp, dp, verbose, lu_out, firstslave, myrank
 use filtering,                            only: filter_type
+use fft,                                  only: rfft_type, taperandzeropad
 use commpi,                               only: pabort
 implicit none
 
-    type kernelspec_type
-        character(len=32), public            :: name
-        real(kind=dp), dimension(2)          :: time_window
-        real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
-                                                                  ! in the time window of 
-                                                                  ! this kernel
-        real(kind=dp), allocatable           :: t(:)
-        real(kind=dp)                        :: dt
-        real(kind=dp)                        :: normalization
-        integer                              :: filter_type
-        character(len=4)                     :: misfit_type
-        character(len=16)                    :: model_parameter
-        character(len=32)                    :: strain_type 
-        type(filter_type), pointer           :: filter
-        logical                              :: initialized = .false.
+  type kernelspec_type
+    private
+    character(len=32), public            :: name
+    real(kind=dp), dimension(2)          :: time_window
+    real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
+                                                              ! in the time window of 
+                                                              ! this kernel
+    real(kind=dp), allocatable           :: t(:)
+    real(kind=dp), allocatable, public   :: t_cut(:)
+    real(kind=dp)                        :: dt
+    real(kind=dp)                        :: normalization
+    integer                              :: filter_type
+    character(len=4)                     :: misfit_type
+    character(len=16), public            :: model_parameter
+    character(len=32)                    :: strain_type 
+    type(filter_type), pointer           :: filter
+    integer, public                      :: ntimes            !< Length of time window in samples
+    type(rfft_type)                      :: fft_data          !< FFT type for Parseval integration
+    real(kind=dp), allocatable           :: datat(:,:)        !< input vector for FFT
+    complex(kind=dp), allocatable        :: dataf(:,:)        !< result vector for FFT
+    integer                              :: ntimes_ft         !< Length of FFT input vector
+    integer                              :: nomega            !< Length of FFT result vector
+    logical                              :: initialized = .false.
 
-        integer                              :: nbasekernels
-        logical                              :: needs_basekernel(6) = .false.
-                                                                    !< Which of the base
-                                                                    !! kernels does this
-                                                                    !! phys. kernel need
-                                                                    !! lam, mu, rho, a, b, c 
-        contains 
-           procedure, pass                   :: init 
-           procedure, pass                   :: calc_misfit_kernel
-           procedure, pass                   :: isinitialized
-           procedure, pass                   :: freeme
-           procedure, pass                   :: apply_filter_2d
-           procedure, pass                   :: apply_filter_3d
-           generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
-    end type
+    integer, public                      :: nbasekernels
+    logical, public                      :: needs_basekernel(6) = .false.
+                                                                !< Which of the base
+                                                                !! kernels does this
+                                                                !! phys. kernel need
+                                                                !! lam, mu, rho, a, b, c 
+    contains 
+       procedure, pass                   :: init 
+       procedure, pass                   :: cut_and_add_seismogram
+       procedure, pass                   :: calc_misfit_kernel
+       procedure, pass                   :: isinitialized
+       procedure, pass                   :: freeme
+       procedure, pass                   :: apply_filter_2d
+       procedure, pass                   :: apply_filter_3d
+       generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
+       procedure, pass                   :: integrate_parseval
+  end type
 
 contains 
 
 !-------------------------------------------------------------------------------
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                 seis, dt, timeshift_fwd, deconv_stf, write_smgr)
-   use fft,                           only  : rfft_type, taperandzeropad
-   use filtering,                     only  : timeshift_type
 
    class(kernelspec_type)                  :: this
    character(len=*), intent(in)            :: name
@@ -57,15 +66,11 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    logical, intent(in), optional           :: deconv_stf
    logical, intent(in), optional           :: write_smgr
    
-   type(rfft_type)                         :: fft_data
-   type(timeshift_type)                    :: timeshift
-   complex(kind=dp), allocatable           :: seis_fd(:,:)
-   real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
-   real(kind=dp),    allocatable           :: seis_filtered(:,:)
    character(len=32)                       :: fmtstring
    logical                                 :: deconv_stf_loc, write_smgr_loc
+   real(kind=dp)                           :: timeshift_fwd_loc
 
-   integer                                 :: ntimes, ntimes_ft, nomega, isample
+   integer                                 :: ntimes, isample
 
    if(this%initialized) then
       write(*,*) 'This kernel is already initialized'
@@ -76,12 +81,21 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    this%filter            => filter
    this%misfit_type       = misfit_type
    this%model_parameter   = model_parameter
-   this%initialized       = .true.
    this%dt                = dt
 
+   ! Test argument consistency
    deconv_stf_loc = .false.
    if (present(deconv_stf)) then
      deconv_stf_loc = deconv_stf
+     timeshift_fwd_loc = 0
+   else
+     if (.not.present(timeshift_fwd)) then
+       write(*,*) 'Initialize Kernel needs a value for timeshift_fwd, if '
+       write(*,*) 'deconv_stf is set to false'
+       call pabort()
+     else
+       timeshift_fwd_loc = timeshift_fwd
+     end if
    end if
 
    write_smgr_loc = .false.
@@ -89,21 +103,29 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
      write_smgr_loc = write_smgr
    end if
 
-   if ( (.not.deconv_stf_loc).and.(.not.present(timeshift_fwd)) ) then
-     write(*,*) 'Initialize Kernel needs a value for timeshift_fwd, if '
-     write(*,*) 'deconv_stf is set to false'
-     call pabort()
-   end if
-     
+   ! Cut seismogram to kernel time window and add to kernel type
+   call this%cut_and_add_seismogram(seis, deconv_stf_loc, write_smgr_loc, timeshift_fwd_loc)
+
+   ! Set length of kernel time window
+   this%ntimes = size(this%seis,1)
+
+   ! Init FFT type for kernel time window, here for Parseval integration
+   call this%fft_data%init(this%ntimes, 1, 1, this%dt)
+   this%ntimes_ft = this%fft_data%get_ntimes()
+   this%nomega    = this%fft_data%get_nomega()
+
+   allocate(this%datat(this%ntimes,1))
+   allocate(this%dataf(this%nomega,1))
+
 
    if (verbose>0) then
       write(lu_out,*) '  ---------------------------------------------------------'
       write(lu_out,'(2(A))')         '   Initialize kernel ', this%name
       write(lu_out,*) '  ---------------------------------------------------------'
       write(lu_out,'(A,2(F8.1))')    '   Time window:  ', this%time_window
+      write(lu_out,'(A,I5)')         '   nsamples   :  ', this%ntimes
       write(lu_out,'(2(A))')         '   Misfit type:  ', this%misfit_type
       write(lu_out,'(2(A))')         '   Model param:  ', this%model_parameter
-      write(lu_out,'(A,L1)')         '   Initialized:  ', this%initialized
       write(lu_out,'(2(A))')         '   Filter type:  ', this%filter%filterclass
       write(lu_out,'(A,4(F8.3))')    '   Filter freq:  ', this%filter%frequencies
       if (present(timeshift_fwd)) then
@@ -118,6 +140,30 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    ! specific kernel needs
    call tabulate_kernels(this%model_parameter, this%needs_basekernel, this%strain_type)
 
+
+   this%initialized       = .true.
+
+end subroutine init
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!> Cuts seismogram to kernel time window and adds it to the kernel type
+!! Is called by init subroutine
+subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_fwd)
+   use filtering,                     only  : timeshift_type
+   class(kernelspec_type)                  :: this
+   real(kind=dp), intent(in)               :: seis(:)
+   logical, intent(in)                     :: deconv_stf
+   logical, intent(in)                     :: write_smgr
+   real(kind=dp), intent(in)               :: timeshift_fwd
+
+   type(rfft_type)                         :: fft_data
+   type(timeshift_type)                    :: timeshift
+   complex(kind=dp), allocatable           :: seis_fd(:,:)
+   real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
+   real(kind=dp),    allocatable           :: seis_filtered(:,:)
+   integer                                 :: ntimes, ntimes_ft, nomega, isample
+
    ! Save seismogram in the timewindow of this kernel
 
    ! Allocate temporary variable
@@ -125,15 +171,15 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    allocate(seis_td(ntimes, 1))
    seis_td(:,1) = seis
 
-   ! Initialize FFT for the seismogram
-   call fft_data%init(ntimes, 1, 1, dt)
+   ! Initialize FFT type for the seismogram 
+   call fft_data%init(ntimes, 1, 1, this%dt)
    ntimes_ft = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
 
-   if (verbose>0) then
-      fmtstring = '(A, I8, A, I8)'
-      write(lu_out,fmtstring) '   ntimes: ',  ntimes,     '  , nfreq: ', nomega
-   end if
+   !if (verbose>0) then
+   !   fmtstring = '(A, I8, A, I8)'
+   !   write(lu_out,fmtstring) '   ntimes: ',  ntimes,     '  , nfreq: ', this%nomega
+   !end if
 
    allocate(seis_fd(nomega, 1))
    allocate(seis_filtered(ntimes_ft, 1))
@@ -144,7 +190,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    ! FFT, timeshift and filter the seismogram
    call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft), seis_fd)
  
-   if (.not.deconv_stf_loc) then
+   if (.not.deconv_stf) then
      ! It's slightly ineffective to init that every time, but it is only 
      ! called once per receiver at initialization.
      call timeshift%init_ts(fft_data%get_f(), dtshift = timeshift_fwd)
@@ -154,6 +200,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
 
    seis_fd = this%filter%apply_2d(seis_fd)
    call fft_data%irfft(seis_fd, seis_filtered)
+
    call fft_data%freeme()
 
    ! Cut timewindow of the kernel from the seismogram
@@ -164,7 +211,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    call cut_timewindow(this%t,             &
                        this%t,             &
                        this%time_window,   &
-                       t_cut )
+                       this%t_cut )
 
    if (sum(this%seis**2).lt.1.d-100) then
        this%normalization = 0
@@ -179,7 +226,8 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(lu_out,*) ''
    end if
 
-   if (firstslave.and.write_smgr_loc) then
+   ! Write seismogram to disk (raw, filtered and cut to time window)
+   if (firstslave.and.write_smgr) then
       open(unit=100,file='seismogram_raw_'//trim(this%name), action='write')
       do isample = 1, size(seis,1)
          write(100,*) this%t(isample), seis(isample)
@@ -194,34 +242,40 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
 
       open(unit=100,file='seismogram_cut_'//trim(this%name), action='write')
       do isample = 1, size(this%seis,1)
-         write(100,*) t_cut(isample), this%seis(isample)
+         write(100,*) this%t_cut(isample), this%seis(isample)
       end do
       close(100)
    end if
-
-end subroutine init
+end subroutine cut_and_add_seismogram
 !-------------------------------------------------------------------------------
+
 
 !-------------------------------------------------------------------------------
 logical function isinitialized(this)
    class(kernelspec_type)                   :: this
+
    isinitialized = this%initialized
-end function
+
+end function isinitialized
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
 subroutine freeme(this)
    class(kernelspec_type)                   :: this
+
    this%filter => NULL()
    this%initialized = .false.
-end subroutine
+   call this%fft_data%freeme()
+
+end subroutine freeme
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function calc_misfit_kernel(this, timeseries)
+function calc_misfit_kernel(this, timeseries, int_scheme)
    !< This routine can take multiple time series and calculate the kernel at each
    class(kernelspec_type)                  :: this
    real(kind=dp), intent(in)               :: timeseries(:,:)
+   character(len=:), intent(in)            :: int_scheme
    real(kind=dp)                           :: calc_misfit_kernel(size(timeseries,2))
    real(kind=dp), allocatable              :: cut_timeseries(:)
    integer                                 :: itrace, ntrace, lu_errorlog, it
@@ -239,8 +293,15 @@ function calc_misfit_kernel(this, timeseries)
                              this%time_window,       &
                              cut_timeseries)
 
-         calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
-                                      * this%normalization
+         select case(lowtrim(int_scheme))
+         case('trapezoidal')
+           calc_misfit_kernel(itrace) = integrate_trapezoidal( cut_timeseries * this%seis, &
+                                                               this%dt ) &
+                                        * this%normalization
+         case('parseval')
+           calc_misfit_kernel(itrace) = integrate_parseval( cut_timeseries, this%seis) &
+                                        * this%normalization
+         end select
       end do
 
    case('AM')
@@ -260,6 +321,7 @@ function calc_misfit_kernel(this, timeseries)
 
    end select
 
+   ! Handle the case that the Kernel is NaN
    if (any(calc_misfit_kernel.ne.calc_misfit_kernel)) then ! Kernel is NaN
        print *, 'ERROR Kernel has value NaN!'
        write(lu_out, *) 'ERROR Kernel has value NaN! Aborting calculation...'
@@ -277,7 +339,7 @@ function calc_misfit_kernel(this, timeseries)
                                this%time_window,       &
                                cut_timeseries)
 
-           calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
+           calc_misfit_kernel(itrace) = integrate_trapezoidal( cut_timeseries * this%seis, this%dt ) &
                                         * this%normalization
 
            write(fnam_errorlog,'(I06, "_errorlog_timeseries_full")') myrank                             
@@ -580,7 +642,7 @@ subroutine cut_timewindow(t, x, timewindow, cut_tw, ierror)
    cut_tw(:) = cut_timewindow_temp(1:iintimewindow)
    
 
-end subroutine
+end subroutine cut_timewindow
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
@@ -613,7 +675,7 @@ end function apply_filter_2d
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-pure function integrate(timeseries, dt)
+pure function integrate_trapezoidal(timeseries, dt) result(integrate)
     real(kind=dp), intent(in)   :: timeseries(:), dt
     real(kind=dp)               :: integrate
     integer                     :: npoints
@@ -624,8 +686,38 @@ pure function integrate(timeseries, dt)
     integrate = timeseries(1) + timeseries(npoints) + 2*sum(timeseries(2:npoints-1), 1)
     integrate = integrate * dt * 0.5
 
-end function integrate
+end function integrate_trapezoidal
 !-------------------------------------------------------------------------------
 
-end module
+!-------------------------------------------------------------------------------
+function integrate_parseval(this, a, b) result(integrate)
+    class(kernelspec_type)                        :: this
+    real(kind=dp), intent(in)                     :: a(:), b(:)
+    real(kind=dp)                                 :: integrate
+    complex(kind=dp), dimension(this%nomega,1)    :: af, bf, atimesb
+
+    this%datat(:,1) = a
+    call this%fft_data%rfft(taperandzeropad(array = this%datat,      &
+                                            ntimes = this%ntimes_ft, &
+                                            ntaper = 0 ),            &
+                            af)
+    
+    this%datat(:,1) = b
+    call this%fft_data%rfft(taperandzeropad(array = this%datat,      &
+                                            ntimes = this%ntimes_ft, &
+                                            ntaper = 0 ),            &
+                            bf)
+
+    atimesb = af * conjg(bf)                      
+
+    ! Integrate by Trapezoidal rule in frequency domain
+    integrate = real((atimesb(1, 1) +                          &
+                      atimesb(this%nomega, 1) +                &
+                      2 * sum(atimesb(2:this%nomega-1, 1)))  * &
+                     this%fft_data%get_df() , kind=dp)
+
+end function integrate_parseval
+!-------------------------------------------------------------------------------
+
+end module kernel
 !=========================================================================================

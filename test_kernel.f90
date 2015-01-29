@@ -129,6 +129,71 @@ end subroutine test_kernel_init
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
+subroutine test_integrate_parseval
+
+   type(kernelspec_type)       :: kernel
+   type(filter_type), target   :: gabor
+
+   character(len=32)           :: filtername, filterclass
+   real(kind=dp)               :: veloseis(256), integral_parseval, integral_trapezoidal
+   real(kind=dp), allocatable  :: func_to_int1(:), func_to_int2(:)
+
+   ! Just create some kernel with a length of 256 samples
+   ! Same as in test_kernel_init
+   filtername  = 'Gabor'
+   filterclass = 'Gabor'
+   call gabor%create(filtername, 1.0d0, 257, filterclass, [5.0d0, 0.5d0, 0.d0, 0.d0])
+
+   veloseis = 0.0
+
+   call kernel%init(name            = 'Testkernel      ',&
+                    time_window     = [1.0d0, 2.0d0],    &
+                    filter          = gabor,             &
+                    misfit_type     = 'CC  ',            &  
+                    model_parameter = 'vp  ',            &
+                    seis            = veloseis,          &
+                    dt              = 0.1d0,             &
+                    timeshift_fwd   = 1.0d0,             &
+                    deconv_stf      = .false.)
+
+
+   ! Now create a function to integrate (sum of two sines)
+
+   allocate(func_to_int1(kernel%ntimes))
+   allocate(func_to_int2(kernel%ntimes))
+
+   func_to_int1(:) = sin(kernel%t_cut * 2 * pi)
+   func_to_int2(:) = sin(kernel%t_cut * 2 * pi)
+
+   integral_parseval = kernel%integrate_parseval(func_to_int1, func_to_int2)
+
+   call assert_comparable(integral_parseval, 0.5d0, 1d-7,  &
+                          'Integral of sin(2pix)**2 from 1 to 2')
+
+
+   func_to_int1(:) = sin(kernel%t_cut * 2 * pi)
+   func_to_int2(:) = cos(kernel%t_cut * 3 * pi)
+
+   integral_parseval = kernel%integrate_parseval(func_to_int1, func_to_int2)
+
+   call assert_comparable(integral_parseval, 0.26568757573375174d0, 1d-7,  &
+                          'Integral of sin(2pix)*cos(3pix) from 1 to 2')
+
+
+   func_to_int1(:) = sin(kernel%t_cut * 2.2 * pi)
+   func_to_int2(:) = cos(kernel%t_cut * 1.7 * pi)
+
+   integral_parseval = kernel%integrate_parseval(func_to_int1, func_to_int2)
+
+   call assert_comparable(integral_parseval, 0.32528761700943976d0, 1d-7,  &
+                          'Integral of sin(2.2pix)*cos(1.7pix) from 1 to 2')
+
+   call kernel%freeme()
+
+end subroutine test_integrate_parseval
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 subroutine test_tabulate_kernel()
    character(len=6)  :: model_param
    logical           :: needs_basekernel(6)

@@ -80,6 +80,13 @@ ELEMENTS_PER_TASK    100
 # Use quasirandom numbers instead of pseudorandom ones
 USE_QUASIRANDOM_NUMBERS true
 
+# Integration scheme
+# Options:
+# parseval:    FFT seismogram and convolved wavefield and use Parseval's Theorem
+#              then trapezoidal rule is used in frequency domain
+# trapezoidal: Use the trapezoidal rule in time domain
+INTEGRATION_SCHEME  parseval
+
 # FFTW Planning to use
 # Options: 
 # ESTIMATE:   Use heuristic to find best FFT plan

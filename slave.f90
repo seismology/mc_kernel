@@ -255,9 +255,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: istep_model
     integer(kind=long)                  :: iclockold
     integer                             :: ndim
-    integer, parameter                  :: taper_length = 10! This is the bare minimum. It does 
-                                                            ! not produce artifacts yet, at least 
-                                                            ! no obvious ones
+    integer, parameter                  :: taper_length = 10      !< This is the bare minimum. It does 
+                                                                  !! not produce artifacts yet, at least 
+                                                                  !! no obvious ones
     integer, parameter                  :: nptperstep_model = 100 !< Points per MC iteration for 
                                                                   !! Integration of model parameters
                                                                   !! Larger than for kernels, since
@@ -375,7 +375,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            iclockold = tick(id=id_inv_mesh)
            
            ! Stop MC integration in this element after max_iter iterations
-           if (any(niterations(:, ielement)=parameters%max_iter)) exit 
+           if (any(niterations(:, ielement)==parameters%max_iter)) exit 
 
            ! Load forward field
            iclockold = tick()
@@ -467,7 +467,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                        ! Calculate scalar misfit base kernels from convolved time traces
                        kernelvalue_basekers(:,ikernel,ibasekernel) =         &
                                             parameters%kernel(ikernel)       &
-                                            %calc_misfit_kernel(conv_field)
+                                            %calc_misfit_kernel(conv_field, parameters%int_scheme)
                                                                                            
                        iclockold = tick(id=id_kernel, since=iclockold)
 
@@ -521,7 +521,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
         end do ! End of Monte Carlo loop
     
-        if (any(niterations(:, ielement)=parameters%max_iter)) then
+        if (any(niterations(:, ielement)==parameters%max_iter)) then
            fmtstring = "('Element', I6, ': Max number of iterations reached. ', I5 , ' kernels were not converged.')"
            write(lu_out, fmtstring) ielement, parameters%nkernel - int_kernel(1)%countconverged()
         else
