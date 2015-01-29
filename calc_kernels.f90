@@ -154,6 +154,7 @@ subroutine start_clock_master
   id_get_next_task   = clock_id('Get next task for Slave')
   id_extract         = clock_id('Extract receive buffer')
   id_mpi             = clock_id('MPI communication with Slaves')
+  id_dump            = clock_id('Dump intermediate results')
   id_write_kernel    = clock_id('Write Kernels to disk')
   id_mult_kernel     = clock_id('Multiply Kernels with Model')
 
