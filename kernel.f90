@@ -10,9 +10,12 @@ implicit none
     private
     character(len=32), public            :: name
     real(kind=dp), dimension(2)          :: time_window
-    real(kind=dp), allocatable           :: seis(:)           ! Seismogram (Velocity or displacement)
+    real(kind=dp), allocatable           :: seis_cut(:)       ! Seismogram (Velocity or displacement)
                                                               ! in the time window of 
                                                               ! this kernel
+    complex(kind=dp), allocatable        :: seis_cut_fd(:,:)  ! Seismogram (Velocity or displacement)
+                                                              ! in the time window of 
+                                                              ! this kernel in frequency domain
     real(kind=dp), allocatable           :: t(:)
     real(kind=dp), allocatable, public   :: t_cut(:)
     real(kind=dp)                        :: dt
@@ -45,7 +48,10 @@ implicit none
        procedure, pass                   :: apply_filter_2d
        procedure, pass                   :: apply_filter_3d
        generic                           :: apply_filter => apply_filter_2d, apply_filter_3d
-       procedure, pass                   :: integrate_parseval
+       procedure, pass                   :: integrate_parseval_both_real
+       procedure, pass                   :: integrate_parseval_b_complex
+       generic                           :: integrate_parseval => integrate_parseval_both_real, &
+                                                                  integrate_parseval_b_complex
   end type
 
 contains 
@@ -107,7 +113,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    call this%cut_and_add_seismogram(seis, deconv_stf_loc, write_smgr_loc, timeshift_fwd_loc)
 
    ! Set length of kernel time window
-   this%ntimes = size(this%seis,1)
+   this%ntimes = size(this%seis_cut,1)
 
    ! Init FFT type for kernel time window, here for Parseval integration
    call this%fft_data%init(this%ntimes, 1, 1, this%dt)
@@ -116,6 +122,13 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
 
    allocate(this%datat(this%ntimes,1))
    allocate(this%dataf(this%nomega,1))
+   allocate(this%seis_cut_fd(this%nomega,1))
+
+   ! FFT the cut and filtered seismogram
+   call this%fft_data%rfft(taperandzeropad(array = reshape(this%seis_cut, [this%ntimes, 1]),  &
+                                           ntimes = this%ntimes_ft, &
+                                           ntaper = 0 ),            &
+                            this%seis_cut_fd)
 
 
    if (verbose>0) then
@@ -207,21 +220,21 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    call cut_timewindow(this%t,             &
                        seis_filtered(:,1), &
                        this%time_window,   &
-                       this%seis )
+                       this%seis_cut )
    call cut_timewindow(this%t,             &
                        this%t,             &
                        this%time_window,   &
                        this%t_cut )
 
-   if (sum(this%seis**2).lt.1.d-100) then
+   if (sum(this%seis_cut**2).lt.1.d-100) then
        this%normalization = 0
    else
-       this%normalization = 1.d0/sum(this%seis**2)
+       this%normalization = 1.d0/sum(this%seis_cut**2)
    end if
    
    if (verbose>0) then
       write(lu_out,*) '  Normalization coefficient: ', this%normalization
-      write(lu_out,*) '  Length of seismogram: ', size(this%seis,1), ' samples'
+      write(lu_out,*) '  Length of seismogram: ', size(this%seis_cut,1), ' samples'
       write(lu_out,*) '  ---------------------------------------------------------'
       write(lu_out,*) ''
    end if
@@ -241,8 +254,8 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
       close(100)
 
       open(unit=100,file='seismogram_cut_'//trim(this%name), action='write')
-      do isample = 1, size(this%seis,1)
-         write(100,*) this%t_cut(isample), this%seis(isample)
+      do isample = 1, size(this%seis_cut,1)
+         write(100,*) this%t_cut(isample), this%seis_cut(isample)
       end do
       close(100)
    end if
@@ -272,12 +285,13 @@ end subroutine freeme
 
 !-------------------------------------------------------------------------------
 function calc_misfit_kernel(this, timeseries, int_scheme)
+   use simple_routines, only                : lowtrim
    !< This routine can take multiple time series and calculate the kernel at each
    class(kernelspec_type)                  :: this
    real(kind=dp), intent(in)               :: timeseries(:,:)
-   character(len=:), intent(in)            :: int_scheme
+   character(len=*), intent(in)            :: int_scheme
    real(kind=dp)                           :: calc_misfit_kernel(size(timeseries,2))
-   real(kind=dp), allocatable              :: cut_timeseries(:)
+   real(kind=dp), allocatable              :: timeseries_cut(:)
    integer                                 :: itrace, ntrace, lu_errorlog, it
    character(len=64)                       :: fmtstring, fnam_errorlog
 
@@ -291,15 +305,15 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
          call cut_timewindow(this%t,                 &
                              timeseries(:, itrace),  &
                              this%time_window,       &
-                             cut_timeseries)
+                             timeseries_cut)
 
          select case(lowtrim(int_scheme))
          case('trapezoidal')
-           calc_misfit_kernel(itrace) = integrate_trapezoidal( cut_timeseries * this%seis, &
+           calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_cut, &
                                                                this%dt ) &
                                         * this%normalization
          case('parseval')
-           calc_misfit_kernel(itrace) = integrate_parseval( cut_timeseries, this%seis) &
+           calc_misfit_kernel(itrace) = this%integrate_parseval( timeseries_cut, this%seis_cut_fd) &
                                         * this%normalization
          end select
       end do
@@ -337,9 +351,9 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
            call cut_timewindow(this%t,                 &
                                timeseries(:, itrace),  &
                                this%time_window,       &
-                               cut_timeseries)
+                               timeseries_cut)
 
-           calc_misfit_kernel(itrace) = integrate_trapezoidal( cut_timeseries * this%seis, this%dt ) &
+           calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_cut, this%dt ) &
                                         * this%normalization
 
            write(fnam_errorlog,'(I06, "_errorlog_timeseries_full")') myrank                             
@@ -351,7 +365,7 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
 
            write(fnam_errorlog,'(I06, "_errorlog_timeseries_cut")') myrank                             
            open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
-           write(lu_errorlog, '(ES15.8)') cut_timeseries
+           write(lu_errorlog, '(ES15.8)') timeseries_cut
            close(lu_errorlog)
 
            exit ! Only the first time series is written out, exit the loop
@@ -359,7 +373,7 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
        end do
        write(fnam_errorlog,'(I06, "_errorlog_seismogram")') myrank                             
        open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
-       write(lu_errorlog, *) this%seis
+       write(lu_errorlog, *) this%seis_cut
        close(lu_errorlog)
        call pabort
    end if
@@ -690,7 +704,7 @@ end function integrate_trapezoidal
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function integrate_parseval(this, a, b) result(integrate)
+function integrate_parseval_both_real(this, a, b) result(integrate)
     class(kernelspec_type)                        :: this
     real(kind=dp), intent(in)                     :: a(:), b(:)
     real(kind=dp)                                 :: integrate
@@ -716,7 +730,32 @@ function integrate_parseval(this, a, b) result(integrate)
                       2 * sum(atimesb(2:this%nomega-1, 1)))  * &
                      this%fft_data%get_df() , kind=dp)
 
-end function integrate_parseval
+end function integrate_parseval_both_real
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+function integrate_parseval_b_complex(this, a, bf) result(integrate)
+    class(kernelspec_type)                        :: this
+    real(kind=dp), intent(in)                     :: a(:)
+    complex(kind=dp), intent(in)                  :: bf(:,:)
+    real(kind=dp)                                 :: integrate
+    complex(kind=dp), dimension(this%nomega,1)    :: af, atimesb
+
+    this%datat(:,1) = a
+    call this%fft_data%rfft(taperandzeropad(array = this%datat,      &
+                                            ntimes = this%ntimes_ft, &
+                                            ntaper = 0 ),            &
+                            af)
+    
+    atimesb = af * conjg(bf)                      
+
+    ! Integrate by Trapezoidal rule in frequency domain
+    integrate = real((atimesb(1, 1) +                          &
+                      atimesb(this%nomega, 1) +                &
+                      2 * sum(atimesb(2:this%nomega-1, 1)))  * &
+                     this%fft_data%get_df() , kind=dp)
+
+end function integrate_parseval_b_complex
 !-------------------------------------------------------------------------------
 
 end module kernel
