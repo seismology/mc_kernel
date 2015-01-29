@@ -71,6 +71,17 @@ subroutine init(this, lat, lon, mij, depth)
    this%mij_voigt(6) = this%mij(6)
 
    call this%def_rot_matrix()
+  
+   write(lu_out, '(" Source:    ")') 
+   write(lu_out, '("  Depth:     ", F8.3)')   depth
+   write(lu_out, '("  Latitude:  ", F8.3)')   this%latd
+   write(lu_out, '("  Longitude: ", F8.3)')   this%lond
+   write(lu_out, '("  M_rr:      ", E15.8)')  this%mij(1)
+   write(lu_out, '("  M_tt:      ", E15.8)')  this%mij(2)
+   write(lu_out, '("  M_pp:      ", E15.8)')  this%mij(3)
+   write(lu_out, '("  M_rt:      ", E15.8)')  this%mij(4)
+   write(lu_out, '("  M_rp:      ", E15.8)')  this%mij(5)
+   write(lu_out, '("  M_tp:      ", E15.8)')  this%mij(6)
 
    this%have_stf = .false.
 

@@ -251,6 +251,7 @@ subroutine read_source(this)
 
    call pbarrier
 
+   write(lu_out,'(A)') '***************************************************************'
    if (master) then
        write(lu_out,*) 'Reading source from file ', trim(this%source_file)
        open(unit=lu_source, file=trim(this%source_file), status='old')
@@ -274,11 +275,12 @@ subroutine read_source(this)
 
    end if
 
+   write(lu_out,'(A)') '***************************************************************'
+
    call pbroadcast_dble(latd, 0)
    call pbroadcast_dble(lond, 0)
    call pbroadcast_dble(depth, 0)
    call pbroadcast_dble_arr(Mij_dyncm, 0)
-   
 
    call this%source%init(lat=latd, lon=lond, mij=Mij_dyncm*1.E-7, depth=depth)
 
@@ -361,8 +363,6 @@ subroutine read_receiver(this)
                                     lastkernel  = lastkernel       )
       firstkernel = firstkernel + recnkernel
 
-      fmtstring = '("  Receiver ", A, ", lat: ", F8.3, ", lon: ", F8.3)'
-      write(lu_out, fmtstring) trim(recname), reclatd, reclond
       if (master) then
           do ikernel = 1, recnkernel
              ! Just get the model parameter
@@ -378,6 +378,13 @@ subroutine read_receiver(this)
 
 
        call this%receiver(irec)%rotate_receiver( this%source%trans_rot_mat )
+       
+       fmtstring = '("  Receiver ''", A8, "'', lat:  ", F8.3, ", lon: ", F8.3)'
+       write(lu_out, fmtstring) trim(recname), reclatd, reclond
+       fmtstring = '("                       dist: ", F8.3, ", azi: ", F8.3)'
+       write(lu_out, fmtstring), this%receiver(irec)%theta / deg2rad, &
+                                 this%receiver(irec)%phi / deg2rad
+
    end do
 
    call pbroadcast_char(this%strain_type_fwd, 0)
