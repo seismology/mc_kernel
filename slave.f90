@@ -375,7 +375,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            iclockold = tick(id=id_inv_mesh)
            
            ! Stop MC integration in this element after max_iter iterations
-           if (any(niterations(:, ielement)>parameters%max_iter)) exit 
+           if (any(niterations(:, ielement)=parameters%max_iter)) exit 
 
            ! Load forward field
            iclockold = tick()
@@ -521,7 +521,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
         end do ! End of Monte Carlo loop
     
-        if (any(niterations(:, ielement)>parameters%max_iter)) then
+        if (any(niterations(:, ielement)=parameters%max_iter)) then
            fmtstring = "('Element', I6, ': Max number of iterations reached. ', I5 , ' kernels were not converged.')"
            write(lu_out, fmtstring) ielement, parameters%nkernel - int_kernel(1)%countconverged()
         else
