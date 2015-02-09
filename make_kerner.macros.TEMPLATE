@@ -17,6 +17,8 @@ NETCDF_PATH =  $(HOME)/local # e.g. $(HOME)/local, uses /usr/include if not defi
 # make sure to build mesh with one processor
 SERIAL = false
 
+INCLUDE_MPI = true
+
 ####################################
 # Choose compiler names and flags: #
 ####################################
