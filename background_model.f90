@@ -4,23 +4,26 @@ module backgroundmodel
 
   implicit none
 
-  type backgroundmodel_type
-    integer, private             :: nmodel_parameters = 10 !< Number of basic model parameters
-                                                           !! which are availabe in backgroundmodel_type
-    character(len=3), private    :: parameter_name(10) =                 &
-                                    ['vp ', 'vs ', 'rho', 'vph', 'vpv',  &
-                                     'vsh', 'vsv', 'eta', 'phi', 'xi ']
+  integer, parameter           :: nmodel_parameters = 10 !< Number of basic model parameters
+                                                         !! which are availabe in backgroundmodel_type
 
-    real(kind=sp), allocatable :: c_vs(:)
+  character(len=3)             :: parameter_name(nmodel_parameters) =  &
+                                  ['vp ', 'vs ', 'rho', 'vph', 'vpv',  &
+                                   'vsh', 'vsv', 'eta', 'phi', 'xi ']
+
+  type backgroundmodel_type
+
     real(kind=sp), allocatable :: c_vp(:)
+    real(kind=sp), allocatable :: c_vs(:)
     real(kind=sp), allocatable :: c_rho(:)
-    real(kind=sp), allocatable :: c_vsh(:)
-    real(kind=sp), allocatable :: c_vsv(:)
     real(kind=sp), allocatable :: c_vph(:)
     real(kind=sp), allocatable :: c_vpv(:)
+    real(kind=sp), allocatable :: c_vsh(:)
+    real(kind=sp), allocatable :: c_vsv(:)
     real(kind=sp), allocatable :: c_eta(:)
     real(kind=sp), allocatable :: c_phi(:)
     real(kind=sp), allocatable :: c_xi(:)
+
     contains 
       procedure, pass          :: init
       procedure, pass          :: combine
@@ -152,11 +155,11 @@ end subroutine combine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function get_parameter_names(this) result (parameter_name)
+function get_parameter_names(this)
   class(backgroundmodel_type) :: this
-  character(len=3)            :: parameter_name(this%nmodel_parameters)
+  character(len=3)            :: get_parameter_names(nmodel_parameters)
 
-  parameter_name = this%parameter_name
+  get_parameter_names = parameter_name
 end function get_parameter_names
 !-----------------------------------------------------------------------------------------
 
@@ -164,7 +167,7 @@ end function get_parameter_names
 function weight(this, weights) result(all_coeffs)
   class(backgroundmodel_type) :: this
   real(kind=dp), intent(in)   :: weights(:)
-  real(kind=dp)               :: all_coeffs(this%nmodel_parameters, size(weights,1))
+  real(kind=dp)               :: all_coeffs(nmodel_parameters, size(weights,1))
 
   integer                     :: npoint, ipoint
 
