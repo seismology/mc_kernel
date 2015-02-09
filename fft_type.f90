@@ -13,8 +13,8 @@ module fft
 
   type :: rfft_type
      private
-     integer(8)                 :: plan_fft, plan_ifft
-     integer(8)                 :: plan_fft_1d, plan_ifft_1d
+     integer(kind=long)         :: plan_fft, plan_ifft
+     integer(kind=long)         :: plan_fft_1d, plan_ifft_1d
      integer                    :: nomega, ntimes, ntraces, ndim, ntraces_fft
      real(kind=dp)              :: dt, df
      logical                    :: initialized = .false.
@@ -457,6 +457,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+! Taper and zeropad 1D array of time series
 function taperandzeropad_1d(array, ntimes, ntaper, end_only)
   real(kind=dp), intent(in)     :: array(:,:)
   integer, intent(in)           :: ntimes
@@ -516,6 +517,7 @@ end function taperandzeropad_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+! Taper and zeropad 2D array of time series
 function taperandzeropad_md(array, ntimes, ntaper, end_only)
   real(kind=dp), intent(in)     :: array(:,:,:)
   integer,       intent(in)     :: ntimes
