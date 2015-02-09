@@ -23,6 +23,7 @@ implicit none
     integer                              :: filter_type
     character(len=4)                     :: misfit_type
     character(len=16), public            :: model_parameter
+    integer,           public            :: model_parameter_index
     character(len=32)                    :: strain_type 
     type(filter_type), pointer           :: filter
     integer, public                      :: ntimes            !< Length of time window in samples
@@ -59,7 +60,8 @@ contains
 !-------------------------------------------------------------------------------
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                 seis, dt, timeshift_fwd, deconv_stf, write_smgr)
-
+   use backgroundmodel, only                : parameter_name, nmodel_parameters
+              
    class(kernelspec_type)                  :: this
    character(len=*), intent(in)            :: name
    real(kind=dp), intent(in)               :: time_window(2)
@@ -76,7 +78,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    logical                                 :: deconv_stf_loc, write_smgr_loc
    real(kind=dp)                           :: timeshift_fwd_loc
 
-   integer                                 :: ntimes, isample
+   integer                                 :: ntimes, isample, iparam
 
    if(this%initialized) then
       write(*,*) 'This kernel is already initialized'
@@ -130,6 +132,23 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                                            ntaper = 0 ),            &
                             this%seis_cut_fd)
 
+   ! Determine the index of the model parameter in the list defined in backgroundmodel.f90
+   do iparam = 1, nmodel_parameters
+     if (this%model_parameter == parameter_name(iparam)) then
+       this%model_parameter_index = iparam
+       exit
+     end if
+   end do
+   if (iparam == nmodel_parameters + 1) then
+     print '("ERROR: Unknown model parameter for kernel ", A, ": ", A)', &
+       trim(this%name), trim(this%model_parameter)
+     print '("Available options: ", 10(A3))', parameter_name
+     call pabort(do_traceback=.false.)
+   end if
+
+   ! Check and tabulate, which base kernels the model parameter for this 
+   ! specific kernel needs
+   call tabulate_kernels(this%model_parameter, this%needs_basekernel, this%strain_type)
 
    if (verbose>0) then
       write(lu_out,*) '  ---------------------------------------------------------'
@@ -139,6 +158,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(lu_out,'(A,I5)')         '   nsamples   :  ', this%ntimes
       write(lu_out,'(2(A))')         '   Misfit type:  ', this%misfit_type
       write(lu_out,'(2(A))')         '   Model param:  ', this%model_parameter
+      write(lu_out,'(A, I3)')        '   Param index:  ', this%model_parameter_index
       write(lu_out,'(2(A))')         '   Filter type:  ', this%filter%filterclass
       write(lu_out,'(A,4(F8.3))')    '   Filter freq:  ', this%filter%frequencies
       if (present(timeshift_fwd)) then
@@ -147,12 +167,6 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(lu_out,'(A,L1)')         '   Deconvolve :  ', deconv_stf_loc
       write(lu_out,'(A,L1)')         '   Write smgrs:  ', write_smgr_loc
    end if
-
-
-   ! Check and tabulate, which base kernels the model parameter for this 
-   ! specific kernel needs
-   call tabulate_kernels(this%model_parameter, this%needs_basekernel, this%strain_type)
-
 
    this%initialized       = .true.
 

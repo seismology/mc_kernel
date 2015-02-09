@@ -301,7 +301,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
     call flush(lu_out)
     this%params_set = .true.
 
-end subroutine
+end subroutine set_params
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

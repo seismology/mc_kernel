@@ -532,6 +532,9 @@ subroutine read_kernel(this, sem_data, filter)
              this%kernel(ikernel)%name = kernelname
          end if
 
+         ! Communicate the model parameter index back to the master
+         call pbroadcast_int(this%kernel(ikernel)%model_parameter_index, 1)
+
 
       end do ! ikernel
  

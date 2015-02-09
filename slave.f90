@@ -17,7 +17,9 @@ module slave_mod
     real(kind=dp), allocatable :: kernel_values(:,:,:)
     real(kind=dp), allocatable :: kernel_variance(:,:,:)
     integer,       allocatable :: niterations(:,:)
-    real(kind=dp), allocatable :: model(:,:,:)
+    real(kind=dp), allocatable :: model(:,:,:) !< (nmodel_parameter, nbasisfuncs_per_elem, nelements)
+                                               !! Model parameters in the order as defined in backgroundmodel:
+                                               !! vp, vs, rho, vph, vpv, vsh, vsv, eta, phi, xi
   end type
 
 contains

@@ -373,7 +373,7 @@ subroutine finalize()
 
   ! Multiply kernels with model
   do ikernel = 1, parameters%nkernel
-    total_time = sum(K_x(:, ikernel) * Bg_model(:, ikernel))
+    total_time = sum(K_x(:, ikernel) * Bg_model(:, parameters%kernel(ikernel)%model_parameter_index))
     print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, total_time
   end do
 
