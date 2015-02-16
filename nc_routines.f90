@@ -167,7 +167,7 @@ subroutine nc_getvar_by_name_1d_int(ncid, varname, values, limits)
   logical                            :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
-    write(lu_out,"(' Trying to read 1D variable ', A, '...')") trim(varname)
+    write(lu_out,"(' Trying to read 1D int variable ', A, '...')") trim(varname)
     call flush(lu_out)
   end if
 
@@ -251,7 +251,7 @@ subroutine nc_getvar_by_name_1d(ncid, varname, values, limits)
 
 
   if (verbose>1) then
-    write(lu_out,"(' Trying to read 1D variable ', A, '...')") trim(varname)
+    write(lu_out,"(' Trying to read 1D fp variable ', A, '...')") trim(varname)
     call flush(lu_out)
   end if
 
@@ -322,7 +322,7 @@ subroutine nc_getvar_by_name_2d_int(ncid, varname, values, limits)
   logical                            :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
-    write(lu_out,"(' Trying to read 2D variable ', A, '...')") trim(varname)
+    write(lu_out,"(' Trying to read 2D int variable ', A, '...')") trim(varname)
     call flush(lu_out)
   end if
 
@@ -409,7 +409,7 @@ subroutine nc_getvar_by_name_2d(ncid, varname, values, limits)
   logical                                    :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
-    write(lu_out,"(' Trying to read 2D variable ', A, '...')") trim(varname)
+    write(lu_out,"(' Trying to read 2D fp variable ', A, '...')") trim(varname)
     call flush(lu_out)
   end if
 
@@ -481,7 +481,7 @@ subroutine nc_getvar_by_name_3d_int(ncid, varname, values, limits)
   logical                            :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
-    write(lu_out,"(' Trying to read 3D variable ', A, '...')") trim(varname)
+    write(lu_out,"(' Trying to read 3D int variable ', A, '...')") trim(varname)
     call flush(lu_out)
   end if
 
@@ -568,7 +568,7 @@ subroutine nc_getvar_by_name_3d(ncid, varname, values, limits)
   logical                                    :: have_limits = .false., out_of_limit = .false.
 
   if (verbose>1) then
-    write(lu_out,"(' Trying to read 3D variable ', A, '...')") trim(varname)
+    write(lu_out,"(' Trying to read 3D fp variable ', A, '...')") trim(varname)
     call flush(lu_out)
   end if
 
@@ -1579,7 +1579,7 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
 !< Help interpret the inane NetCDF error messages
    integer, intent(in)          :: ncid, varid
    integer, intent(in)          :: start(3), count(3)
-   integer, intent(out)         :: values(:,:,:)
+   integer, intent(out)         :: values(count(1), count(2), count(3))
    integer                      :: xtype, ndims, status, dimsize, idim
    integer                      :: dimid(10)
    character(len=nf90_max_name) :: varname, dimname
@@ -2359,6 +2359,53 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 3D variable in NCID', I7, ', with ID:', I7)
 end subroutine putvar_int3d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine nc_createvar_by_name(ncid, varname, sizes)
+!< Create variable by its size without putting data into it
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: varname
+  integer, intent(in)                        :: sizes(:)
+  integer                                    :: ndim
+  character(len=nf90_max_name)               :: dimname
+  character(len=80)                          :: fmtstring
+  integer                                    :: i, variable_id, status
+  integer, allocatable                       :: dimid(:)
+
+  call  getvarid( ncid  = ncid,      &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  ndim = size(sizes)
+
+  allocate(dimid(ndim))
+  ! if variable not found              
+  if (variable_id==-1) then
+      call check(nf90_redef(ncid = ncid))
+      do i = 1, ndim
+        write(dimname, '(A,"_",I1)') trim(varname), i
+        status = nf90_def_dim(ncid  = ncid,      &
+                              name  = dimname,   &
+                              len   = sizes(i),  &
+                              dimid = dimid(i))
+      end do
+
+      status = nf90_def_var( ncid   = ncid,          &
+                             name   = trim(varname), &
+                             xtype  = NF90_INT,      &
+                             dimids = dimid,         &
+                             varid  = variable_id) 
+      call check(nf90_enddef(ncid = ncid))
+
+  else
+      fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
+      print fmtstring, trim(varname)
+      print '(A)', "it already exists"
+      stop
+  end if
+
+end subroutine nc_createvar_by_name
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
