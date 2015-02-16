@@ -51,6 +51,12 @@ module ftnunit
         module procedure assert_allfalse_log1d
     end interface
 
+    interface isnan
+        module procedure isnan_sp
+        module procedure isnan_dp
+        module procedure isnan_int
+    end interface
+
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -690,6 +696,32 @@ subroutine ftnunit_make_empty_file( filename )
     endif
 
 end subroutine ftnunit_make_empty_file
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+elemental logical function isnan_sp(array)
+  real(kind=sp), intent(in) :: array
+
+  isnan_sp = array.ne.array
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+elemental logical function isnan_dp(array)
+  real(kind=dp), intent(in) :: array
+
+  isnan_dp = array.ne.array
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+elemental logical function isnan_int(array)
+  integer, intent(in)       :: array
+
+  isnan_int = array.ne.array
+end function
+!-----------------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 
 end module ftnunit
