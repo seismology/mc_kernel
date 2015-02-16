@@ -73,7 +73,7 @@ module inversion_mesh
      character(len=32), allocatable     :: data_group_names_cell(:)
      integer                            :: ngroups_node
      integer                            :: ngroups_cell
-     integer                            :: ncid
+     integer                            :: ncid = -1
 
      contains
      procedure, pass :: get_ntimes_node
