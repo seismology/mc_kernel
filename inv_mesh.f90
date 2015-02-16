@@ -1462,7 +1462,7 @@ subroutine set_cell_data_snap(this, data_snap, isnap, data_name)
   integer                                   :: i
   logical                                   :: name_exists
 
-  if (.not. allocated(this%datat_cell)) then
+  if (.not. allocated(this%datat_cell) .and.this%ncid==-1) then
      write(*,*) 'ERROR: trying to write cell data without initialization!'
      call pabort 
   end if
