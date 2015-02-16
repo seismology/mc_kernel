@@ -73,6 +73,7 @@ module inversion_mesh
      character(len=32), allocatable     :: data_group_names_cell(:)
      integer                            :: ngroups_node
      integer                            :: ngroups_cell
+     integer                            :: ncid
 
      contains
      procedure, pass :: get_ntimes_node
@@ -1221,15 +1222,15 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init_cell_data(this, ntimes_cell, default_name)
+subroutine init_cell_data(this, ntimes_cell, default_name, netcdf_in)
+  use nc_routines, only                   : nc_open_for_write, nc_createvar_by_name
   class(inversion_mesh_data_type)        :: this
   integer, intent(in)                    :: ntimes_cell
   character(len=*), intent(in), optional :: default_name
+  logical, optional                      :: netcdf_in
+  character(len=80)                      :: filename
 
   this%ntimes_cell = ntimes_cell
-
-  allocate(this%datat_cell(this%nelements, ntimes_cell))
-  this%datat_cell = 0
 
   allocate(this%data_group_names_cell(ntimes_cell))
 
@@ -1238,6 +1239,23 @@ subroutine init_cell_data(this, ntimes_cell, default_name)
   else
      this%data_group_names_cell = 'cell_data'
   endif
+
+  if (present(netcdf_in)) then
+    if (netcdf_in) then
+      filename = 'blubberlutsch.nc'
+      call nc_open_for_write(filename = filename, ncid = this%ncid) 
+      call nc_createvar_by_name(ncid = this%ncid, &
+                                varname = 'data', &
+                                sizes   = [this%nelements, ntimes_cell])
+      
+    end if
+  else
+
+    allocate(this%datat_cell(this%nelements, ntimes_cell))
+    this%datat_cell = 0
+
+  end if
+
 
   allocate(this%group_id_cell(ntimes_cell))
   this%group_id_cell = 1
@@ -1524,6 +1542,7 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine set_cell_data_trace(this, data_trace, itrace, data_name)
+  use nc_routines, only                      : nc_putvar_by_name
   class(inversion_mesh_data_type)           :: this
   real(kind=sp), intent(in)                 :: data_trace(:)
   integer, intent(in)                       :: itrace
@@ -1546,7 +1565,17 @@ subroutine set_cell_data_trace(this, data_trace, itrace, data_name)
      call pabort 
   end if
 
-  this%datat_cell(itrace,:) = data_trace(:)
+  if (this%ncid==-1) then !Opened for binary output
+    this%datat_cell(itrace,:) = data_trace(:)
+    
+  else
+    call nc_putvar_by_name(this%ncid,                     &
+                           varname = 'data',              &
+                           values = data_trace,           &
+                           start  = [itrace, 1],          &
+                           count  = [1, this%ntimes_cell])
+
+  end if
 
   if (present(data_name)) then
      this%data_group_names_cell = trim(data_name)
@@ -1562,6 +1591,7 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine dump_cell_data_xdmf(this, filename)
+  use nc_routines, only              : nc_close_file
   class(inversion_mesh_data_type)   :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput_xdmf, iinput_heavy_data
@@ -1632,10 +1662,17 @@ subroutine dump_cell_data_xdmf(this, filename)
 
            ! write attribute
            ! @TODO: Change numbers to nelements
-           write(iinput_xdmf, 7342) trim(this%data_group_names_cell(igroup)), &
-                                    this%nelements, isnap-1, this%nelements,  &
-                                    this%ntimes_cell,                         &
-                                    this%nelements, trim(filename_np)//'_data.dat'
+           if (this%ncid==-1) then
+             write(iinput_xdmf, 7342) trim(this%data_group_names_cell(igroup)), &
+                                      this%nelements, isnap-1, this%nelements,  &
+                                      this%ntimes_cell,                         &
+                                      this%nelements, trim(filename_np)//'_data.dat'
+           else
+             write(iinput_xdmf, 8342) trim(this%data_group_names_cell(igroup)), &
+                                      this%nelements, isnap-1, this%nelements,  &
+                                      this%ntimes_cell,                         &
+                                      this%nelements, 'blubberlutsch.nc'
+           end if
            i = i + 1
         endif
         igroup = igroup + 1
@@ -1692,6 +1729,20 @@ subroutine dump_cell_data_xdmf(this, filename)
     '            </DataItem>',/&
     '        </Attribute>')
 
+8342 format(&    
+    '        <Attribute Name="', A,'" AttributeType="Scalar" Center="Cell">',/&
+    '            <DataItem ItemType="HyperSlab" Dimensions="',i10,'" Type="HyperSlab">',/&
+    '                <DataItem Dimensions="3 2" Format="XML">',/&
+    '                    ', i10,'          0 ',/&
+    '                             1          1 ',/&
+    '                             1 ', i10,/&
+    '                </DataItem>',/&
+    '                <DataItem Dimensions="', i10, i10, '" NumberType="Float" Format="hdf">',/&
+    '                   ', A, ':/data' ,/&
+    '                </DataItem>',/&
+    '            </DataItem>',/&
+    '        </Attribute>')
+
 7343 format(&    
     '    </Grid>',/)
 
@@ -1719,14 +1770,18 @@ subroutine dump_cell_data_xdmf(this, filename)
   close(iinput_heavy_data)
 
   ! CELL data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_data.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  do i=1, this%ntimes_cell
-     write(iinput_heavy_data) real(this%datat_cell(:,i), kind=sp)
-  enddo
-  close(iinput_heavy_data)
+  if (this%ncid==-1) then
+    open(newunit=iinput_heavy_data, file=trim(filename)//'_data.dat', access='stream', &
+        status='replace', form='unformatted', convert='little_endian')
+    do i=1, this%ntimes_cell
+       write(iinput_heavy_data) real(this%datat_cell(:,i), kind=sp)
+    enddo
+    close(iinput_heavy_data)
+  else
+    call nc_close_file(this%ncid)
+  end if
 
-end subroutine
+end subroutine dump_cell_data_xdmf
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
