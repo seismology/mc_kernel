@@ -268,7 +268,8 @@ subroutine plot_wavefields()
 
       do ielement = 1, nelems
 
-        write(*,*) ' Element: ', ielement, ' of ', nelems
+        if (mod(ielement, 100)==0) &
+            write(*,*) ' Element: ', ielement, ' of ', nelems
 
         co_points = inv_mesh%generate_random_points( ielement, nptperstep, &
                                                      parameters%quasirandom)
@@ -294,7 +295,7 @@ subroutine plot_wavefields()
 
         call fft_data%irfft(fw_field_fd, fw_field_td)
 
-        print *, 'min/max(fw_field): ', minval(fw_field_td), maxval(fw_field_td)
+        !print *, 'min/max(fw_field): ', minval(fw_field_td), maxval(fw_field_td)
 
         fw_field_td_tot(:,:,ielement) = fw_field_td(:,:,1)
 
@@ -311,8 +312,8 @@ subroutine plot_wavefields()
       do idump = 1, ndumps
           if (mod(idump, 100)==0) &
               write(*,*) '  Passing dump ', idump, ' to inversion mesh datatype'
-          print *, 'min/max(fw_field_tot): ', minval(fw_field_td_tot(idump,icomp,:)), &
-                                              maxval(fw_field_td_tot(idump,icomp,:))
+          !print *, 'min/max(fw_field_tot): ', minval(fw_field_td_tot(idump,icomp,:)), &
+          !                                    maxval(fw_field_td_tot(idump,icomp,:))
           !Test of planar wave , works
           !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
           !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
