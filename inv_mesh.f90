@@ -1498,6 +1498,8 @@ subroutine set_node_data_trace(this, data_trace, itrace, data_name)
 
   if (size(data_trace) /= this%ntimes_node) then
      write(*,*) 'ERROR: wrong dimensions of input data_trace for writing vertex data'
+     write(*,*) 'size(data_trace):', size(data_trace), '; this%ntimes_node', this%ntimes_node
+     write(*,*) 'data_name:', trim(data_name), '; itrace:', itrace
      call pabort 
   end if
 
@@ -1527,13 +1529,15 @@ subroutine set_cell_data_trace(this, data_trace, itrace, data_name)
   integer, intent(in)                       :: itrace
   character(len=*), intent(in), optional    :: data_name
 
-  if (.not. allocated(this%datat_node)) then
-     write(*,*) 'ERROR: trying to write node data without initialization!'
+  if (.not. allocated(this%datat_cell)) then
+     write(*,*) 'ERROR: trying to write cell data without initialization!'
      call pabort 
   end if
 
   if (size(data_trace) /= this%ntimes_cell) then
      write(*,*) 'ERROR: wrong dimensions of input data_trace for writing cell data'
+     write(*,*) 'size(data_trace):', size(data_trace), '; this%ntimes_cell', this%ntimes_cell
+     write(*,*) 'data_name:', trim(data_name), '; itrace:', itrace
      call pabort 
   end if
 
