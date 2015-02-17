@@ -65,11 +65,45 @@ end subroutine nc_open_for_read
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine nc_create_file(filename, ncid, overwrite)
+   character(len=*), intent(in)  :: filename
+   integer, intent(out)          :: ncid
+   logical, intent(in), optional :: overwrite
+   character(len=512)            :: fmtstring
+   integer                       :: status, mode
+
+   mode = NF90_NETCDF4
+
+   if (present(overwrite)) then
+     if (overwrite) mode = mode + NF90_CLOBBER
+   end if
+
+   status = nf90_create(path     = filename,       &
+                        cmode    = mode,           &
+                        ncid     = ncid)
+
+   if (status.eq.NF90_EEXIST) then
+     fmtstring = "('ERROR: CPU ', I4, ' tried to create file ''', A, ''', " &
+              // "but it already exists and overwrite was not set.')"
+     print fmtstring, myrank, trim(filename)
+     stop
+   elseif (status.ne.NF90_NOERR) then
+     fmtstring = "('ERROR: CPU ', I4, ' tried to create file ''', A, ''', " &
+              // "but could not. Check permissions.')"
+     print fmtstring, myrank, trim(filename)
+     stop
+   end if
+   call check(nf90_enddef(ncid = ncid))
+
+end subroutine nc_create_file
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine nc_open_for_write(filename, ncid)
    character(len=*), intent(in)  :: filename
    integer, intent(out)          :: ncid
    character(len=512)            :: fmtstring
-   integer                       :: status
+   integer                       :: status, mode
 
    status = nf90_open(path     = filename,            &
                       mode     = NF90_WRITE,          &
