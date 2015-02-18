@@ -8,13 +8,15 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine plot_wavefields()
 
-    use global_parameters,          only : sp, dp, pi, deg2rad, init_random_seed, testing
+    use global_parameters,          only : sp, dp, long, pi, deg2rad, init_random_seed, testing, &
+                                           id_fft, id_filter_conv, id_fwd, id_inv_mesh, id_out
     use inversion_mesh,             only : inversion_mesh_data_type
     use readfields,                 only : semdata_type
     use type_parameter,             only : parameter_type
     use fft,                        only : rfft_type, taperandzeropad
     use filtering,                  only : timeshift_type
     use backgroundmodel,            only : backgroundmodel_type
+    use clocks_mod,                 only : tick
 
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
@@ -26,10 +28,12 @@ subroutine plot_wavefields()
     integer                             :: nelems, ntimes, nomega, nrec
     integer                             :: ielement, idump, ndumps, irec, icomp
     integer                             :: nvertices, ndim, nptperstep
+    integer                             :: iwrite, nwrite = 100
+    integer(kind=long)                  :: iclockold
     real(kind=dp),    allocatable       :: co_points(:,:)
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
     real(kind=dp),    allocatable       :: fw_field_td(:,:,:)
-    real(kind=dp),    allocatable       :: fw_field_td_tot(:,:,:)
+    real(kind=sp),    allocatable       :: fw_field_td_tot(:,:,:)
     real(kind=dp),    allocatable       :: bw_field(:,:,:)
     complex(kind=dp), allocatable       :: fw_field_fd_tot(:,:,:)
     complex(kind=dp), allocatable       :: fw_field_fd(:,:,:)
@@ -255,34 +259,38 @@ subroutine plot_wavefields()
 
       allocate(co_points(3, nptperstep))
 
-      allocate(fw_field_fd_tot(nomega, ndim, nelems))
+      !allocate(fw_field_fd_tot(nomega, ndim, nelems))
       allocate(fw_field_fd(nomega, ndim, 1))
       allocate(fw_field(ndumps, ndim, 1))
       allocate(fw_field_td(ntimes, ndim, 1))
-      allocate(fw_field_td_tot(ntimes, ndim, nelems))
+      allocate(fw_field_td_tot(ndumps, ndim, nwrite))
 
       call timeshift_fwd%init_ts(fft_data%get_f(), sem_data%timeshift_fwd)
       
       print *, ' Initialize XDMF file'
-      call inv_mesh%init_cell_data(ndumps*ndim)
+      call inv_mesh%init_cell_data(ndumps*ndim, netcdf_in=.true.)
 
       do ielement = 1, nelems
 
         if (mod(ielement, 100)==0) &
             write(*,*) ' Element: ', ielement, ' of ', nelems
 
+        iclockold = tick()
         co_points = inv_mesh%generate_random_points( ielement, nptperstep, &
                                                      parameters%quasirandom)
+        iclockold = tick(id=id_inv_mesh)
 
         !write(*,*) ' Read in forward field'
         fw_field(:,:,1) = sum(sem_data%load_fw_points(dble(co_points),    &
                                                       parameters%source,  &
                                                       model=bg_model),    &
                               dim=3) / nptperstep
+        iclockold = tick(id=id_fwd, since=iclockold)
 
         !write(*,*) ' FFT forward field'
+        iclockold = tick()
         call fft_data%rfft(taperandzeropad(fw_field, ntimes, 2), fw_field_fd)
-        !deallocate(fw_field)
+        iclockold = tick(id=id_fft, since=iclockold)
 
         !write(*,*) 'Filter forward field'
         !Is needed to init kernel
@@ -292,39 +300,26 @@ subroutine plot_wavefields()
 
         !write(*,*) ' Timeshift forward field'
         call timeshift_fwd%apply(fw_field_fd)
+        iclockold = tick(id=id_filter_conv, since=iclockold)
 
         call fft_data%irfft(fw_field_fd, fw_field_td)
+        iclockold = tick(id=id_fft, since=iclockold)
 
-        !print *, 'min/max(fw_field): ', minval(fw_field_td), maxval(fw_field_td)
+        write(cname,'("comp_",I0.2)') icomp
+        iclockold = tick()
 
-        fw_field_td_tot(:,:,ielement) = fw_field_td(:,:,1)
-
-        !write(cname,'("comp_",I0.2)') icomp
-        !call inv_mesh%set_cell_data_trace(real(fw_field_fd(1:ndumps,1,1), kind=sp), &
-        !                                  ielement,                                 &
-        !                                  'fwd_'//trim(cname))
-
+        iwrite = iwrite + 1
+        fw_field_td_tot(:, 1, iwrite) = real(fw_field_td(1:ndumps,1,1), kind=sp)
+        if (mod(ielement, nwrite).eq.0 .or. ielement.eq.nelems) then
+          print *, iwrite
+          call inv_mesh%set_cell_data_traces(transpose(fw_field_td_tot(:, 1, 1:iwrite)),     &
+                                             ielement - iwrite + 1, ielement,                &
+                                             'fwd_'//trim(cname))
+          iclockold = tick(id=id_out, since=iclockold)
+          iwrite = 0
+        end if
+   
       end do
-      !print *, ' Initialize XDMF file'
-      !call inv_mesh%init_cell_data(ndumps*ndim)
-
-      write(*,*) ' Dump forward field to XDMF file'
-      do idump = 1, ndumps
-          if (mod(idump, 100)==0) &
-              write(*,*) '  Passing dump ', idump, ' to inversion mesh datatype'
-          !print *, 'min/max(fw_field_tot): ', minval(fw_field_td_tot(idump,icomp,:)), &
-          !                                    maxval(fw_field_td_tot(idump,icomp,:))
-          !Test of planar wave , works
-          !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
-          !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-          do icomp=1,ndim
-             write(cname,'("comp_",I0.2)') icomp
-             call inv_mesh%set_cell_data_snap(real(fw_field_td_tot(idump,icomp,:), kind=sp), &
-                                              idump + ndumps*(icomp-1), &
-                                              'fwd_'//trim(cname))
-          end do
-      end do
-      deallocate(fw_field)
 
       print *, ' Save XDMF file'
       call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_wavefield_fwd')
