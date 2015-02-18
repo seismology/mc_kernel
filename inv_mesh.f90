@@ -86,6 +86,7 @@ module inversion_mesh
      procedure, pass :: set_cell_data_snap
      procedure, pass :: set_node_data_trace
      procedure, pass :: set_cell_data_trace
+     procedure, pass :: set_cell_data_traces
      procedure, pass :: dump_node_data_xdmf
      procedure, pass :: dump_cell_data_xdmf
 
@@ -1223,7 +1224,7 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine init_cell_data(this, ntimes_cell, default_name, netcdf_in)
-  use nc_routines, only                   : nc_open_for_write, nc_createvar_by_name
+  use nc_routines, only                   : nc_create_file, nc_createvar_by_name
   class(inversion_mesh_data_type)        :: this
   integer, intent(in)                    :: ntimes_cell
   character(len=*), intent(in), optional :: default_name
@@ -1243,7 +1244,7 @@ subroutine init_cell_data(this, ntimes_cell, default_name, netcdf_in)
   if (present(netcdf_in)) then
     if (netcdf_in) then
       filename = 'blubberlutsch.nc'
-      call nc_open_for_write(filename = filename, ncid = this%ncid) 
+      call nc_create_file(filename = filename, ncid = this%ncid, overwrite=.true.) 
       call nc_createvar_by_name(ncid = this%ncid, &
                                 varname = 'data', &
                                 sizes   = [this%nelements, ntimes_cell])
@@ -1541,14 +1542,83 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_cell_data_trace(this, data_trace, itrace, data_name)
+subroutine set_cell_data_traces(this, data_trace, itrace, itrace_last, data_name)
+  use nc_routines, only                      : nc_putvar_by_name
+  class(inversion_mesh_data_type)           :: this
+  real(kind=sp), intent(in)                 :: data_trace(:,:)
+  integer, intent(in)                       :: itrace
+  integer, intent(in)                       :: itrace_last
+  character(len=*), intent(in), optional    :: data_name
+
+  integer                                   :: ntraces 
+
+  ntraces = itrace_last - itrace + 1
+
+  if (.not. allocated(this%datat_cell) .and.this%ncid==-1) then
+     write(*,*) 'ERROR: trying to write cell data without initialization!'
+     call pabort 
+  end if
+
+  if (size(data_trace, 2) /= this%ntimes_cell) then
+     write(*,*) 'ERROR: wrong dimensions of input data_trace for writing cell data'
+     write(*,*) 'size(data_trace):', size(data_trace,2), '; this%ntimes_cell', this%ntimes_cell
+     write(*,*) 'data_name:', trim(data_name), '; itrace:', itrace
+     call pabort 
+  end if
+
+  if (itrace < 1 .or. itrace > this%nelements) then
+     write(*,*) 'ERROR: index "itrace" out of bounds'
+     call pabort 
+  end if
+
+  if (itrace_last < 1 .or. itrace_last > this%nelements) then
+     write(*,*) 'ERROR: index "itrace_last" out of bounds'
+     call pabort 
+  end if
+
+  if (size(data_trace, 1).ne.ntraces) then
+    write(*,*) 'ERROR: Size of data_trace and values for itrace, itrace_last contradict'
+    write(*,*) '       size(data_trace, 1): ', size(data_trace, 1)
+    write(*,*) '       itrace:              ', itrace
+    write(*,*) '       itrace_last:         ', itrace_last
+    call pabort
+  end if
+
+  if (this%ncid==-1) then !Opened for binary output
+    write(*,*) 'No support for binary output here!'
+    call pabort
+    
+  else
+    call nc_putvar_by_name(this%ncid,                     &
+                           varname = 'data',              &
+                           values = data_trace,           &
+                           start  = [itrace, 1],          &
+                           count  = [ntraces, this%ntimes_cell])
+
+  end if
+
+  if (present(data_name)) then
+     this%data_group_names_cell = trim(data_name)
+  else
+     this%data_group_names_cell = 'cell_data'
+  endif
+
+  this%group_id_cell = 1
+  this%ngroups_cell = 1
+
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine set_cell_data_trace(this, data_trace, itrace, itrace_last, data_name)
   use nc_routines, only                      : nc_putvar_by_name
   class(inversion_mesh_data_type)           :: this
   real(kind=sp), intent(in)                 :: data_trace(:)
   integer, intent(in)                       :: itrace
+  integer, intent(in), optional             :: itrace_last
   character(len=*), intent(in), optional    :: data_name
 
-  if (.not. allocated(this%datat_cell)) then
+  if (.not. allocated(this%datat_cell) .and.this%ncid==-1) then
      write(*,*) 'ERROR: trying to write cell data without initialization!'
      call pabort 
   end if
@@ -1564,6 +1634,7 @@ subroutine set_cell_data_trace(this, data_trace, itrace, data_name)
      write(*,*) 'ERROR: index "itrace" out of bounds'
      call pabort 
   end if
+
 
   if (this%ncid==-1) then !Opened for binary output
     this%datat_cell(itrace,:) = data_trace(:)
@@ -1591,7 +1662,7 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 subroutine dump_cell_data_xdmf(this, filename)
-  use nc_routines, only              : nc_close_file
+  use nc_routines, only              : nc_close_file, nc_putvar_by_name
   class(inversion_mesh_data_type)   :: this
   character(len=*), intent(in)      :: filename
   integer                           :: iinput_xdmf, iinput_heavy_data
@@ -1604,7 +1675,7 @@ subroutine dump_cell_data_xdmf(this, filename)
      call pabort 
   end if
   
-  if (.not. allocated(this%datat_cell)) then
+  if (.not. allocated(this%datat_cell) .and.this%ncid==-1) then
      write(*,*) 'ERROR: no data to dump available'
      call pabort 
   end if
@@ -1632,11 +1703,17 @@ subroutine dump_cell_data_xdmf(this, filename)
   ! XML header
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
   ! start xdmf file, write header
-  write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'binary', &
-                          trim(filename_np)//'_grid.dat', &
-                          this%nvertices, 'binary', trim(filename_np)//'_points.dat', &
-                          this%nelements, 'binary', trim(filename_np)//'_block.dat'
-
+  if (this%ncid==-1) then
+    write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'binary', &
+                            trim(filename_np)//'_grid.dat', &
+                            this%nvertices, 'binary', trim(filename_np)//'_points.dat', &
+                            this%nelements, 'binary', trim(filename_np)//'_block.dat'
+  else
+    write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'hdf', &
+                            'blubberlutsch.nc:/grid', &
+                            this%nvertices, 'hdf', 'blubberlutsch.nc:/points', &
+                            this%nelements, 'hdf', 'blubberlutsch.nc:/block'
+  end if
   i = 1
   itime = 1
 
@@ -1752,22 +1829,41 @@ subroutine dump_cell_data_xdmf(this, filename)
     '</Xdmf>')
 
   ! VERTEX data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) real(this%vertices, kind=sp)
-  close(iinput_heavy_data)
+  if (this%ncid==-1) then
+    open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
+        status='replace', form='unformatted', convert='little_endian')
+    write(iinput_heavy_data) real(this%vertices, kind=sp)
+    close(iinput_heavy_data)
+  else
+    call nc_putvar_by_name(ncid    = this%ncid,                   &
+                           varname = 'points',                    &
+                           values  = real(this%vertices, kind=sp))
+              
+  end if
 
   ! CONNECTIVITY data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%connectivity
-  close(iinput_heavy_data)
+  if (this%ncid==-1) then
+    open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
+        status='replace', form='unformatted', convert='little_endian')
+    write(iinput_heavy_data) this%connectivity
+    close(iinput_heavy_data)
+  else
+    call nc_putvar_by_name(ncid    = this%ncid,        &
+                           varname = 'grid',           &
+                           values  = this%connectivity)
+  end if
 
   ! BLOCK data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_block.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%block_id
-  close(iinput_heavy_data)
+  if (this%ncid==-1) then
+    open(newunit=iinput_heavy_data, file=trim(filename)//'_block.dat', access='stream', &
+        status='replace', form='unformatted', convert='little_endian')
+    write(iinput_heavy_data) this%block_id
+    close(iinput_heavy_data)
+  else
+    call nc_putvar_by_name(ncid    = this%ncid,    &
+                           varname = 'block',      &
+                           values  = this%block_id)
+  end if
 
   ! CELL data
   if (this%ncid==-1) then
