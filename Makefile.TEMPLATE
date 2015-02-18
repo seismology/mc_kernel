@@ -34,6 +34,7 @@ OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	test_tetrahedra.o test_type_parameter.o test_voxel.o type_parameter.o \
 	worktype.o
 
+# Handle NetCDF and other library paths
 ifeq ($(strip $(USE_NETCDF)),true)
    FFLAGS += -Dunc
    ifdef NETCDF_PATH
@@ -48,6 +49,10 @@ else
    INCLUDE = 
 endif
 
+# If the MPI module comes from another compiler version
+ifeq ($(strip $(INCLUDE_MPI)),true) 
+  FFLAGS += -Dinclude_mpi 
+endif 
 
 
 # cancel m2c implicit rule 
@@ -82,7 +87,8 @@ finite_elem_mapping.o: global_parameters.o Makefile make_kerner.macros
 ftnunit.o:  Makefile make_kerner.macros 
 global_parameters.o:  Makefile make_kerner.macros 
 halton.o: global_parameters.o Makefile make_kerner.macros 
-inv_mesh.o: commpi.o global_parameters.o random_tetrahedron.o random_voxel.o Makefile make_kerner.macros 
+inv_mesh.o: commpi.o global_parameters.o nc_routines.o random_tetrahedron.o \
+	random_voxel.o Makefile make_kerner.macros 
 kernel.o: background_model.o commpi.o fft_type.o filtering.o \
 	global_parameters.o simple_routines.o Makefile make_kerner.macros 
 master_mod.o: master_queue.o master_slave_parameters.o worktype.o Makefile make_kerner.macros 
@@ -91,9 +97,8 @@ master_queue.o: clocks.o global_parameters.o inv_mesh.o nc_routines.o \
 master_slave_parameters.o:  Makefile make_kerner.macros 
 mc_integration.o: commpi.o global_parameters.o Makefile make_kerner.macros 
 nc_routines.o: commpi.o global_parameters.o simple_routines.o Makefile make_kerner.macros 
-plot_wavefields.o: background_model.o commpi.o fft_type.o filtering.o \
-	global_parameters.o inv_mesh.o readfields.o simple_routines.o \
-	type_parameter.o Makefile make_kerner.macros 
+plot_wavefields.o: background_model.o clocks.o fft_type.o filtering.o \
+	global_parameters.o inv_mesh.o readfields.o type_parameter.o Makefile make_kerner.macros 
 random_tetrahedron.o: global_parameters.o halton.o simple_routines.o Makefile make_kerner.macros 
 random_voxel.o: global_parameters.o Makefile make_kerner.macros 
 readfields.o: background_model.o buffer.o clocks.o commpi.o \
