@@ -76,6 +76,9 @@ module inversion_mesh
      integer                            :: ncid = -1
      integer                            :: ncid_cell = -1
      integer                            :: ncid_node = -1
+     integer                            :: nvar_node, nvar_cell
+     integer, allocatable               :: var_size_node(:), var_size_cell(:)
+     character(len=80), allocatable     :: var_name_node(:), var_name_cell(:)
 
      contains
      procedure, pass :: get_ntimes_node
@@ -88,7 +91,7 @@ module inversion_mesh
      procedure, pass :: set_cell_data_snap
      procedure, pass :: set_node_data_trace
      procedure, pass :: set_cell_data_trace
-     procedure, pass :: set_cell_data_traces
+     procedure, pass :: set_cell_data
      procedure, pass :: dump_node_data_xdmf
      procedure, pass :: dump_cell_data_xdmf
 
@@ -101,6 +104,9 @@ module inversion_mesh
      ! for ascii format dumps
      procedure, pass :: dump_node_data_ascii
      procedure, pass :: dump_cell_data_ascii
+
+     ! get size of a variable
+     procedure, pass :: var_size
 
   end type
 
@@ -1200,6 +1206,35 @@ end subroutine freeme
 
 !-----------------------------------------------------------------------------------------
 subroutine init_node_data(this, ntimes_node, default_name)
+!  use nc_routines, only                   : nc_create_file, nc_create_group, &
+!                                            nc_create_var_by_name
+!  class(inversion_mesh_data_type)        :: this
+!  character(len=*), intent(in)           :: variable_names(:)
+!  integer, intent(in)                    :: variable_length(:)
+!  character(len=80)                      :: filename
+!  integer                                :: ivar, nvar
+!
+!  if (size(variable_names, 1).ne.size(variable_length, 1)) then
+!    write(*,*) 'ERROR: Length of arrays variable_names and variable_length must be the same'
+!    write(*,*) '       Each variable must have a name and a length!'
+!    write(*,*) '       size(variable_names, 1):  ', size(variable_names, 1)
+!    write(*,*) '       size(variable_length, 1): ', size(variable_length, 1)
+!    call pabort()
+!  end if
+!
+!  nvar = size(variable_names, 1)
+!
+!  filename = 'blubberlutsch.nc'
+!  call nc_create_file(filename = filename, ncid = this%ncid, overwrite=.true.) 
+!  call nc_create_group(ncid = this%ncid, group_name = 'node_data', &
+!                       ncid_group = this%ncid_cell)
+!  
+!  do ivar = 1, nvar
+!    call nc_create_var_by_name(ncid    = this%ncid_node,                          &
+!                               varname = trim(variable_names(ivar)),              &
+!                               sizes   = [this%nvertices, variable_length(ivar)], &
+!                               dimension_names = ['Nodes   ', '        '])
+!  end do
   class(inversion_mesh_data_type)        :: this
   integer, intent(in)                    :: ntimes_node
   character(len=*), intent(in), optional :: default_name
@@ -1221,7 +1256,7 @@ subroutine init_node_data(this, ntimes_node, default_name)
   this%group_id_node = 1
   this%ngroups_node = 0
 
-end subroutine
+end subroutine init_node_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1242,21 +1277,23 @@ subroutine init_cell_data(this, variable_names, variable_length)
     call pabort()
   end if
 
-  nvar = size(variable_names, 1)
+  this%nvar_cell = size(variable_names, 1)
+  this%var_name_cell = variable_names
+  this%var_size_cell = variable_length
 
   filename = 'blubberlutsch.nc'
   call nc_create_file(filename = filename, ncid = this%ncid, overwrite=.true.) 
   call nc_create_group(ncid = this%ncid, group_name = 'cell_data', &
                        ncid_group = this%ncid_cell)
   
-  do ivar = 1, nvar
+  do ivar = 1, this%nvar_cell
     call nc_create_var_by_name(ncid    = this%ncid_cell,                          &
                                varname = trim(variable_names(ivar)),              &
                                sizes   = [this%nelements, variable_length(ivar)], &
                                dimension_names = ['Elements', '        '])
   end do
       
-end subroutine
+end subroutine init_cell_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1536,46 +1573,19 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_cell_data_traces(this, data_trace, itrace, itrace_last, data_name)
+subroutine set_cell_data(this, data_trace, start, count, data_name)
   use nc_routines, only                      : nc_putvar_by_name
   class(inversion_mesh_data_type)           :: this
-  real(kind=sp), intent(in)                 :: data_trace(:,:)
-  integer, intent(in)                       :: itrace
-  integer, intent(in)                       :: itrace_last
-  character(len=*), intent(in), optional    :: data_name
+  real(kind=sp), intent(in)                 :: data_trace(:,:) ! [nelements, size of data_name]
+  integer, intent(in), optional             :: start(2)
+  integer, intent(in), optional             :: count(2)  
+  character(len=*), intent(in)              :: data_name
 
   integer                                   :: ntraces 
 
-  ntraces = itrace_last - itrace + 1
-
-  if (.not. allocated(this%datat_cell) .and.this%ncid==-1) then
+  if (this%ncid_cell==-1) then
      write(*,*) 'ERROR: trying to write cell data without initialization!'
      call pabort 
-  end if
-
-  if (size(data_trace, 2) /= this%ntimes_cell) then
-     write(*,*) 'ERROR: wrong dimensions of input data_trace for writing cell data'
-     write(*,*) 'size(data_trace):', size(data_trace,2), '; this%ntimes_cell', this%ntimes_cell
-     write(*,*) 'data_name:', trim(data_name), '; itrace:', itrace
-     call pabort 
-  end if
-
-  if (itrace < 1 .or. itrace > this%nelements) then
-     write(*,*) 'ERROR: index "itrace" out of bounds'
-     call pabort 
-  end if
-
-  if (itrace_last < 1 .or. itrace_last > this%nelements) then
-     write(*,*) 'ERROR: index "itrace_last" out of bounds'
-     call pabort 
-  end if
-
-  if (size(data_trace, 1).ne.ntraces) then
-    write(*,*) 'ERROR: Size of data_trace and values for itrace, itrace_last contradict'
-    write(*,*) '       size(data_trace, 1): ', size(data_trace, 1)
-    write(*,*) '       itrace:              ', itrace
-    write(*,*) '       itrace_last:         ', itrace_last
-    call pabort
   end if
 
   if (this%ncid==-1) then !Opened for binary output
@@ -1583,22 +1593,13 @@ subroutine set_cell_data_traces(this, data_trace, itrace, itrace_last, data_name
     call pabort
     
   else
-    call nc_putvar_by_name(this%ncid,                     &
-                           varname = 'data',              &
-                           values = data_trace,           &
-                           start  = [itrace, 1],          &
-                           count  = [ntraces, this%ntimes_cell])
+    call nc_putvar_by_name(ncid    = this%ncid_cell,       &
+                           varname = data_name,            &
+                           values  = data_trace,           &
+                           start   = start,                &
+                           count   = count)
 
   end if
-
-  if (present(data_name)) then
-     this%data_group_names_cell = trim(data_name)
-  else
-     this%data_group_names_cell = 'cell_data'
-  endif
-
-  this%group_id_cell = 1
-  this%ngroups_cell = 1
 
 end subroutine
 !-----------------------------------------------------------------------------------------
@@ -2041,6 +2042,34 @@ subroutine dump_node_data_xdmf(this, filename)
   close(iinput_heavy_data)
 
 end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function var_size(this, var_name, cellornode)
+  class(inversion_mesh_data_type)           :: this
+  character(len=*), intent(in)              :: var_name
+  character(len=4), intent(in)              :: cellornode
+  integer                                   :: var_size
+  integer                                   :: ivar
+
+  select case(cellornode)
+  case('node')
+    do ivar = 1, this%nvar_node
+      if (trim(var_name).eq.trim(this%var_name_node(ivar))) then
+        var_size = this%var_size_node(ivar)
+        exit
+      end if
+    end do
+
+  case('cell')
+    do ivar = 1, this%nvar_cell
+      if (trim(var_name).eq.trim(this%var_name_cell(ivar))) then
+        var_size = this%var_size_cell(ivar)
+        exit
+      end if
+    end do
+  end select
+end function
 !-----------------------------------------------------------------------------------------
 
 end module
