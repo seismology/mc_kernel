@@ -284,7 +284,7 @@ subroutine finalize()
         call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
 
      case ('volumetric')
-        call inv_mesh%init_cell_data(parameters%nkernel*2+parameters%nmodel_parameter)
+        !@TODO: call inv_mesh%init_cell_data(parameters%nkernel*2+parameters%nmodel_parameter)
         allocate(rel_error(size(Var,1)))
 
         do ikernel = 1, parameters%nkernel
@@ -360,7 +360,7 @@ subroutine finalize()
 
   ! Save mesh partition and convergence information
   write(lu_out,*) 'Write mesh partition and convergence to disk'
-  call inv_mesh%init_cell_data(parameters%nkernel + 1)
+  !@TODO: call inv_mesh%init_cell_data(parameters%nkernel + 1)
   call inv_mesh%set_cell_data_snap(real(element_proc, kind=sp), 1,  &
                                    'element_proc')
   do ikernel = 1, parameters%nkernel

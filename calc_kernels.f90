@@ -203,6 +203,7 @@ subroutine start_clock_slave
   id_init            = clock_id('Initialization per task')
   id_mpi             = clock_id('MPI communication with Master')
   id_out             = clock_id('Write wavefields to disk')
+  id_finalize        = clock_id('Finalization of output files')
 
 
 end subroutine start_clock_slave

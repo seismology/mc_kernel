@@ -74,6 +74,8 @@ module inversion_mesh
      integer                            :: ngroups_node
      integer                            :: ngroups_cell
      integer                            :: ncid = -1
+     integer                            :: ncid_cell = -1
+     integer                            :: ncid_node = -1
 
      contains
      procedure, pass :: get_ntimes_node
@@ -483,7 +485,7 @@ subroutine read_tet_mesh(this, filename_vertices, filename_connectivity, int_typ
   class(inversion_mesh_type)        :: this
   character(len=*), intent(in)      :: filename_vertices
   character(len=*), intent(in)      :: filename_connectivity
-  character(len=*), intent(in)      :: int_type
+  character(len=*), intent(in)      :: int_type                  !< Integrate on nodes or cells? 
   integer                           :: iinput_vertices, iinput_connectivity
   integer                           :: i, ierr, ndim
 
@@ -1223,45 +1225,37 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init_cell_data(this, ntimes_cell, default_name, netcdf_in)
-  use nc_routines, only                   : nc_create_file, nc_createvar_by_name
+subroutine init_cell_data(this, variable_names, variable_length)
+  use nc_routines, only                   : nc_create_file, nc_create_group, &
+                                            nc_create_var_by_name
   class(inversion_mesh_data_type)        :: this
-  integer, intent(in)                    :: ntimes_cell
-  character(len=*), intent(in), optional :: default_name
-  logical, optional                      :: netcdf_in
+  character(len=*), intent(in)           :: variable_names(:)
+  integer, intent(in)                    :: variable_length(:)
   character(len=80)                      :: filename
+  integer                                :: ivar, nvar
 
-  this%ntimes_cell = ntimes_cell
-
-  allocate(this%data_group_names_cell(ntimes_cell))
-
-  if (present(default_name)) then
-     this%data_group_names_cell = trim(default_name)
-  else
-     this%data_group_names_cell = 'cell_data'
-  endif
-
-  if (present(netcdf_in)) then
-    if (netcdf_in) then
-      filename = 'blubberlutsch.nc'
-      call nc_create_file(filename = filename, ncid = this%ncid, overwrite=.true.) 
-      call nc_createvar_by_name(ncid = this%ncid, &
-                                varname = 'data', &
-                                sizes   = [this%nelements, ntimes_cell])
-      
-    end if
-  else
-
-    allocate(this%datat_cell(this%nelements, ntimes_cell))
-    this%datat_cell = 0
-
+  if (size(variable_names, 1).ne.size(variable_length, 1)) then
+    write(*,*) 'ERROR: Length of arrays variable_names and variable_length must be the same'
+    write(*,*) '       Each variable must have a name and a length!'
+    write(*,*) '       size(variable_names, 1):  ', size(variable_names, 1)
+    write(*,*) '       size(variable_length, 1): ', size(variable_length, 1)
+    call pabort()
   end if
 
+  nvar = size(variable_names, 1)
 
-  allocate(this%group_id_cell(ntimes_cell))
-  this%group_id_cell = 1
-  this%ngroups_cell = 0
-
+  filename = 'blubberlutsch.nc'
+  call nc_create_file(filename = filename, ncid = this%ncid, overwrite=.true.) 
+  call nc_create_group(ncid = this%ncid, group_name = 'cell_data', &
+                       ncid_group = this%ncid_cell)
+  
+  do ivar = 1, nvar
+    call nc_create_var_by_name(ncid    = this%ncid_cell,                          &
+                               varname = trim(variable_names(ivar)),              &
+                               sizes   = [this%nelements, variable_length(ivar)], &
+                               dimension_names = ['Elements', '        '])
+  end do
+      
 end subroutine
 !-----------------------------------------------------------------------------------------
 
