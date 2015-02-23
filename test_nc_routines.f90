@@ -14,7 +14,7 @@ module test_nc_routines
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_create_testfile
+subroutine test_nc_create_testfile
   integer       :: ncid, nmode, idim_1, idim_2, idim_3
   integer       :: nc_dimid(3), nc_varid(6)
   
@@ -81,14 +81,49 @@ subroutine test_nc_routines_create_testfile
 
   call check(nf90_close(ncid = ncid))
 
-end subroutine test_nc_routines_create_testfile
+end subroutine test_nc_create_testfile
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_nc_create_file
+  integer           :: ncid, formatnum, status
+  character(len=80) :: filename = 'unit_tests_output/test_nc_create_file.nc'
+
+  call nc_create_file(filename = filename, ncid = ncid)
+
+  call assert_file_exists(filename, 'Create netcdf file')
+
+  status = nf90_inquire(ncid = ncid, formatNum = formatnum)
+  call assert_equal(status, NF90_NOERR, 'Inquire successful: '//nf90_strerror(status))
+  call assert_equal(formatnum, NF90_FORMAT_NETCDF4, 'Opened file has NetCDF4 format')
+
+  call nc_close_file(ncid)
+
+  status = nf90_inquire(ncid = ncid, formatNum = formatnum)
+  call assert_equal(status, NF90_EBADID, 'File closed again')
+
+end subroutine test_nc_create_file
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_open_for_read
-  integer       :: ncid
+  integer           :: ncid, formatnum, status
+  character(len=80) :: filename = 'unit_tests_output/test_nc_open_for_write'
 
-  call nc_open_for_read(filename = nc_filename, ncid = ncid)
+  ! Create test file
+  call nc_create_file(filename = filename, ncid = ncid)
+  call nc_close_file(ncid)
+
+  ! Try to open
+  call nc_open_for_read(filename = filename, ncid = ncid)
+
+  status = nf90_inquire(ncid = ncid, formatNum = formatnum)
+
+  call assert_equal(status, NF90_NOERR, 'Inquire successful: '//nf90_strerror(status))
+  call assert_equal(formatnum, NF90_FORMAT_NETCDF4, 'Opened file has NetCDF4 format')
+
+  status = nf90_redef(ncid)
+  call assert_equal(status, -37, 'File opened for read only')
 
   call check(nf90_close(ncid))
 
@@ -96,7 +131,32 @@ end subroutine test_nc_open_for_read
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_getvar_1d_float
+subroutine test_nc_open_for_write
+  integer           :: ncid, formatnum, status
+  character(len=80) :: filename = 'unit_tests_output/test_nc_open_for_write'
+
+  ! Create test file
+  call nc_create_file(filename = filename, ncid = ncid)
+  call nc_close_file(ncid)
+
+  ! Try to open
+  call nc_open_for_write(filename = filename, ncid = ncid)
+
+  status = nf90_inquire(ncid = ncid, formatNum = formatnum)
+
+  call assert_equal(status, NF90_NOERR, 'Inquire successful: '//nf90_strerror(status))
+  call assert_equal(formatnum, NF90_FORMAT_NETCDF4, 'Opened file has NetCDF4 format')
+
+  status = nf90_redef(ncid)
+  call assert_equal(status, NF90_NOERR, 'File opened for write')
+
+  call check(nf90_close(ncid))
+
+end subroutine test_nc_open_for_write
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_nc_getvar_1d_float
   integer                     :: ncid
   real(kind=sp), allocatable  :: readdata_fp(:)
 
@@ -108,11 +168,11 @@ subroutine test_nc_routines_getvar_1d_float
 
   call check(nf90_close(ncid))
 
-end subroutine test_nc_routines_getvar_1d_float
+end subroutine test_nc_getvar_1d_float
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_getvar_2d_float
+subroutine test_nc_getvar_2d_float
   integer                     :: ncid, idim_2
   real(kind=sp), allocatable  :: readdata_fp(:,:)
 
@@ -128,11 +188,11 @@ subroutine test_nc_routines_getvar_2d_float
 
   call check(nf90_close(ncid))
 
-end subroutine test_nc_routines_getvar_2d_float
+end subroutine test_nc_getvar_2d_float
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_getvar_3d_float
+subroutine test_nc_getvar_3d_float
   integer                     :: ncid, idim_2, idim_3
   real(kind=sp), allocatable  :: readdata_fp(:,:,:)
 
@@ -150,11 +210,11 @@ subroutine test_nc_routines_getvar_3d_float
 
   call check(nf90_close(ncid))
 
-end subroutine test_nc_routines_getvar_3d_float
+end subroutine test_nc_getvar_3d_float
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_getvar_1d_int
+subroutine test_nc_getvar_1d_int
   integer                     :: ncid
   integer, allocatable        :: readdata_int(:)
 
@@ -166,11 +226,11 @@ subroutine test_nc_routines_getvar_1d_int
 
   call check(nf90_close(ncid))
 
-end subroutine test_nc_routines_getvar_1d_int
+end subroutine test_nc_getvar_1d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_getvar_2d_int
+subroutine test_nc_getvar_2d_int
   integer                     :: ncid, idim_2
   integer, allocatable        :: readdata_int(:,:)
 
@@ -186,11 +246,11 @@ subroutine test_nc_routines_getvar_2d_int
 
   call check(nf90_close(ncid))
 
-end subroutine test_nc_routines_getvar_2d_int
+end subroutine test_nc_getvar_2d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_getvar_3d_int
+subroutine test_nc_getvar_3d_int
   integer                     :: ncid, idim_2, idim_3
   integer, allocatable        :: readdata_int(:,:,:)
 
@@ -208,18 +268,16 @@ subroutine test_nc_routines_getvar_3d_int
 
   call check(nf90_close(ncid))
 
-end subroutine test_nc_routines_getvar_3d_int
+end subroutine test_nc_getvar_3d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_putvar_1d
+subroutine test_nc_putvar_1d
   integer                       :: ncid, idim_1, idim_2, idim_3
-  character(len=128)            :: nc_filename_local='unit_tests_output/test_nc_routines_write.nc'
+  character(len=128)            :: filename='unit_tests_output/test_nc_putvar_1d.nc'
   real(kind=sp), allocatable    :: readdata_fp(:)
   integer,       allocatable    :: readdata_int(:)
   
-
-  call system('rm '//nc_filename_local)
   dim_size = [10, 20, 30]
 
   if (allocated(testdata_fp)) deallocate(testdata_fp)
@@ -241,14 +299,14 @@ subroutine test_nc_routines_putvar_1d
     end do
   end do
 
-  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+  call nc_create_file(filename = filename, ncid = ncid, overwrite = .true.)
 
   call nc_putvar_by_name(ncid = ncid, varname = 'var_1d_float', values = testdata_fp(:,1,1))
   call nc_putvar_by_name(ncid = ncid, varname = 'var_1d_int',   values = testdata_int(:,1,1))
 
   call nc_close_file(ncid = ncid)
 
-  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+  call nc_open_for_read(filename = filename, ncid = ncid)
 
   call nc_getvar_by_name(ncid = ncid, varname = 'var_1d_float', values = readdata_fp)
   call nc_getvar_by_name(ncid = ncid, varname = 'var_1d_int',   values = readdata_int)
@@ -262,14 +320,14 @@ subroutine test_nc_routines_putvar_1d
 
   call nc_close_file(ncid = ncid)
 
-end subroutine test_nc_routines_putvar_1d
+end subroutine test_nc_putvar_1d
 !-----------------------------------------------------------------------------------------
 
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_putvar_2d
+subroutine test_nc_putvar_2d
   integer                       :: ncid, idim_1, idim_2, idim_3
-  character(len=128)            :: nc_filename_local='unit_tests_output/test_nc_routines_write.nc'
+  character(len=128)            :: filename='unit_tests_output/test_nc_putvar_2d.nc'
   real(kind=sp), allocatable    :: readdata_fp(:,:)
   integer,       allocatable    :: readdata_int(:,:)
   
@@ -295,14 +353,14 @@ subroutine test_nc_routines_putvar_2d
     end do
   end do
 
-  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+  call nc_create_file(filename = filename, ncid = ncid, overwrite = .true.)
 
   call nc_putvar_by_name(ncid = ncid, varname = 'var_2d_float', values = testdata_fp(:,:,1))
   call nc_putvar_by_name(ncid = ncid, varname = 'var_2d_int',   values = testdata_int(:,:,1))
 
   call nc_close_file(ncid = ncid)
 
-  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+  call nc_open_for_read(filename = filename, ncid = ncid)
 
   call nc_getvar_by_name(ncid = ncid, varname = 'var_2d_float', values = readdata_fp)
   call nc_getvar_by_name(ncid = ncid, varname = 'var_2d_int',   values = readdata_int)
@@ -318,14 +376,14 @@ subroutine test_nc_routines_putvar_2d
 
   call nc_close_file(ncid = ncid)
 
-end subroutine test_nc_routines_putvar_2d
+end subroutine test_nc_putvar_2d
 !-----------------------------------------------------------------------------------------
 
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_putvar_3d
+subroutine test_nc_putvar_3d
   integer                       :: ncid, idim_1, idim_2, idim_3
-  character(len=128)            :: nc_filename_local='unit_tests_output/test_nc_routines_write.nc'
+  character(len=128)            :: filename='unit_tests_output/test_nc_putvar_3d.nc'
   real(kind=sp), allocatable    :: readdata_fp(:,:,:)
   integer,       allocatable    :: readdata_int(:,:,:)
   
@@ -351,14 +409,14 @@ subroutine test_nc_routines_putvar_3d
     end do
   end do
 
-  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+  call nc_create_file(filename = filename, ncid = ncid, overwrite = .true.)
 
   call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_float', values = testdata_fp)
   call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_int',   values = testdata_int)
 
   call nc_close_file(ncid = ncid)
 
-  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+  call nc_open_for_read(filename = filename, ncid = ncid)
 
   call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_float', values = readdata_fp)
   call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_int',   values = readdata_int)
@@ -376,13 +434,13 @@ subroutine test_nc_routines_putvar_3d
 
   call nc_close_file(ncid = ncid)
 
-end subroutine test_nc_routines_putvar_3d
+end subroutine test_nc_putvar_3d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_nc_routines_putvar_1d_into_nd
+subroutine test_nc_putvar_1d_into_nd
   integer                       :: ncid, idim_1, idim_2, idim_3
-  character(len=128)            :: nc_filename_local='unit_tests_output/test_nc_routines_write.nc'
+  character(len=128)            :: filename='unit_tests_output/test_nc_putvar_1d_into_nd.nc'
   real(kind=sp), allocatable    :: readdata_fp(:,:,:), array_1d_fp(:)
   integer,       allocatable    :: readdata_int(:,:,:), array_1d_int(:)
   
@@ -412,7 +470,7 @@ subroutine test_nc_routines_putvar_1d_into_nd
   array_1d_int = [-1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1]
 
   ! Test routine nc_putvar_by_name_1d_into_nd and nc_putvar_by_name_1d_into_nd_int along first dimension
-  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+  call nc_create_file (filename = filename, ncid = ncid)
 
   call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_float', values = testdata_fp)
   call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_int',   values = testdata_int)
@@ -425,7 +483,7 @@ subroutine test_nc_routines_putvar_1d_into_nd
 
   call nc_close_file(ncid = ncid)
 
-  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+  call nc_open_for_read(filename = filename, ncid = ncid)
 
   call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_float', values = readdata_fp)
   call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_int',   values = readdata_int)
@@ -440,7 +498,7 @@ subroutine test_nc_routines_putvar_1d_into_nd
   call nc_close_file(ncid = ncid)
 
   ! Test routine nc_putvar_by_name_1d_into_nd and nc_putvar_by_name_1d_into_nd_int along second dimension
-  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+  call nc_open_for_write(filename = filename, ncid = ncid)
 
   call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_float', values = testdata_fp)
   call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_int',   values = testdata_int)
@@ -453,7 +511,7 @@ subroutine test_nc_routines_putvar_1d_into_nd
 
   call nc_close_file(ncid = ncid)
 
-  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+  call nc_open_for_read(filename = filename, ncid = ncid)
 
   call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_float', values = readdata_fp)
   call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_int',   values = readdata_int)
@@ -468,7 +526,7 @@ subroutine test_nc_routines_putvar_1d_into_nd
   call nc_close_file(ncid = ncid)
 
   ! Test routine nc_putvar_by_name_1d_into_nd and nc_putvar_by_name_1d_into_nd_int along third dimension
-  call nc_open_for_write(filename = nc_filename_local, ncid = ncid)
+  call nc_open_for_write(filename = filename, ncid = ncid)
 
   call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_float', values = testdata_fp)
   call nc_putvar_by_name(ncid = ncid, varname = 'var_3d_int',   values = testdata_int)
@@ -481,7 +539,7 @@ subroutine test_nc_routines_putvar_1d_into_nd
 
   call nc_close_file(ncid = ncid)
 
-  call nc_open_for_read(filename = nc_filename_local, ncid = ncid)
+  call nc_open_for_read(filename = filename, ncid = ncid)
 
   call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_float', values = readdata_fp)
   call nc_getvar_by_name(ncid = ncid, varname = 'var_3d_int',   values = readdata_int)
@@ -495,7 +553,7 @@ subroutine test_nc_routines_putvar_1d_into_nd
 
   call nc_close_file(ncid = ncid)
 
-end subroutine test_nc_routines_putvar_1d_into_nd
+end subroutine test_nc_putvar_1d_into_nd
 !-----------------------------------------------------------------------------------------
 
 end module test_nc_routines

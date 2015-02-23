@@ -2553,7 +2553,7 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
 
       status = nf90_def_var( ncid   = ncid,          &
                              name   = trim(varname), &
-                             xtype  = NF90_INT,      &
+                             xtype  = NF90_FLOAT,    &
                              dimids = dimid,         &
                              varid  = variable_id) 
       call check(nf90_enddef(ncid = ncid))
