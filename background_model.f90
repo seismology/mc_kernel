@@ -4,12 +4,12 @@ module backgroundmodel
 
   implicit none
 
-  integer, parameter           :: nmodel_parameters = 10 !< Number of basic model parameters
+  integer, parameter           :: nmodel_parameters = 12 !< Number of basic model parameters
                                                          !! which are availabe in backgroundmodel_type
 
   character(len=3)             :: parameter_name(nmodel_parameters) =  &
-                                  ['vp ', 'vs ', 'rho', 'vph', 'vpv',  &
-                                   'vsh', 'vsv', 'eta', 'phi', 'xi ']
+                                  ['vp ', 'vs ', 'rho', 'vph', 'vpv', 'vsh', &
+                                   'vsv', 'eta', 'phi', 'xi ', 'lam', 'mu ']
 
   type backgroundmodel_type
 
@@ -23,6 +23,8 @@ module backgroundmodel
     real(kind=sp), allocatable :: c_eta(:)
     real(kind=sp), allocatable :: c_phi(:)
     real(kind=sp), allocatable :: c_xi(:)
+    real(kind=sp), allocatable :: c_lam(:)
+    real(kind=sp), allocatable :: c_mu(:)
 
     contains 
       procedure, pass          :: init
@@ -51,6 +53,8 @@ subroutine init(this, npoints)
       deallocate(this%c_eta)
       deallocate(this%c_phi)
       deallocate(this%c_xi)
+      deallocate(this%c_lam)
+      deallocate(this%c_mu)
       allocate(this%c_vp (npoints))
       allocate(this%c_vs (npoints))
       allocate(this%c_rho(npoints))
@@ -61,6 +65,8 @@ subroutine init(this, npoints)
       allocate(this%c_eta(npoints))
       allocate(this%c_phi(npoints))
       allocate(this%c_xi(npoints))
+      allocate(this%c_lam(npoints))
+      allocate(this%c_mu(npoints))
     end if
   else
     allocate(this%c_vp (npoints))
@@ -73,6 +79,8 @@ subroutine init(this, npoints)
     allocate(this%c_eta(npoints))
     allocate(this%c_phi(npoints))
     allocate(this%c_xi(npoints))
+    allocate(this%c_lam(npoints))
+    allocate(this%c_mu(npoints))
   end if
 
 end subroutine init
@@ -102,6 +110,8 @@ subroutine combine(this, coeffs)
       deallocate(this%c_eta)
       deallocate(this%c_phi)
       deallocate(this%c_xi)
+      deallocate(this%c_lam)
+      deallocate(this%c_mu)
       allocate(this%c_vp (npoints))
       allocate(this%c_vs (npoints))
       allocate(this%c_rho(npoints))
@@ -112,6 +122,8 @@ subroutine combine(this, coeffs)
       allocate(this%c_eta(npoints))
       allocate(this%c_phi(npoints))
       allocate(this%c_xi(npoints))
+      allocate(this%c_lam(npoints))
+      allocate(this%c_mu(npoints))
     end if
   else
     allocate(this%c_vp (npoints))
@@ -124,6 +136,8 @@ subroutine combine(this, coeffs)
     allocate(this%c_eta(npoints))
     allocate(this%c_phi(npoints))
     allocate(this%c_xi(npoints))
+    allocate(this%c_lam(npoints))
+    allocate(this%c_mu(npoints))
   end if
 
   ! Recombine this coefficients for chosen parameterization
@@ -135,6 +149,8 @@ subroutine combine(this, coeffs)
   this%c_xi  = coeffs(5,:) 
   this%c_eta = coeffs(6,:) 
   
+  this%c_lam = coeffs(3,:) * (coeffs(1,:)**2 - 2 * coeffs(2,:)**2)
+  this%c_mu  = coeffs(3,:) *  coeffs(2,:)**2
   ! from axisem:
   !lambda = rho * (vphtmp**2 - two * vshtmp**2)
   !mu = rho * vshtmp**2
@@ -183,6 +199,8 @@ function weight(this, weights) result(all_coeffs)
   all_coeffs(8,  :) = this%c_eta(:) 
   all_coeffs(9,  :) = this%c_phi(:) 
   all_coeffs(10, :) = this%c_xi (:) 
+  all_coeffs(11, :) = this%c_lam(:) 
+  all_coeffs(12, :) = this%c_mu (:) 
 
   do ipoint = 1, npoint
      all_coeffs(:, ipoint)  = all_coeffs(:, ipoint) * weights(ipoint)

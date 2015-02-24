@@ -1,7 +1,7 @@
 2                               # Nr of receivers
 Z                               # seismogram component
 T001  00.0000   30.0000  3                    # Name, lat, lon, nr of kernels
-P_40s_lam Gabor_40  CC 675.0 735.0  lambda      # Kernel name, Filter name, time window begin and end, model parameter
+P_40s_lam Gabor_40  CC 675.0 735.0  lam         # Kernel name, Filter name, time window begin and end, model parameter
 P_40s_eta Gabor_40  CC 675.0 735.0  eta 
 P_40s_mu  Gabor_40  CC 675.0 735.0  mu     
 T002  30.0000   00.0000  4 
