@@ -634,6 +634,7 @@ function checklim_1d_int(array, limits, array_name, ntoosmall, ntoolarge) result
 
   logical                                ::  out_of_limit
   integer                                ::  limits_loc(2)
+  integer                                ::  ntoosmall_loc, ntoolarge_loc
   logical, allocatable                   ::  toosmall(:), toolarge(:)
   integer                                ::  i
 
@@ -653,14 +654,14 @@ function checklim_1d_int(array, limits, array_name, ntoosmall, ntoolarge) result
   toolarge = (.not.array.le.limits_loc(2)) ! This catches NaNs as well, which give .false.
                                        ! for every binary comparison.
 
-  ntoosmall = count(toosmall)
-  if (ntoosmall>0) then
+  ntoosmall_loc = count(toosmall)
+  if (ntoosmall_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array smaller than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Lower limit  :              ', minval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoosmall
+      write(*,*) 'Number of violating values: ', ntoosmall_loc    
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do i = 1, size(array, 1)
@@ -675,14 +676,14 @@ function checklim_1d_int(array, limits, array_name, ntoosmall, ntoolarge) result
     out_of_limit = .true.
   end if
 
-  ntoolarge = count(toolarge)
-  if (ntoolarge>0) then
+  ntoolarge_loc = count(toolarge)
+  if (ntoolarge_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array larger than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Upper limit  :              ', maxval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoolarge
+      write(*,*) 'Number of violating values: ', ntoolarge_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do i = 1, size(array, 1)
@@ -696,6 +697,9 @@ function checklim_1d_int(array, limits, array_name, ntoosmall, ntoolarge) result
     end if
     out_of_limit = .true.
   end if
+
+  if (present(ntoosmall)) ntoosmall = ntoosmall_loc
+  if (present(ntoolarge)) ntoolarge = ntoolarge_loc
 
 end function checklim_1d_int
 !-----------------------------------------------------------------------------------------
@@ -710,6 +714,7 @@ function checklim_2d_int(array, limits, array_name, ntoosmall, ntoolarge) result
 
   logical                                ::  out_of_limit
   integer                                ::  limits_loc(2)
+  integer                                ::  ntoosmall_loc, ntoolarge_loc
   logical, allocatable                   ::  toosmall(:,:), toolarge(:,:)
   integer                                ::  i, j
 
@@ -729,14 +734,14 @@ function checklim_2d_int(array, limits, array_name, ntoosmall, ntoolarge) result
   toolarge = (.not.array.le.limits_loc(2)) ! This catches NaNs as well, which give .false.
                                        ! for every binary comparison.
 
-  ntoosmall = count(toosmall)
-  if (ntoosmall>0) then
+  ntoosmall_loc = count(toosmall)
+  if (ntoosmall_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array smaller than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Lower limit  :              ', minval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoosmall
+      write(*,*) 'Number of violating values: ', ntoosmall_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do j = 1, size(array, 2)
@@ -753,14 +758,14 @@ function checklim_2d_int(array, limits, array_name, ntoosmall, ntoolarge) result
     out_of_limit = .true.
   end if
 
-  ntoolarge = count(toolarge)
-  if (ntoolarge>0) then
+  ntoolarge_loc = count(toolarge)
+  if (ntoolarge_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array larger than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Upper limit  :              ', maxval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoolarge
+      write(*,*) 'Number of violating values: ', ntoolarge_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do j = 1, size(array, 2)
@@ -777,17 +782,14 @@ function checklim_2d_int(array, limits, array_name, ntoosmall, ntoolarge) result
     out_of_limit = .true.
   end if
 
+  if (present(ntoosmall)) ntoosmall = ntoosmall_loc
+  if (present(ntoolarge)) ntoolarge = ntoolarge_loc
+
 end function checklim_2d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> Checks whether any value of 'array' is outside of 'limits_loc' or NaN
-!! This function uses unlimited polymorphism. The select type blocks might seem a bit 
-!! cumbersome, but currently I cannot think of a more elegant solution.
-!! I considered the .le.rnative of assigning 'array' do a dp-real right in the beginning,
-!! but this will throw a floating point exception if one of the values in array is NaN. 
-!! Currently, this function supports sp-real and integer. All other types will not be 
-!! checked, but should also not produce an error so far
 function checklim_3d_int(array, limits, array_name, ntoosmall, ntoolarge) result(out_of_limit)
   integer, intent(in)                    ::  array(:,:,:)
   integer, intent(in), optional          ::  limits(2)
@@ -796,6 +798,7 @@ function checklim_3d_int(array, limits, array_name, ntoosmall, ntoolarge) result
 
   logical                                ::  out_of_limit
   integer                                ::  limits_loc(2)
+  integer                                ::  ntoosmall_loc, ntoolarge_loc
   logical, allocatable                   ::  toosmall(:,:,:), toolarge(:,:,:)
   integer                                ::  i, j, k
 
@@ -815,14 +818,14 @@ function checklim_3d_int(array, limits, array_name, ntoosmall, ntoolarge) result
   toolarge = (.not.array.le.limits_loc(2)) ! This catches NaNs as well, which give .false.
                                            ! for every binary comparison.
 
-  ntoosmall = count(toosmall)
-  if (ntoosmall>0) then
+  ntoosmall_loc = count(toosmall)
+  if (ntoosmall_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array smaller than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Lower limit  :              ', minval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoosmall
+      write(*,*) 'Number of violating values: ', ntoosmall_loc
       write(*,*) 'Details for first violating element: follow'
       if (verbose>1) then
         do k = 1, size(array, 3)
@@ -841,14 +844,14 @@ function checklim_3d_int(array, limits, array_name, ntoosmall, ntoolarge) result
     out_of_limit = .true.
   end if
 
-  ntoolarge = count(toolarge)
-  if (ntoolarge>0) then
+  ntoolarge_loc = count(toolarge)
+  if (ntoolarge_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array larger than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Upper limit  :              ', maxval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoolarge
+      write(*,*) 'Number of violating values: ', ntoolarge_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do k = 1, size(array, 3)
@@ -867,12 +870,14 @@ function checklim_3d_int(array, limits, array_name, ntoosmall, ntoolarge) result
     out_of_limit = .true.
   end if
 
+  if (present(ntoosmall)) ntoosmall = ntoosmall_loc
+  if (present(ntoolarge)) ntoolarge = ntoolarge_loc
+
 end function checklim_3d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> Checks whether any value of 'array' is outside of 'limits' or NaN
-!! This function does not use polymorphism, since it is buggy and generally stinks
 function checklim_1d(array, limits, array_name, ntoosmall, ntoolarge) result(out_of_limit)
   real(kind=sp), intent(in)              ::  array(:)
   real(kind=sp), intent(in), optional    ::  limits(2)
@@ -881,6 +886,7 @@ function checklim_1d(array, limits, array_name, ntoosmall, ntoolarge) result(out
 
   logical                                ::  out_of_limit
   real(kind=sp)                          ::  limits_loc(2)
+  integer                                ::  ntoosmall_loc, ntoolarge_loc
   logical, allocatable                   ::  toosmall(:), toolarge(:)
   integer                                ::  i
 
@@ -900,14 +906,14 @@ function checklim_1d(array, limits, array_name, ntoosmall, ntoolarge) result(out
   toolarge = (.not.array.le.limits_loc(2)) ! This catches NaNs as well, which give .false.
                                        ! for every binary comparison.
 
-  ntoosmall = count(toosmall)
-  if (ntoosmall>0) then
+  ntoosmall_loc = count(toosmall)
+  if (ntoosmall_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array smaller than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Lower limit  :              ', minval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoosmall
+      write(*,*) 'Number of violating values: ', ntoosmall_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do i = 1, size(array, 1)
@@ -922,14 +928,14 @@ function checklim_1d(array, limits, array_name, ntoosmall, ntoolarge) result(out
     out_of_limit = .true.
   end if
 
-  ntoolarge = count(toolarge)
-  if (ntoolarge>0) then
+  ntoolarge_loc = count(toolarge)
+  if (ntoolarge_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array larger than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Upper limit  :              ', maxval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoolarge
+      write(*,*) 'Number of violating values: ', ntoolarge_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do i = 1, size(array, 1)
@@ -944,6 +950,9 @@ function checklim_1d(array, limits, array_name, ntoosmall, ntoolarge) result(out
     out_of_limit = .true.
   end if
 
+  if (present(ntoosmall)) ntoosmall = ntoosmall_loc
+  if (present(ntoolarge)) ntoolarge = ntoolarge_loc
+
 end function checklim_1d
 !-----------------------------------------------------------------------------------------
 
@@ -957,6 +966,7 @@ function checklim_2d(array, limits, array_name, ntoosmall, ntoolarge) result(out
 
   logical                                ::  out_of_limit
   real(kind=sp)                          ::  limits_loc(2)
+  integer                                ::  ntoosmall_loc, ntoolarge_loc
   logical, allocatable                   ::  toosmall(:,:), toolarge(:,:)
   integer                                ::  i, j
 
@@ -976,14 +986,14 @@ function checklim_2d(array, limits, array_name, ntoosmall, ntoolarge) result(out
   toolarge = (.not.array.le.limits_loc(2)) ! This catches NaNs as well, which give .false.
                                        ! for every binary comparison.
 
-  ntoosmall = count(toosmall)
-  if (ntoosmall>0) then
+  ntoosmall_loc = count(toosmall)
+  if (ntoosmall_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array smaller than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Lower limit  :              ', minval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoosmall
+      write(*,*) 'Number of violating values: ', ntoosmall_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do j = 1, size(array, 2)
@@ -1000,14 +1010,14 @@ function checklim_2d(array, limits, array_name, ntoosmall, ntoolarge) result(out
     out_of_limit = .true.
   end if
 
-  ntoolarge = count(toolarge)
-  if (ntoolarge>0) then
+  ntoolarge_loc = count(toolarge)
+  if (ntoolarge_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array larger than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Upper limit  :              ', maxval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoolarge
+      write(*,*) 'Number of violating values: ', ntoolarge_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do j = 1, size(array, 2)
@@ -1024,6 +1034,9 @@ function checklim_2d(array, limits, array_name, ntoosmall, ntoolarge) result(out
     out_of_limit = .true.
   end if
 
+  if (present(ntoosmall)) ntoosmall = ntoosmall_loc
+  if (present(ntoolarge)) ntoolarge = ntoolarge_loc
+
 end function checklim_2d
 !-----------------------------------------------------------------------------------------
 
@@ -1037,6 +1050,7 @@ function checklim_3d(array, limits, array_name, ntoosmall, ntoolarge) result(out
 
   logical                                ::  out_of_limit
   real(kind=sp)                          ::  limits_loc(2)
+  integer                                ::  ntoosmall_loc, ntoolarge_loc
   logical, allocatable                   ::  toosmall(:,:,:), toolarge(:,:,:)
   integer                                ::  i, j, k
 
@@ -1056,14 +1070,14 @@ function checklim_3d(array, limits, array_name, ntoosmall, ntoolarge) result(out
   toolarge = (.not.array.le.limits_loc(2)) ! This catches NaNs as well, which give .false.
                                            ! for every binary comparison.
 
-  ntoosmall = count(toosmall)
-  if (ntoosmall>0) then
+  ntoosmall_loc = count(toosmall)
+  if (ntoosmall_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array smaller than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Lower limit  :              ', minval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoosmall
+      write(*,*) 'Number of violating values: ', ntoosmall_loc
       write(*,*) 'Details for first violating element: follow'
       if (verbose>1) then
         do k = 1, size(array, 3)
@@ -1082,14 +1096,14 @@ function checklim_3d(array, limits, array_name, ntoosmall, ntoolarge) result(out
     out_of_limit = .true.
   end if
 
-  ntoolarge = count(toolarge)
-  if (ntoolarge>0) then
+  ntoolarge_loc = count(toolarge)
+  if (ntoolarge_loc>0) then
     if (verbose>0) then
       write(*,*) '**********************************************************************'
       write(*,*) 'ERROR: Value in array larger than limit!'
       write(*,*) 'Variable name:              ', trim(array_name) 
       write(*,*) 'Upper limit  :              ', maxval(limits_loc)
-      write(*,*) 'Number of violating values: ', ntoolarge
+      write(*,*) 'Number of violating values: ', ntoolarge_loc
       if (verbose>1) then
         write(*,*) 'Details for first violating element: follow'
         do k = 1, size(array, 3)
@@ -1107,6 +1121,9 @@ function checklim_3d(array, limits, array_name, ntoosmall, ntoolarge) result(out
     end if
     out_of_limit = .true.
   end if
+
+  if (present(ntoosmall)) ntoosmall = ntoosmall_loc
+  if (present(ntoolarge)) ntoolarge = ntoolarge_loc
 
 end function checklim_3d
 !-----------------------------------------------------------------------------------------
