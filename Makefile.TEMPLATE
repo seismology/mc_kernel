@@ -13,11 +13,11 @@ SRCS =	commpi.F90 background_model.f90 buffer.f90 calc_kernels.f90 \
 	spectral_basis.f90 test_background_model.f90 test_buffer.f90 \
 	test_fft_type.f90 test_filter.f90 test_finite_elem_mapping.f90 \
 	test_ftnunit.f90 test_halton.f90 test_inv_mesh.f90 test_kernel.f90 \
-	test_mc.f90 test_nc_routines.f90 test_readfields.f90 \
-	test_rotations.f90 test_sem_derivatives.f90 test_simple_routines.f90 \
-	test_source.f90 test_spectral_basis.f90 test_tetrahedra.f90 \
-	test_type_parameter.f90 test_voxel.f90 type_parameter.f90 \
-	worktype.f90
+	test_master_queue.f90 test_mc.f90 test_nc_routines.f90 \
+	test_readfields.f90 test_rotations.f90 test_sem_derivatives.f90 \
+	test_simple_routines.f90 test_source.f90 test_spectral_basis.f90 \
+	test_tetrahedra.f90 test_type_parameter.f90 test_voxel.f90 \
+	type_parameter.f90 worktype.f90
 
 OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	fft_type.o filtering.o finite_elem_mapping.o ftnunit.o \
@@ -28,11 +28,11 @@ OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	sem_derivatives.o simple_routines.o slave.o source.o spectral_basis.o \
 	test_background_model.o test_buffer.o test_fft_type.o test_filter.o \
 	test_finite_elem_mapping.o test_ftnunit.o test_halton.o \
-	test_inv_mesh.o test_kernel.o test_mc.o test_nc_routines.o \
-	test_readfields.o test_rotations.o test_sem_derivatives.o \
-	test_simple_routines.o test_source.o test_spectral_basis.o \
-	test_tetrahedra.o test_type_parameter.o test_voxel.o type_parameter.o \
-	worktype.o
+	test_inv_mesh.o test_kernel.o test_master_queue.o test_mc.o \
+	test_nc_routines.o test_readfields.o test_rotations.o \
+	test_sem_derivatives.o test_simple_routines.o test_source.o \
+	test_spectral_basis.o test_tetrahedra.o test_type_parameter.o \
+	test_voxel.o type_parameter.o worktype.o
 
 # Handle NetCDF and other library paths
 ifeq ($(strip $(USE_NETCDF)),true)
@@ -124,14 +124,15 @@ test_finite_elem_mapping.o: finite_elem_mapping.o ftnunit.o \
 test_ftnunit.o: ftnunit.o global_parameters.o test_background_model.o \
 	test_buffer.o test_fft_type.o test_filter.o \
 	test_finite_elem_mapping.o test_halton.o test_inv_mesh.o \
-	test_kernel.o test_mc.o test_nc_routines.o test_readfields.o \
-	test_rotations.o test_sem_derivatives.o test_simple_routines.o \
-	test_source.o test_spectral_basis.o test_tetrahedra.o \
-	test_type_parameter.o test_voxel.o Makefile make_kerner.macros 
+	test_kernel.o test_master_queue.o test_mc.o test_nc_routines.o \
+	test_readfields.o test_rotations.o test_sem_derivatives.o \
+	test_simple_routines.o test_source.o test_spectral_basis.o \
+	test_tetrahedra.o test_type_parameter.o test_voxel.o Makefile make_kerner.macros 
 test_halton.o: ftnunit.o global_parameters.o halton.o Makefile make_kerner.macros 
-test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o \
+test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o nc_routines.o \
 	random_tetrahedron.o Makefile make_kerner.macros 
 test_kernel.o: ftnunit.o global_parameters.o kernel.o Makefile make_kerner.macros 
+test_master_queue.o: ftnunit.o global_parameters.o master_queue.o Makefile make_kerner.macros 
 test_mc.o: ftnunit.o global_parameters.o mc_integration.o \
 	random_tetrahedron.o Makefile make_kerner.macros 
 test_nc_routines.o: ftnunit.o global_parameters.o nc_routines.o Makefile make_kerner.macros 

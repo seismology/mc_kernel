@@ -23,24 +23,29 @@ module master_queue
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine init_queue(ntasks)
+subroutine init_queue(ntasks, inparam_file)
 ! anything that should be done before starting the loop over the work. for now,
 ! the number of tasks is fixed here
 
-  use clocks_mod,    only    : tick
-  use global_parameters, only: id_read_params, id_create_tasks
-  use work_type_mod, only    : wt
-  integer, intent(out)      :: ntasks
-  integer                   :: itask, nelems, iel
-  integer(kind=long)        :: iclockold
-  character(len=64)         :: fmtstring, filename
+  use clocks_mod,    only                   : tick
+  use global_parameters, only               : id_read_params, id_create_tasks
+  use work_type_mod, only                   : wt
+  integer, intent(out)                     :: ntasks
+  character(len=*), intent(in), optional   :: inparam_file
+  integer                                  :: itask, nelems, iel
+  integer(kind=long)                       :: iclockold
+  character(len=64)                        :: fmtstring, filename
   
   iclockold = tick()
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
   write(lu_out,'(A)') '***************************************************************'
-  call parameters%read_parameters()
+  if (present(inparam_file)) then !only relevant for unit tests
+    call parameters%read_parameters(trim(inparam_file))
+  else
+    call parameters%read_parameters()
+  end if
   call parameters%read_source()
   call parameters%read_receiver()
 
@@ -81,10 +86,10 @@ subroutine init_queue(ntasks)
 
   iclockold = tick(id=id_read_params, since=iclockold)
 
-  allocate(niterations(parameters%nkernel, nelems))
+  allocate(niterations(nelems, parameters%nkernel))
   allocate(element_proc(nelems))
-  niterations  = -1
-  element_proc = -1
+  niterations(:,:)  = -1
+  element_proc(:)  = -1
   
   fmtstring = '(A, I8, A, I8)'
   ! Calculate number of tasks
@@ -109,12 +114,12 @@ subroutine init_queue(ntasks)
   write(lu_out,'(A)') ' Allocate variables to store result'
   write(lu_out,'(A)') '***************************************************************'
   allocate(K_x(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
-  K_x = 0.0
+  K_x(:,:) = 0.0
   allocate(Var(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
-  Var = 0.0
+  Var(:,:) = 0.0
   allocate(Bg_model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
                                              parameters%nmodel_parameter))
-  Bg_Model = 0.0
+  Bg_Model(:,:) = 0.0
 
   iclockold = tick(id=id_create_tasks, since=iclockold)
 
@@ -219,7 +224,7 @@ subroutine extract_receive_buffer(itask, irank)
       end select
 
     end do
-    niterations(:,ielement)  = wt%niterations(:,iel)
+    niterations(ielement,:)  = wt%niterations(:,iel)
     element_proc(ielement) = irank 
   end do
 
@@ -257,57 +262,58 @@ subroutine finalize()
      ! Distiguish between volumetric and node-based mode
      select case(trim(parameters%int_type))
      case ('onvertices')
-        call inv_mesh%init_node_data(parameters%nkernel*2+parameters%nmodel_parameter)
-        allocate(rel_error(size(Var,1)))
+        call inv_mesh%init_node_data()
 
-        do ikernel = 1, parameters%nkernel
-           xdmf_varname = 'K_x_'//parameters%kernel(ikernel)%name
-           call inv_mesh%set_node_data_snap(real(K_x(:,ikernel), kind=sp), &
-                                            ikernel,                       &     
-                                            trim(xdmf_varname))
+        call inv_mesh%add_node_variable(var_name    = 'kernel',           &
+                                        nentries    = parameters%nkernel, &
+                                        entry_names = [('K_x_'//parameters%kernel(ikernel)%name, &
+                                                        ikernel = 1, parameters%nkernel)] )
 
-           rel_error = real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), kind=sp)
-           xdmf_varname = 'err_'//parameters%kernel(ikernel)%name 
-           call inv_mesh%set_node_data_snap(rel_error,                          &
-                                            ikernel+parameters%nkernel,         &
-                                            trim(xdmf_varname))
-                                           
-        end do
-        
-        do imodel_parameter = 1, parameters%nmodel_parameter
-           xdmf_varname = 'Bg_model_'//parameters%bgmodel_parameter_names(imodel_parameter)
-           call inv_mesh%set_node_data_snap(real(Bg_Model(:, imodel_parameter), kind=sp), &
-                                            imodel_parameter+parameters%nkernel*2,  &
-                                            trim(xdmf_varname))
-        end do
+        call inv_mesh%add_node_variable(var_name    = 'error',            &
+                                        nentries    = parameters%nkernel, &
+                                        entry_names = [('err_'//parameters%kernel(ikernel)%name, &
+                                                        ikernel = 1, parameters%nkernel)] )
 
-        call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_kernel')
+        call inv_mesh%add_node_variable(var_name    = 'model',                                  &
+                                        nentries    = parameters%nmodel_parameter,              &
+                                        entry_names = [(parameters%bgmodel_parameter_names(ikernel), &
+                                                        ikernel = 1, parameters%nmodel_parameter)] )
 
+                                                     
+        call inv_mesh%add_node_data(var_name = 'kernel',                      &
+                                    values   = real(K_x, kind=sp) )
+        call inv_mesh%add_node_data(var_name = 'error',                       &
+                                    values   = real(sqrt(Var/K_x), kind=sp) )
+        call inv_mesh%add_node_data(var_name = 'model',                       &
+                                    values   = real(Bg_Model, kind=sp) )
+                                      
      case ('volumetric')
-        call inv_mesh%init_cell_data(parameters%nkernel*2+parameters%nmodel_parameter)
-        allocate(rel_error(size(Var,1)))
+        call inv_mesh%init_cell_data()
 
-        do ikernel = 1, parameters%nkernel
-           xdmf_varname = 'K_x_'//parameters%kernel(ikernel)%name
-           call inv_mesh%set_cell_data_snap(real(K_x(:,ikernel), kind=sp), &
-                                            ikernel,                       &
-                                            trim(xdmf_varname))
+        call inv_mesh%add_cell_variable(var_name    = 'kernel',           &
+                                        nentries    = parameters%nkernel, &
+                                        entry_names = [('K_x_'//parameters%kernel(ikernel)%name, &
+                                                        ikernel = 1, parameters%nkernel)] )
 
-           rel_error = real(sqrt(Var(:,ikernel))/abs(K_x(:,ikernel)), kind=sp)
-           xdmf_varname = 'err_'//parameters%kernel(ikernel)%name
-           call inv_mesh%set_cell_data_snap(rel_error,                   &
-                                            ikernel+parameters%nkernel,  &
-                                            trim(xdmf_varname))
-        end do
-        
-        do imodel_parameter = 1, parameters%nmodel_parameter
-           xdmf_varname = 'Bg_model_'//parameters%bgmodel_parameter_names(imodel_parameter)
-           call inv_mesh%set_cell_data_snap(real(Bg_Model(:, imodel_parameter), kind=sp), &
-                                            imodel_parameter+parameters%nkernel*2,  &
-                                            trim(xdmf_varname))
-        end do
+        call inv_mesh%add_cell_variable(var_name    = 'error',            &
+                                        nentries    = parameters%nkernel, &
+                                        entry_names = [('err_'//parameters%kernel(ikernel)%name, &
+                                                        ikernel = 1, parameters%nkernel)] )
 
-        call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel')
+        call inv_mesh%add_cell_variable(var_name    = 'model',                                  &
+                                        nentries    = parameters%nmodel_parameter,              &
+                                        entry_names = [(parameters%bgmodel_parameter_names(ikernel), &
+                                                        ikernel = 1, parameters%nmodel_parameter)] )
+
+                                                     
+        call inv_mesh%add_cell_data(var_name = 'kernel',                      &
+                                    values   = real(K_x, kind=sp) )
+        call inv_mesh%add_cell_data(var_name = 'error',                       &
+                                    values   = real(sqrt(Var/K_x), kind=sp) )
+        call inv_mesh%add_cell_data(var_name = 'model',                       &
+                                    values   = real(Bg_Model, kind=sp) )
+                                      
+
      end select
   
   ! Save kernels in Yale-style csr format
@@ -356,19 +362,27 @@ subroutine finalize()
 
   end select
 
-  call inv_mesh%free_node_and_cell_data()
 
   ! Save mesh partition and convergence information
   write(lu_out,*) 'Write mesh partition and convergence to disk'
-  call inv_mesh%init_cell_data(parameters%nkernel + 1)
-  call inv_mesh%set_cell_data_snap(real(element_proc, kind=sp), 1,  &
-                                   'element_proc')
-  do ikernel = 1, parameters%nkernel
-      call inv_mesh%set_cell_data_snap(real(niterations(ikernel, :), kind=sp), 1+ikernel,&
-                                       'nit_'//parameters%kernel(ikernel)%name)
-  end do 
-  call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_kernel_stat')
 
+  call inv_mesh%init_cell_data()
+  call inv_mesh%add_cell_variable(var_name    = 'niterations',      &
+                                  nentries    = parameters%nkernel, &
+                                  entry_names = [('nit_'//parameters%kernel(ikernel)%name, &
+                                                  ikernel = 1, parameters%nkernel)] )
+  call inv_mesh%add_cell_variable(var_name    = 'element_proc', &
+                                  nentries    = 1 )
+
+  call inv_mesh%add_cell_data(var_name = 'niterations',  &
+                              values   = real(niterations, kind=sp))
+  call inv_mesh%add_cell_data(var_name = 'element_proc',  &
+                              values   = reshape(real(element_proc, kind=sp), [size(element_proc,1), 1]))
+
+
+  call inv_mesh%dump_data_xdmf(trim(parameters%output_file)//'_kernel')
+      
+  call inv_mesh%free_node_and_cell_data()
   call inv_mesh%freeme()
 
   ! Multiply kernels with model
@@ -436,9 +450,9 @@ subroutine dump_intermediate(itask)
 
     call nc_putvar_by_name(ncid    = ncid_intermediate, &
                            varname = 'niterations',        & 
-                           values  = niterations(:, ielement),&
-                           start   = [1, ielement],        &
-                           count   = [parameters%nkernel, 1] )
+                           values  = niterations(ielement, :),&
+                           start   = [ielement, 1],        &
+                           count   = [1, parameters%nkernel] )
   end do
 
   call nc_putvar_by_name(ncid    = ncid_intermediate, &

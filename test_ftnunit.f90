@@ -22,12 +22,14 @@ module unit_tests
   use test_sem_derivatives
   use test_simple_routines
   use test_type_parameter
+  use test_master_queue
 
   implicit none
 
 contains
 !-----------------------------------------------------------------------------------------
 subroutine test_all
+  integer   :: oldverbose
 
   verbose = 1
   master  = .true.
@@ -50,6 +52,14 @@ subroutine test_all
   call test(test_lowtrim,  'Transform string to lowercase and trim')
   call test(test_absreldiff, 'Calculate absolute relative difference')
   call test(test_cross, 'Cross product')
+  oldverbose = verbose; verbose = 0 !These tests produce too much output otherwise
+  call test(test_checklim_1d_int, 'Check limits 1D (integer)')
+  call test(test_checklim_2d_int, 'Check limits 2D (integer)')
+  call test(test_checklim_3d_int, 'Check limits 3D (integer)')
+  call test(test_checklim_1d,     'Check limits 1D (float)')
+  call test(test_checklim_2d,     'Check limits 2D (float)')
+  call test(test_checklim_3d,     'Check limits 3D (float)')
+  verbose = oldverbose
 
   ! test sem derivatives
   write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
@@ -110,18 +120,21 @@ subroutine test_all
 
   ! test_nc_routines
   write(6,'(/,a)') 'TEST NC_ROUTINES MODULE'
-  call test_nc_routines_create_testfile()
+  call test_nc_create_testfile()
+  call test(test_nc_create_file, 'Create NetCDF file')
+  call test(test_nc_create_group, 'Create Group')
   call test(test_nc_open_for_read, 'Open NetCDF file for reading')
-  call test(test_nc_routines_getvar_1d_float, 'Read 1D Float by name')
-  call test(test_nc_routines_getvar_2d_float, 'Read 2D Float by name')
-  call test(test_nc_routines_getvar_3d_float, 'Read 3D Float by name')
-  call test(test_nc_routines_getvar_1d_int, 'Read 1D Integer by name')
-  call test(test_nc_routines_getvar_2d_int, 'Read 2D Integer by name')
-  call test(test_nc_routines_getvar_3d_int, 'Read 3D Integer by name')
-  call test(test_nc_routines_putvar_1d, 'Write 1D Float by name')
-  call test(test_nc_routines_putvar_2d, 'Write 2D Float by name')
-  call test(test_nc_routines_putvar_3d, 'Write 3D Float by name')
-  call test(test_nc_routines_putvar_1d_into_nd, 'Write 1D slices into 3D variable by name')
+  call test(test_nc_open_for_write, 'Open NetCDF file for writing')
+  call test(test_nc_getvar_1d_float, 'Read 1D Float by name')
+  call test(test_nc_getvar_2d_float, 'Read 2D Float by name')
+  call test(test_nc_getvar_3d_float, 'Read 3D Float by name')
+  call test(test_nc_getvar_1d_int, 'Read 1D Integer by name')
+  call test(test_nc_getvar_2d_int, 'Read 2D Integer by name')
+  call test(test_nc_getvar_3d_int, 'Read 3D Integer by name')
+  call test(test_nc_putvar_1d, 'Write 1D Float by name')
+  call test(test_nc_putvar_2d, 'Write 2D Float by name')
+  call test(test_nc_putvar_3d, 'Write 3D Float by name')
+  call test(test_nc_putvar_1d_into_nd, 'Write 1D slices into 3D variable by name')
 
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
@@ -217,18 +230,12 @@ subroutine test_all
   call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
   call test(test_mesh_dump2, 'reading/dumping tetrahedral mesh from abaqus')
   call test(test_mesh_dump3, 'reading/dumping tetrahedral mesh from abaqus with multiple element blocks')
-  call test(test_mesh_data_dump, 'reading/dumping tetrahedral mesh with data')
-  call test(test_mesh_data_dump2, &
-            'reading/dumping triangular mesh from abaqus file with data')
-  call test(test_mesh_data_dump3, &
-            'reading/dumping quadrilateral mesh from abaqus file with data')
-  call test(test_mesh_data_dump4, &
-            'reading/dumping hexahedral mesh from abaqus file with data')
-  call test(test_mesh_data_dump5, &
-            'reading/dumping tetrahedral mesh from abaqus file with data')
-  call test(test_mesh_data_blocks, &
-            'reading/dumping tetrahedral mesh from abaqus file with blocks and data')
-  call test(test_mesh_tracedata_dump, 'reading/dumping tetrahedral mesh with tracedata')
+  call test(test_init_node_data, 'Initialize node data')
+  call test(test_init_cell_data, 'Initialize cell data')
+  call test(test_init_mixed_data, 'Initialize mixed data')
+  call test(test_set_node_data, 'Set node data')
+  call test(test_set_cell_data, 'Set cell data')
+  call test(test_set_mixed_data, 'Set mixed data')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
   call test(test_initialize_mesh, 'initialize mesh')
@@ -246,6 +253,12 @@ subroutine test_all
   call test(test_buffer_retrieval_3d, 'get 3d data back from the buffer')
   call test(test_buffer_retrieval_4d, 'get 4d data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
+
+  ! Test master queue
+  ! @TODO: Test does not work, should be checked
+  !write(6,'(/,a)') 'TEST MASTER QUEUE'
+  !call test(test_master_all, 'Master queue init_queue and finalize')
+  
 
   call finish_output()
 end subroutine

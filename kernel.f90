@@ -468,7 +468,7 @@ subroutine tabulate_kernels(model_param, needs_basekernel, strain_type)
 
   needs_basekernel = .false.
   select case(trim(to_lower(model_param)))
-  case('lambda')
+  case('lam')
      needs_basekernel(1)   = .true.   ! Lambda
      strain_type      = 'straintensor_trace'
 
@@ -530,7 +530,7 @@ function calc_physical_kernels(model_param, base_kernel, bg_model)  &
   ! base_kernel contains the following order: 
   ! lambda, mu, rho, a, b, c
   select case(trim(model_param))
-  case('lambda')
+  case('lam')
      physical_kernel(:) =                                         &
             base_kernel(:, 1)                                ! lambda
   case('mu')

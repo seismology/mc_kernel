@@ -27,7 +27,7 @@ module type_parameter
         character(len=512)                   :: receiver_file
         character(len=512)                   :: filter_file
         character(len=512)                   :: mesh_file
-        character(len=512)                   :: mesh_file_type
+        character(len=512)                   :: mesh_file_type = 'abaqus'
         character(len=512)                   :: mesh_file_vert
         character(len=512)                   :: mesh_file_face
         character(len=512)                   :: output_file = 'kerner'
@@ -35,7 +35,7 @@ module type_parameter
         character(len=32)                    :: whattodo
         character(len=32)                    :: int_type
         character(len=32)                    :: int_scheme = 'PARSEVAL'
-        character(len=32)                    :: dump_type
+        character(len=32)                    :: dump_type 
         character(len=32)                    :: fftw_plan = 'MEASURE'
         character(len=32)                    :: strain_type_fwd
         character(len=3), allocatable        :: bgmodel_parameter_names(:)
@@ -223,12 +223,17 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%int_type, 0)
   call pbroadcast_char(this%int_scheme, 0)
 
-  if (lowtrim(this%mesh_file_type)=='abaqus') then
-     call pbroadcast_char(this%mesh_file, 0)
-  else
-     call pbroadcast_char(this%mesh_file_vert, 0)
-     call pbroadcast_char(this%mesh_file_face, 0)
-  end if
+  select case(lowtrim(this%mesh_file_type))
+  case('abaqus') 
+    call pbroadcast_char(this%mesh_file, 0)
+  case('tetrahedral')
+    call pbroadcast_char(this%mesh_file_vert, 0)
+    call pbroadcast_char(this%mesh_file_face, 0)
+  case default
+    print *, 'ERROR: Unknown MESH_FILE_TYPE in ', trim(input_file)
+    print *, '       Allowed values: ''abaqus'', ''tetrahedral'''
+    call pabort(do_traceback=.false.)
+  end select
 
   write(lu_out,*)
   call flush(lu_out)

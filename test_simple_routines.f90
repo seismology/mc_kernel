@@ -232,6 +232,478 @@ subroutine test_cross
 end subroutine test_cross
 !------------------------------------------------------------------------------
 
+!------------------------------------------------------------------------------
+subroutine test_checklim_1d_int
+  integer           ::  array(10)
+  integer           ::  ntoosmall, ntoolarge
+  logical           ::  out_of_limit
+
+  array = 1
+
+  ! Test without limits. Should always be in limits then
+  out_of_limit = check_limits(array     = array)
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test without ntoosmall
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [0, 2] )
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test with all arguments
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+  ! One is too large, one too small
+  array(:) = 1
+  array(3) = -1
+  array(7) = 3
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+
+  ! All are too large
+  array(:) = 3
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 10, 'one is too large')
+
+  ! Limits are the same
+  array(:) = 1
+  array(3) = 0
+  array(7) = 2
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1,1],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! Limits are the same - all within
+  array = 1
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1,1],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+end subroutine test_checklim_1d_int
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_checklim_2d_int
+  integer           ::  array(10, 10)
+  integer           ::  ntoosmall, ntoolarge
+  logical           ::  out_of_limit
+
+  array(:,:) = 1
+
+  ! Test without limits. Should always be in limits then
+  out_of_limit = check_limits(array     = array)
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test without ntoosmall
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [0, 2] )
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test with all arguments
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+  ! One is too large, one too small
+  array(:,:) = 1
+  array(3,1) = -1
+  array(7,6) = 3
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+
+  ! All are too large
+  array(:,:) = 3
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'all are out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 100, 'one is too large')
+
+  ! Limits are the same
+  array(:,:) = 1
+  array(3,8) = 0
+  array(1,6) = 2
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1,1],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! Limits are the same - all within
+  array(:,:) = 1
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1,1],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+end subroutine test_checklim_2d_int
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_checklim_3d_int
+  integer           ::  array(10,10,10)
+  integer           ::  ntoosmall, ntoolarge
+  logical           ::  out_of_limit
+
+  array(:,:,:) = 1
+
+  ! Test without limits. Should always be in limits then
+  out_of_limit = check_limits(array     = array)
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test without ntoosmall
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [0, 2] )
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test with all arguments
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+  ! One is too large, one too small
+  array(:,:,:) = 1
+  array(3,8,2) = -1
+  array(1,7,6) = 3
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+
+  ! All are too large
+  array(:,:,:) = 3
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [0,2],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 1000, 'one is too large')
+
+  ! Limits are the same
+  array(:,:,:) = 1
+  array(3,8,1) = 0
+  array(7,2,9) = 2
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1,1],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! Limits are the same - all within
+  array(:,:,:) = 1
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1,1],     &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+end subroutine test_checklim_3d_int
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_checklim_1d
+  real(kind=sp)     ::  array(10)
+  integer           ::  ntoosmall, ntoolarge
+  logical           ::  out_of_limit
+
+  array(:) = 1.0
+
+  ! Test without limits. Should always be in limits then
+  out_of_limit = check_limits(array     = array)
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test without ntoosmall
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)])
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test with all arguments
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+  ! One is too large, one too small
+  array(:) = 1.0
+  array(3) = 1.0 - 2*epsilon(1.0)
+  array(7) = 1.0 + 2*epsilon(1.0)
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! All are too large
+  array(:) = 2.0
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 10, '10 (all) are too large')
+
+  ! Limits are the same
+  array(:) = 1.0
+  array(3) = 1.0 - 2*epsilon(1.0)
+  array(7) = 1.0 + 2*epsilon(1.0)
+  out_of_limit = check_limits(array     = array,      &
+                              limits    = [1.0, 1.0], &
+                              ntoosmall = ntoosmall,  &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! Limits are the same - all within
+  array(:) = 1.0
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1.0,1.0], &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+end subroutine test_checklim_1d
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_checklim_2d
+  real(kind=sp)     ::  array(10,10)
+  integer           ::  ntoosmall, ntoolarge
+  logical           ::  out_of_limit
+
+  array(:,:) = 1.0
+
+  ! Test without limits. Should always be in limits then
+  out_of_limit = check_limits(array     = array)
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test without ntoosmall
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)])
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test with all arguments
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+  ! One is too large, one too small
+  array(:,:) = 1.0
+  array(3,2) = 1.0 - 2*epsilon(1.0)
+  array(7,9) = 1.0 + 2*epsilon(1.0)
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! All are too large
+  array(:,:) = 2.0
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 100, '100 (all) are too large')
+
+  ! Limits are the same
+  array(:,:) = 1.0
+  array(3,3) = 1.0 - 2*epsilon(1.0)
+  array(7,1) = 1.0 + 2*epsilon(1.0)
+  out_of_limit = check_limits(array     = array,      &
+                              limits    = [1.0, 1.0], &
+                              ntoosmall = ntoosmall,  &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! Limits are the same - all within
+  array(:,:) = 1.0
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1.0,1.0], &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+end subroutine test_checklim_2d
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_checklim_3d
+  real(kind=sp)     ::  array(10,10,10)
+  integer           ::  ntoosmall, ntoolarge
+  logical           ::  out_of_limit
+
+  array(:,:,:) = 1.0
+
+  ! Test without limits. Should always be in limits then
+  out_of_limit = check_limits(array     = array)
+  call assert_false(out_of_limit, 'none is out of limit')
+
+  ! Test without ntoosmall
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)])
+  call assert_false(out_of_limit, 'none is out of limit')
+
+
+  ! Test with all arguments
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+  ! One is too large, one too small
+  array(:,:,:) = 1.0
+  array(3,9,8) = 1.0 - 2*epsilon(1.0)
+  array(7,2,3) = 1.0 + 2*epsilon(1.0)
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! All are too large
+  array(:,:,:) = 2.0
+  out_of_limit = check_limits(array     = array,                                &
+                              limits    = [1.0-epsilon(1.0), 1.0+epsilon(1.0)], &
+                              ntoosmall = ntoosmall,                            &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 1000, '1000 (all) are too large')
+
+  ! Limits are the same
+  array(:,:,:) = 1.0
+  array(3,8,1) = 1.0 - 2*epsilon(1.0)
+  array(7,2,1) = 1.0 + 2*epsilon(1.0)
+  out_of_limit = check_limits(array     = array,      &
+                              limits    = [1.0, 1.0], &
+                              ntoosmall = ntoosmall,  &
+                              ntoolarge = ntoolarge )
+
+  call assert_true(out_of_limit, 'some are out of limit')
+  call assert_equal(ntoosmall, 1, 'one is too small')
+  call assert_equal(ntoolarge, 1, 'one is too large')
+
+  ! Limits are the same - all within
+  array(:,:,:) = 1.0
+  out_of_limit = check_limits(array     = array,     &
+                              limits    = [1.0,1.0], &
+                              ntoosmall = ntoosmall, &
+                              ntoolarge = ntoolarge )
+
+  call assert_false(out_of_limit, 'none is out of limit')
+  call assert_equal(ntoosmall, 0, 'none is too small')
+  call assert_equal(ntoolarge, 0, 'none is too large')
+
+end subroutine test_checklim_3d
+!------------------------------------------------------------------------------
+
 
 
 end module test_simple_routines

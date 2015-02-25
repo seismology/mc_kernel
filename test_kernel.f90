@@ -204,7 +204,7 @@ subroutine test_tabulate_kernel()
    ! is a separate question
 
    ! Lambda
-   model_param = 'lambda'
+   model_param = 'lam'
    call tabulate_kernels(model_param, needs_basekernel, strain_type)
    call assert_true(needs_basekernel(1), model_param//' kernel needs lambda base kernel')
    call assert_false(needs_basekernel(2), model_param//' kernel needs no mu base kernel')
@@ -214,7 +214,7 @@ subroutine test_tabulate_kernel()
    call assert_false(needs_basekernel(6), model_param//' kernel needs no c base kernel')
 
    ! Mu 
-   model_param = 'Mu'
+   model_param = 'mu'
    call tabulate_kernels(model_param, needs_basekernel, strain_type)
    call assert_false(needs_basekernel(1), model_param//' kernel needs no lambda base kernel')
    call assert_true(needs_basekernel(2), model_param//' kernel needs mu base kernel')
