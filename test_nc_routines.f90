@@ -106,6 +106,38 @@ end subroutine test_nc_create_file
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_nc_create_group
+  integer           :: ncid, formatnum, status, ncid_group, ncid_group_2
+  character(len=80) :: filename = 'unit_tests_output/test_nc_create_group.nc'
+
+  call nc_create_file(filename = filename, ncid = ncid)
+  
+  ! Try to create once
+  call nc_create_group(ncid = ncid, group_name = 'test', ncid_group = ncid_group)
+
+  ! Try to create same group once more, should work since overwrite is set
+  call nc_create_group(ncid = ncid, group_name = 'test', &
+                       ncid_group = ncid_group_2, overwrite = .true.)
+  call assert_equal(ncid_group, ncid_group_2, 'Second call to nc_create_group results in same ncid')
+
+  call assert_file_exists(filename, 'Create netcdf file')
+
+  status = nf90_inquire(ncid = ncid, formatNum = formatnum)
+  call assert_equal(status, NF90_NOERR, 'Inquire successful: '//nf90_strerror(status))
+  call assert_equal(formatnum, NF90_FORMAT_NETCDF4, 'Opened file has NetCDF4 format')
+  
+  status = nf90_inq_ncid(ncid = ncid, name = 'test', grp_ncid = ncid_group)
+  call assert_equal(status, NF90_NOERR, 'Inquire group successful: '//nf90_strerror(status))
+
+  call nc_close_file(ncid)
+
+  status = nf90_inquire(ncid = ncid, formatNum = formatnum)
+  call assert_equal(status, NF90_EBADID, 'File closed again')
+
+end subroutine test_nc_create_group
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_nc_open_for_read
   integer           :: ncid, formatnum, status
   character(len=80) :: filename = 'unit_tests_output/test_nc_open_for_write'

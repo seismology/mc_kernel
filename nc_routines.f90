@@ -104,28 +104,41 @@ end subroutine nc_create_file
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_create_group(group_name, ncid, ncid_group)
+subroutine nc_create_group(group_name, ncid, ncid_group, overwrite)
    character(len=*), intent(in)  :: group_name
    integer, intent(in)           :: ncid
-   integer, intent(out)          :: ncid_group
+   logical, intent(in), optional :: overwrite
+   integer, intent(inout)        :: ncid_group
    character(len=512)            :: fmtstring
+   logical                       :: overwrite_loc = .false.
    integer                       :: status
 
-   call check(nf90_redef(ncid = ncid))
-   status = nf90_def_grp(ncid, trim(group_name), ncid_group)
+   if (present(overwrite)) overwrite_loc = overwrite
 
-   if (status.eq.NF90_ENAMEINUSE) then
-     fmtstring = "('ERROR: CPU ', I4, ' tried to create group ''', A, ''', " &
-              // "but it already exists.')"
-     print fmtstring, myrank, trim(group_name)
-     stop
-   elseif (status.ne.NF90_NOERR) then
-     fmtstring = "('ERROR: CPU ', I4, ' tried to create group ''', A, ''', " &
-              // "but could not. Check permissions.')"
-     print fmtstring, myrank, trim(group_name)
-     stop
-   end if
-   call check(nf90_enddef(ncid = ncid))
+   status = nf90_inq_ncid(ncid = ncid, name = group_name, grp_ncid = ncid_group)
+
+   select case(status)
+   case(NF90_NOERR) 
+     if (.not.overwrite_loc) then
+       fmtstring = "('ERROR: CPU ', I4, ' tried to create group ''', A, ''', " &
+                // "but it already exists.')"
+       print fmtstring, myrank, trim(group_name)
+       stop
+     end if
+
+   case default
+     call check(nf90_redef(ncid = ncid))
+     status = nf90_def_grp(ncid, trim(group_name), ncid_group)
+
+     if (status.ne.NF90_NOERR) then
+       fmtstring = "('ERROR: CPU ', I4, ' tried to create group ''', A, ''', " &
+                // "but could not. Check permissions.')"
+       print fmtstring, myrank, trim(group_name)
+       print *, nf90_strerror(status)
+       stop
+     end if
+     call check(nf90_enddef(ncid = ncid))
+   end select
 
 end subroutine nc_create_group
 !-----------------------------------------------------------------------------------------
@@ -178,25 +191,42 @@ end subroutine nc_close_file
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine getvarid(ncid, name, varid)
-    integer, intent(in)          :: ncid
-    character(len=*), intent(in) :: name
-    integer, intent(out)         :: varid
-    integer                      :: status
+subroutine getvarid(ncid, name, varid, noerr)
+    integer, intent(in)           :: ncid
+    character(len=*), intent(in)  :: name
+    integer, intent(out)          :: varid
+    logical, intent(in), optional :: noerr
+    integer                       :: status
 
     status = nf90_inq_varid( ncid  = ncid, &
                              name  = name, &
                              varid = varid )
+
     if (status.ne.NF90_NOERR) then
-        if (verbose>1) then
+      ! Variable not found, return varid -1
+      if (present(noerr)) then
+        if (noerr) then
+          varid = -1
+        else
           write(6,100) myrank, trim(name), ncid
-          call flush(6)
+          stop
         end if
-        varid = -1
+      else
+        write(6,100) myrank, trim(name), ncid
+        stop
+      end if
+      if (verbose>1) then
+        write(6,100) myrank, trim(name), ncid
+        call flush(6)
+      end if
+
     elseif (verbose>1) then
-        write(lu_out,101) trim(name), ncid, varid
-        call flush(lu_out)
+      ! Variable found
+      write(lu_out,101) trim(name), ncid, varid
+      call flush(lu_out)
+
     end if
+
 100 format('ERROR: CPU ', I4, ' could not find variable: ''', A, ''' in NCID', I7)
 101 format('    Variable ''', A, ''' found in NCID', I7, ', has ID:', I7)
 end subroutine getvarid
@@ -243,9 +273,9 @@ subroutine nc_getvar_by_name_1d_int(ncid, varname, values, limits)
     call flush(lu_out)
   end if
 
-  call  getvarid( ncid  = ncid,            &
-                  name  = varname,   &
-                  varid = variable_id)
+  call getvarid( ncid  = ncid,      &
+                 name  = varname,   &
+                 varid = variable_id)
 
   status = nf90_inquire_variable(ncid   = ncid,           &
                                  varid  = variable_id,    &
@@ -485,8 +515,8 @@ subroutine nc_getvar_by_name_2d(ncid, varname, values, limits)
     call flush(lu_out)
   end if
 
-  call  getvarid( ncid  = ncid,            &
-                  name  = varname,   &
+  call  getvarid( ncid  = ncid,       &
+                  name  = varname,    &
                   varid = variable_id)
 
   status = nf90_inquire_variable(ncid   = ncid,           &
@@ -726,9 +756,10 @@ subroutine nc_putvar_by_name_1d(ncid, varname, values, start, count)
   integer                                    :: i, variable_id, dimid(ndim), status
   integer                                    :: ncid_root
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ! Get ncid of root group. Used for dimensions, which should always be defined
   ! in the root group (at least according to my taste)
@@ -794,9 +825,10 @@ subroutine nc_putvar_by_name_1d_int(ncid, varname, values, start, count)
   integer                                    :: i, variable_id, dimid(ndim), status
   integer                                    :: ncid_root
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ! Get ncid of root group. Used for dimensions, which should always be defined
   ! in the root group (at least according to my taste)
@@ -863,9 +895,10 @@ subroutine nc_putvar_by_name_2d(ncid, varname, values, start, count)
   integer                                    :: i, variable_id, dimid(ndim), status
   integer                                    :: ncid_root
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ! Get ncid of root group. Used for dimensions, which should always be defined
   ! in the root group (at least according to my taste)
@@ -933,9 +966,10 @@ subroutine nc_putvar_by_name_2d_int(ncid, varname, values, start, count)
   integer                                    :: i, variable_id, dimid(ndim), status
   integer                                    :: ncid_root
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ! Get ncid of root group. Used for dimensions, which should always be defined
   ! in the root group (at least according to my taste)
@@ -1002,9 +1036,10 @@ subroutine nc_putvar_by_name_3d(ncid, varname, values, start, count)
   integer                                    :: i, variable_id, dimid(ndim), status
   integer                                    :: ncid_root
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ! Get ncid of root group. Used for dimensions, which should always be defined
   ! in the root group (at least according to my taste)
@@ -1071,9 +1106,11 @@ subroutine nc_putvar_by_name_3d_int(ncid, varname, values, start, count)
   integer                                    :: i, variable_id, dimid(ndim), status
   integer                                    :: ncid_root
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+                  
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ! Get ncid of root group. Used for dimensions, which should always be defined
   ! in the root group (at least according to my taste)
@@ -1159,9 +1196,10 @@ subroutine nc_putvar_by_name_1d_into_nd(ncid, varname, values, start, count)
     stop
   end if
                   
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ! if variable not found -> ERROR
   if (variable_id==-1) then
@@ -1221,10 +1259,11 @@ subroutine nc_putvar_by_name_1d_into_nd_int(ncid, varname, values, start, count)
     print *, 'size(variable): ', start
     stop
   end if
-                  
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ! if variable not found -> ERROR
   if (variable_id==-1) then
@@ -2350,6 +2389,7 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
                print *, trim(nf90_strerror(status))
+               call pabort()
                stop
            end if
 
@@ -2501,9 +2541,10 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
   integer                                    :: i, variable_id, status, ncid_root
   integer, allocatable                       :: dimid(:)
 
-  call  getvarid( ncid  = ncid,      &
-                  name  = varname,   &
-                  varid = variable_id)
+  call getvarid(ncid  = ncid,        &
+                name  = varname,     &
+                varid = variable_id, &
+                noerr = .true.)
 
   ndim = size(sizes)
   allocate(dimensions(ndim))
@@ -2531,38 +2572,40 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
 
   ! if variable not found              
   if (variable_id==-1) then
-      call check(nf90_redef(ncid = ncid))
-      do i = 1, ndim
-        if (trim(dimensions(i)) == '') then
-          write(dimname, '(A,"_",I1)') trim(varname), i
-          status = nf90_def_dim(ncid  = ncid_root,       &
-                                name  = trim(dimname),   &
-                                len   = sizes(i),        &
+    call check(nf90_redef(ncid = ncid_root))
+    do i = 1, ndim
+      if (trim(dimensions(i)) == '') then
+        write(dimname, '(A,"_",I1)') trim(varname), i
+        status = nf90_def_dim(ncid  = ncid_root,       &
+                              name  = trim(dimname),   &
+                              len   = sizes(i),        &
+                              dimid = dimid(i))
+      else
+        status = nf90_inq_dimid(ncid = ncid_root,       &
+                                name = dimensions(i),   &
                                 dimid = dimid(i))
-        else
-          status = nf90_inq_dimid(ncid = ncid, name = dimensions(i), dimid = dimid(i))
-          if (status.ne.NF90_NOERR) then
-            call check(nf90_def_dim(ncid  = ncid_root,           &
-                                    name  = trim(dimensions(i)), &
-                                    len   = sizes(i),            &
-                                    dimid = dimid(i)) )
-          end if
-
+        if (status.ne.NF90_NOERR) then
+          call check(nf90_def_dim(ncid  = ncid_root,           &
+                                  name  = trim(dimensions(i)), &
+                                  len   = sizes(i),            &
+                                  dimid = dimid(i)) )
         end if
-      end do
 
-      status = nf90_def_var( ncid   = ncid,          &
-                             name   = trim(varname), &
-                             xtype  = NF90_FLOAT,    &
-                             dimids = dimid,         &
-                             varid  = variable_id) 
-      call check(nf90_enddef(ncid = ncid))
+      end if
+    end do
+
+    status = nf90_def_var( ncid   = ncid,          &
+                           name   = trim(varname), &
+                           xtype  = NF90_FLOAT,    &
+                           dimids = dimid,         &
+                           varid  = variable_id) 
+    call check(nf90_enddef(ncid = ncid_root))
 
   else
-      fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
-      print fmtstring, trim(varname)
-      print '(A)', "it already exists"
-      stop
+    fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
+    print fmtstring, trim(varname)
+    print '(A)', "it already exists"
+    stop
   end if
 
 end subroutine nc_create_var_by_name

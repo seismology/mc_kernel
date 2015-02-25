@@ -138,27 +138,29 @@ subroutine plot_wavefields()
       call timeshift_fwd%freeme()
 
       print *, ' Initialize XDMF file'
-      call inv_mesh%init_node_data(ndumps*ndim)
+      ! @TODO
+      !call inv_mesh%init_node_data(ndumps*ndim)
 
-      write(*,*) ' Dump forward field to XDMF file'
-      do idump = 1, ndumps
-          if (mod(idump, 100)==0) &
-              write(*,*) '  Passing dump ', idump, ' to inversion mesh datatype'
-          !Test of planar wave , works
-          !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
-          !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
-          do icomp=1,ndim
-             write(cname,'("comp_",I0.2)') icomp
-             call inv_mesh%set_node_data_snap(real(fw_field(idump,icomp,:), kind=sp), &
-                                              idump + ndumps*(icomp-1), &
-                                              'fwd_'//trim(cname))
-          end do
-      end do
-      deallocate(fw_field)
+      ! @TODO
+      !write(*,*) ' Dump forward field to XDMF file'
+      !do idump = 1, ndumps
+      !    if (mod(idump, 100)==0) &
+      !        write(*,*) '  Passing dump ', idump, ' to inversion mesh datatype'
+      !    !Test of planar wave , works
+      !    !fw_field(idump,:) = sin(co_points(1,:)/1000 + idump*0.1)
+      !    !bw_field(idump,:) = sin(co_points(2,:)/1000 + idump*0.1)
+      !    do icomp=1,ndim
+      !       write(cname,'("comp_",I0.2)') icomp
+      !       call inv_mesh%set_node_data_snap(real(fw_field(idump,icomp,:), kind=sp), &
+      !                                        idump + ndumps*(icomp-1), &
+      !                                        'fwd_'//trim(cname))
+      !    end do
+      !end do
+      !deallocate(fw_field)
 
-      print *, ' Save XDMF file'
-      call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_fwd')
-      call inv_mesh%free_node_and_cell_data()
+      !print *, ' Save XDMF file'
+      !call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_fwd')
+      !call inv_mesh%free_node_and_cell_data()
 
 
 
@@ -184,7 +186,8 @@ subroutine plot_wavefields()
           call fft_data%irfft(bw_field_fd, bw_field)
           call timeshift_bwd%freeme()
 
-          call inv_mesh%init_node_data(ndumps*ndim)
+          !@TODO
+         ! call inv_mesh%init_node_data(ndumps*ndim)
 
           write(*,*) ' Dump backward field to XDMF file'
           do idump = 1, ndumps
@@ -196,15 +199,16 @@ subroutine plot_wavefields()
 
               do icomp = 1,ndim
                  write(cname,'("comp_",I0.2)') icomp
-                 call inv_mesh%set_node_data_snap(real(bw_field(idump,icomp,:), kind=sp), &
-                                                  idump + ndumps*(icomp-1), &
-                                                  'bwd_'//trim(parameters%receiver(irec)%name)//'_'//trim(cname))
+                 !@TODO
+                 !call inv_mesh%set_node_data_snap(real(bw_field(idump,icomp,:), kind=sp), &
+                 !                                 idump + ndumps*(icomp-1), &
+                 !                                 'bwd_'//trim(parameters%receiver(irec)%name)//'_'//trim(cname))
               end do
           end do
           deallocate(bw_field)
 
           print *, ' Save XDMF file'
-          call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_'//trim(rname)//'_bwd')
+          !call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_'//trim(rname)//'_bwd')
           call inv_mesh%free_node_and_cell_data()
 
           write(*,*) ' Convolve wavefields'
@@ -218,19 +222,20 @@ subroutine plot_wavefields()
           call fft_data%irfft(conv_field_fd, conv_field)
           deallocate(conv_field_fd)
 
-          call inv_mesh%init_node_data(ndumps)
+          !call inv_mesh%init_node_data(ndumps)
 
           write(*,*) ' Dump convolved fields to XDMF file'
           do idump = 1, ndumps
              if (mod(idump, 100)==0) write(*,*) ' Passing dump ', idump, ' of convolved wavefield'
-             call inv_mesh%set_node_data_snap(real(conv_field(idump,:), kind=sp), &
-                                              idump, &
-                                              'convolved_'//trim(parameters%receiver(irec)%name))
+             !@TODO
+             !call inv_mesh%set_node_data_snap(real(conv_field(idump,:), kind=sp), &
+             !                                 idump, &
+             !                                 'convolved_'//trim(parameters%receiver(irec)%name))
           end do 
           deallocate(conv_field)
 
           write(*,*) ' Save XDMF file'
-          call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_'//trim(rname)//'_conv')
+          !call inv_mesh%dump_node_data_xdmf(trim(parameters%output_file)//'_wavefield_'//trim(rname)//'_conv')
           call inv_mesh%free_node_and_cell_data()
 
 
@@ -275,7 +280,10 @@ subroutine plot_wavefields()
       iclockold = tick(id=id_init, since=iclockold)
 
       print *, ' Initialize XDMF file'
-      !@TODO: call inv_mesh%init_cell_data(ndumps*ndim, netcdf_in=.true.)
+      call inv_mesh%init_cell_data(starttime = 0.d0, dt = sem_data%dt)
+      call inv_mesh%add_cell_variable('forward', nentries=ndumps, istime=.true.)
+      
+      iwrite = 0
 
       do ielement = 1, nelems
 
@@ -318,9 +326,12 @@ subroutine plot_wavefields()
         fw_field_td_tot(:, 1, iwrite) = real(fw_field_td(1:ndumps,1,1), kind=sp)
         if (mod(ielement, nwrite).eq.0 .or. ielement.eq.nelems) then
           print *, iwrite
-          call inv_mesh%set_cell_data_traces(transpose(fw_field_td_tot(:, 1, 1:iwrite)),     &
-                                             ielement - iwrite + 1, ielement,                &
-                                             'fwd_'//trim(cname))
+          call inv_mesh%add_cell_data(var_name = 'forward',            &
+                                      values   = transpose(fw_field_td_tot(:, 1, 1:iwrite)), &
+                                      ielement = [ielement - iwrite + 1, ielement])
+          !@TODO:call inv_mesh%set_cell_data_traces(transpose(fw_field_td_tot(:, 1, 1:iwrite)),     &
+          !                                   ielement - iwrite + 1, ielement,                &
+          !                                   'fwd_'//trim(cname))
           iwrite = 0
         end if
         iclockold = tick(id=id_out, since=iclockold)
@@ -329,7 +340,8 @@ subroutine plot_wavefields()
 
       print *, ' Save XDMF file'
       iclockold = tick()
-      call inv_mesh%dump_cell_data_xdmf(trim(parameters%output_file)//'_wavefield_fwd')
+      ! @TODO
+      call inv_mesh%dump_data_xdmf(trim(parameters%output_file)//'_wavefield_fwd')
       call inv_mesh%free_node_and_cell_data()
       iclockold = tick(id=id_finalize, since=iclockold)
 

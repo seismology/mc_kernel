@@ -23,6 +23,14 @@ module inversion_mesh
   public :: inversion_mesh_data_type
   public :: plane_exp_pro2
 
+  type                              :: inversion_mesh_variable_type
+    character(len=80)               :: var_name
+    integer                         :: nentries
+    logical                         :: istime
+    character(len=80), allocatable  :: entry_names(:)
+  end type
+
+
   type :: inversion_mesh_type
      private
      integer, public                    :: nvertices_per_elem
@@ -73,12 +81,16 @@ module inversion_mesh
      character(len=32), allocatable     :: data_group_names_cell(:)
      integer                            :: ngroups_node
      integer                            :: ngroups_cell
-     integer                            :: ncid = -1
+     integer, public                    :: ncid      = -1
      integer                            :: ncid_cell = -1
      integer                            :: ncid_node = -1
-     integer                            :: nvar_node, nvar_cell
-     integer, allocatable               :: var_size_node(:), var_size_cell(:)
-     character(len=80), allocatable     :: var_name_node(:), var_name_cell(:)
+     integer                            :: nvar_node = 0
+     integer                            :: nvar_cell = 0
+     integer                            :: ntimes    = 1
+     real(kind=dp)                      :: dt, starttime
+     character(len=21), public          :: filename_tmp_out
+     type(inversion_mesh_variable_type), allocatable    :: variable_cell(:)
+     type(inversion_mesh_variable_type), allocatable    :: variable_node(:)
 
      contains
      procedure, pass :: get_ntimes_node
@@ -87,13 +99,11 @@ module inversion_mesh
      ! for xdmf format dumps
      procedure, pass :: init_node_data
      procedure, pass :: init_cell_data
-     procedure, pass :: set_node_data_snap
-     procedure, pass :: set_cell_data_snap
-     procedure, pass :: set_node_data_trace
-     procedure, pass :: set_cell_data_trace
-     procedure, pass :: set_cell_data
-     procedure, pass :: dump_node_data_xdmf
-     procedure, pass :: dump_cell_data_xdmf
+     procedure, pass :: add_node_variable
+     procedure, pass :: add_node_data
+     procedure, pass :: add_cell_variable
+     procedure, pass :: add_cell_data
+     procedure, pass :: dump_data_xdmf
 
      procedure, pass :: free_node_and_cell_data
 
@@ -104,9 +114,6 @@ module inversion_mesh
      ! for ascii format dumps
      procedure, pass :: dump_node_data_ascii
      procedure, pass :: dump_cell_data_ascii
-
-     ! get size of a variable
-     procedure, pass :: var_size
 
   end type
 
@@ -1205,95 +1212,338 @@ end subroutine freeme
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init_node_data(this, ntimes_node, default_name)
-!  use nc_routines, only                   : nc_create_file, nc_create_group, &
-!                                            nc_create_var_by_name
-!  class(inversion_mesh_data_type)        :: this
-!  character(len=*), intent(in)           :: variable_names(:)
-!  integer, intent(in)                    :: variable_length(:)
-!  character(len=80)                      :: filename
-!  integer                                :: ivar, nvar
-!
-!  if (size(variable_names, 1).ne.size(variable_length, 1)) then
-!    write(*,*) 'ERROR: Length of arrays variable_names and variable_length must be the same'
-!    write(*,*) '       Each variable must have a name and a length!'
-!    write(*,*) '       size(variable_names, 1):  ', size(variable_names, 1)
-!    write(*,*) '       size(variable_length, 1): ', size(variable_length, 1)
-!    call pabort()
-!  end if
-!
-!  nvar = size(variable_names, 1)
-!
-!  filename = 'blubberlutsch.nc'
-!  call nc_create_file(filename = filename, ncid = this%ncid, overwrite=.true.) 
-!  call nc_create_group(ncid = this%ncid, group_name = 'node_data', &
-!                       ncid_group = this%ncid_cell)
-!  
-!  do ivar = 1, nvar
-!    call nc_create_var_by_name(ncid    = this%ncid_node,                          &
-!                               varname = trim(variable_names(ivar)),              &
-!                               sizes   = [this%nvertices, variable_length(ivar)], &
-!                               dimension_names = ['Nodes   ', '        '])
-!  end do
+subroutine init_node_data(this, dt, starttime)
+# if defined(__INTEL_COMPILER)
+use ifport, only: getpid ! For ifort, this module needs to be loaded, 
+                         ! for gfortran getpid is a GNU extension
+# endif  
+  use nc_routines, only                   : nc_create_file, nc_create_group
   class(inversion_mesh_data_type)        :: this
-  integer, intent(in)                    :: ntimes_node
-  character(len=*), intent(in), optional :: default_name
+  real(kind=dp), intent(in), optional    :: dt, starttime
 
-  this%ntimes_node = ntimes_node
+  character(len=80)                      :: filename
 
-  allocate(this%datat_node(this%nvertices, ntimes_node))
-  this%datat_node = 0
+  ! Check whether the NetCDF output file has already been created and opened
+  if (this%ncid.eq.-1) then ! If it has not, do so
+    this%nvar_node = 0 
+    write(this%filename_tmp_out, "('netcdf_out_', I6.6, '.tmp')") getpid()
+    call nc_create_file(filename = this%filename_tmp_out,  &
+                        ncid = this%ncid, overwrite=.true.) 
+  end if
 
-  allocate(this%data_group_names_node(ntimes_node))
-
-  if (present(default_name)) then
-     this%data_group_names_node = trim(default_name)
+  call nc_create_group(ncid = this%ncid, group_name = 'node_data', &
+                       ncid_group = this%ncid_node, overwrite = .true.)
+  
+  if (present(dt)) then
+    this%dt = dt
   else
-     this%data_group_names_node = 'node_data'
-  endif
-
-  allocate(this%group_id_node(ntimes_node))
-  this%group_id_node = 1
-  this%ngroups_node = 0
+    this%dt = 1
+  end if
+  if (present(starttime)) then
+    this%starttime = starttime
+  else
+    this%starttime = 0
+  end if
 
 end subroutine init_node_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine init_cell_data(this, variable_names, variable_length)
-  use nc_routines, only                   : nc_create_file, nc_create_group, &
-                                            nc_create_var_by_name
+subroutine init_cell_data(this, dt, starttime)
+# if defined(__INTEL_COMPILER)
+use ifport, only: getpid ! For ifort, this module needs to be loaded, 
+                         ! for gfortran getpid is a GNU extension
+# endif  
+  use nc_routines, only                   : nc_create_file, nc_create_group
   class(inversion_mesh_data_type)        :: this
-  character(len=*), intent(in)           :: variable_names(:)
-  integer, intent(in)                    :: variable_length(:)
-  character(len=80)                      :: filename
-  integer                                :: ivar, nvar
+  real(kind=dp), intent(in), optional    :: dt, starttime
 
-  if (size(variable_names, 1).ne.size(variable_length, 1)) then
-    write(*,*) 'ERROR: Length of arrays variable_names and variable_length must be the same'
-    write(*,*) '       Each variable must have a name and a length!'
-    write(*,*) '       size(variable_names, 1):  ', size(variable_names, 1)
-    write(*,*) '       size(variable_length, 1): ', size(variable_length, 1)
-    call pabort()
+  character(len=80)                      :: filename
+
+  ! Check whether the NetCDF output file has already been created and opened
+  if (this%ncid.eq.-1) then ! If it has not, do so
+    this%nvar_cell = 0 
+    write(this%filename_tmp_out, "('netcdf_out_', I6.6, '.tmp')") getpid()
+    call nc_create_file(filename = this%filename_tmp_out,  &
+                        ncid = this%ncid, overwrite=.true.) 
   end if
 
-  this%nvar_cell = size(variable_names, 1)
-  this%var_name_cell = variable_names
-  this%var_size_cell = variable_length
-
-  filename = 'blubberlutsch.nc'
-  call nc_create_file(filename = filename, ncid = this%ncid, overwrite=.true.) 
   call nc_create_group(ncid = this%ncid, group_name = 'cell_data', &
-                       ncid_group = this%ncid_cell)
+                       ncid_group = this%ncid_cell, overwrite = .true.)
   
-  do ivar = 1, this%nvar_cell
-    call nc_create_var_by_name(ncid    = this%ncid_cell,                          &
-                               varname = trim(variable_names(ivar)),              &
-                               sizes   = [this%nelements, variable_length(ivar)], &
-                               dimension_names = ['Elements', '        '])
-  end do
-      
+  if (present(dt)) then
+    this%dt = dt
+  else
+    this%dt = 1
+  end if
+  if (present(starttime)) then
+    this%starttime = starttime
+  else
+    this%starttime = 0
+  end if
+
 end subroutine init_cell_data
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
+  use nc_routines, only                      : nc_create_var_by_name
+  class(inversion_mesh_data_type)           :: this
+  character(len=*), intent(in)              :: var_name
+  integer, intent(in)                       :: nentries
+  character(len=*), intent(in), optional    :: entry_names(:)
+  logical, intent(in), optional             :: istime
+
+  integer                                   :: ivar
+  logical                                   :: istime_loc = .false.
+  character(len=80), allocatable            :: entry_names_loc(:)
+  type(inversion_mesh_variable_type), allocatable    :: variable_node_temp(:)
+
+  if (this%ncid_node==-1) then
+    print *, 'ERROR: This mesh has not been initialized for node data yet'
+  end if
+
+  if (present(entry_names).and.present(istime)) then
+    if (istime) then
+      print *, 'ERROR: Cell variable cannot have entry names, if it is a time variable'
+      stop
+    end if
+  end if
+
+  if (present(entry_names)) then
+    entry_names_loc = entry_names
+  else
+    allocate(entry_names_loc(nentries))
+    entry_names_loc(:) = var_name
+  end if
+
+  if (present(istime)) istime_loc = istime
+
+  call nc_create_var_by_name(ncid    = this%ncid_node,                  &
+                             varname = trim(var_name),                  &
+                             sizes   = [this%nelements, nentries],      &
+                             dimension_names = ['Elements', '        '])
+
+  if (istime_loc) this%ntimes = max(this%ntimes, nentries)
+
+  ! Increase size of this%variable_node by one. Fortran style
+  this%nvar_node = this%nvar_node + 1
+  if (this%nvar_node==1) then
+    ! If it did not exist yet, create only
+    allocate(this%variable_node(this%nvar_node))
+  else
+    variable_node_temp = this%variable_node
+    deallocate(this%variable_node)
+    allocate(this%variable_node(this%nvar_node))
+    this%variable_node(1:this%nvar_node-1) = variable_node_temp
+  end if
+
+  this%variable_node(this%nvar_node)%var_name       = var_name
+  this%variable_node(this%nvar_node)%nentries       = nentries
+  this%variable_node(this%nvar_node)%istime         = istime_loc
+  allocate(this%variable_node(this%nvar_node)%entry_names(nentries)) 
+  this%variable_node(this%nvar_node)%entry_names(:) = entry_names_loc
+
+end subroutine add_node_variable
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
+  use nc_routines, only                      : nc_create_var_by_name
+  class(inversion_mesh_data_type)           :: this
+  character(len=*), intent(in)              :: var_name
+  integer, intent(in)                       :: nentries
+  character(len=*), intent(in), optional    :: entry_names(:)
+  logical, intent(in), optional             :: istime
+
+  integer                                   :: ivar
+  logical                                   :: istime_loc = .false.
+  character(len=80), allocatable            :: entry_names_loc(:)
+  type(inversion_mesh_variable_type), allocatable    :: variable_cell_temp(:)
+
+  if (this%ncid_cell==-1) then
+    print *, 'ERROR: This mesh has not been initialized for cell data yet'
+  end if
+
+  if (present(entry_names).and.present(istime)) then
+    if (istime) then
+      print *, 'ERROR: Cell variable cannot have entry names, if it is a time variable'
+      stop
+    end if
+  end if
+
+  if (present(entry_names)) then
+    entry_names_loc = entry_names
+  else
+    allocate(entry_names_loc(nentries))
+    entry_names_loc(:) = trim(var_name)
+  end if
+
+  if (present(istime)) istime_loc = istime
+
+  call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
+                             varname = trim(var_name),                  &
+                             sizes   = [this%nelements, nentries],      &
+                             dimension_names = ['Elements', '        '])
+
+  if (istime_loc) this%ntimes = max(this%ntimes, nentries)
+
+  ! Increase size of this%variable_cell by one. Fortran style
+  this%nvar_cell = this%nvar_cell + 1
+  if (this%nvar_cell==1) then
+    ! If it did not exist yet, create only
+    allocate(this%variable_cell(this%nvar_cell))
+  else
+    ! If it did exist already, increase size by one
+    variable_cell_temp = this%variable_cell
+    deallocate(this%variable_cell)
+    allocate(this%variable_cell(this%nvar_cell))
+    this%variable_cell(1:this%nvar_cell-1) = variable_cell_temp
+  end if
+
+  this%variable_cell(this%nvar_cell)%var_name    = var_name
+  this%variable_cell(this%nvar_cell)%nentries    = nentries
+  this%variable_cell(this%nvar_cell)%istime      = istime_loc
+  allocate(this%variable_cell(this%nvar_cell)%entry_names(nentries)) 
+  this%variable_cell(this%nvar_cell)%entry_names(:) = entry_names_loc
+
+end subroutine add_cell_variable
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine add_node_data(this, var_name, values, ielement, ientry)
+  use nc_routines, only                      : nc_putvar_by_name
+  class(inversion_mesh_data_type)           :: this
+  character(len=*), intent(in)              :: var_name
+  real(kind=sp)                             :: values(:,:)
+  integer, intent(in), optional             :: ielement(2), ientry(2)
+
+  integer                                   :: ielement_loc(2), ientry_loc(2), start(2), count(2)
+  integer                                   :: ivar
+
+  if (this%ncid_node==-1) then
+     write(*,*) 'ERROR: trying to write node data without initialization!'
+     call pabort 
+  end if
+
+  ! Find variable
+  do ivar = 1, this%nvar_node
+    if (trim(var_name).eq.trim(this%variable_node(ivar)%var_name)) exit
+  end do
+  
+  ! If variable not found
+  if (ivar == this%nvar_node + 1) then
+    write(*,*) 'ERROR: Could not find variable in node data list'
+    write(*,*) '       var_name: ', trim(var_name)
+    write(*,*) '       Available variables for node data:'
+    do ivar = 1, this%nvar_node
+      write(*,*) '       ', trim(this%variable_node(ivar)%var_name)
+    end do
+    call pabort ()
+  end if
+
+  ! If ielement is not present, assume that plot ranges over all elements
+  ! (Full snapshot)
+  if (present(ielement)) then
+    ielement_loc = ielement
+  else
+    ielement_loc(1) = 1
+    ielement_loc(2) = this%nelements
+  end if
+
+  ! If ientry is not present, assume that plot ranges over all entries for 
+  ! this variable (Full time series or all kernels)
+  if (present(ientry)) then
+    ientry_loc = ientry
+  else
+    ientry_loc(1) = 1
+    ientry_loc(2) = this%variable_node(ivar)%nentries
+  end if
+
+  start = [ielement_loc(1),                   ientry_loc(1)]
+  count = [ielement_loc(2)-ielement_loc(1)+1, ientry_loc(2)-ientry_loc(1)+1]
+
+  if (size(values,1).ne.count(1) .or. size(values,2).ne.count(2)) then
+    write(*,*) 'ERROR: Wrong dimension of input to add_node_data!'
+    write(*,*) '       size(values): ', size(values,1), size(values,2) 
+    write(*,*) '       count:        ', count
+  end if
+    
+  call nc_putvar_by_name(ncid    = this%ncid_node,       &
+                         varname = var_name,             &
+                         values  = values,               &
+                         start   = start,                &
+                         count   = count)
+
+end subroutine add_node_data
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine add_cell_data(this, var_name, values, ielement, ientry)
+  use nc_routines, only                      : nc_putvar_by_name
+  class(inversion_mesh_data_type)           :: this
+  character(len=*), intent(in)              :: var_name
+  real(kind=sp), optional, intent(in)       :: values(:,:)
+  integer, intent(in), optional             :: ielement(2), ientry(2)
+
+  integer                                   :: ielement_loc(2), ientry_loc(2), start(2), count(2)
+  integer                                   :: ivar
+
+  if (this%ncid_cell==-1) then
+     write(*,*) 'ERROR: trying to write cell data without initialization!'
+     call pabort 
+  end if
+
+  ! Find variable
+  do ivar = 1, this%nvar_cell
+    if (trim(var_name).eq.trim(this%variable_cell(ivar)%var_name)) exit
+  end do
+  
+  ! If variable not found
+  if (ivar == this%nvar_cell + 1) then
+    write(*,*) 'ERROR: Could not find variable in cell data list'
+    write(*,*) '       var_name: ', trim(var_name)
+    write(*,*) '       Available variables for cell data:'
+    do ivar = 1, this%nvar_cell
+      write(*,*) '       ', trim(this%variable_cell(ivar)%var_name)
+    end do
+    call pabort ()
+  end if
+
+  ! If ielement is not present, assume that plot ranges over all elements
+  ! (Full snapshot)
+  if (present(ielement)) then
+    ielement_loc = ielement
+  else
+    ielement_loc(1) = 1
+    ielement_loc(2) = this%nelements
+  end if
+
+  ! If ientry is not present, assume that plot ranges over all entries for 
+  ! this variable (Full time series or all kernels)
+  if (present(ientry)) then
+    ientry_loc = ientry
+  else
+    ientry_loc(1) = 1
+    ientry_loc(2) = this%variable_cell(ivar)%nentries
+  end if
+
+  start = [ielement_loc(1),                   ientry_loc(1)]
+  count = [ielement_loc(2)-ielement_loc(1)+1, ientry_loc(2)-ientry_loc(1)+1]
+
+  if (size(values,1).ne.count(1) .or. size(values,2).ne.count(2)) then
+    write(*,*) 'ERROR: Wrong dimension of input to add_cell_data!'
+    write(*,*) '       size(values): ', size(values,1), size(values,2) 
+    write(*,*) '       count:        ', count
+  end if
+    
+  call nc_putvar_by_name(ncid    = this%ncid_cell,       &
+                         varname = var_name,             &
+                         values  = values,               &
+                         start   = start,                &
+                         count   = count)
+
+end subroutine add_cell_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1437,233 +1687,16 @@ end subroutine dump_node_data_ascii
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_node_data_snap(this, data_snap, isnap, data_name)
-  class(inversion_mesh_data_type)           :: this
-  real(kind=sp), intent(in)                 :: data_snap(:)
-  integer, intent(in)                       :: isnap
-  character(len=*), intent(in), optional    :: data_name
-  integer                                   :: i
-  logical                                   :: name_exists
-
-  if (.not. allocated(this%datat_node)) then
-     write(*,*) 'ERROR: trying to write node data without initialization!'
-     call pabort 
-  end if
-
-  if (size(data_snap) /= this%nvertices) then
-     write(*,*) 'size(data_snap):', size(data_snap), '; this%nvertices', this%nvertices
-     write(*,*) 'data_name:', trim(data_name), '; isnap:', isnap
-     write(*,*) 'ERROR: wrong dimensions of input data_snap for writing vertex data'
-     call pabort 
-  end if
-
-  if (isnap > size(this%datat_node,2)) then
-    write(*,*) 'ERROR: XDMF file was initialized for ', size(this%datat_node,2), ' snaps.'
-    write(*,*) '       Trying to dump snap with isnap ', isnap
-    call pabort()
-  end if
-
-  this%datat_node(:,isnap) = data_snap(:)
-
-  if (present(data_name)) then
-     name_exists = .false.
-     do i=1, this%ngroups_node
-        if (this%data_group_names_node(i) == data_name) then
-           name_exists = .true.
-           exit
-        endif
-     enddo
-     if (name_exists) then
-        this%group_id_node(isnap) = i
-     else
-        this%ngroups_node = this%ngroups_node + 1
-        this%group_id_node(isnap) = this%ngroups_node
-        this%data_group_names_node(this%ngroups_node) = data_name
-     endif
-  endif
-
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine set_cell_data_snap(this, data_snap, isnap, data_name)
-  class(inversion_mesh_data_type)           :: this
-  real(kind=sp), intent(in)                 :: data_snap(:)
-  integer, intent(in)                       :: isnap
-  character(len=*), intent(in), optional    :: data_name
-  integer                                   :: i
-  logical                                   :: name_exists
-
-  if (.not. allocated(this%datat_cell) .and.this%ncid==-1) then
-     write(*,*) 'ERROR: trying to write cell data without initialization!'
-     call pabort 
-  end if
-
-  if (size(data_snap) /= this%nelements) then
-     write(*,*) 'size(data_snap):', size(data_snap), '; this%nvertices', this%nvertices
-     write(*,*) 'data_name:', trim(data_name), '; isnap:', isnap
-     write(*,*) 'ERROR: wrong dimensions of input data_snap for writing cell data'
-     call pabort 
-  end if
-
-  if (isnap > size(this%datat_cell, 2)) then
-    write(*,*) 'ERROR: XDMF file was initialized for ', size(this%datat_cell,2), ' snaps.'
-    write(*,*) '       Trying to dump snap with isnap ', isnap
-    call pabort()
-  end if
-
-  this%datat_cell(:,isnap) = data_snap(:)
-
-  if (present(data_name)) then
-     name_exists = .false.
-     do i=1, this%ngroups_cell
-        if (this%data_group_names_cell(i) == data_name) then
-           name_exists = .true.
-           exit
-        endif
-     enddo
-     if (name_exists) then
-        this%group_id_cell(isnap) = i
-     else
-        this%ngroups_cell = this%ngroups_cell + 1
-        this%group_id_cell(isnap) = this%ngroups_cell
-        this%data_group_names_cell(this%ngroups_cell) = data_name
-     endif
-  endif
-
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine set_node_data_trace(this, data_trace, itrace, data_name)
-  class(inversion_mesh_data_type)           :: this
-  real(kind=sp), intent(in)                 :: data_trace(:)
-  integer, intent(in)                       :: itrace
-  character(len=*), intent(in), optional    :: data_name
-
-  if (.not. allocated(this%datat_node)) then
-     write(*,*) 'ERROR: trying to write node data without initialization!'
-     call pabort 
-  end if
-
-  if (size(data_trace) /= this%ntimes_node) then
-     write(*,*) 'ERROR: wrong dimensions of input data_trace for writing vertex data'
-     write(*,*) 'size(data_trace):', size(data_trace), '; this%ntimes_node', this%ntimes_node
-     write(*,*) 'data_name:', trim(data_name), '; itrace:', itrace
-     call pabort 
-  end if
-
-  if (itrace < 1 .or. itrace > this%nvertices) then
-     write(*,*) 'ERROR: index "itrace" out of bounds'
-     call pabort 
-  end if
-
-  this%datat_node(itrace,:) = data_trace(:)
-
-  if (present(data_name)) then
-     this%data_group_names_node = trim(data_name)
-  else
-     this%data_group_names_node = 'node_data'
-  endif
-
-  this%group_id_node = 1
-  this%ngroups_node = 1
-
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine set_cell_data(this, data_trace, start, count, data_name)
-  use nc_routines, only                      : nc_putvar_by_name
-  class(inversion_mesh_data_type)           :: this
-  real(kind=sp), intent(in)                 :: data_trace(:,:) ! [nelements, size of data_name]
-  integer, intent(in), optional             :: start(2)
-  integer, intent(in), optional             :: count(2)  
-  character(len=*), intent(in)              :: data_name
-
-  integer                                   :: ntraces 
-
-  if (this%ncid_cell==-1) then
-     write(*,*) 'ERROR: trying to write cell data without initialization!'
-     call pabort 
-  end if
-
-  if (this%ncid==-1) then !Opened for binary output
-    write(*,*) 'No support for binary output here!'
-    call pabort
-    
-  else
-    call nc_putvar_by_name(ncid    = this%ncid_cell,       &
-                           varname = data_name,            &
-                           values  = data_trace,           &
-                           start   = start,                &
-                           count   = count)
-
-  end if
-
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine set_cell_data_trace(this, data_trace, itrace, itrace_last, data_name)
-  use nc_routines, only                      : nc_putvar_by_name
-  class(inversion_mesh_data_type)           :: this
-  real(kind=sp), intent(in)                 :: data_trace(:)
-  integer, intent(in)                       :: itrace
-  integer, intent(in), optional             :: itrace_last
-  character(len=*), intent(in), optional    :: data_name
-
-  if (.not. allocated(this%datat_cell) .and.this%ncid==-1) then
-     write(*,*) 'ERROR: trying to write cell data without initialization!'
-     call pabort 
-  end if
-
-  if (size(data_trace) /= this%ntimes_cell) then
-     write(*,*) 'ERROR: wrong dimensions of input data_trace for writing cell data'
-     write(*,*) 'size(data_trace):', size(data_trace), '; this%ntimes_cell', this%ntimes_cell
-     write(*,*) 'data_name:', trim(data_name), '; itrace:', itrace
-     call pabort 
-  end if
-
-  if (itrace < 1 .or. itrace > this%nelements) then
-     write(*,*) 'ERROR: index "itrace" out of bounds'
-     call pabort 
-  end if
-
-
-  if (this%ncid==-1) then !Opened for binary output
-    this%datat_cell(itrace,:) = data_trace(:)
-    
-  else
-    call nc_putvar_by_name(this%ncid,                     &
-                           varname = 'data',              &
-                           values = data_trace,           &
-                           start  = [itrace, 1],          &
-                           count  = [1, this%ntimes_cell])
-
-  end if
-
-  if (present(data_name)) then
-     this%data_group_names_cell = trim(data_name)
-  else
-     this%data_group_names_cell = 'cell_data'
-  endif
-
-  this%group_id_cell = 1
-  this%ngroups_cell = 1
-
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine dump_cell_data_xdmf(this, filename)
+subroutine dump_data_xdmf(this, filename)
   use nc_routines, only              : nc_close_file, nc_putvar_by_name
   class(inversion_mesh_data_type)   :: this
   character(len=*), intent(in)      :: filename
+
   integer                           :: iinput_xdmf, iinput_heavy_data
-  integer                           :: i, igroup, itime, isnap, n
+  integer                           :: itime, ivar, ientry, exitstat = 1
   character(len=16)                 :: xdmf_elem_type
-  character(len=512)                :: filename_np
+  character(len=512)                :: filename_np, filename_nc
+  character(len=512)                :: cmdmsg, sys_cmd
 
   if (.not. this%initialized) then
      write(*,*) 'ERROR: trying to dump a non initialized mesh'
@@ -1677,6 +1710,9 @@ subroutine dump_cell_data_xdmf(this, filename)
 
   ! relative filename for xdmf content
   filename_np = trim(filename(index(filename, '/', back=.true.)+1:))
+  ! relative filename of NetCDF file
+  filename_nc = trim(filename_np)//'.nc'
+
 
   select case(this%element_type)
   case('tri')
@@ -1698,60 +1734,85 @@ subroutine dump_cell_data_xdmf(this, filename)
   ! XML header
   open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
   ! start xdmf file, write header
-  if (this%ncid==-1) then
-    write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'binary', &
-                            trim(filename_np)//'_grid.dat', &
-                            this%nvertices, 'binary', trim(filename_np)//'_points.dat', &
-                            this%nelements, 'binary', trim(filename_np)//'_block.dat'
-  else
-    write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'hdf', &
-                            'blubberlutsch.nc:/grid', &
-                            this%nvertices, 'hdf', 'blubberlutsch.nc:/points', &
-                            this%nelements, 'hdf', 'blubberlutsch.nc:/block'
-  end if
-  i = 1
-  itime = 1
+  write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'hdf', &
+                          trim(filename_nc)//':/grid', &
+                          this%nvertices, 'hdf', trim(filename_nc)//':/points', &
+                          this%nelements, 'hdf', trim(filename_nc)//':/block'
 
-  ! loop over all data
-  do while(i <= this%ntimes_cell)
+  ! First part: Variables, which are not time variables and therefore 
+  !             have only one time step
 
-     ! create new snapshot in the temporal collection
-     write(iinput_xdmf, 7341) 'grid', dble(itime), trim(xdmf_elem_type), this%nelements, &
-                              "'", "'", "'", "'", "'", "'"
+  ! create new snapshot in the temporal collection
+  write(iinput_xdmf, 7341) 'grid', this%starttime, &
+                           trim(xdmf_elem_type), this%nelements, &
+                           "'", "'", "'", "'", "'", "'"
 
-     igroup = 1
-     ! loop over groups, that have more items than itime
-     do while(igroup <= this%ngroups_cell)
+  do ivar = 1, this%nvar_node
+    do ientry = 1, this%variable_node(ivar)%nentries
+      ! Time variables will be written into the next time steps in the the 
+      ! second part. For all other variables, all entries are written into
+      ! the first time step
+      if (this%variable_node(ivar)%istime.and.ientry>1) cycle
+      write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%var_name),                &
+                               this%nvertices, ientry, this%nvertices,              &
+                               this%variable_node(ivar)%nentries, this%nvertices,   &
+                               trim(filename_nc),                                   &
+                               trim(this%variable_node(ivar)%entry_names(ientry))
+    end do
+  end do 
 
-        if (count(this%group_id_cell == igroup) >= itime) then
+  do ivar = 1, this%nvar_cell
+    do ientry = 1, this%variable_cell(ivar)%nentries
+      ! Time variables will be written into the next time steps in the the 
+      ! second part. For all other variables, all entries are written into
+      ! the first time step
+      if (this%variable_cell(ivar)%istime.and.ientry>1) cycle
+      write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%var_name),                &
+                               this%nelements, ientry, this%nelements,              &
+                               this%variable_cell(ivar)%nentries, this%nelements,   &
+                               trim(filename_nc),                                   &
+                               trim(this%variable_cell(ivar)%entry_names(ientry))
+    end do
+  end do
+  ! Finish first snapshot
+  write(iinput_xdmf, 7343)
 
-           ! find the itime'th item in the group
-           n = 0
-           do isnap=1, this%ntimes_cell
-              if (this%group_id_cell(isnap) == igroup) n = n + 1
-              if (n == itime) exit
-           enddo
 
-           ! write attribute
-           ! @TODO: Change numbers to nelements
-           if (this%ncid==-1) then
-             write(iinput_xdmf, 7342) trim(this%data_group_names_cell(igroup)), &
-                                      this%nelements, isnap-1, this%nelements,  &
-                                      this%ntimes_cell,                         &
-                                      this%nelements, trim(filename_np)//'_data.dat'
-           else
-             write(iinput_xdmf, 8342) trim(this%data_group_names_cell(igroup)), &
-                                      this%nelements, isnap-1, this%nelements,  &
-                                      this%ntimes_cell,                         &
-                                      this%nelements, 'blubberlutsch.nc'
-           end if
-           i = i + 1
-        endif
-        igroup = igroup + 1
-     enddo
-     ! finish snapshot
-     write(iinput_xdmf, 7343)
-     itime = itime + 1
+  ! Second part: All other time steps, but only for variables that have
+  !              data for this time step.
+  do itime = 2, this%ntimes 
+
+    ! create new snapshot in the temporal collection
+    write(iinput_xdmf, 7341) 'grid', this%dt * itime + this%starttime, &
+                             trim(xdmf_elem_type), this%nelements, &
+                             "'", "'", "'", "'", "'", "'"
+
+    do ivar = 1, this%nvar_node
+      ! Only write if this is a time variable and we still have entries 
+      ! for this time step. Unless, of course, this is the first time 
+      ! step, where every entry has to be written.
+      if (itime.le.this%variable_node(ivar)%nentries .and. &
+          this%variable_node(ivar)%istime) then
+        write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%var_name),            &
+                                 this%nvertices, itime, this%nvertices,               &
+                                 this%variable_node(ivar)%nentries, this%nvertices,   &
+                                 trim(filename_nc),                                   &
+                                 trim(this%variable_node(ivar)%var_name)
+      end if
+    end do 
+
+    do ivar = 1, this%nvar_cell
+      if (itime.le.this%variable_cell(ivar)%nentries .and. &
+          this%variable_cell(ivar)%istime) then
+        write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%var_name),            &
+                                 this%nelements, itime, this%nelements,               &
+                                 this%variable_cell(ivar)%nentries, this%nvertices,   &
+                                 trim(filename_nc),                                   &
+                                 trim(this%variable_cell(ivar)%var_name)
+      end if
+    end do
+    write(iinput_xdmf, 7343)
+
   enddo
 
   ! finish xdmf file
@@ -1787,21 +1848,21 @@ subroutine dump_cell_data_xdmf(this, filename)
     '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'block', A,']" />',/&
     '        </Attribute>')
 
-7342 format(&    
-    '        <Attribute Name="', A,'" AttributeType="Scalar" Center="Cell">',/&
+73421 format(&    
+    '        <Attribute Name="', A,'" AttributeType="Scalar" Center="Node">',/&
     '            <DataItem ItemType="HyperSlab" Dimensions="',i10,'" Type="HyperSlab">',/&
     '                <DataItem Dimensions="3 2" Format="XML">',/&
     '                    ', i10,'          0 ',/&
     '                             1          1 ',/&
     '                             1 ', i10,/&
     '                </DataItem>',/&
-    '                <DataItem Dimensions="', i10, i10, '" NumberType="Float" Format="binary">',/&
-    '                   ', A,/&
+    '                <DataItem Dimensions="', i10, i10, '" NumberType="Float" Format="hdf">',/&
+    '                   ', A, ':/node_data/', A ,/&
     '                </DataItem>',/&
     '            </DataItem>',/&
     '        </Attribute>')
 
-8342 format(&    
+73422 format(&    
     '        <Attribute Name="', A,'" AttributeType="Scalar" Center="Cell">',/&
     '            <DataItem ItemType="HyperSlab" Dimensions="',i10,'" Type="HyperSlab">',/&
     '                <DataItem Dimensions="3 2" Format="XML">',/&
@@ -1810,7 +1871,7 @@ subroutine dump_cell_data_xdmf(this, filename)
     '                             1 ', i10,/&
     '                </DataItem>',/&
     '                <DataItem Dimensions="', i10, i10, '" NumberType="Float" Format="hdf">',/&
-    '                   ', A, ':/data' ,/&
+    '                   ', A, ':/cell_data/', A ,/&
     '                </DataItem>',/&
     '            </DataItem>',/&
     '        </Attribute>')
@@ -1824,253 +1885,35 @@ subroutine dump_cell_data_xdmf(this, filename)
     '</Xdmf>')
 
   ! VERTEX data
-  if (this%ncid==-1) then
-    open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
-        status='replace', form='unformatted', convert='little_endian')
-    write(iinput_heavy_data) real(this%vertices, kind=sp)
-    close(iinput_heavy_data)
-  else
-    call nc_putvar_by_name(ncid    = this%ncid,                   &
-                           varname = 'points',                    &
-                           values  = real(this%vertices, kind=sp))
-              
-  end if
+  call nc_putvar_by_name(ncid    = this%ncid,                   &
+                         varname = 'points',                    &
+                         values  = real(this%vertices, kind=sp))
 
   ! CONNECTIVITY data
-  if (this%ncid==-1) then
-    open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
-        status='replace', form='unformatted', convert='little_endian')
-    write(iinput_heavy_data) this%connectivity
-    close(iinput_heavy_data)
-  else
-    call nc_putvar_by_name(ncid    = this%ncid,        &
-                           varname = 'grid',           &
-                           values  = this%connectivity)
-  end if
+  call nc_putvar_by_name(ncid    = this%ncid,        &
+                         varname = 'grid',           &
+                         values  = this%connectivity)
 
   ! BLOCK data
-  if (this%ncid==-1) then
-    open(newunit=iinput_heavy_data, file=trim(filename)//'_block.dat', access='stream', &
-        status='replace', form='unformatted', convert='little_endian')
-    write(iinput_heavy_data) this%block_id
-    close(iinput_heavy_data)
-  else
-    call nc_putvar_by_name(ncid    = this%ncid,    &
-                           varname = 'block',      &
-                           values  = this%block_id)
+  call nc_putvar_by_name(ncid    = this%ncid,    &
+                         varname = 'block',      &
+                         values  = this%block_id)
+
+  ! Finalize and close NetCDF file
+  call nc_close_file(this%ncid)
+
+  ! Move temporary NetCDF file to the requested location
+  sys_cmd = 'mv '//this%filename_tmp_out//' '//trim(filename)//'.nc'
+  call execute_command_line(command = sys_cmd, wait = .true., exitstat = exitstat, &
+                            cmdmsg = cmdmsg)
+  if (exitstat.ne.0) then
+    write(*,*) 'ERROR: Renaming of the temporary output file failed with status', exitstat
+    write(*,*) '       and message:'
+    write(*,*) cmdmsg
+    call pabort()
   end if
 
-  ! CELL data
-  if (this%ncid==-1) then
-    open(newunit=iinput_heavy_data, file=trim(filename)//'_data.dat', access='stream', &
-        status='replace', form='unformatted', convert='little_endian')
-    do i=1, this%ntimes_cell
-       write(iinput_heavy_data) real(this%datat_cell(:,i), kind=sp)
-    enddo
-    close(iinput_heavy_data)
-  else
-    call nc_close_file(this%ncid)
-  end if
-
-end subroutine dump_cell_data_xdmf
+end subroutine dump_data_xdmf
 !-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine dump_node_data_xdmf(this, filename)
-  class(inversion_mesh_data_type)   :: this
-  character(len=*), intent(in)      :: filename
-  integer                           :: iinput_xdmf, iinput_heavy_data
-  integer                           :: i, igroup, itime, isnap, n
-  character(len=16)                 :: xdmf_elem_type
-  character(len=512)                :: filename_np
-
-  if (.not. this%initialized) then
-     write(*,*) 'ERROR: trying to dump a non initialized mesh'
-     call pabort 
-  end if
-  
-  if (.not. allocated(this%datat_node)) then
-     write(*,*) 'ERROR: no data to dump available'
-     call pabort 
-  end if
-
-  ! relative filename for xdmf content
-  filename_np = trim(filename(index(filename, '/', back=.true.)+1:))
-
-  select case(this%element_type)
-  case('tri')
-     xdmf_elem_type = 'Triangle'
-  case('tet')
-     xdmf_elem_type = 'Tetrahedron'
-  case('quad')
-     xdmf_elem_type = 'Quadrilateral'
-  case('hex')
-     xdmf_elem_type = 'Hexahedron'
-  case('vox')
-     xdmf_elem_type = 'Hexahedron'
-  case default
-     write(6,*) 'ERROR: xmdf dumping for element type ', this%element_type, &
-                ' not implemented'
-     call pabort
-  end select
-
-  ! XML header
-  open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
-  ! start xdmf file, write header
-  write(iinput_xdmf, 733) this%nelements, this%nvertices_per_elem, 'binary', &
-                          trim(filename_np)//'_grid.dat', &
-                          this%nvertices, 'binary', trim(filename_np)//'_points.dat', &
-                          this%nelements, 'binary', trim(filename_np)//'_block.dat'
-
-  i = 1
-  itime = 1
-
-  
-  ! loop over all data
-  do while(i <= this%ntimes_node)
-     ! create new snapshot in the temporal collection
-     write(iinput_xdmf, 7341) 'grid', dble(itime), trim(xdmf_elem_type), this%nelements, &
-                              "'", "'", "'", "'", "'", "'"
-
-     igroup = 1
-     ! loop over groups, that have more items then itime
-     do while(igroup <= this%ngroups_node)
-
-        if (count(this%group_id_node == igroup) >= itime) then
-
-           ! find the itime'th item in the group
-           n = 0
-           do isnap=1, this%ntimes_node
-              if (this%group_id_node(isnap) == igroup) n = n + 1
-              if (n == itime) exit
-           enddo
-
-           ! write attribute
-           write(iinput_xdmf, 7342) trim(this%data_group_names_node(igroup)), &
-                                    this%nvertices, isnap-1, this%nvertices,  &
-                                    this%ntimes_node,                         &
-                                    this%nvertices, trim(filename_np)//'_data.dat'
-           i = i + 1
-        endif
-        igroup = igroup + 1
-     enddo
-     ! finish snapshot
-     write(iinput_xdmf, 7343)
-     itime = itime + 1
-  enddo
-
-  ! finish xdmf file
-  write(iinput_xdmf, 736)
-  close(iinput_xdmf)
-
-733 format(&    
-    '<?xml version="1.0" ?>',/&
-    '<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>',/&
-    '<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">',/&
-    '<Domain>',/,/&
-    '<DataItem Name="grid" Dimensions="',i10, i3, '" NumberType="Int" Format="',A,'">',/&
-    '  ', A,/&
-    '</DataItem>',/,/&
-    '<DataItem Name="points" Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
-    '  ', A,/&
-    '</DataItem>',/,/&
-    '<DataItem Name="block" Dimensions="',i10'" NumberType="Int" Format="',A,'">',/&
-    '  ', A,/&
-    '</DataItem>',/,/&
-    '<Grid Name="CellsTime" GridType="Collection" CollectionType="Temporal">',/)
-
-7341 format(&    
-    '    <Grid Name="', A,'" GridType="Uniform">',/&
-    '        <Time Value="',F8.2,'" />',/&
-    '        <Topology TopologyType="', A, '" NumberOfElements="',i10,'">',/&
-    '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'grid', A,']" />',/&
-    '        </Topology>',/&
-    '        <Geometry GeometryType="XYZ">',/&
-    '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'points', A,']" />',/&
-    '        </Geometry>',/&
-    '        <Attribute Name="blockid" AttributeType="Scalar" Center="Cell">',/&
-    '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'block', A,']" />',/&
-    '        </Attribute>')
-
-7342 format(&    
-    '        <Attribute Name="', A,'" AttributeType="Scalar" Center="Node">',/&
-    '            <DataItem ItemType="HyperSlab" Dimensions="',i10,'" Type="HyperSlab">',/&
-    '                <DataItem Dimensions="3 2" Format="XML">',/&
-    '                    ', i10,'          0 ',/&
-    '                             1          1 ',/&
-    '                             1 ', i10,/&
-    '                </DataItem>',/&
-    '                <DataItem Dimensions="', i10, i10, '" NumberType="Float" Format="binary">',/&
-    '                   ', A,/&
-    '                </DataItem>',/&
-    '            </DataItem>',/&
-    '        </Attribute>')
-
-7343 format(&    
-    '    </Grid>',/)
-
-736 format(&    
-    '</Grid>',/&
-    '</Domain>',/&
-    '</Xdmf>')
-
-
-  ! VERTEX data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) real(this%vertices, kind=sp)
-  close(iinput_heavy_data)
-
-  ! CONNECTIVITY data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%connectivity
-  close(iinput_heavy_data)
-
-  ! BLOCK data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_block.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%block_id
-  close(iinput_heavy_data)
-
-  ! VERTEX data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_data.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  do i=1, this%ntimes_node
-     write(iinput_heavy_data) real(this%datat_node(:,i), kind=sp)
-  enddo
-  close(iinput_heavy_data)
-
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-function var_size(this, var_name, cellornode)
-  class(inversion_mesh_data_type)           :: this
-  character(len=*), intent(in)              :: var_name
-  character(len=4), intent(in)              :: cellornode
-  integer                                   :: var_size
-  integer                                   :: ivar
-
-  select case(cellornode)
-  case('node')
-    do ivar = 1, this%nvar_node
-      if (trim(var_name).eq.trim(this%var_name_node(ivar))) then
-        var_size = this%var_size_node(ivar)
-        exit
-      end if
-    end do
-
-  case('cell')
-    do ivar = 1, this%nvar_cell
-      if (trim(var_name).eq.trim(this%var_name_cell(ivar))) then
-        var_size = this%var_size_cell(ivar)
-        exit
-      end if
-    end do
-  end select
-end function
-!-----------------------------------------------------------------------------------------
-
 end module
 !=========================================================================================

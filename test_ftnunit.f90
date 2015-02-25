@@ -22,6 +22,7 @@ module unit_tests
   use test_sem_derivatives
   use test_simple_routines
   use test_type_parameter
+  use test_master_queue
 
   implicit none
 
@@ -121,6 +122,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST NC_ROUTINES MODULE'
   call test_nc_create_testfile()
   call test(test_nc_create_file, 'Create NetCDF file')
+  call test(test_nc_create_group, 'Create Group')
   call test(test_nc_open_for_read, 'Open NetCDF file for reading')
   call test(test_nc_open_for_write, 'Open NetCDF file for writing')
   call test(test_nc_getvar_1d_float, 'Read 1D Float by name')
@@ -228,20 +230,12 @@ subroutine test_all
   call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
   call test(test_mesh_dump2, 'reading/dumping tetrahedral mesh from abaqus')
   call test(test_mesh_dump3, 'reading/dumping tetrahedral mesh from abaqus with multiple element blocks')
-  !call test(test_mesh_data_dump, 'reading/dumping tetrahedral mesh with data')
-  !call test(test_mesh_data_dump2, &
-  !          'reading/dumping triangular mesh from abaqus file with data')
-  !call test(test_mesh_data_dump3, &
-  !          'reading/dumping quadrilateral mesh from abaqus file with data')
-  !call test(test_mesh_data_dump4, &
-  !          'reading/dumping hexahedral mesh from abaqus file with data')
-  !call test(test_mesh_data_dump5, &
-  !          'reading/dumping tetrahedral mesh from abaqus file with data')
-  !call test(test_mesh_data_blocks, &
-  !          'reading/dumping tetrahedral mesh from abaqus file with blocks and data')
-  !call test(test_mesh_tracedata_dump, 'reading/dumping tetrahedral mesh with tracedata')
+  call test(test_init_node_data, 'Initialize node data')
   call test(test_init_cell_data, 'Initialize cell data')
+  call test(test_init_mixed_data, 'Initialize mixed data')
+  call test(test_set_node_data, 'Set node data')
   call test(test_set_cell_data, 'Set cell data')
+  call test(test_set_mixed_data, 'Set mixed data')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
   call test(test_initialize_mesh, 'initialize mesh')
@@ -259,6 +253,12 @@ subroutine test_all
   call test(test_buffer_retrieval_3d, 'get 3d data back from the buffer')
   call test(test_buffer_retrieval_4d, 'get 4d data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
+
+  ! Test master queue
+  ! @TODO: Test does not work, should be checked
+  !write(6,'(/,a)') 'TEST MASTER QUEUE'
+  !call test(test_master_all, 'Master queue init_queue and finalize')
+  
 
   call finish_output()
 end subroutine
