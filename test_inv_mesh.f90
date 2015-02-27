@@ -637,6 +637,48 @@ end subroutine test_set_mixed_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_valence
+  type(inversion_mesh_type) :: inv_mesh
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  call assert_equal(inv_mesh%get_valence(1), 2, 'valence of first vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(2), 2, 'valence of second vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(3), 2, 'valence of third vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(4), 1, 'valence of fourth vertex in facets.TEST')
+  call assert_equal(inv_mesh%get_valence(5), 1, 'valence of fifth vertex in facets.TEST')
+
+  call inv_mesh%freeme()
+
+end subroutine test_valence
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_get_connected_elements
+  type(inversion_mesh_type) :: inv_mesh
+  integer, allocatable      :: cn_elems(:)
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  ! uncomment to NOT use automatic allocation
+  allocate(cn_elems(inv_mesh%get_valence(1)))
+  cn_elems = inv_mesh%get_connected_elements(1)
+
+  ! somewhat redundant two tests, for now to test ftnunit :)
+  call assert_true(.not. any(cn_elems == -1), 'get connected elements')
+  call assert_true(cn_elems /= -1, 'get connected elements')
+  call assert_equal(inv_mesh%get_connected_elements(1), [1 ,2], 'get connected elements')
+  call assert_equal(inv_mesh%get_connected_elements(4), [1], 'get connected elements')
+  call assert_equal(inv_mesh%get_connected_elements(5), [2], 'get connected elements')
+
+  call inv_mesh%freeme()
+
+end subroutine test_get_connected_elements
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_random_points_triangle_mesh
   use tetrahedra, only        : point_in_triangle_3d
   type(inversion_mesh_type)  :: inv_mesh
