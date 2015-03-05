@@ -1332,6 +1332,7 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
     ! If it did not exist yet, create only
     allocate(this%variable_node(this%nvar_node))
   else
+    allocate(variable_node_temp(this%nvar_node-1))
     variable_node_temp = this%variable_node
     deallocate(this%variable_node)
     allocate(this%variable_node(this%nvar_node))
@@ -1395,6 +1396,7 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
     allocate(this%variable_cell(this%nvar_cell))
   else
     ! If it did exist already, increase size by one
+    allocate(variable_cell_temp(this%nvar_cell-1))
     variable_cell_temp = this%variable_cell
     deallocate(this%variable_cell)
     allocate(this%variable_cell(this%nvar_cell))
