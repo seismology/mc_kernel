@@ -17,6 +17,7 @@ module slave_mod
     real(kind=dp), allocatable :: kernel_values(:,:,:)
     real(kind=dp), allocatable :: kernel_variance(:,:,:)
     integer,       allocatable :: niterations(:,:)
+    real(kind=dp), allocatable :: computation_time(:)
     real(kind=dp), allocatable :: model(:,:,:) !< (nmodel_parameter, nbasisfuncs_per_elem, nelements)
                                                !! Model parameters in the order as defined in backgroundmodel:
                                                !! vp, vs, rho, vph, vpv, vsh, vsv, eta, phi, xi
@@ -154,10 +155,11 @@ subroutine do_slave()
 
        slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
 
-       wt%kernel_values   = slave_result%kernel_values
-       wt%kernel_variance = slave_result%kernel_variance
-       wt%niterations     = slave_result%niterations
-       wt%model           = slave_result%model
+       wt%kernel_values    = slave_result%kernel_values
+       wt%kernel_variance  = slave_result%kernel_variance
+       wt%niterations      = slave_result%niterations
+       wt%computation_time = slave_result%computation_time
+       wt%model            = slave_result%model
 
        ! Finished writing my part of the mesh
        call inv_mesh%freeme
@@ -213,7 +215,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     use global_parameters,           only: sp, dp, pi, deg2rad, myrank, &
                                            id_fwd, id_bwd, id_fft, id_mc, id_filter_conv, &
-                                           id_inv_mesh, id_kernel, id_init, id_int_model
+                                           id_inv_mesh, id_kernel, id_init, id_int_model, &
+                                           id_element
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
@@ -223,7 +226,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
     use kernel,                      only: calc_basekernel, calc_physical_kernels
     use backgroundmodel,             only: backgroundmodel_type
-    use clocks_mod,                  only: tick
+    use clocks_mod,                  only: tick, get_clock, reset_clock
 
     type(inversion_mesh_data_type), intent(in)    :: inv_mesh
     type(parameter_type),           intent(in)    :: parameters
@@ -255,7 +258,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nbasisfuncs_per_elem, nbasekernels
     integer                             :: istep_model
-    integer(kind=long)                  :: iclockold
+    integer(kind=long)                  :: iclockold, iclockold_element
     integer                             :: ndim
     integer, parameter                  :: taper_length = 10      !< This is the bare minimum. It does 
                                                                   !! not produce artifacts yet, at least 
@@ -279,6 +282,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%niterations(parameters%nkernel, nelements))
+    allocate(slave_result%computation_time(nelements))
     allocate(slave_result%model(parameters%nmodel_parameter, nbasisfuncs_per_elem, nelements))
     
     allocate(fw_field(ndumps, ndim, nptperstep))
@@ -318,7 +322,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     iclockold = tick(id=id_init, since=iclockold)
 
     do ielement = 1, nelements 
-
+        
+        ! Set element-specific clock to zero and start it again
+        call reset_clock(id_element)
+        iclockold_element = tick(id=id_element)
 
         ! Get volume of current element
         iclockold = tick()
@@ -531,11 +538,14 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            write(lu_out, fmtstring) ielement, maxval(niterations(:, ielement))
         end if
 
+        iclockold_element = tick(id=id_element, since = iclockold_element)
+        call get_clock(id = id_element, total_time = slave_result%computation_time(ielement) )
+        slave_result%niterations(:,ielement)       = niterations(:,ielement)
+
         ! Pass over results to master
         do ibasisfunc = 1, nbasisfuncs_per_elem          
            slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
            slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
-           slave_result%niterations(:,ielement)                  = niterations(:,ielement)
            slave_result%model(:, ibasisfunc, ielement)           = int_model(ibasisfunc)%getintegral()
            call int_kernel(ibasisfunc)%freeme()
            call int_model(ibasisfunc)%freeme()

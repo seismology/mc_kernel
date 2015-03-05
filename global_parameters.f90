@@ -35,7 +35,7 @@ module global_parameters
                                 id_find_point_bwd, id_lagrange, id_int_model,      &
                                 id_read_params, id_create_tasks, id_get_next_task, &
                                 id_extract, id_write_kernel, id_mult_kernel,       &
-                                id_init_fft, id_dump, id_finalize
+                                id_init_fft, id_dump, id_finalize, id_element
   integer                    :: id_load, id_resamp, id_out
 
   contains

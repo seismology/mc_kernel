@@ -63,7 +63,8 @@ module clocks_mod
 
     type(clock)                   :: clocks(0:max_clocks)
 
-    public                        :: clocks_init, clocks_exit, get_clock, clock_id, tick
+    public                        :: clocks_init, clocks_exit, get_clock, reset_clock, &
+                                     clock_id, tick
 
     character(len=256), private   :: &
          version = '$Id: clocks.F90,v 2.2 2001/02/14 19:06:12 vb Exp $'
@@ -191,7 +192,6 @@ function tick( string, id, name, since )
 end function tick
 !-----------------------------------------------------------------------
 
-
 !-----------------------------------------------------------------------
 subroutine get_clock( id, ticks, calls, total_time, time_per_call )
     integer, intent(in)                        :: id
@@ -209,6 +209,20 @@ subroutine get_clock( id, ticks, calls, total_time, time_per_call )
     end if
 
 end subroutine get_clock
+!-----------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+subroutine reset_clock( id )
+    integer, intent(in)                        :: id
+
+    if( 0.LT.id .AND. id.LE.max_clocks )then
+        clocks(id)%ticks = 0
+        clocks(id)%calls = 0
+    else
+        write(lu_out, *) 'CLOCKS ERROR: invalid id=', id
+    end if
+
+end subroutine reset_clock
 !-----------------------------------------------------------------------
 
 !--------------------------------------------------------------------

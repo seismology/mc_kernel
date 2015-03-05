@@ -17,6 +17,7 @@ module master_queue
   real(kind=dp), allocatable,     save :: K_x(:,:), Var(:,:), Bg_model(:,:)
   integer,       allocatable,     save :: connectivity(:,:)
   integer,       allocatable,     save :: niterations(:,:), element_proc(:)
+  real(kind=dp), allocatable,     save :: computation_time(:)
   integer(kind=long),             save :: iclockold_mpi
   integer,                        save :: ncid_intermediate
 
@@ -86,11 +87,6 @@ subroutine init_queue(ntasks, inparam_file)
 
   iclockold = tick(id=id_read_params, since=iclockold)
 
-  allocate(niterations(nelems, parameters%nkernel))
-  allocate(element_proc(nelems))
-  niterations(:,:)  = -1
-  element_proc(:)  = -1
-  
   fmtstring = '(A, I8, A, I8)'
   ! Calculate number of tasks
   ntasks = ceiling(real(inv_mesh%get_nelements()) / parameters%nelems_per_task)
@@ -120,6 +116,14 @@ subroutine init_queue(ntasks, inparam_file)
   allocate(Bg_model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
                                              parameters%nmodel_parameter))
   Bg_Model(:,:) = 0.0
+
+  allocate(niterations(nelems, parameters%nkernel))
+  allocate(computation_time(nelems))
+  allocate(element_proc(nelems))
+  niterations(:,:)     = -1
+  computation_time(:)  = -1
+  element_proc(:)      = -1
+  
 
   iclockold = tick(id=id_create_tasks, since=iclockold)
 
@@ -224,8 +228,9 @@ subroutine extract_receive_buffer(itask, irank)
       end select
 
     end do
-    niterations(ielement,:)  = wt%niterations(:,iel)
-    element_proc(ielement) = irank 
+    niterations(ielement,:)     = wt%niterations(:,iel)
+    computation_time(ielement)  = wt%computation_time(iel)
+    element_proc(ielement)      = irank 
   end do
 
   iclockold = tick(id=id_extract, since=iclockold)
@@ -371,12 +376,16 @@ subroutine finalize()
                                   nentries    = parameters%nkernel, &
                                   entry_names = [('nit_'//parameters%kernel(ikernel)%name, &
                                                   ikernel = 1, parameters%nkernel)] )
+  call inv_mesh%add_cell_variable(var_name    = 'computation_time', &
+                                  nentries    = 1 )                 
   call inv_mesh%add_cell_variable(var_name    = 'element_proc', &
                                   nentries    = 1 )
 
-  call inv_mesh%add_cell_data(var_name = 'niterations',  &
+  call inv_mesh%add_cell_data(var_name = 'niterations',       &
                               values   = real(niterations, kind=sp))
-  call inv_mesh%add_cell_data(var_name = 'element_proc',  &
+  call inv_mesh%add_cell_data(var_name = 'computation_time',  &
+                              values   = reshape(real(computation_time, kind=sp), [size(element_proc,1), 1]))
+  call inv_mesh%add_cell_data(var_name = 'element_proc',      &
                               values   = reshape(real(element_proc, kind=sp), [size(element_proc,1), 1]))
 
 
