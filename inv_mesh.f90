@@ -1502,8 +1502,12 @@ subroutine add_node_data(this, var_name, values, ielement, ientry)
 
   if (size(values,1).ne.count(1) .or. size(values,2).ne.count(2)) then
     write(*,*) 'ERROR: Wrong dimension of input to add_node_data!'
+    write(*,*) '       var_name:     ', trim(var_name)
+    write(*,*) '       nvertices:    ', this%nvertices
+    write(*,*) '       nentries:     ', this%variable_node(ivar)%nentries
     write(*,*) '       size(values): ', size(values,1), size(values,2) 
     write(*,*) '       count:        ', count
+    call pabort()
   end if
     
   call nc_putvar_by_name(ncid    = this%ncid_node,       &
@@ -1570,8 +1574,12 @@ subroutine add_cell_data(this, var_name, values, ielement, ientry)
 
   if (size(values,1).ne.count(1) .or. size(values,2).ne.count(2)) then
     write(*,*) 'ERROR: Wrong dimension of input to add_cell_data!'
+    write(*,*) '       var_name:     ', trim(var_name)
+    write(*,*) '       nelements:    ', this%nelements
+    write(*,*) '       nentries:     ', this%variable_cell(ivar)%nentries
     write(*,*) '       size(values): ', size(values,1), size(values,2) 
     write(*,*) '       count:        ', count
+    call pabort()
   end if
     
   call nc_putvar_by_name(ncid    = this%ncid_cell,       &

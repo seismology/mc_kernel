@@ -288,6 +288,8 @@ subroutine test_set_mixed_data
   integer                           :: nf_status, ncid, id, jd, grp_ncid
   real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), &
                                        testvar3_ref(:,:), testvar4_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_ref_node(:,:), testvar2_ref_node(:,:), &
+                                       testvar3_ref_node(:,:), testvar4_ref_node(:,:)
   character(len=nf90_max_name)      :: dim_name
   character(len=16), dimension(:), allocatable  :: entry_names_cell_1, entry_names_cell_2, &
                                                    entry_names_cell_3, entry_names_cell_4
@@ -310,6 +312,15 @@ subroutine test_set_mixed_data
   call random_number(testvar3_ref)
   allocate(testvar4_ref(2,1)) ! Mesh has two cells
   call random_number(testvar4_ref)
+
+  allocate(testvar1_ref_node(5,2)) ! Mesh has five points
+  call random_number(testvar1_ref_node)
+  allocate(testvar2_ref_node(5,3)) ! Mesh has five points
+  call random_number(testvar2_ref_node)
+  allocate(testvar3_ref_node(5,4)) ! Mesh has five points
+  call random_number(testvar3_ref_node)
+  allocate(testvar4_ref_node(5,1)) ! Mesh has five points
+  call random_number(testvar4_ref_node)
 
   ! CELL DATA
   call inv_mesh%init_cell_data()
@@ -370,7 +381,7 @@ subroutine test_set_mixed_data
                                   nentries = 2,      &
                                   entry_names = entry_names_node_1)
   call inv_mesh%add_node_data(var_name  = 'node_variable_1',   &
-                              values    = testvar1_ref)
+                              values    = testvar1_ref_node)
 
   ! Write variable element-wise
   entry_names_node_2 = ['entry1', 'entry2', 'entry3']
@@ -378,11 +389,14 @@ subroutine test_set_mixed_data
                                   nentries    = 3,           &
                                   entry_names = entry_names_node_2)
   call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
-                              values    = testvar2_ref(1:1,:),   &
+                              values    = testvar2_ref_node(1:1,:),   &
                               ielement  = [1, 1])
   call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
-                              values    = testvar2_ref(2:2,:),   &
+                              values    = testvar2_ref_node(2:2,:),   &
                               ielement  = [2, 2])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(3:5,:),   &
+                              ielement  = [3, 5])
 
   ! Just to add confusion, init both once more
   call inv_mesh%init_cell_data()
@@ -394,10 +408,10 @@ subroutine test_set_mixed_data
                                   nentries = 4,      &
                                   entry_names = entry_names_node_3)
   call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
-                              values    = testvar3_ref(:,1:1),   &
+                              values    = testvar3_ref_node(:,1:1),   &
                               ientry    = [1, 1])
   call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
-                              values    = testvar3_ref(:,2:4),   &
+                              values    = testvar3_ref_node(:,2:4),   &
                               ientry    = [2, 4])
 
   ! Add one-entry variable at the end
@@ -406,7 +420,7 @@ subroutine test_set_mixed_data
                                   nentries = 1,      &
                                   entry_names = entry_names_node_4)
   call inv_mesh%add_node_data(var_name  = 'node_variable_4',          &
-                              values    = testvar4_ref(:,:),   &
+                              values    = testvar4_ref_node(:,:),   &
                               ientry    = [1, 1])
 
   ! END OF NODE DATA                           
@@ -485,13 +499,13 @@ subroutine test_set_node_data_and_dump()
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
   variable_length = [2, 3, 4]
 
-  allocate(testvar1_ref(2,2)) ! Mesh has two nodes
+  allocate(testvar1_ref(5,2)) ! Mesh has five vertices
   call random_number(testvar1_ref)
 
-  allocate(testvar2_ref(2,3)) ! Mesh has two nodes
+  allocate(testvar2_ref(5,3)) ! Mesh has five vertices
   call random_number(testvar2_ref)
   
-  allocate(testvar3_ref(2,4)) ! Mesh has two nodes
+  allocate(testvar3_ref(5,4)) ! Mesh has five vertices
   call random_number(testvar3_ref)
 
   call inv_mesh%init_node_data()
@@ -511,6 +525,9 @@ subroutine test_set_node_data_and_dump()
   call inv_mesh%add_node_data(var_name  = 'variable_2',          &
                               values    = testvar2_ref(2:2,:),   &
                               ielement  = [2, 2])
+  call inv_mesh%add_node_data(var_name  = 'variable_2',          &
+                              values    = testvar2_ref(3:5,:),   &
+                              ielement  = [3, 5])
 
   ! Write variable snap-wise
   call inv_mesh%add_node_variable('variable_3', &
@@ -679,7 +696,9 @@ subroutine test_set_mixed_data_and_dump()
 
   integer                           :: nf_status, ncid, id, jd, grp_ncid
   real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_ref_node(:,:), testvar2_ref_node(:,:), testvar3_ref_node(:,:)
   real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
+  real(kind=sp), allocatable        :: testvar1_res_node(:,:), testvar2_res_node(:,:), testvar3_res_node(:,:)
   character(len=nf90_max_name)      :: dim_name
 
 
@@ -695,6 +714,13 @@ subroutine test_set_mixed_data_and_dump()
   call random_number(testvar2_ref)
   allocate(testvar3_ref(2,4)) ! Mesh has two cells
   call random_number(testvar3_ref)
+
+  allocate(testvar1_ref_node(5,2)) ! Mesh has five points
+  call random_number(testvar1_ref_node)
+  allocate(testvar2_ref_node(5,3)) ! Mesh has five points
+  call random_number(testvar2_ref_node)
+  allocate(testvar3_ref_node(5,4)) ! Mesh has five points
+  call random_number(testvar3_ref_node)
 
   ! CELL DATA
   call inv_mesh%init_cell_data()
@@ -738,17 +764,20 @@ subroutine test_set_mixed_data_and_dump()
   call inv_mesh%add_node_variable('node_variable_1', &
                                   nentries = 2)
   call inv_mesh%add_node_data(var_name  = 'node_variable_1',   &
-                              values    = testvar1_ref)
+                              values    = testvar1_ref_node)
 
   ! Write variable element-wise
   call inv_mesh%add_node_variable('node_variable_2', &
                                   nentries = 3)
   call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
-                              values    = testvar2_ref(1:1,:),   &
+                              values    = testvar2_ref_node(1:1,:),   &
                               ielement  = [1, 1])
   call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
-                              values    = testvar2_ref(2:2,:),   &
+                              values    = testvar2_ref_node(2:2,:),   &
                               ielement  = [2, 2])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(3:5,:),   &
+                              ielement  = [3, 5])
 
   ! Just to add confusion, init both once more
   call inv_mesh%init_cell_data()
@@ -758,10 +787,10 @@ subroutine test_set_mixed_data_and_dump()
   call inv_mesh%add_node_variable('node_variable_3', &
                                   nentries = 4)
   call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
-                              values    = testvar3_ref(:,1:1),   &
+                              values    = testvar3_ref_node(:,1:1),   &
                               ientry    = [1, 1])
   call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
-                              values    = testvar3_ref(:,2:4),   &
+                              values    = testvar3_ref_node(:,2:4),   &
                               ientry    = [2, 4])
 
   ! END OF NODE DATA                           
@@ -822,22 +851,22 @@ subroutine test_set_mixed_data_and_dump()
   ! Get variable 1
   call nc_getvar_by_name(ncid    = grp_ncid,     &
                          varname = 'node_variable_1', & 
-                         values  = testvar1_res, &
+                         values  = testvar1_res_node, &
                          limits  = [0.,1.] )
 
   do id = 1, size(testvar1_ref, 2) 
-    call assert_comparable(testvar1_ref(:,id), testvar1_res(:,id),  &
+    call assert_comparable(testvar1_ref_node(:,id), testvar1_res_node(:,id),  &
                            1e-7, 'Variable 1 retrieved successfully')
   end do
 
   ! Get variable 2
   call nc_getvar_by_name(ncid    = grp_ncid,     &
                          varname = 'node_variable_2', & 
-                         values  = testvar2_res, &
+                         values  = testvar2_res_node, &
                          limits  = [0.,1.] )
   
   do id = 1, size(testvar2_ref, 2) 
-    call assert_comparable(testvar2_ref(:,id), testvar2_res(:,id),  &
+    call assert_comparable(testvar2_ref_node(:,id), testvar2_res_node(:,id),  &
                            1e-7, 'Variable 2 retrieved successfully')
   end do
 
@@ -845,11 +874,11 @@ subroutine test_set_mixed_data_and_dump()
   ! Get variable 3
   call nc_getvar_by_name(ncid    = grp_ncid,     &
                          varname = 'node_variable_3', & 
-                         values  = testvar3_res, &
+                         values  = testvar3_res_node, &
                          limits  = [0.,1.] )
   
   do id = 1, size(testvar3_ref, 2) 
-    call assert_comparable(testvar3_ref(:,id), testvar3_res(:,id),  &
+    call assert_comparable(testvar3_ref_node(:,id), testvar3_res_node(:,id),  &
                            1e-7, 'Variable 3 retrieved successfully')
   end do
 
