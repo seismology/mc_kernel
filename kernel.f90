@@ -60,7 +60,7 @@ contains
 !-------------------------------------------------------------------------------
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                 seis, dt, timeshift_fwd, deconv_stf, write_smgr)
-   use backgroundmodel, only                : parameter_name, nmodel_parameters
+   use backgroundmodel, only                : get_parameter_index
               
    class(kernelspec_type)                  :: this
    character(len=*), intent(in)            :: name
@@ -132,23 +132,11 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                                            ntaper = 0 ),            &
                             this%seis_cut_fd)
 
-   ! Determine the index of the model parameter in the list defined in backgroundmodel.f90
-   do iparam = 1, nmodel_parameters
-     if (this%model_parameter == parameter_name(iparam)) then
-       this%model_parameter_index = iparam
-       exit
-     end if
-   end do
-   if (iparam == nmodel_parameters + 1) then
-     print '("ERROR: Unknown model parameter for kernel ", A, ": ", A)', &
-       trim(this%name), trim(this%model_parameter)
-     print '("Available options: ", 10(A3))', parameter_name
-     call pabort(do_traceback=.false.)
-   end if
-
    ! Check and tabulate, which base kernels the model parameter for this 
    ! specific kernel needs
    call tabulate_kernels(this%model_parameter, this%needs_basekernel, this%strain_type)
+
+   this%model_parameter_index = get_parameter_index(this%model_parameter)
 
    if (verbose>0) then
       write(lu_out,*) '  ---------------------------------------------------------'

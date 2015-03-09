@@ -180,6 +180,31 @@ end function get_parameter_names
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function get_parameter_index(model_parameter)
+  use commpi, only   : pabort
+  character(len=3)  :: model_parameter
+  integer           :: get_parameter_index
+
+  integer           :: iparam
+
+   ! Determine the index of the model parameter in the list defined in backgroundmodel.f90
+   do iparam = 1, nmodel_parameters
+     if (model_parameter == parameter_name(iparam)) then
+       get_parameter_index = iparam
+       exit
+     end if
+   end do
+   if (iparam == nmodel_parameters + 1) then
+     print '("ERROR: Unknown model parameter for kernel", A)', &
+       trim(model_parameter)
+     print '("Available options: ", 10(A3))', parameter_name
+     call pabort(do_traceback=.false.)
+   end if
+
+end function get_parameter_index
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function weight(this, weights) result(all_coeffs)
   class(backgroundmodel_type) :: this
   real(kind=dp), intent(in)   :: weights(:)
