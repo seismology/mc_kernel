@@ -1322,8 +1322,8 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
 
   call nc_create_var_by_name(ncid    = this%ncid_node,                  &
                              varname = trim(var_name),                  &
-                             sizes   = [this%nelements, nentries],      &
-                             dimension_names = ['Elements', '        '])
+                             sizes   = [this%nvertices, nentries],      &
+                             dimension_names = ['Vertices', '        '])
 
   if (istime_loc) this%ntimes = max(this%ntimes, nentries)
 
@@ -1485,7 +1485,7 @@ subroutine add_node_data(this, var_name, values, ielement, ientry)
     ielement_loc = ielement
   else
     ielement_loc(1) = 1
-    ielement_loc(2) = this%nelements
+    ielement_loc(2) = this%nvertices
   end if
 
   ! If ientry is not present, assume that plot ranges over all entries for 
