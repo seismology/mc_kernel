@@ -21,7 +21,9 @@ module inversion_mesh
   private
   public :: inversion_mesh_type
   public :: inversion_mesh_data_type
+  public :: inversion_mesh_variable_type
   public :: plane_exp_pro2
+  public :: append_variable
 
   type                              :: inversion_mesh_variable_type
     character(len=80)               :: var_name
@@ -89,8 +91,8 @@ module inversion_mesh
      integer                            :: ntimes    = 1
      real(kind=dp)                      :: dt, starttime
      character(len=21), public          :: filename_tmp_out
-     type(inversion_mesh_variable_type), allocatable    :: variable_cell(:)
-     type(inversion_mesh_variable_type), allocatable    :: variable_node(:)
+     type(inversion_mesh_variable_type), allocatable, public    :: variable_cell(:)
+     type(inversion_mesh_variable_type), allocatable, public    :: variable_node(:)
 
      contains
      procedure, pass :: get_ntimes_node
@@ -1297,7 +1299,6 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
   integer                                   :: ivar
   logical                                   :: istime_loc = .false.
   character(len=80), allocatable            :: entry_names_loc(:)
-  type(inversion_mesh_variable_type), allocatable    :: variable_node_temp(:)
 
   if (this%ncid_node==-1) then
     print *, 'ERROR: This mesh has not been initialized for node data yet'
@@ -1326,24 +1327,9 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
 
   if (istime_loc) this%ntimes = max(this%ntimes, nentries)
 
-  ! Increase size of this%variable_node by one. Fortran style
-  this%nvar_node = this%nvar_node + 1
-  if (this%nvar_node==1) then
-    ! If it did not exist yet, create only
-    allocate(this%variable_node(this%nvar_node))
-  else
-    allocate(variable_node_temp(this%nvar_node-1))
-    variable_node_temp = this%variable_node
-    deallocate(this%variable_node)
-    allocate(this%variable_node(this%nvar_node))
-    this%variable_node(1:this%nvar_node-1) = variable_node_temp
-  end if
+  call append_variable(this%variable_node, var_name, nentries, istime_loc, entry_names_loc)
 
-  this%variable_node(this%nvar_node)%var_name       = var_name
-  this%variable_node(this%nvar_node)%nentries       = nentries
-  this%variable_node(this%nvar_node)%istime         = istime_loc
-  allocate(this%variable_node(this%nvar_node)%entry_names(nentries)) 
-  this%variable_node(this%nvar_node)%entry_names(:) = entry_names_loc
+  this%nvar_node = this%nvar_node + 1
 
 end subroutine add_node_variable
 !-----------------------------------------------------------------------------------------
@@ -1360,7 +1346,6 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
   integer                                   :: ivar
   logical                                   :: istime_loc = .false.
   character(len=80), allocatable            :: entry_names_loc(:)
-  type(inversion_mesh_variable_type), allocatable    :: variable_cell_temp(:)
 
   if (this%ncid_cell==-1) then
     print *, 'ERROR: This mesh has not been initialized for cell data yet'
@@ -1389,27 +1374,77 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
 
   if (istime_loc) this%ntimes = max(this%ntimes, nentries)
 
-  ! Increase size of this%variable_cell by one. Fortran style
-  this%nvar_cell = this%nvar_cell + 1
-  if (this%nvar_cell==1) then
-    ! If it did not exist yet, create only
-    allocate(this%variable_cell(this%nvar_cell))
-  else
-    ! If it did exist already, increase size by one
-    allocate(variable_cell_temp(this%nvar_cell-1))
-    variable_cell_temp = this%variable_cell
-    deallocate(this%variable_cell)
-    allocate(this%variable_cell(this%nvar_cell))
-    this%variable_cell(1:this%nvar_cell-1) = variable_cell_temp
-  end if
+  call append_variable(this%variable_cell, var_name, nentries, istime_loc, entry_names_loc)
 
-  this%variable_cell(this%nvar_cell)%var_name    = var_name
-  this%variable_cell(this%nvar_cell)%nentries    = nentries
-  this%variable_cell(this%nvar_cell)%istime      = istime_loc
-  allocate(this%variable_cell(this%nvar_cell)%entry_names(nentries)) 
-  this%variable_cell(this%nvar_cell)%entry_names(:) = entry_names_loc
+  this%nvar_cell = this%nvar_cell + 1
 
 end subroutine add_cell_variable
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Increase size of inversion_mesh_variable_type by one. Fortran style
+subroutine append_variable(variable, var_name, nentries, istime, entry_names)
+  type(inversion_mesh_variable_type), intent(inout), allocatable  :: variable(:)
+  character(len=*),                   intent(in)                  :: var_name
+  integer,                            intent(in)                  :: nentries
+  character(len=*),                   intent(in)                  :: entry_names(:)
+  logical,                            intent(in)                  :: istime
+
+  type (inversion_mesh_variable_type), allocatable  :: variable_temp(:)
+  integer                                           :: ivar, nvar, ientry
+
+  if (nentries.ne.size(entry_names)) then
+    print *, 'ERROR in append_variable. Wrong number of entry names'
+    print *, '      nentries:          ', nentries
+    print *, '      size(entry_names): ', size(entry_names)
+    print *, '      entry_names:       '
+    do ientry = 1, size(entry_names)
+      print *, '      ', ientry, trim(entry_names(ientry))
+    end do
+    call pabort()
+  end if
+
+  if (.not.allocated(variable)) then
+    ! If it did not exist yet, create only
+    allocate(variable(1))
+    nvar = 1
+  else
+    nvar = size(variable)
+    ! Copy 'variable' to 'variable_temp'
+    allocate(variable_temp(nvar))
+    do ivar = 1, nvar
+      allocate(variable_temp(ivar)%entry_names(variable(ivar)%nentries)) 
+      variable_temp(ivar)%var_name    = variable(ivar)%var_name
+      variable_temp(ivar)%nentries    = variable(ivar)%nentries
+      variable_temp(ivar)%istime      = variable(ivar)%istime
+      variable_temp(ivar)%entry_names = variable(ivar)%entry_names
+    end do
+
+    ! Increase size of 'variable' by one
+    deallocate(variable)
+    allocate(variable(nvar+1))
+
+    ! Copy 'variable_temp' to 'variable'
+    do ivar = 1, nvar
+      allocate(variable(ivar)%entry_names(nentries)) 
+      variable(ivar)%var_name    = variable_temp(ivar)%var_name
+      variable(ivar)%nentries    = variable_temp(ivar)%nentries
+      variable(ivar)%istime      = variable_temp(ivar)%istime
+      variable(ivar)%entry_names = variable_temp(ivar)%entry_names
+    end do
+    deallocate(variable_temp)
+
+    nvar = nvar + 1
+  end if
+
+  ! Assign values to new entry of variable
+  variable(nvar)%var_name       = var_name
+  variable(nvar)%nentries       = nentries
+  variable(nvar)%istime         = istime
+  allocate(variable(nvar)%entry_names(nentries)) 
+  variable(nvar)%entry_names(:) = entry_names
+
+end subroutine append_variable
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
