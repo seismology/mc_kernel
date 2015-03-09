@@ -4,7 +4,7 @@ module master_queue
   use inversion_mesh,              only: inversion_mesh_data_type
   use type_parameter,              only: parameter_type
   use simple_routines,             only: lowtrim
-  use nc_routines,                 only: nc_open_for_write, nc_close_file, &
+  use nc_routines,                 only: nc_create_file, nc_close_file, &
                                          nc_putvar_by_name
   implicit none
   private
@@ -131,7 +131,7 @@ subroutine init_queue(ntasks, inparam_file)
   write(lu_out,'(A)') ' Create file for intermediate results '
   write(lu_out,'(A)') '***************************************************************'
   filename = 'intermediate_results.nc'
-  call nc_open_for_write(filename = filename, ncid = ncid_intermediate)
+  call nc_create_file(filename = filename, ncid = ncid_intermediate, overwrite=.true.)
 
   call nc_putvar_by_name(ncid    = ncid_intermediate, &
                          varname = 'K_x',             & 
