@@ -1296,7 +1296,7 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
   character(len=*), intent(in), optional    :: entry_names(:)
   logical, intent(in), optional             :: istime
 
-  integer                                   :: ivar
+  integer                                   :: ivar, ientry
   logical                                   :: istime_loc = .false.
   character(len=80), allocatable            :: entry_names_loc(:)
 
@@ -1798,11 +1798,11 @@ subroutine dump_data_xdmf(this, filename)
       ! second part. For all other variables, all entries are written into
       ! the first time step
       if (this%variable_node(ivar)%istime.and.ientry>1) cycle
-      write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%var_name),                &
+      write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%entry_names(ientry)), &
                                this%nvertices, ientry, this%nvertices,              &
                                this%variable_node(ivar)%nentries, this%nvertices,   &
                                trim(filename_nc),                                   &
-                               trim(this%variable_node(ivar)%entry_names(ientry))
+                               trim(this%variable_node(ivar)%var_name)
     end do
   end do 
 
@@ -1812,11 +1812,11 @@ subroutine dump_data_xdmf(this, filename)
       ! second part. For all other variables, all entries are written into
       ! the first time step
       if (this%variable_cell(ivar)%istime.and.ientry>1) cycle
-      write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%var_name),                &
+      write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%entry_names(ientry)), &
                                this%nelements, ientry, this%nelements,              &
                                this%variable_cell(ivar)%nentries, this%nelements,   &
                                trim(filename_nc),                                   &
-                               trim(this%variable_cell(ivar)%entry_names(ientry))
+                               trim(this%variable_cell(ivar)%var_name)
     end do
   end do
   ! Finish first snapshot
@@ -1838,7 +1838,7 @@ subroutine dump_data_xdmf(this, filename)
       ! step, where every entry has to be written.
       if (itime.le.this%variable_node(ivar)%nentries .and. &
           this%variable_node(ivar)%istime) then
-        write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%var_name),            &
+        write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%entry_names(ientry)), &
                                  this%nvertices, itime, this%nvertices,               &
                                  this%variable_node(ivar)%nentries, this%nvertices,   &
                                  trim(filename_nc),                                   &
@@ -1849,7 +1849,7 @@ subroutine dump_data_xdmf(this, filename)
     do ivar = 1, this%nvar_cell
       if (itime.le.this%variable_cell(ivar)%nentries .and. &
           this%variable_cell(ivar)%istime) then
-        write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%var_name),            &
+        write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%entry_names(ientry)), &
                                  this%nelements, itime, this%nelements,               &
                                  this%variable_cell(ivar)%nentries, this%nvertices,   &
                                  trim(filename_nc),                                   &
