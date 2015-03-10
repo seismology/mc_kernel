@@ -23,6 +23,8 @@ subroutine test_background_models_combine
   real(kind=sp)              :: ref_eta(1)
   real(kind=sp)              :: ref_phi(1)
   real(kind=sp)              :: ref_xi(1)
+  real(kind=sp)              :: ref_lam(1)
+  real(kind=sp)              :: ref_mu(1)
 
   allocate(coeffs(6,1))
   coeffs(:,1) = [4500.0, 3000.0, 2000.0, 1.1, 0.9, 1.0]
@@ -37,6 +39,8 @@ subroutine test_background_models_combine
   ref_vsv = sqrt(ref_vsh**2/ref_xi)
   ref_vph = ref_vp
   ref_vpv = sqrt(ref_vph**2*ref_phi)
+  ref_lam = ref_rho * (ref_vp**2 - 2 * ref_vs**2)
+  ref_mu  = ref_rho * ref_vs**2
 
   call bm%combine(coeffs)
 
@@ -50,6 +54,40 @@ subroutine test_background_models_combine
   call assert_comparable(bm%c_eta, ref_eta, 1e-7, 'Eta correct')
   call assert_comparable(bm%c_phi, ref_phi, 1e-7, 'Phi correct')
   call assert_comparable(bm%c_xi,  ref_xi,  1e-7, 'Xi correct')
+  call assert_comparable(bm%c_lam, ref_lam, 1e-7, 'Lambda correct')
+  call assert_comparable(bm%c_mu,  ref_mu,  1e-7, 'Mu correct')
+
+  deallocate(coeffs)
+  allocate(coeffs(6,1))
+  coeffs(:,1) = [6000.0, 0000.0, 4000.0, 1.0, 0.9, 1.0]
+
+  ref_vs  = 0000.0
+  ref_vp  = 6000.0
+  ref_rho = 4000.0
+  ref_eta = 1
+  ref_phi = 1.0
+  ref_xi  = 0.9
+  ref_vsh = ref_vs
+  ref_vsv = sqrt(ref_vsh**2/ref_xi)
+  ref_vph = ref_vp
+  ref_vpv = sqrt(ref_vph**2*ref_phi)
+  ref_lam = ref_rho * (ref_vp**2 - 2 * ref_vs**2)
+  ref_mu  = ref_rho * ref_vs**2
+
+  call bm%combine(coeffs)
+
+  call assert_comparable(bm%c_vs,  ref_vs,  1e-7, 'VS correct')
+  call assert_comparable(bm%c_vp,  ref_vp,  1e-7, 'VP correct')
+  call assert_comparable(bm%c_rho, ref_rho, 1e-7, 'Rho correct')
+  call assert_comparable(bm%c_vsh, ref_vsh, 1e-7, 'VSh correct')
+  call assert_comparable(bm%c_vsv, ref_vsv, 1e-7, 'VSv correct')
+  call assert_comparable(bm%c_vph, ref_vph, 1e-7, 'VPh correct')
+  call assert_comparable(bm%c_vpv, ref_vpv, 1e-7, 'VPv correct')
+  call assert_comparable(bm%c_eta, ref_eta, 1e-7, 'Eta correct')
+  call assert_comparable(bm%c_phi, ref_phi, 1e-7, 'Phi correct')
+  call assert_comparable(bm%c_xi,  ref_xi,  1e-7, 'Xi correct')
+  call assert_comparable(bm%c_lam, ref_lam, 1e-7, 'Lambda correct')
+  call assert_comparable(bm%c_mu,  ref_mu,  1e-7, 'Mu correct')
 
   deallocate(coeffs)
   allocate(coeffs(6,2))
@@ -66,6 +104,8 @@ subroutine test_background_models_combine
   ref_vsv = sqrt(ref_vsh**2/ref_xi)
   ref_vph = ref_vp
   ref_vpv = sqrt(ref_vph**2*ref_phi)
+  ref_lam = ref_rho * (ref_vp**2 - 2 * ref_vs**2)
+  ref_mu  = ref_rho * ref_vs**2
 
   call bm%combine(coeffs)
 
@@ -79,6 +119,8 @@ subroutine test_background_models_combine
   call assert_comparable(bm%c_eta(1), ref_eta(1), 1e-7, 'Eta correct')
   call assert_comparable(bm%c_phi(1), ref_phi(1), 1e-7, 'Phi correct')
   call assert_comparable(bm%c_xi(1),  ref_xi(1),  1e-7, 'Xi correct')
+  call assert_comparable(bm%c_lam(1), ref_lam(1), 1e-7, 'Lambda correct')
+  call assert_comparable(bm%c_mu(1),  ref_mu(1),  1e-7, 'Mu correct')
   
 end subroutine test_background_models_combine
 !-----------------------------------------------------------------------------------------
