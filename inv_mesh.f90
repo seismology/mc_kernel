@@ -1960,5 +1960,21 @@ subroutine dump_data_xdmf(this, filename)
 
 end subroutine dump_data_xdmf
 !-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+# if defined(__INTEL_COMPILER)
+! Apparently, ifort does not support execute_command_line yet
+subroutine execute_command_line(cmd, wait, exitstat, cmdmsg)
+  use ifport
+  character(len=*), intent(in)   :: cmd
+  logical, intent(in)            :: wait
+  integer, intent(out)           :: exitstat
+  character(len=80), intent(out) :: cmdmsg
+
+  exitstat = system(cmd)
+  cmdmsg = 'Ifort-specific replacement for execute_command_line, with meaningless output msg'
+end subroutine execute_command_line
+# endif
+!-----------------------------------------------------------------------------------------
 end module
 !=========================================================================================
