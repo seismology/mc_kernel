@@ -1799,7 +1799,7 @@ subroutine dump_data_xdmf(this, filename)
       ! the first time step
       if (this%variable_node(ivar)%istime.and.ientry>1) cycle
       write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%entry_names(ientry)), &
-                               this%nvertices, ientry, this%nvertices,              &
+                               this%nvertices, ientry-1, this%nvertices,            &
                                this%variable_node(ivar)%nentries, this%nvertices,   &
                                trim(filename_nc),                                   &
                                trim(this%variable_node(ivar)%var_name)
@@ -1813,7 +1813,7 @@ subroutine dump_data_xdmf(this, filename)
       ! the first time step
       if (this%variable_cell(ivar)%istime.and.ientry>1) cycle
       write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%entry_names(ientry)), &
-                               this%nelements, ientry, this%nelements,              &
+                               this%nelements, ientry-1, this%nelements,            &
                                this%variable_cell(ivar)%nentries, this%nelements,   &
                                trim(filename_nc),                                   &
                                trim(this%variable_cell(ivar)%var_name)
@@ -1839,7 +1839,7 @@ subroutine dump_data_xdmf(this, filename)
       if (itime.le.this%variable_node(ivar)%nentries .and. &
           this%variable_node(ivar)%istime) then
         write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%entry_names(ientry)), &
-                                 this%nvertices, itime, this%nvertices,               &
+                                 this%nvertices, itime-1, this%nvertices,             &
                                  this%variable_node(ivar)%nentries, this%nvertices,   &
                                  trim(filename_nc),                                   &
                                  trim(this%variable_node(ivar)%var_name)
@@ -1850,7 +1850,7 @@ subroutine dump_data_xdmf(this, filename)
       if (itime.le.this%variable_cell(ivar)%nentries .and. &
           this%variable_cell(ivar)%istime) then
         write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%entry_names(ientry)), &
-                                 this%nelements, itime, this%nelements,               &
+                                 this%nelements, itime-1, this%nelements,             &
                                  this%variable_cell(ivar)%nentries, this%nvertices,   &
                                  trim(filename_nc),                                   &
                                  trim(this%variable_cell(ivar)%var_name)
