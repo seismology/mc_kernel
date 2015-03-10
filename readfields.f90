@@ -1303,34 +1303,6 @@ end function load_fw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-!> Gets the model coefficients for a selected point
-function get_model_coeffs(this, ipoint) result(coeffs)
-   class(semdata_type), intent(in) :: this
-   integer, intent(in)             :: ipoint
-   real(kind=sp)                   :: coeffs(nmodel_parameters_sem_file)
-   
-   ! Load model coefficients vp, vs and rho at point ipoint
-   ! Load coefficient vp
-   coeffs(1) = this%fwdmesh%vp(ipoint)
-   ! Load coefficient vs
-   coeffs(2) = this%fwdmesh%vs(ipoint)
-   ! Load coefficient rho
-   coeffs(3) = this%fwdmesh%rho(ipoint)
-   ! Load coefficient phi
-   coeffs(4) = this%fwdmesh%phi(ipoint)
-   ! Load coefficient xi
-   coeffs(5) = this%fwdmesh%xi(ipoint)
-   ! Load coefficient eta
-   coeffs(6) = this%fwdmesh%eta(ipoint)
-
-   !print *, 'S', this%fwdmesh%s(ipoint)
-   !print *, 'Z', this%fwdmesh%z(ipoint)
-   !print *, 'VP', this%fwdmesh%vp(ipoint)
-   !print *, 'VS', this%fwdmesh%vs(ipoint)
-end function get_model_coeffs
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
 !> Loads the model coefficients for a selected coordinate 
 function load_model_coeffs(this, coordinates_xyz, s, z) result(model)
    use backgroundmodel, only          : backgroundmodel_type
@@ -1356,10 +1328,6 @@ function load_model_coeffs(this, coordinates_xyz, s, z) result(model)
    coordinates_sz(1,:) = sqrt(coordinates_xyz(1,:)**2 + coordinates_xyz(2,:)**2) ! S
    coordinates_sz(2,:) = coordinates_xyz(3,:) ! Z
 
-   !print *, 'S: ', coordinates_sz(1,:)
-   !print *, 'Z: ', coordinates_sz(2,:)
-   call flush(6)
-
    ! nextpoint has to be allocatable in kdtree module
    allocate(nextpoint(nnext_points))
 
@@ -1372,7 +1340,7 @@ function load_model_coeffs(this, coordinates_xyz, s, z) result(model)
                               results = nextpoint )
       pointid = nextpoint(1)%idx
 
-      ! Get model coefficients of nearest point
+      ! Get 6 model coefficients of nearest point from Mesh
       coeffs(:, ipoint) = get_model_coeffs(this, pointid)
 
       ! For debugging purposes, s and z of the next point may be returned
@@ -1381,11 +1349,34 @@ function load_model_coeffs(this, coordinates_xyz, s, z) result(model)
 
    end do ! ipoint
 
-   !print *, 'S_next_point: ', s
-   !print *, 'Z_next_point: ', z
+   ! Combine 6 mesh values to get the 12 parameters of backgroundmodel.f90
    call model%combine(coeffs)
 
 end function load_model_coeffs
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Gets the model coefficients for a selected point
+function get_model_coeffs(this, ipoint) result(coeffs)
+   class(semdata_type), intent(in) :: this
+   integer, intent(in)             :: ipoint
+   real(kind=sp)                   :: coeffs(nmodel_parameters_sem_file)
+   
+   ! Load model coefficients vp, vs and rho at point ipoint
+   ! Load coefficient vp
+   coeffs(1) = this%fwdmesh%vp(ipoint)
+   ! Load coefficient vs
+   coeffs(2) = this%fwdmesh%vs(ipoint)
+   ! Load coefficient rho
+   coeffs(3) = this%fwdmesh%rho(ipoint)
+   ! Load coefficient phi
+   coeffs(4) = this%fwdmesh%phi(ipoint)
+   ! Load coefficient xi
+   coeffs(5) = this%fwdmesh%xi(ipoint)
+   ! Load coefficient eta
+   coeffs(6) = this%fwdmesh%eta(ipoint)
+
+end function get_model_coeffs
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
