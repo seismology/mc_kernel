@@ -430,42 +430,47 @@ function weights(this, ielem, ivertex, points)
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
      call pabort 
   end if
-  select case(this%element_type) 
 
-  case('tet')
-     do ipoint = 1, size(points, 2)
-        dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
-        dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
-        dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
+  if (this%nbasisfuncs_per_elem==1) then !Integration on cell
+    weights = 1
 
-        weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
-                          + this%abinv(ivertex, 2, ielem) * dy &
-                          + this%abinv(ivertex, 3, ielem) * dz &
-                          + this%abinv(ivertex, 4, ielem) * 1
+  else !Integration on vertices
+    select case(this%element_type) 
+    case('tet')
+       do ipoint = 1, size(points, 2)
+          dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
+          dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
+          dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
+
+          weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
+                            + this%abinv(ivertex, 2, ielem) * dy &
+                            + this%abinv(ivertex, 3, ielem) * dz &
+                            + this%abinv(ivertex, 4, ielem) * 1
 
 
-        if (weights(ipoint)<0.0) then
-          print *, 'ERROR: weights is smaller zero! Check whether point is outside of element'
-          print *, '       weight:', weights(ipoint)
-          print *, '       dx    :', dx
-          print *, '       dy    :', dy
-          print *, '       dz    :', dz
-          call pabort()
-        end if
-        if (weights(ipoint)>1.0) then
-          print *, 'ERROR: weights is larger one! Check whether point is outside of element'
-          print *, '       weight:', weights(ipoint)
-          print *, '       dx    :', dx
-          print *, '       dy    :', dy
-          print *, '       dz    :', dz
-          call pabort()
-        end if
+          if (weights(ipoint)<0.0) then
+            print *, 'ERROR: weights is smaller zero! Check whether point is outside of element'
+            print *, '       weight:', weights(ipoint)
+            print *, '       dx    :', dx
+            print *, '       dy    :', dy
+            print *, '       dz    :', dz
+            call pabort()
+          end if
+          if (weights(ipoint)>1.0) then
+            print *, 'ERROR: weights is larger one! Check whether point is outside of element'
+            print *, '       weight:', weights(ipoint)
+            print *, '       dx    :', dx
+            print *, '       dy    :', dy
+            print *, '       dz    :', dz
+            call pabort()
+          end if
 
-     end do
-  case default
-      ! Least sophisticated version possible
-      weights = 1
-  end select
+       end do
+    case default
+        ! Least sophisticated version possible
+        weights = 1
+    end select
+  end if
 
 end function weights
 !-----------------------------------------------------------------------------------------
