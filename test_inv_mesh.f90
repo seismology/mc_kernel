@@ -1013,6 +1013,45 @@ subroutine test_initialize_mesh
 end subroutine test_initialize_mesh
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_weight
+  use netcdf
+  type(inversion_mesh_data_type)    :: inv_mesh
+  integer, parameter                :: nrandom = 10
+  real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
+  real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
+  integer                           :: ielement, ivertex, ivertex_test
+ 
+
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  ! Weight should be one at each of the vertices for the respective parameter and 
+  ! zero for all the others
+  do ielement = 1, inv_mesh%get_nelements()
+    points = inv_mesh%get_element(ielement)
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight = inv_mesh%weights(ielement, ivertex, points)
+      weight_ref = 0
+      weight_ref(ivertex) = 1
+      call assert_comparable(weight, weight_ref, 1d-10, 'Weight at vertex is one')
+    end do
+  end do
+
+  ! Weight should be between one and zero everywhere (inside the element)
+  do ielement = 1, inv_mesh%get_nelements()
+    random_points = inv_mesh%generate_random_points( ielement, nrandom, .false. )
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+    end do
+  end do
+
+
+end subroutine test_weight
+!-----------------------------------------------------------------------------------------
 
 end module test_inversion_mesh
 !=========================================================================================

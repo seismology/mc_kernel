@@ -440,7 +440,27 @@ function weights(this, ielem, ivertex, points)
 
         weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
                           + this%abinv(ivertex, 2, ielem) * dy &
-                          + this%abinv(ivertex, 3, ielem) * dz
+                          + this%abinv(ivertex, 3, ielem) * dz &
+                          + this%abinv(ivertex, 4, ielem) * 1
+
+
+        if (weights(ipoint)<0.0) then
+          print *, 'ERROR: weights is smaller zero! Check whether point is outside of element'
+          print *, '       weight:', weights(ipoint)
+          print *, '       dx    :', dx
+          print *, '       dy    :', dy
+          print *, '       dz    :', dz
+          call pabort()
+        end if
+        if (weights(ipoint)>1.0) then
+          print *, 'ERROR: weights is larger one! Check whether point is outside of element'
+          print *, '       weight:', weights(ipoint)
+          print *, '       dx    :', dx
+          print *, '       dy    :', dy
+          print *, '       dz    :', dz
+          call pabort()
+        end if
+
      end do
   case default
       ! Least sophisticated version possible
@@ -928,14 +948,17 @@ subroutine init_weight_tet_mesh(this)
      y1 = this%vertices(2, this%connectivity(1,ielem)+1)
      z1 = this%vertices(3, this%connectivity(1,ielem)+1)
 
+
      do ivertex = 1, 4
         ab(1, ivertex) = this%vertices(1, this%connectivity(ivertex,ielem)+1) - x1
         ab(2, ivertex) = this%vertices(2, this%connectivity(ivertex,ielem)+1) - y1
         ab(3, ivertex) = this%vertices(3, this%connectivity(ivertex,ielem)+1) - z1
         ab(4, ivertex) = 1
+
      end do
 
      this%abinv(:,:,ielem) = invert(ab, 4)
+
   end do
 
 end subroutine init_weight_tet_mesh
