@@ -75,11 +75,11 @@ clean:
 .F90.o:
 	$(FC) $(FFLAGS) -c $(INCLUDE) $<
 
-background_model.o: global_parameters.o Makefile make_kerner.macros 
+background_model.o: commpi.o global_parameters.o Makefile make_kerner.macros 
 buffer.o: commpi.o global_parameters.o Makefile make_kerner.macros 
-calc_kernels.o: clocks.o commpi.o ftnunit.o global_parameters.o inv_mesh.o \
-	master_mod.o plot_wavefields.o simple_routines.o slave.o \
-	test_ftnunit.o type_parameter.o worktype.o Makefile make_kerner.macros 
+calc_kernels.o: background_model.o clocks.o commpi.o ftnunit.o \
+	global_parameters.o inv_mesh.o master_mod.o plot_wavefields.o \
+	simple_routines.o slave.o test_ftnunit.o type_parameter.o worktype.o Makefile make_kerner.macros 
 clocks.o: global_parameters.o Makefile make_kerner.macros 
 fft_type.o: commpi.o global_parameters.o simple_routines.o Makefile make_kerner.macros 
 filtering.o: commpi.o fft_type.o global_parameters.o simple_routines.o Makefile make_kerner.macros 
@@ -92,8 +92,8 @@ inv_mesh.o: commpi.o global_parameters.o nc_routines.o random_tetrahedron.o \
 kernel.o: background_model.o commpi.o fft_type.o filtering.o \
 	global_parameters.o simple_routines.o Makefile make_kerner.macros 
 master_mod.o: master_queue.o master_slave_parameters.o worktype.o Makefile make_kerner.macros 
-master_queue.o: clocks.o global_parameters.o inv_mesh.o nc_routines.o \
-	simple_routines.o type_parameter.o worktype.o Makefile make_kerner.macros 
+master_queue.o: background_model.o clocks.o global_parameters.o inv_mesh.o \
+	nc_routines.o simple_routines.o type_parameter.o worktype.o Makefile make_kerner.macros 
 master_slave_parameters.o:  Makefile make_kerner.macros 
 mc_integration.o: commpi.o global_parameters.o Makefile make_kerner.macros 
 nc_routines.o: commpi.o global_parameters.o simple_routines.o Makefile make_kerner.macros 
@@ -129,8 +129,8 @@ test_ftnunit.o: ftnunit.o global_parameters.o test_background_model.o \
 	test_simple_routines.o test_source.o test_spectral_basis.o \
 	test_tetrahedra.o test_type_parameter.o test_voxel.o Makefile make_kerner.macros 
 test_halton.o: ftnunit.o global_parameters.o halton.o Makefile make_kerner.macros 
-test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o nc_routines.o \
-	random_tetrahedron.o Makefile make_kerner.macros 
+test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o mc_integration.o \
+	nc_routines.o random_tetrahedron.o Makefile make_kerner.macros 
 test_kernel.o: ftnunit.o global_parameters.o kernel.o Makefile make_kerner.macros 
 test_master_queue.o: ftnunit.o global_parameters.o master_queue.o Makefile make_kerner.macros 
 test_mc.o: ftnunit.o global_parameters.o mc_integration.o \
