@@ -38,8 +38,6 @@ module type_parameter
         character(len=32)                    :: dump_type 
         character(len=32)                    :: fftw_plan = 'MEASURE'
         character(len=32)                    :: strain_type_fwd
-        character(len=3), allocatable        :: bgmodel_parameter_names(:)
-        integer                              :: nmodel_parameter
         integer                              :: nsim_fwd, nsim_bwd
         integer                              :: nkernel
         integer                              :: nfilter
@@ -237,9 +235,6 @@ subroutine read_parameters(this, input_file_in)
 
   write(lu_out,*)
   call flush(lu_out)
-
-  this%bgmodel_parameter_names = bg_model%get_parameter_names()
-  this%nmodel_parameter = size(this%bgmodel_parameter_names)
 
   this%parameters_read = .true.
 

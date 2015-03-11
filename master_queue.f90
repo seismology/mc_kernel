@@ -6,6 +6,7 @@ module master_queue
   use simple_routines,             only: lowtrim
   use nc_routines,                 only: nc_create_file, nc_close_file, &
                                          nc_putvar_by_name
+  use backgroundmodel,             only: nmodel_parameters, parameter_name
   implicit none
   private
   
@@ -114,7 +115,7 @@ subroutine init_queue(ntasks, inparam_file)
   allocate(Var(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
   Var(:,:) = 0.0
   allocate(Bg_model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
-                                             parameters%nmodel_parameter))
+                    nmodel_parameters))
   Bg_Model(:,:) = 0.0
 
   allocate(niterations(nelems, parameters%nkernel))
@@ -244,6 +245,7 @@ subroutine finalize()
   real(kind=sp), allocatable    :: rel_error(:)
   character(len=64)             :: xdmf_varname
   real(kind=dp)                 :: total_time
+  integer                       :: imodel
 
 
   write(lu_out,'(A)') '***************************************************************'
@@ -263,7 +265,7 @@ subroutine finalize()
 
   ! Save kernels in xdmf format
   case ('xdmf')
-  
+                                      
      ! Distiguish between volumetric and node-based mode
      select case(trim(parameters%int_type))
      case ('onvertices')
@@ -280,9 +282,8 @@ subroutine finalize()
                                                         ikernel = 1, parameters%nkernel)] )
 
         call inv_mesh%add_node_variable(var_name    = 'model',                                  &
-                                        nentries    = parameters%nmodel_parameter,              &
-                                        entry_names = [(parameters%bgmodel_parameter_names(ikernel), &
-                                                        ikernel = 1, parameters%nmodel_parameter)] )
+                                        nentries    = nmodel_parameters,              &
+                                        entry_names = parameter_name )
 
                                                      
         call inv_mesh%add_node_data(var_name = 'kernel',                      &
@@ -306,9 +307,8 @@ subroutine finalize()
                                                         ikernel = 1, parameters%nkernel)] )
 
         call inv_mesh%add_cell_variable(var_name    = 'model',                                  &
-                                        nentries    = parameters%nmodel_parameter,              &
-                                        entry_names = [(parameters%bgmodel_parameter_names(ikernel), &
-                                                        ikernel = 1, parameters%nmodel_parameter)] )
+                                        nentries    = nmodel_parameters,              &
+                                        entry_names = parameter_name )
 
                                                      
         call inv_mesh%add_cell_data(var_name = 'kernel',                      &
@@ -317,7 +317,7 @@ subroutine finalize()
                                     values   = real(sqrt(Var/K_x), kind=sp) )
         call inv_mesh%add_cell_data(var_name = 'model',                       &
                                     values   = real(Bg_Model, kind=sp) )
-                                      
+
 
      end select
   
@@ -436,7 +436,7 @@ subroutine dump_intermediate(itask)
                                varname = 'Bg_Model',        & 
                                values  = real(Bg_Model(ipoint, :), kind=sp),&
                                start   = [ipoint, 1],        &
-                               count   = [1, parameters%nmodel_parameter] )
+                               count   = [1, nmodel_parameters] )
       end do
 
     case('volumetric')
@@ -454,7 +454,7 @@ subroutine dump_intermediate(itask)
                              varname = 'Bg_Model',        & 
                              values  = real(Bg_Model(ielement, :), kind=sp),&
                              start   = [ielement, 1],        &
-                             count   = [1, parameters%nmodel_parameter] )
+                             count   = [1, nmodel_parameters] )
     end select ! int_type
 
     call nc_putvar_by_name(ncid    = ncid_intermediate, &

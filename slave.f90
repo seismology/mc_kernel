@@ -20,7 +20,7 @@ module slave_mod
     real(kind=dp), allocatable :: computation_time(:)
     real(kind=dp), allocatable :: model(:,:,:) !< (nmodel_parameter, nbasisfuncs_per_elem, nelements)
                                                !! Model parameters in the order as defined in backgroundmodel:
-                                               !! vp, vs, rho, vph, vpv, vsh, vsv, eta, phi, xi
+                                               !! vp, vs, rho, vph, vpv, vsh, vsv, eta, phi, xi, lam, mu
   end type
 
 contains
@@ -225,7 +225,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use filtering,                   only: timeshift_type
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
     use kernel,                      only: calc_basekernel, calc_physical_kernels
-    use backgroundmodel,             only: backgroundmodel_type
+    use backgroundmodel,             only: backgroundmodel_type, nmodel_parameters
     use clocks_mod,                  only: tick, get_clock, reset_clock
 
     type(inversion_mesh_data_type), intent(in)    :: inv_mesh
@@ -283,7 +283,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
     allocate(slave_result%niterations(parameters%nkernel, nelements))
     allocate(slave_result%computation_time(nelements))
-    allocate(slave_result%model(parameters%nmodel_parameter, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%model(nmodel_parameters, nbasisfuncs_per_elem, nelements))
     
     allocate(fw_field(ndumps, ndim, nptperstep))
     allocate(bw_field(ndumps, ndim, nptperstep))
@@ -299,7 +299,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(kernelvalue_weighted(nptperstep, parameters%nkernel, nbasekernels))
     allocate(kernelvalue_physical(nptperstep, parameters%nkernel))
 
-    allocate(model_random_points(nptperstep_model, parameters%nmodel_parameter))
+    allocate(model_random_points(nptperstep_model, nmodel_parameters))
 
     volume = 0.0
 
@@ -338,9 +338,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         iclockold = tick()
         istep_model = 0
         do ibasisfunc = 1, nbasisfuncs_per_elem
-           call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = parameters%nmodel_parameter, & 
+           call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters,   & 
                                                             volume = 1d0, & !volume,                      &
-                                                            allowed_error = 1d-2,                 &
+                                                            allowed_error = 1d-2,         &
                                                             allowed_relerror = 1d-2)
         end do
         do while (.not.allallconverged(int_model))
@@ -351,13 +351,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               model_random_points  = coeffs_random_points%weight(inv_mesh%weights(ielement,      &  
                                                                                   ibasisfunc,    & 
                                                                                   random_points) )
-              !write(lu_out, *), ibasisfunc, model_random_points
               call int_model(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points))
-              !write(lu_out, *) ' ...step', istep_model, ', bf:', ibasisfunc, &
-              !                 sqrt(int_model(ibasisfunc)%getvariance()) / int_model(ibasisfunc)%getintegral() ! /volume !, sqrt(int_model(1)%getvariance())/volume
            end do
            istep_model = istep_model + 1
-           !write(lu_out,*) '****************************************************************'
         end do
 
         iclockold = tick(id=id_int_model, since=iclockold)
