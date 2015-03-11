@@ -265,6 +265,10 @@ subroutine finalize()
 
   ! Save kernels in xdmf format
   case ('xdmf')
+
+    do imodel = 1, nmodel_parameters
+      print *, imodel, parameter_name(imodel), minval(Bg_Model(:,imodel)), maxval(Bg_Model(:,imodel))
+    end do
                                       
      ! Distiguish between volumetric and node-based mode
      select case(trim(parameters%int_type))

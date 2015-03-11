@@ -6,6 +6,7 @@
 #    $Id: runtests.sh,v 1.2 2008/01/26 11:15:10 arjenmarkus Exp $
 #
 set -e 
+echo "Compiling code"
 make -s
 
 

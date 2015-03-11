@@ -380,7 +380,7 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
        call pabort
    end if
 
-end function
+end function calc_misfit_kernel
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------

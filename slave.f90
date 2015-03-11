@@ -339,7 +339,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         istep_model = 0
         do ibasisfunc = 1, nbasisfuncs_per_elem
            call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters,   & 
-                                                            volume = 1d0, & !volume,                      &
+                                                            volume = 1d0,                 & 
                                                             allowed_error = 1d-2,         &
                                                             allowed_relerror = 1d-2)
         end do
@@ -363,7 +363,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         ! Initialize basis kernel Monte Carlo integrals for current element
         iclockold = tick()
         do ibasisfunc = 1, nbasisfuncs_per_elem
-           call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel, &
+           call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel,             &
                                                              volume,                         &
                                                              parameters%allowed_error,       &
                                                              parameters%allowed_relative_error) 
@@ -442,7 +442,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  conv_field_fd = calc_basekernel(ibasekernel,                           &
                                                  parameters%strain_type_fwd,            &
                                                  parameters%strain_type_fwd,            &
-                                                 !parameters%receiver(irec)%strain_type, &
                                                  fw_field_fd, bw_field_fd)
                   
 
@@ -454,7 +453,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                        ! Check whether kernel (ikernel) actually needs the base kernel 
                        ! (ibasekernel), otherwise cycle
                        if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
-                        
 
                        ! If this kernel is already converged, go to the next one
                        if (allisconverged(int_kernel, ikernel)) cycle
