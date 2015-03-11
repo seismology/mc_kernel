@@ -244,6 +244,7 @@ subroutine test_all
   call test(test_random_points_triangle_mesh, &
             'generate random numbers on triangular mesh')
   call test(test_weight, 'weight function (hat functions)')
+  call test(test_integration_in_tetrahedron, 'MC-integrate in tetrahedral mesh element')
 
   ! test_buffer
   write(6,'(/,a)') 'TEST BUFFER MODULE'

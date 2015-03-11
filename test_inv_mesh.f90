@@ -1053,5 +1053,57 @@ subroutine test_weight
 end subroutine test_weight
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_integration_in_tetrahedron
+  use netcdf
+  use montecarlo,                  only: integrated_type, allallconverged, allisconverged
+  type(integrated_type)             :: int_test
+  type(inversion_mesh_data_type)    :: inv_mesh
+  integer, parameter                :: nptperstep = 10000
+  real(kind=dp)                     :: values(nptperstep,1), coords(3, nptperstep), integral(1)
+  real(kind=dp), parameter          :: pi = 3.141419265d0
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+
+  ! First integrate over constant value in tetrahedron - should result in volume
+  call int_test%initialize_montecarlo(nfuncs = 1,                        & 
+                                      volume = inv_mesh%get_volume(1),   & 
+                                      allowed_error = 1d-2,              &
+                                      allowed_relerror = 1d-2)
+  
+  values = 1
+  call int_test%check_montecarlo_integral(values)
+
+  call assert_comparable(int_test%getintegral(), [1.d9/6.d0], 1d-10, &
+                         'Integration over constant function gives volume')
+  call int_test%freeme()
+
+
+
+  ! Integrate over sphere inscribed into tetrahedron
+  call int_test%initialize_montecarlo(nfuncs = 1,                        & 
+                                      volume = inv_mesh%get_volume(1),   & 
+                                      allowed_error = 1d-3,              &
+                                      allowed_relerror = 1d-3)
+  do while (.not.int_test%areallconverged()) ! Beginning of Monte Carlo loop
+      coords = inv_mesh%generate_random_points(1, nptperstep, .false.)
+      values = 0
+
+      ! Sphere with radius sqrt(1e3/3), which touches tetrahedral large plane
+      where( sum(coords**2, dim=1) < (1d6/3.) ) values(:,1) = 1
+
+      call int_test%check_montecarlo_integral(values)
+  end do
+ 
+
+  integral = int_test%getintegral()
+  call assert_comparable(integral, [pi*(1./3.)**(1.5) * 1d9/6.], &
+                         1d-3, 'Integral == 1.10076')
+
+end subroutine test_integration_in_tetrahedron
+!-----------------------------------------------------------------------------------------
+
 end module test_inversion_mesh
 !=========================================================================================
