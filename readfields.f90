@@ -184,15 +184,15 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
     this%strain_buffer_size = strain_buffer_size
     this%displ_buffer_size = displ_buffer_size
 
-    dirnam = trim(fwd_dir)//'/MZZ/simulation.info'
+    dirnam = trim(fwd_dir)//'/MZZ/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = moment)
 
-    dirnam = trim(fwd_dir)//'/PZ/simulation.info'
+    dirnam = trim(fwd_dir)//'/PZ/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = force)
 
-    dirnam = trim(fwd_dir)//'/simulation.info'
+    dirnam = trim(fwd_dir)//'/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = single)
 
@@ -217,15 +217,15 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
     force  = .false.
     single = .false.
 
-    dirnam = trim(bwd_dir)//'/MZZ/simulation.info'
+    dirnam = trim(bwd_dir)//'/MZZ/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = moment)
 
-    dirnam = trim(bwd_dir)//'/PZ/simulation.info'
+    dirnam = trim(bwd_dir)//'/PZ/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = force)
 
-    dirnam = trim(bwd_dir)//'/simulation.info'
+    dirnam = trim(bwd_dir)//'/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = single)
 
