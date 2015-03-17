@@ -354,10 +354,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               call int_model(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points))
            end do
            istep_model = istep_model + 1
+           if (istep_model.ge.9999) exit ! The model integration should not take forever
         end do
 
         iclockold = tick(id=id_int_model, since=iclockold)
-        write(lu_out, '(A,I5,A)') ' ...done after ', istep_model, ' steps.'
+        write(lu_out, '(A,I4,A)') ' ...done after ', istep_model, ' steps.'
         call flush(lu_out)
 
         ! Initialize basis kernel Monte Carlo integrals for current element
