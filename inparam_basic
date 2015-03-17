@@ -18,7 +18,7 @@ FILTER_FILE          'filters.dat'
 #               2. the connectivity of the facets of the tetrahedrons
 #                  (MESH_FILE_FACETS)
 MESH_FILE_TYPE       'abaqus'
-MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
+MESH_FILE_ABAQUS     'Meshes/flat_triangles.inp'
 
 #MESH_FILE_TYPE       'tetrahedral'
 #MESH_FILE_VERTICES   'unit_tests/vertices.TEST'

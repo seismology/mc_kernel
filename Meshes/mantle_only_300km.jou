@@ -1,0 +1,14 @@
+## /home/sstaehler/Cubit/bin/clarox
+## Cubit Version 13.0
+## Cubit Build 46006
+## Revised 2011-04-15 11:11:39 -0600 (Fri, 15 Apr 2011)
+## Running 03/16/2015 11:10:08 AM
+## Command Options:
+## -nographics
+## -warning = On
+## -information = On
+create sphere radius 6317 inner radius 3491
+volume 1 size 300
+volume 1 scheme tetmesh
+mesh volume 1
+export abaqus "/home/sstaehler/kerner/Meshes/mantle_only_300km.inp" overwrite
