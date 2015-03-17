@@ -373,7 +373,7 @@ subroutine read_receiver(this)
              ! Just get the model parameter
              read(lu_receiver, *) trash(1:5), model_parameter
              
-             if ( (model_parameter.ne.'lambda') .and.      &
+             if ( (model_parameter.ne.'lam') .and.      &
                   (model_parameter.ne.'vp')          ) then
                this%strain_type_fwd = 'straintensor_full'
              end if
