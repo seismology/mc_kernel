@@ -29,6 +29,10 @@ MESH_FILE_ABAQUS     'Meshes/flat_triangles.inp'
 # or for absolute values of the model parameters like Vp (false)
 KERNEL_FOR_RELATIVE_PERTURBATIONS  true
 
+# For plotting reasons one may wish to skip the integration over cell-volume.
+# Resulting kernels bear the unit [s/m^3]
+INTEGRATE_OVER_VOLUME true
+
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf

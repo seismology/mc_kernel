@@ -103,12 +103,13 @@ end subroutine check_montecarlo_integral
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_relerror)
+subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_relerror, int_over_volume)
     class(integrated_type), intent(inout) :: this 
     integer, intent(in)                   :: nfuncs
     real(kind=dp), intent(in)             :: volume
     real(kind=dp), intent(in)             :: allowed_error
     real(kind=dp), intent(in), optional   :: allowed_relerror
+    real(kind=dp), intent(in), optional   :: int_over_volume
 
     if(allocated(this%fsum)) deallocate(this%fsum)
     if(allocated(this%f2sum)) deallocate(this%f2sum)
@@ -133,11 +134,20 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_re
     this%allowed_variance = allowed_error ** 2
     this%converged        = .false.
     this%nmodels          = 0
+
     if(present(allowed_relerror)) then
        this%allowed_relerror = allowed_relerror
     else
        this%allowed_relerror = 1d-100
     end if
+
+    ! for plotting one may wish to skip volume integration
+    if(present(int_over_volume)) then
+       if (.not.int_over_volume) then
+          this%volume = 1.d0
+       end if
+    end if
+
 
     this%isinitialized    = .true.
 
