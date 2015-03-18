@@ -55,6 +55,7 @@ module type_parameter
         logical                              :: deconv_stf           = .false.
         logical                              :: write_smgr           = .true.
         logical                              :: quasirandom          = .true.
+        logical                              :: relative_kernel      = .true.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -167,6 +168,9 @@ subroutine read_parameters(this, input_file_in)
         case('USE_QUASIRANDOM_NUMBERS')
            read(keyvalue, *) this%quasirandom
 
+        case('KERNEL_FOR_RELATIVE_PERTURBATIONS')
+           read(keyvalue, *) this%relative_kernel
+
         case('DECONVOLVE_STF')
            read(keyvalue, *) this%deconv_stf
 
@@ -216,6 +220,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_log(this%deconv_stf, 0)
   call pbroadcast_log(this%write_smgr, 0)
   call pbroadcast_log(this%quasirandom, 0)
+  call pbroadcast_log(this%relative_kernel, 0)
   call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
   call pbroadcast_char(this%int_type, 0)

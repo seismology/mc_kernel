@@ -24,6 +24,10 @@ MESH_FILE_ABAQUS     'Meshes/flat_triangles.inp'
 #MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
 #MESH_FILE_FACETS     'unit_tests/facets.TEST'
 
+# Calculate kernels for relative perturbations dVp with respect to the background 
+# model (true, default)
+# or for absolute values of the model parameters like Vp (false)
+KERNEL_FOR_RELATIVE_PERTURBATIONS  true
 
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf

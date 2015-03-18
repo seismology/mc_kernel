@@ -503,7 +503,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
                  kernelvalue_physical(:, ikernel) = calc_physical_kernels(        &
                                       parameters%kernel(ikernel)%model_parameter, &
                                       kernelvalue_weighted(:, ikernel, :),        &
-                                      bg_model = bg_model)
+                                      bg_model = bg_model,                        &
+                                      relative_kernel = parameters%relative_kernel)
 
               end do
 
