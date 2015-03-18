@@ -109,7 +109,7 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_re
     real(kind=dp), intent(in)             :: volume
     real(kind=dp), intent(in)             :: allowed_error
     real(kind=dp), intent(in), optional   :: allowed_relerror
-    real(kind=dp), intent(in), optional   :: int_over_volume
+    logical, intent(in), optional         :: int_over_volume
 
     if(allocated(this%fsum)) deallocate(this%fsum)
     if(allocated(this%f2sum)) deallocate(this%f2sum)
