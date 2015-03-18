@@ -28,7 +28,8 @@ subroutine test_parameter_reading
                             parameters%strain_type_fwd)
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram(parameters%receiver, parameters%source)
+   call sem_data%build_kdtree()
+   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
 
    call parameters%read_filter(nomega=129, df=0.1d0)
      

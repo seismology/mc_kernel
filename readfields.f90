@@ -111,7 +111,7 @@ module readfields
         real(kind=dp), public              :: windowlength
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public              :: amplitude_fwd, amplitude_bwd
-        real(kind=dp), public, allocatable :: veloseis(:,:), dispseis(:,:)
+        real(kind=dp), public, allocatable :: veloseis(:,:) !, dispseis(:,:)
         real(kind=dp), public, allocatable :: stf_fwd(:), stf_bwd(:)
         real(kind=dp), public, allocatable :: stf_d_fwd(:), stf_d_bwd(:)
         integer                            :: strain_buffer_size
@@ -133,7 +133,7 @@ module readfields
             procedure, pass                :: load_bw_points
             procedure, pass                :: load_model_coeffs
             procedure, pass                :: close_files
-            procedure, pass                :: load_seismogram
+            !!procedure, pass                :: load_seismogram
             procedure, pass                :: load_seismogram_rdbm
 
     end type
@@ -351,6 +351,7 @@ subroutine open_files(this)
            call pabort(do_traceback=.false.)
         endif
 
+
         call nc_read_att_dble(this%fwd(isim)%planet_radius, 'planet radius', this%fwd(isim))
         this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
 
@@ -528,8 +529,8 @@ subroutine open_files(this)
 
         call nc_read_att_dble(this%bwd(isim)%rmin, 'kernel wavefield rmin', this%bwd(isim))
         call nc_read_att_dble(this%bwd(isim)%rmax, 'kernel wavefield rmax', this%bwd(isim))
-        this%fwd(isim)%rmin = this%fwd(isim)%rmin * 1d3
-        this%fwd(isim)%rmax = this%fwd(isim)%rmax * 1d3
+        this%bwd(isim)%rmin = this%bwd(isim)%rmin * 1d3
+        this%bwd(isim)%rmax = this%bwd(isim)%rmax * 1d3
 
         call nc_read_att_dble(this%bwd(isim)%colatmin, 'kernel wavefield colatmin', this%bwd(isim))
         call nc_read_att_dble(this%bwd(isim)%colatmax, 'kernel wavefield colatmax', this%bwd(isim))
@@ -1379,120 +1380,120 @@ function get_model_coeffs(this, ipoint) result(coeffs)
 end function get_model_coeffs
 !-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------------------
-subroutine load_seismogram(this, receivers, src)
-!< This function loads a seismogram 
-   class(semdata_type)      :: this
-   type(rec_param_type)     :: receivers(:)
-   type(src_param_type)     :: src
-   real(kind=dp)            :: seismogram_disp(this%ndumps)
-   real(kind=dp)            :: seismogram_velo(this%ndumps)
-   real(kind=sp)            :: utemp(this%ndumps,1,1)
-   real(kind=dp)            :: Mij_scale(6), mij_prefact(4)
-   integer                  :: reccomp, isurfelem, irec, isim, nrec
-
-   if (.not.this%meshes_read) then
-       print *, 'ERROR in load_seismogram(): Meshes have not been read yet'
-       print *, 'Call read_meshes() before load_seismogram!'
-       call pabort
-   end if
-      
-   nrec = size(receivers)
-   allocate(this%veloseis(this%ndumps, nrec))
-   allocate(this%dispseis(this%ndumps, nrec))  
-
-   Mij_scale = src%mij / this%fwd(1)%amplitude
-
-   write(lu_out, '(A, ES11.3)') '  Forward simulation amplitude: ', this%fwd(1)%amplitude
- 
-   do irec = 1, nrec
-      write(lu_out, '(A,F8.4,A,F8.4)') '  Receiver theta: ', receivers(irec)%theta/deg2rad, &
-                                       ', phi: ', receivers(irec)%phi/deg2rad
-      write(lu_out, '(A)')             '                  Mij     Mij_scaled'
-      write(lu_out, '(A,2(ES11.3))')   '  Mrr:       ', src%mij(1), mij_scale(1) 
-      write(lu_out, '(A,2(ES11.3))')   '  Mtt:       ', src%mij(2), mij_scale(2)
-      write(lu_out, '(A,2(ES11.3))')   '  Mpp:       ', src%mij(3), mij_scale(3)
-      write(lu_out, '(A,2(ES11.3))')   '  Mrt:       ', src%mij(4), mij_scale(4)
-      write(lu_out, '(A,2(ES11.3))')   '  Mrp:       ', src%mij(5), mij_scale(5)
-      write(lu_out, '(A,2(ES11.3))')   '  Mtp:       ', src%mij(6), mij_scale(6)
-
-
-      !print '(A,6(F8.5,/))',     'Mij_scale: ', Mij_scale
-      select case(receivers(irec)%component)
-      case('Z')
-         mij_prefact(1) = Mij_scale(1)
-         mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
-         mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
-                          + Mij_scale(5) * sin(receivers(irec)%phi)
-         mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
-                          +           2. * Mij_scale(6) * sin(2. * receivers(irec)%phi) 
-         reccomp = 1
-      case('T')
-         mij_prefact(1) = 0.0
-         mij_prefact(2) = 0.0
-         mij_prefact(3) = - Mij_scale(4) * sin(receivers(irec)%phi) &
-                          + Mij_scale(5) * cos(receivers(irec)%phi)
-         mij_prefact(4) =  (Mij_scale(3) - Mij_scale(2)) * sin(2. * receivers(irec)%phi) &
-                          +           2. * Mij_scale(6)  * cos(2. * receivers(irec)%phi)
-         reccomp = 2
-      case('R')
-         mij_prefact(1) = Mij_scale(1)
-         mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
-         mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
-                          + Mij_scale(5) * sin(receivers(irec)%phi)
-         mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
-                          +           2. * Mij_scale(6)  * sin(2. * receivers(irec)%phi) 
-         reccomp = 3
-      case default
-         print *, 'ERROR: Unknown receiver component: ', receivers(irec)%component
-         call pabort
-      end select
-      
-      isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receivers(irec)%theta), 1 )
-      write(lu_out,'(A,F8.4,A,I5,A,F8.4)') &
-                'Receiver with theta ', receivers(irec)%theta/deg2rad, &
-                                    ' has element ', isurfelem, &
-                                    ' with theta: ', this%fwdmesh%theta(isurfelem)
-      
-      seismogram_disp = 0.0
-      seismogram_velo = 0.0
-
-      write(lu_out,'(A,4(E12.4))') 'Mij prefactors: ', mij_prefact
-      
-      do isim = 1, this%nsim_fwd
-         write(lu_out,'(A,I1,A,I5,A,I2,A,I6)') &
-                'Sim: ', isim, ' Read element', isurfelem, &
-                                               ', component: ', reccomp, ', no of samples:', this%ndumps
-         ! Displacement seismogram
-         call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-                         varid  = this%fwd(isim)%seis_disp,   &
-                         start  = [1, reccomp, isurfelem],    &
-                         count  = [this%ndumps, 1, 1],        &
-                         values = utemp) 
-      
-         seismogram_disp = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_disp
-
-         ! Velocity seismogram
-         call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-                         varid  = this%fwd(isim)%seis_velo,   &
-                         start  = [1, reccomp, isurfelem],    &
-                         count  = [this%ndumps, 1, 1],        &
-                         values = utemp) 
-      
-         seismogram_velo = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_velo
-
-      end do
-
-      this%dispseis(:, irec) = seismogram_disp(1:this%ndumps)
-      this%veloseis(:, irec) = seismogram_velo(1:this%ndumps)
-
-   end do
-  
-   call flush(lu_out)
-
-
-end subroutine load_seismogram
-!-----------------------------------------------------------------------------------------
+!!-----------------------------------------------------------------------------------------
+!subroutine load_seismogram(this, receivers, src)
+!!< This function loads a seismogram 
+!   class(semdata_type)      :: this
+!   type(rec_param_type)     :: receivers(:)
+!   type(src_param_type)     :: src
+!   real(kind=dp)            :: seismogram_disp(this%ndumps)
+!   real(kind=dp)            :: seismogram_velo(this%ndumps)
+!   real(kind=sp)            :: utemp(this%ndumps,1,1)
+!   real(kind=dp)            :: Mij_scale(6), mij_prefact(4)
+!   integer                  :: reccomp, isurfelem, irec, isim, nrec
+!
+!   if (.not.this%meshes_read) then
+!       print *, 'ERROR in load_seismogram(): Meshes have not been read yet'
+!       print *, 'Call read_meshes() before load_seismogram!'
+!       call pabort
+!   end if
+!      
+!   nrec = size(receivers)
+!   allocate(this%veloseis(this%ndumps, nrec))
+!   allocate(this%dispseis(this%ndumps, nrec))  
+!
+!   Mij_scale = src%mij / this%fwd(1)%amplitude
+!
+!   write(lu_out, '(A, ES11.3)') '  Forward simulation amplitude: ', this%fwd(1)%amplitude
+! 
+!   do irec = 1, nrec
+!      write(lu_out, '(A,F8.4,A,F8.4)') '  Receiver theta: ', receivers(irec)%theta/deg2rad, &
+!                                       ', phi: ', receivers(irec)%phi/deg2rad
+!      write(lu_out, '(A)')             '                  Mij     Mij_scaled'
+!      write(lu_out, '(A,2(ES11.3))')   '  Mrr:       ', src%mij(1), mij_scale(1) 
+!      write(lu_out, '(A,2(ES11.3))')   '  Mtt:       ', src%mij(2), mij_scale(2)
+!      write(lu_out, '(A,2(ES11.3))')   '  Mpp:       ', src%mij(3), mij_scale(3)
+!      write(lu_out, '(A,2(ES11.3))')   '  Mrt:       ', src%mij(4), mij_scale(4)
+!      write(lu_out, '(A,2(ES11.3))')   '  Mrp:       ', src%mij(5), mij_scale(5)
+!      write(lu_out, '(A,2(ES11.3))')   '  Mtp:       ', src%mij(6), mij_scale(6)
+!
+!
+!      !print '(A,6(F8.5,/))',     'Mij_scale: ', Mij_scale
+!      select case(receivers(irec)%component)
+!      case('Z')
+!         mij_prefact(1) = Mij_scale(1)
+!         mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
+!         mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
+!                          + Mij_scale(5) * sin(receivers(irec)%phi)
+!         mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
+!                          +           2. * Mij_scale(6) * sin(2. * receivers(irec)%phi) 
+!         reccomp = 1
+!      case('T')
+!         mij_prefact(1) = 0.0
+!         mij_prefact(2) = 0.0
+!         mij_prefact(3) = - Mij_scale(4) * sin(receivers(irec)%phi) &
+!                          + Mij_scale(5) * cos(receivers(irec)%phi)
+!         mij_prefact(4) =  (Mij_scale(3) - Mij_scale(2)) * sin(2. * receivers(irec)%phi) &
+!                          +           2. * Mij_scale(6)  * cos(2. * receivers(irec)%phi)
+!         reccomp = 2
+!      case('R')
+!         mij_prefact(1) = Mij_scale(1)
+!         mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
+!         mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
+!                          + Mij_scale(5) * sin(receivers(irec)%phi)
+!         mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
+!                          +           2. * Mij_scale(6)  * sin(2. * receivers(irec)%phi) 
+!         reccomp = 3
+!      case default
+!         print *, 'ERROR: Unknown receiver component: ', receivers(irec)%component
+!         call pabort
+!      end select
+!      
+!      isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receivers(irec)%theta), 1 )
+!      write(lu_out,'(A,F8.4,A,I5,A,F8.4)') &
+!                'Receiver with theta ', receivers(irec)%theta/deg2rad, &
+!                                    ' has element ', isurfelem, &
+!                                    ' with theta: ', this%fwdmesh%theta(isurfelem)
+!      
+!      seismogram_disp = 0.0
+!      seismogram_velo = 0.0
+!
+!      write(lu_out,'(A,4(E12.4))') 'Mij prefactors: ', mij_prefact
+!      
+!      do isim = 1, this%nsim_fwd
+!         write(lu_out,'(A,I1,A,I5,A,I2,A,I6)') &
+!                'Sim: ', isim, ' Read element', isurfelem, &
+!                                               ', component: ', reccomp, ', no of samples:', this%ndumps
+!         ! Displacement seismogram
+!         call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
+!                         varid  = this%fwd(isim)%seis_disp,   &
+!                         start  = [1, reccomp, isurfelem],    &
+!                         count  = [this%ndumps, 1, 1],        &
+!                         values = utemp) 
+!      
+!         seismogram_disp = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_disp
+!
+!         ! Velocity seismogram
+!         call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
+!                         varid  = this%fwd(isim)%seis_velo,   &
+!                         start  = [1, reccomp, isurfelem],    &
+!                         count  = [this%ndumps, 1, 1],        &
+!                         values = utemp) 
+!      
+!         seismogram_velo = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_velo
+!
+!      end do
+!
+!      this%dispseis(:, irec) = seismogram_disp(1:this%ndumps)
+!      this%veloseis(:, irec) = seismogram_velo(1:this%ndumps)
+!
+!   end do
+!  
+!   call flush(lu_out)
+!
+!
+!end subroutine load_seismogram
+!!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine load_seismogram_rdbm(this, rec_in, src_in)
@@ -1528,21 +1529,19 @@ subroutine load_seismogram_rdbm(this, rec_in, src_in)
    call rec_rdbm%create_reci_sources(rec_in)
 
    allocate(this%veloseis(this%ndumps, nrec))
-   allocate(this%dispseis(this%ndumps, nrec))
+   !allocate(this%dispseis(this%ndumps, nrec))
 
    allocate(seismogram_disp(this%ndumps, 1, 1)) ! last 1 means 1 source
    allocate(seismogram_velo(this%ndumps, 1, 1)) ! last 1 means 1 source
 
    do irec=1,nrec
 
-      seismogram_disp = this%load_fw_points_rdbm(src_rdbm, rec_rdbm%reci_sources(irec), &
-                                          rec_in(irec)%component)
-
-      ! @ TODO: The velocity seismogram is not yet implemented
+      !seismogram_disp = this%load_fw_points_rdbm(src_rdbm, rec_rdbm%reci_sources(irec), &
+      !                                    rec_in(irec)%component)
       seismogram_velo = this%load_fw_points_rdbm(src_rdbm, rec_rdbm%reci_sources(irec), &
                                           rec_in(irec)%component)
-              
-      this%dispseis(:, irec) = seismogram_disp(:,1,1)  
+
+      !this%dispseis(:, irec) = seismogram_disp(:,1,1)  
       this%veloseis(:, irec) = seismogram_velo(:,1,1)
    
    end do
@@ -1848,7 +1847,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
     real(kind=dp)                     :: rotmesh_s(size(source_params))
     real(kind=dp)                     :: rotmesh_phi(size(source_params))
     real(kind=dp)                     :: rotmesh_z(size(source_params))
-    real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
+    real(kind=dp)                     :: utemp(this%ndumps, 6)
     real(kind=dp)                     :: coordinates(3,size(source_params))
     real(kind=dp)                     :: mij_buff(6), mu_buff(1)
     real(kind=dp)                     :: xi, eta
@@ -1884,417 +1883,314 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
                           reci_source_params%lon, reci_source_params%colat)
 
     allocate(nextpoint(nnext_points))
-    do ipoint = 1, npoints
-        
-        !if (verbose > 1) &
-        !    write(6,*) 'nearest point', nextpoint(1)%dis**.5, nextpoint(1)%idx, &
-        !               (rotmesh_s(ipoint)**2  + rotmesh_z(ipoint)**2)**.5, &
-        !               (this%fwdmesh%s_mp(pointid(ipoint))**2  &
-        !                    + this%fwdmesh%z_mp(pointid(ipoint))**2)**.5 
+    ipoint = 1
 
-        select case(trim(this%dump_type))
-        case('displ_only')
+    select case(trim(this%dump_type))
+    case('displ_only')
 
-            ! Find the six closest midpoints first
-            call kdtree2_n_nearest( this%fwdtree_mp, &
-                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                    nn = nnext_points, &
-                                    results = nextpoint )
-            pointid(ipoint) = nextpoint(1)%idx
+        ! Find the six closest midpoints first
+        call kdtree2_n_nearest( this%fwdtree_mp, &
+                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                nn = nnext_points, &
+                                results = nextpoint )
+        pointid(ipoint) = nextpoint(1)%idx
 
-            do inext_point = 1, nnext_points
-                ! get cornerpoints of finite element
-                corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
-                eltype = this%fwdmesh%eltype(nextpoint(inext_point)%idx)
-                
-                do icp = 1, 4
-                    corner_points(icp, 1) = this%fwdmesh%s(corner_point_ids(icp)+1)
-                    corner_points(icp, 2) = this%fwdmesh%z(corner_point_ids(icp)+1)
-                enddo                        
+        do inext_point = 1, nnext_points
+            ! get cornerpoints of finite element
+            corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
+            eltype = this%fwdmesh%eltype(nextpoint(inext_point)%idx)
+            
+            do icp = 1, 4
+                corner_points(icp, 1) = this%fwdmesh%s(corner_point_ids(icp)+1)
+                corner_points(icp, 2) = this%fwdmesh%z(corner_point_ids(icp)+1)
+            enddo                        
 
-                ! test point to be inside, if so, exit
-                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
-                                   corner_points, eltype(1), xi=xi, eta=eta, &
-                                   tolerance=1d-3)) then
-                    if (verbose > 1) then
-                       write(6,*) 'eltype     = ', eltype
-                       write(6,*) 'xi, eta    = ', xi, eta
-                       write(6,*) 'element id = ', nextpoint(inext_point)%idx
-                    endif
-                    exit
+            ! test point to be inside, if so, exit
+            if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
+                               corner_points, eltype(1), xi=xi, eta=eta, &
+                               tolerance=1d-3)) then
+                if (verbose > 1) then
+                   write(6,*) 'eltype     = ', eltype
+                   write(6,*) 'xi, eta    = ', xi, eta
+                   write(6,*) 'element id = ', nextpoint(inext_point)%idx
                 endif
-            enddo
-
-            if (inext_point >= nnext_points) then
-               write(6,*) 'ERROR: element not found. '
-               write(6,*) '       Probably outside depth/distance range in the netcdf file?'
-               write(6,*) '       Try increasing nnext_points in case this problem persists'
-               write(6,*) rotmesh_s(ipoint), rotmesh_z(ipoint)
-               call pabort
+                exit
             endif
+        enddo
 
-            id_elem = nextpoint(inext_point)%idx
+        if (inext_point >= nnext_points) then
+           write(6,*) 'ERROR: element not found. '
+           write(6,*) '       Probably outside depth/distance range in the netcdf file?'
+           write(6,*) '       Try increasing nnext_points in case this problem persists'
+           write(6,*) rotmesh_s(ipoint), rotmesh_z(ipoint)
+           call pabort
+        endif
 
-            ! get gll points of spectral element
-            gll_point_ids = -1
-            if (verbose > 1) &
-                write(6,*) 'element id = ', nextpoint(inext_point)%idx
+        id_elem = nextpoint(inext_point)%idx
 
-            ! gll_point_ids starts at 0 in NetCDF file
-            gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem) + 1
-            if (verbose > 1) &
-                write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
+        ! get gll points of spectral element
+        gll_point_ids = -1
+        if (verbose > 1) &
+            write(6,*) 'element id = ', nextpoint(inext_point)%idx
 
-            ! get mu of midpoint
-            if (present(mu)) then
-                mu(ipoint) = this%fwdmesh%mu(gll_point_ids(this%npol/2, this%npol/2))
-            endif
+        ! gll_point_ids starts at 0 in NetCDF file
+        gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem) + 1
+        if (verbose > 1) &
+            write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
 
-            if (this%fwdmesh%isaxis(id_elem) == 1) then
-               axis = .true.
-            elseif (this%fwdmesh%isaxis(id_elem) == 0) then
-               axis = .false.
-            else
-               call pabort
-            endif
+        ! get mu of midpoint
+        if (present(mu)) then
+            mu(ipoint) = this%fwdmesh%mu(gll_point_ids(this%npol/2, this%npol/2))
+        endif
 
-            if (verbose > 1) &
-               write(6,*) 'axis = ', axis
-        
-        case default
-            ! Find the closest point
-            call kdtree2_n_nearest( this%fwdtree, &
-                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                    nn = nnext_points, &
-                                    results = nextpoint )
-            pointid(ipoint) = nextpoint(1)%idx
-        end select ! dump_type
-    
-        if (this%strain_type == 'straintensor_trace') then
-            select case(component)
-            case('Z')
-                 isim = 1
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-                 load_fw_points_rdbm(:, :, ipoint) = utemp
-
-            case('R')
-                 isim = 2
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-                 load_fw_points_rdbm(:, :, ipoint) = utemp 
-
-            case('T')
-                 load_fw_points_rdbm(:, :, ipoint) = 0
-
-            case('N')
-                 isim = 2
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-
-                 load_fw_points_rdbm(:, :, ipoint) = &
-                         - utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1)
-
-            case('E')
-                 isim = 2
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-
-                 load_fw_points_rdbm(:, :, ipoint) = &
-                         utemp * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-
-            case default
-                 write(6,*) 'component "', component, '" unknown or not yet implemented'
-                 call pabort
-            end select
-
-        elseif (this%strain_type == 'straintensor_full') then
-
-            select case(component)
-            case('Z')
-                 isim = 1
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-
-                 ! rotate source mt to global cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
-                                  source_params(ipoint)%mij_voigt, &
-                                  source_params(ipoint)%lon, &
-                                  source_params(ipoint)%colat)
-
-
-                 ! rotate source mt to receiver cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                  mij_buff, reci_source_params%lon, reci_source_params%colat)
-
-                 ! rotate source mt to receiver s,phi,z system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
-
-                 mij_buff = mij_buff / this%bwd(isim)%amplitude
-
-                 load_fw_points_rdbm(:, :, ipoint) = 0
-                 
-                 do i = 1, 3
-                    load_fw_points_rdbm(:, 1, ipoint) = &
-                          load_fw_points_rdbm(:, 1, ipoint) + mij_buff(i) * utemp(:,i)
-                 enddo 
-
-                 ! components 4-6 need a factor of two because of voigt mapping
-                 ! without factor of two in the strain
-                 i = 5
-                 load_fw_points_rdbm(:, 1, ipoint) = &
-                       load_fw_points_rdbm(:, 1, ipoint) + 2 * mij_buff(i) * utemp(:,i)
-
-            case('N')
-                 isim = 2
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-
-                 ! rotate source mt to global cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
-                                  source_params(ipoint)%mij_voigt, &
-                                  source_params(ipoint)%lon, &
-                                  source_params(ipoint)%colat)
-
-                 ! rotate source mt to receiver cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                  mij_buff, reci_source_params%lon, reci_source_params%colat)
-
-                 ! rotate source mt to receiver s,phi,z system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
-
-                 mij_buff = mij_buff / this%bwd(isim)%amplitude
-
-                 load_fw_points_rdbm(:, :, ipoint) = 0
-
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
-                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
-                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
-                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
-                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
-                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
-                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
-                 
-                 !@TODO not sure why we need the - sign here. Might be because N
-                 !      is in negative theta direction
-                 load_fw_points_rdbm(:, 1, ipoint) = - load_fw_points_rdbm(:, 1, ipoint)
-
-            case('E')
-                 isim = 2
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-
-                 do ii=1,6
-                    write(fname,'("comp_",I0.5)') ii
-                    open(unit=101, file=trim(fname))
-                    
-                       write(101,*) utemp(:,ii)
-              
-                 end do
-
-                 ! rotate source mt to global cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
-                                  source_params(ipoint)%mij_voigt, &
-                                  source_params(ipoint)%lon, &
-                                  source_params(ipoint)%colat)
-
-                 ! rotate source mt to receiver cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                  mij_buff, reci_source_params%lon, reci_source_params%colat)
-
-                 ! rotate source mt to receiver s,phi,z system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
-
-                 mij_buff = mij_buff / this%bwd(isim)%amplitude
-
-                 load_fw_points_rdbm(:, :, ipoint) = 0
-                                  
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
-                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
-                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
-                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
-                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
-                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
-                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
-
-            case('R')
-                 isim = 2
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-
-                 ! rotate source mt to global cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
-                                  source_params(ipoint)%mij_voigt, &
-                                  source_params(ipoint)%lon, &
-                                  source_params(ipoint)%colat)
-
-                 ! rotate source mt to receiver cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                  mij_buff, reci_source_params%lon, reci_source_params%colat)
-
-                 ! rotate source mt to receiver s,phi,z system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
-
-                 mij_buff = mij_buff / this%bwd(isim)%amplitude
-
-                 load_fw_points_rdbm(:, :, ipoint) = 0
-
-
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) !&
-!                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) !&
-!                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) !&
-!                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-!                 load_fw_points_rdbm(:, 1, ipoint) &
-!                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
-!                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
-                          * 2 !* azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
-!                 load_fw_points_rdbm(:, 1, ipoint) &
-!                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
-!                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
-                 
-                 !@TODO not sure why we need the - sign here. Might be because N
-                 !      is in negative theta direction
-                 load_fw_points_rdbm(:, 1, ipoint) = - load_fw_points_rdbm(:, 1, ipoint)
-
-
-            case('T')
-                 isim = 2
-                 if (trim(this%dump_type) == 'displ_only') then
-                     utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids, &
-                                                      xi, eta, this%strain_type, &
-                                                      corner_points, eltype(1), axis, &
-                                                      id_elem=id_elem)
-
-                 else
-                     utemp = load_strain_point(this%bwd(isim), pointid(ipoint), this%strain_type)
-                 endif
-
-                 ! rotate source mt to global cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
-                                  source_params(ipoint)%mij_voigt, &
-                                  source_params(ipoint)%lon, &
-                                  source_params(ipoint)%colat)
-
-                 ! rotate source mt to receiver cartesian system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
-                                  mij_buff, reci_source_params%lon, reci_source_params%colat)
-
-                 ! rotate source mt to receiver s,phi,z system
-                 mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
-
-                 mij_buff = mij_buff / this%bwd(isim)%amplitude
-
-                 load_fw_points_rdbm(:, :, ipoint) = 0
-
-
-!                 load_fw_points_rdbm(:, 1, ipoint) &
-!                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
-!                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-!                 load_fw_points_rdbm(:, 1, ipoint) &
-!                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
-!                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-!                 load_fw_points_rdbm(:, 1, ipoint) &
-!                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
-!                          * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
-                          * 2 !azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
-!                 load_fw_points_rdbm(:, 1, ipoint) &
-!                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
-!                          * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
-                 load_fw_points_rdbm(:, 1, ipoint) &
-                      = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
-                          * 2 !azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
-                
-            case default
-
-                 write(6,*) 'component "', component, '" unknown or not yet implemented'
-                 call pabort
-            end select
-          
+        if (this%fwdmesh%isaxis(id_elem) == 1) then
+           axis = .true.
+        elseif (this%fwdmesh%isaxis(id_elem) == 0) then
+           axis = .false.
         else
            call pabort
         endif
 
-    end do !ipoint
+        if (verbose > 1) &
+           write(6,*) 'axis = ', axis
+    
+    case default
+        ! Find the closest point
+        call kdtree2_n_nearest( this%fwdtree, &
+                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
+                                nn = nnext_points, &
+                                results = nextpoint )
+        pointid(ipoint) = nextpoint(1)%idx
+    end select ! dump_type
+    
+
+    select case(component)
+    case('Z')
+         isim = 1
+         if (trim(this%dump_type) == 'displ_only') then
+             utemp = load_strain_point_interp_seismogram(this%bwd(isim), gll_point_ids, &
+                                              xi, eta, &
+                                              corner_points, eltype(1), axis)
+         else
+             utemp = load_strain_point(this%bwd(isim), pointid(ipoint), 'straintensor_full')
+         endif
+
+         ! rotate source mt to global cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                          source_params(ipoint)%mij_voigt, &
+                          source_params(ipoint)%lon, &
+                          source_params(ipoint)%colat)
+
+
+         ! rotate source mt to receiver cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                          mij_buff, reci_source_params%lon, reci_source_params%colat)
+
+         ! rotate source mt to receiver s,phi,z system
+         mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+
+         mij_buff = mij_buff / this%bwd(isim)%amplitude
+
+         load_fw_points_rdbm(:, :, ipoint) = 0
+         
+         do i = 1, 3
+            load_fw_points_rdbm(:, 1, ipoint) = &
+                  load_fw_points_rdbm(:, 1, ipoint) + mij_buff(i) * utemp(:,i)
+         enddo 
+
+         ! components 4-6 need a factor of two because of voigt mapping
+         ! without factor of two in the strain
+         i = 5
+         load_fw_points_rdbm(:, 1, ipoint) = &
+               load_fw_points_rdbm(:, 1, ipoint) + 2 * mij_buff(i) * utemp(:,i)
+
+    case('N')
+         isim = 2
+         if (trim(this%dump_type) == 'displ_only') then
+             utemp = load_strain_point_interp_seismogram(this%bwd(isim), gll_point_ids,  &
+                                              xi, eta, &
+                                              corner_points, eltype(1), axis)
+
+         else
+             utemp = load_strain_point(this%bwd(isim), pointid(ipoint), 'straintensor_full')
+         endif
+
+         ! rotate source mt to global cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                          source_params(ipoint)%mij_voigt, &
+                          source_params(ipoint)%lon, &
+                          source_params(ipoint)%colat)
+
+         ! rotate source mt to receiver cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                          mij_buff, reci_source_params%lon, reci_source_params%colat)
+
+         ! rotate source mt to receiver s,phi,z system
+         mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+
+         mij_buff = mij_buff / this%bwd(isim)%amplitude
+
+         load_fw_points_rdbm(:, :, ipoint) = 0
+
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
+                  * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
+                  * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
+                  * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
+                  * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
+                  * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 1) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
+                  * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 1d0, 0d0/), isim, 2) 
+         
+         !@TODO not sure why we need the - sign here. Might be because N
+         !      is in negative theta direction
+         load_fw_points_rdbm(:, 1, ipoint) = - load_fw_points_rdbm(:, 1, ipoint)
+
+    case('E')
+         isim = 2
+         if (trim(this%dump_type) == 'displ_only') then
+             utemp = load_strain_point_interp_seismogram(this%bwd(isim), gll_point_ids, &
+                                              xi, eta, &
+                                              corner_points, eltype(1), axis)
+         else
+             utemp = load_strain_point(this%bwd(isim), pointid(ipoint), 'straintensor_full')
+         endif
+
+         do ii=1,6
+            write(fname,'("comp_",I0.5)') ii
+            open(unit=101, file=trim(fname))
+            
+               write(101,*) utemp(:,ii)
+      
+         end do
+
+         ! rotate source mt to global cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                          source_params(ipoint)%mij_voigt, &
+                          source_params(ipoint)%lon, &
+                          source_params(ipoint)%colat)
+
+         ! rotate source mt to receiver cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                          mij_buff, reci_source_params%lon, reci_source_params%colat)
+
+         ! rotate source mt to receiver s,phi,z system
+         mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+
+         mij_buff = mij_buff / this%bwd(isim)%amplitude
+
+         load_fw_points_rdbm(:, :, ipoint) = 0
+                          
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1) &
+                  * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2) &
+                  * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) &
+                  * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) &
+                  * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) &
+                  * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 1) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) &
+                  * 2 * azim_factor_bw(rotmesh_phi(ipoint), (/0d0, 0d0, 1d0/), isim, 2) 
+
+    case('R')
+         isim = 2
+         if (trim(this%dump_type) == 'displ_only') then
+             utemp = load_strain_point_interp_seismogram(this%bwd(isim), gll_point_ids, &
+                                              xi, eta, &
+                                              corner_points, eltype(1), axis) 
+         else
+             utemp = load_strain_point(this%bwd(isim), pointid(ipoint), 'straintensor_full')
+         endif
+
+         ! rotate source mt to global cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                          source_params(ipoint)%mij_voigt, &
+                          source_params(ipoint)%lon, &
+                          source_params(ipoint)%colat)
+
+         ! rotate source mt to receiver cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                          mij_buff, reci_source_params%lon, reci_source_params%colat)
+
+         ! rotate source mt to receiver s,phi,z system
+         mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+
+         mij_buff = mij_buff / this%bwd(isim)%amplitude
+
+         load_fw_points_rdbm(:, :, ipoint) = 0
+
+
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(1) * utemp(:,1)
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(2) * utemp(:,2)
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(3) * utemp(:,3) 
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(5) * utemp(:,5) * 2 
+         
+         !@TODO not sure why we need the - sign here. Might be because N
+         !      is in negative theta direction
+         load_fw_points_rdbm(:, 1, ipoint) = - load_fw_points_rdbm(:, 1, ipoint)
+
+
+    case('T')
+         isim = 2
+         if (trim(this%dump_type) == 'displ_only') then
+             utemp = load_strain_point_interp_seismogram(this%bwd(isim), gll_point_ids, &
+                                                         xi, eta, & 
+                                                         corner_points, eltype(1), axis)
+
+         else
+             utemp = load_strain_point(this%bwd(isim), pointid(ipoint), 'straintensor_full')
+         endif
+
+         ! rotate source mt to global cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth( &
+                          source_params(ipoint)%mij_voigt, &
+                          source_params(ipoint)%lon, &
+                          source_params(ipoint)%colat)
+
+         ! rotate source mt to receiver cartesian system
+         mij_buff = rotate_symm_tensor_voigt_xyz_earth_to_xyz_src( &
+                          mij_buff, reci_source_params%lon, reci_source_params%colat)
+
+         ! rotate source mt to receiver s,phi,z system
+         mij_buff = rotate_symm_tensor_voigt_xyz_to_src(mij_buff, rotmesh_phi(ipoint))
+
+         mij_buff = mij_buff / this%bwd(isim)%amplitude
+
+         load_fw_points_rdbm(:, :, ipoint) = 0
+
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(4) * utemp(:,4) * 2
+         load_fw_points_rdbm(:, 1, ipoint) &
+              = load_fw_points_rdbm(:, 1, ipoint) + mij_buff(6) * utemp(:,6) * 2 
+        
+    case default
+
+         write(6,*) 'component "', component, '" unknown or not yet implemented'
+         call pabort
+    end select
+      
+    print *, 'Exiting load_fw_points_rdbm'
 
 end function load_fw_points_rdbm
 !-----------------------------------------------------------------------------------------
@@ -2434,6 +2330,193 @@ function load_strain_point(sem_obj, pointid, strain_type)
 end function load_strain_point
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, &
+                                             element_type, axis) !, id_elem)
+    !< Calculates strain in element given by pointids, nodes. 
+    !! This routine is specifically for seismogram retrieval and does not use the buffer
+    !! Since seismograms are loaded only once at startup, this does not hurt performance
+    !! much and since seismometers are usually not collocated, the buffer would not be
+    !! of much use anyway.
+    !! Strain is then interpolated to the point defined by xi, eta.
+    use sem_derivatives
+    use spectral_basis, only : lagrange_interpol_2D_td
+    use simple_routines, only        : check_limits
+
+    type(ncparamtype), intent(in)   :: sem_obj
+    integer,           intent(in)   :: pointids(0:sem_obj%npol, 0:sem_obj%npol) 
+                                                    !< ID of GLL/GLI points in element of
+                                                    !! interest
+    real(kind=dp),     intent(in)   :: xi, eta      !< Coordinates at which to interpolate
+                                                    !! strain
+    real(kind=dp),     intent(in)   :: nodes(4,2)   !< Coordinates of element corner
+                                                    !! points
+    integer,           intent(in)   :: element_type !< Element type in the solver
+    logical,           intent(in)   :: axis         !< Axis element or not 
+    real(kind=dp)                   :: load_strain_point_interp_seismogram(sem_obj%ndumps,6)
+
+    logical                         :: use_strainbuffer
+    integer                         :: start_chunk, iread, gll_to_read
+    integer                         :: status, idisplvar
+    real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
+    real(kind=sp), allocatable      :: ubuff(:,:)
+    real(kind=dp)                   :: utemp(1:sem_obj%ndumps, &
+                                             0:sem_obj%npol,   &
+                                             0:sem_obj%npol,   &
+                                             3)
+    real(kind=sp)                   :: strain(1:sem_obj%ndumps, &
+                                              0:sem_obj%npol,   &
+                                              0:sem_obj%npol,   &
+                                              6)
+    !real(kind=sp)                   :: straintrace(1:sem_obj%ndumps, &
+    !                                               0:sem_obj%npol,   &
+    !                                               0:sem_obj%npol)
+    real(kind=dp), allocatable      :: G(:,:), GT(:,:)
+    real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
+    integer                         :: ipol, jpol, i
+    integer(kind=long)              :: iclockold, iclockold_total
+    logical                         :: strain_nan
+
+    iclockold_total = tick()
+
+    !use_strainbuffer = present(id_elem)
+
+    if (trim(sem_obj%dump_type) /= 'displ_only') then
+        write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
+        write(6,*) '       written with dump_type "displ_only"'
+        call pabort()
+    endif
+
+    if (axis) then
+        G  = sem_obj%G2
+        GT = sem_obj%G1T
+        col_points_xi  = sem_obj%glj_points
+        col_points_eta = sem_obj%gll_points
+    else
+        G  = sem_obj%G2
+        GT = sem_obj%G2T
+        col_points_xi  = sem_obj%gll_points
+        col_points_eta = sem_obj%gll_points
+    endif 
+
+
+      allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
+!      utemp_chunk = 0
+!      allocate(ubuff(sem_obj%ndumps, 3))
+!      ubuff = 0
+
+      ! load displacements from all GLL points
+      do ipol = 0, sem_obj%npol
+         do jpol = 0, sem_obj%npol
+
+!            iclockold = tick()
+!            status = sem_obj%buffer_disp%get(pointids(ipol,jpol), ubuff(:,:))
+!            iclockold = tick(id=id_buffer, since=iclockold)
+            !if (status.ne.0) then
+
+               call get_chunk_bounds(pointid     = pointids(ipol, jpol), &
+                                     chunksize   = sem_obj%chunk_gll,    &
+                                     npoints     = sem_obj%ngll,         &
+                                     start_chunk = start_chunk,          &   
+                                     count_chunk = gll_to_read )
+
+               do idisplvar = 1, 3
+
+                   if (sem_obj%displvarid(idisplvar).eq.-1) then
+                       utemp(:, ipol, jpol, idisplvar) = 0
+                       cycle ! For monopole source which does not have this component.
+                   endif
+
+                   iclockold = tick()
+
+                   call nc_getvar( ncid   = sem_obj%snap,                  & 
+                                   varid  = sem_obj%displvarid(idisplvar), &
+                                   start  = [start_chunk, 1],              &
+                                   count  = [gll_to_read, sem_obj%ndumps], &
+                                   values = utemp_chunk(1:gll_to_read, :, idisplvar))
+
+                   strain_nan = check_limits(utemp_chunk(1:gll_to_read,:,idisplvar), &
+                                             array_name='strain')
+
+                   ! Set NaNs in utemp_chunk to zero
+                   where (utemp_chunk.ne.utemp_chunk) utemp_chunk=0.0
+
+                   !print *, 'suceeded'
+                   !call flush(6)
+                   iclockold = tick(id=id_netcdf, since=iclockold)
+                   utemp(:,ipol,jpol, idisplvar) &
+                        = utemp_chunk(pointids(ipol,jpol) - start_chunk + 1,:,idisplvar)
+               enddo
+
+!               do iread = 0, sem_obj%chunk_gll - 1
+!                   status = sem_obj%buffer_disp%put(start_chunk + iread, &
+!                                                    utemp_chunk(iread+1,:,:) )
+!               end do
+!            else
+!               utemp(:,ipol,jpol,:) = real(ubuff(:,:), kind=dp)
+!            endif
+         enddo
+      enddo
+
+      iclockold = tick()
+!      select case(strain_type)
+!
+!      case('straintensor_full')
+          ! compute full strain tensor
+          if (sem_obj%excitation_type == 'monopole') then
+              strain = strain_monopole(utemp, G, GT, col_points_xi, &
+                                       col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                       element_type, axis)
+
+          elseif (sem_obj%excitation_type == 'dipole') then
+              strain = strain_dipole(utemp, G, GT, col_points_xi, &
+                                     col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                     element_type, axis)
+
+          elseif (sem_obj%excitation_type == 'quadpole') then
+              strain = strain_quadpole(utemp, G, GT, col_points_xi, &
+                                       col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
+                                       element_type, axis)
+          else
+              print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+              call pabort
+          endif
+          
+          iclockold = tick(id=id_calc_strain, since=iclockold)
+
+
+!      end select
+!    
+!    endif ! Element not found in buffer
+    
+!    select case(strain_type)
+!    case('straintensor_trace')
+!        allocate(load_strain_point_interp(sem_obj%ndumps, 1))
+!        load_strain_point_interp(:, 1) &
+!            = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
+!                                      real(straintrace(:,:,:), kind=dp), xi, eta)
+!
+!        iclockold = tick(id=id_lagrange, since=iclockold)
+!
+!    case('straintensor_full')
+        do i = 1, 6
+            load_strain_point_interp_seismogram(:, i) &
+                = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
+                                          real(strain(:,:,:,i), kind=dp), xi, eta)
+        enddo
+
+        iclockold = tick(id=id_lagrange, since=iclockold)
+
+        !@TODO for consistency with SOLVER output
+        load_strain_point_interp_seismogram(:, 4) = - load_strain_point_interp_seismogram(:, 4) 
+        load_strain_point_interp_seismogram(:, 6) = - load_strain_point_interp_seismogram(:, 6) 
+
+    !end select
+
+    iclockold_total = tick(id=id_load_strain, since=iclockold_total)
+
+end function load_strain_point_interp_seismogram
+!-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes, &
                                   element_type, axis, id_elem)
