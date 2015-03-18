@@ -49,6 +49,7 @@ subroutine init(this, lat, lon, mij, depth)
    this%colat  = this%colatd * deg2rad
    this%lon    = this%lond   * deg2rad
    this%lat    = this%latd   * deg2rad
+   this%depth  = depth
 
    this%shift_time = 0
 
