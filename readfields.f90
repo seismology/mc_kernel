@@ -67,6 +67,7 @@ module readfields
         integer                            :: source_shift_samples    
         real(kind=dp)                      :: source_shift_t
         character(len=10)                  :: source_type
+        character(len=10)                  :: stf_type
         character(len=10)                  :: excitation_type
         real(kind=sp), allocatable         :: stf(:), stf_d(:)
         type(buffer_type)                  :: buffer_strain
@@ -351,6 +352,7 @@ subroutine open_files(this)
            call pabort(do_traceback=.false.)
         endif
 
+        call nc_read_att_char(this%fwd(isim)%stf_type, 'source time function', this%fwd(isim))
 
         call nc_read_att_dble(this%fwd(isim)%planet_radius, 'planet radius', this%fwd(isim))
         this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
@@ -523,6 +525,8 @@ subroutine open_files(this)
                   
            call pabort(do_traceback=.false.)
         endif
+
+        call nc_read_att_char(this%bwd(isim)%stf_type, 'source time function', this%bwd(isim))
 
         call nc_read_att_dble(this%bwd(isim)%planet_radius, 'planet radius', this%bwd(isim))
         this%bwd(isim)%planet_radius = this%bwd(isim)%planet_radius * 1d3
@@ -825,6 +829,22 @@ subroutine check_consistency(this)
        allocate(stf_agreed_bwd(this%fwd(1)%ndumps))
        allocate(stf_d_agreed_bwd(this%fwd(1)%ndumps))
     endif
+
+    ! Check whether the STF in AxiSEM was correct
+    do isim = 1, this%nsim_fwd
+      if (trim(this%fwd(isim)%stf_type).ne.'gauss_0') then
+        print *, 'ERROR: Invalid AxiSEM source time function: ', this%fwd(isim)%stf_type
+        print *, '       Please run AxiSEM with ''gauss_0'' to ensure correct units'
+        print *, '       and avoid aliasing'
+      end if
+    end do
+    do isim = 1, this%nsim_bwd
+      if (trim(this%bwd(isim)%stf_type).ne.'gauss_0') then
+        print *, 'ERROR: Invalid AxiSEM source time function: ', this%bwd(isim)%stf_type
+        print *, '       Please run AxiSEM with ''gauss_0'' to ensure correct units'
+        print *, '       and avoid aliasing'
+      end if
+    end do
 
     ! Check whether the dump_type is the same in all files
     dump_type_agreed = this%fwd(1)%dump_type
