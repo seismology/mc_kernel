@@ -7,7 +7,7 @@ module backgroundmodel
   integer, parameter           :: nmodel_parameters = 12 !< Number of basic model parameters
                                                          !! which are availabe in backgroundmodel_type
 
-  character(len=3)             :: parameter_name(nmodel_parameters) =  &
+  character(len=3), parameter  :: parameter_name(nmodel_parameters) =  &
                                   ['vp ', 'vs ', 'rho', 'vph', 'vpv', 'vsh', &
                                    'vsv', 'eta', 'phi', 'xi ', 'lam', 'mu ']
 
