@@ -377,11 +377,16 @@ subroutine read_receiver(this)
           do ikernel = 1, recnkernel
              ! Just get the model parameter
              read(lu_receiver, *) trash(1:5), model_parameter
-             
-             if ( (model_parameter.ne.'lam') .and.      &
-                  (model_parameter.ne.'vp')          ) then
+             select case(model_parameter)
+             case('lam', 'vp ', 'vph', 'vpv')
+               this%strain_type_fwd = 'straintensor_trace'
+             case('vs ', 'rho', 'vsh', 'vsv', 'eta', 'phi', 'xi ', 'mu ')
                this%strain_type_fwd = 'straintensor_full'
-             end if
+             case default
+               print *, 'Unknown model parameter ', model_parameter, &
+                        'in kernel ', ikernel
+               stop
+             end select
                   
           end do
        end if
