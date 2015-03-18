@@ -364,10 +364,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         ! Initialize basis kernel Monte Carlo integrals for current element
         iclockold = tick()
         do ibasisfunc = 1, nbasisfuncs_per_elem
-           call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel,             &
-                                                             volume,                         &
-                                                             parameters%allowed_error,       &
-                                                             parameters%allowed_relative_error) 
+           call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel,               &
+                                                             volume,                           &
+                                                             parameters%allowed_error,         &
+                                                             parameters%allowed_relative_error,&
+                                                             parameters%int_over_volume) 
         end do
 
         do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
