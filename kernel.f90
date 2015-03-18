@@ -311,11 +311,11 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
 
          select case(lowtrim(int_scheme))
          case('trapezoidal')
-           calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_cut, &
-                                                               this%dt ) &
+           calc_misfit_kernel(itrace) = - integrate_trapezoidal( timeseries_cut * this%seis_cut, &
+                                                                 this%dt ) &
                                         * this%normalization
          case('parseval')
-           calc_misfit_kernel(itrace) = this%integrate_parseval( timeseries_cut, this%seis_cut_fd) &
+           calc_misfit_kernel(itrace) = - this%integrate_parseval( timeseries_cut, this%seis_cut_fd) &
                                         * this%normalization
          end select
       end do
@@ -504,13 +504,14 @@ end subroutine tabulate_kernels
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function calc_physical_kernels(model_param, base_kernel, bg_model)  &
+function calc_physical_kernels(model_param, base_kernel, bg_model, relative_kernel)  &
                                result(physical_kernel)
 
   use backgroundmodel, only               :  backgroundmodel_type
   character(len=*), intent(in)           :: model_param
   real(kind=dp),    intent(in)           :: base_kernel(:,:)
   type(backgroundmodel_type), intent(in) :: bg_model
+  logical, intent(in)                    :: relative_kernel
   real(kind=dp)                          :: physical_kernel(size(base_kernel,1))
 
   ! See Fichtner p. 169 how kernels are defined and type_parameter.f90
@@ -521,34 +522,50 @@ function calc_physical_kernels(model_param, base_kernel, bg_model)  &
   case('lam')
      physical_kernel(:) =                                         &
             base_kernel(:, 1)                                ! lambda
+     if (relative_kernel) physical_kernel = physical_kernel * bg_model%c_lam
+
   case('mu')
      physical_kernel(:) =                                         & 
             base_kernel(:, 2)                                ! Mu
+     if (relative_kernel) physical_kernel = physical_kernel * bg_model%c_mu 
+
   case('vp')
      physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vp * &
             base_kernel(:, 1)                                ! Lambda
+     if (relative_kernel) physical_kernel = physical_kernel * bg_model%c_vp 
+
   case('vs')
      physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vs * &
           ( base_kernel(:, 2)                             &  ! Mu
           - base_kernel(:, 1) * 2.d0)                        ! Lambda
+     if (relative_kernel) physical_kernel = physical_kernel * bg_model%c_vs 
+
   case('vsh')
      physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vsh * &
           (  2 * base_kernel(:, 1)                        &  ! Lambda
            +     base_kernel(:, 2)                        &  ! Mu
            +     base_kernel(:, 5)                        &  ! B
            + 2 * base_kernel(:, 6) * (1-bg_model%c_eta))     ! C 
+     if (relative_kernel) physical_kernel = physical_kernel * bg_model%c_vsh
+
   case('vsv')
      physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vsv * &
             base_kernel(:, 5)                                ! B
+     if (relative_kernel) physical_kernel = physical_kernel * bg_model%c_vsv
+
   case('vph')
      physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vph * &
           ( base_kernel(:, 4) +                           &  ! A
             base_kernel(:, 6) * bg_model%c_eta )             ! C
+     if (relative_kernel) physical_kernel = physical_kernel * bg_model%c_vph
+
   case('vpv')
      physical_kernel(:) = 2.d0 * bg_model%c_rho * bg_model%c_vpv * &
           ( base_kernel(:, 1) +                           &  ! Lambda
             base_kernel(:, 4) +                           &  ! A
             base_kernel(:, 6) )                              ! C 
+     if (relative_kernel) physical_kernel = physical_kernel * bg_model%c_vpv
+
   case('kappa')
      write(*,*) "Error: Kappa kernels not yet implemented"
      stop
