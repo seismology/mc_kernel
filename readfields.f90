@@ -75,6 +75,7 @@ module readfields
         type(buffer_type)                  :: buffer
         real(kind=dp)                      :: dt
         real(kind=dp)                      :: amplitude
+        real(kind=dp)                      :: source_depth
         real(kind=dp), public, allocatable :: G1(:,:), G1T(:,:)
         real(kind=dp), public, allocatable :: G2(:,:), G2T(:,:)
         real(kind=dp), public, allocatable :: G0(:)
@@ -110,6 +111,7 @@ module readfields
         real(kind=dp), public, allocatable :: G0(:)
         real(kind=dp), public, allocatable :: gll_points(:), glj_points(:)
         real(kind=dp), public              :: windowlength
+        real(kind=dp), public              :: desired_source_depth
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public              :: amplitude_fwd, amplitude_bwd
         real(kind=dp), public, allocatable :: veloseis(:,:) !, dispseis(:,:)
@@ -173,17 +175,21 @@ end function get_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_size, strain_type)
+subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_size, &
+                      strain_type, desired_source_depth)
     class(semdata_type)            :: this
     character(len=512), intent(in) :: fwd_dir, bwd_dir
     integer,            intent(in) :: strain_buffer_size
     integer,            intent(in) :: displ_buffer_size
     character(len=*),   intent(in) :: strain_type
+    real(kind=dp)                  :: desired_source_depth
     character(len=512)             :: dirnam
     logical                        :: moment=.false., force=.false., single=.false.
 
     this%strain_buffer_size = strain_buffer_size
     this%displ_buffer_size = displ_buffer_size
+
+    this%desired_source_depth = desired_source_depth
 
     dirnam = trim(fwd_dir)//'/MZZ/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
@@ -353,6 +359,8 @@ subroutine open_files(this)
         endif
 
         call nc_read_att_char(this%fwd(isim)%stf_type, 'source time function', this%fwd(isim))
+
+        call nc_read_att_dble(this%fwd(isim)%source_depth, 'source depth in km', this%fwd(isim))
 
         call nc_read_att_dble(this%fwd(isim)%planet_radius, 'planet radius', this%fwd(isim))
         this%fwd(isim)%planet_radius = this%fwd(isim)%planet_radius * 1d3
@@ -527,6 +535,8 @@ subroutine open_files(this)
         endif
 
         call nc_read_att_char(this%bwd(isim)%stf_type, 'source time function', this%bwd(isim))
+
+        call nc_read_att_dble(this%bwd(isim)%source_depth, 'source depth in km', this%bwd(isim))
 
         call nc_read_att_dble(this%bwd(isim)%planet_radius, 'planet radius', this%bwd(isim))
         this%bwd(isim)%planet_radius = this%bwd(isim)%planet_radius * 1d3
@@ -845,6 +855,28 @@ subroutine check_consistency(this)
         print *, '       and avoid aliasing'
       end if
     end do
+
+    ! Check whether the depth in CMTSOLUTION is consistent with the depth of the AxiSEM fwd run
+    do isim = 1, this%nsim_fwd
+      if (this%fwd(isim)%source_depth.ne.this%desired_source_depth) then
+        print *, 'ERROR: Source depth in CMTSOLUTION and AxiSEM fwd run are inconsistent!'
+        print *, '       Depth in CMTSOLUTION: ', this%desired_source_depth
+        print *, '       Depth in AxiSEM run:  ', this%fwd(isim)%source_depth
+        stop
+      end if
+    end do
+
+    ! TODO: Is this a problem? I am not sure. Seismograms should be correct anyway, even if
+    !       the bwd source was at depth
+    !! Check whether the source depth of the AxiSEM bwd run is zero (receiver at surface)
+    !do isim = 1, this%nsim_bwd
+    !  if (this%bwd(isim)%depth.ne.this%desired_source_depth) then
+    !    print *, 'ERROR: Source depth in AxiSEM bwd is not zero!'
+    !    print *, '       We expect receiver to be at the surface'
+    !    print *, '       Depth in AxiSEM run:  ', this%bwd(isim)%depth
+    !    stop
+    !  end if
+    !end do
 
     ! Check whether the dump_type is the same in all files
     dump_type_agreed = this%fwd(1)%dump_type

@@ -75,13 +75,13 @@ subroutine do_slave()
                              parameters%bwd_dir,     &
                              parameters%strain_buffer_size, & 
                              parameters%displ_buffer_size, & 
-                             parameters%strain_type_fwd)
+                             parameters%strain_type_fwd,    &
+                             parameters%source%depth)
 
     call sem_data%open_files()
     call sem_data%read_meshes()
     call sem_data%build_kdtree()
 
-!    call sem_data%load_seismogram(parameters%receiver, parameters%source)
     call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
 
     ndumps = sem_data%ndumps

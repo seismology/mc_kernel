@@ -59,7 +59,7 @@ subroutine test_readfields_set_params()
    fwd_dir = './test_wavefields/kerner_fwd'
    bwd_dir = './test_wavefields/kerner_bwd'
    
-   call sem_data%set_params(fwd_dir, bwd_dir, 100, 100, 'straintensor_trace')
+   call sem_data%set_params(fwd_dir, bwd_dir, 100, 100, 'straintensor_trace', 100.0d0)
 
    call assert_equal_int(sem_data%nsim_fwd, 4, 'nsim_fwd == 4')
    call assert_equal_int(sem_data%nsim_bwd, 2, 'nsim_bwd == 2')
@@ -76,7 +76,7 @@ subroutine test_readfields_open_files()
    call parameters%read_parameters('unit_tests/inparam_test')
    
    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, &
-                            100, 100, 'straintensor_trace') 
+                            100, 100, 'straintensor_trace', 100.0d0) 
 
    call sem_data%open_files()
 
@@ -97,7 +97,7 @@ subroutine test_readfields_read_meshes
    call parameters%read_parameters('unit_tests/inparam_test')
    
    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, &
-                            100, 100, 'straintensor_trace') 
+                            100, 100, 'straintensor_trace', 100.0d0) 
 
    call sem_data%open_files()
 
@@ -195,7 +195,7 @@ subroutine test_readfields_load_fw_points
    call parameters%read_receiver()
 
    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100,  &
-                            parameters%strain_type_fwd)
+                            parameters%strain_type_fwd, parameters%source%depth)
    call sem_data%open_files()
    call sem_data%read_meshes()
    call sem_data%build_kdtree()
@@ -245,7 +245,7 @@ subroutine test_readfields_load_model_coeffs
    call parameters%read_parameters('unit_tests/inparam_test')
 
    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100, &
-                            'straintensor_trace') 
+                            'straintensor_trace', 100.0d0) 
 
    call sem_data%open_files()
 
