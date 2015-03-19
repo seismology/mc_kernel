@@ -2241,8 +2241,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
          write(6,*) 'component "', component, '" unknown or not yet implemented'
          call pabort
     end select
-      
-    print *, 'Exiting load_fw_points_rdbm'
 
 end function load_fw_points_rdbm
 !-----------------------------------------------------------------------------------------
