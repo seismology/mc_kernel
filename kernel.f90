@@ -114,24 +114,6 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    ! Cut seismogram to kernel time window and add to kernel type
    call this%cut_and_add_seismogram(seis, deconv_stf_loc, write_smgr_loc, timeshift_fwd_loc)
 
-   ! Set length of kernel time window
-   this%ntimes = size(this%seis_cut,1)
-
-   ! Init FFT type for kernel time window, here for Parseval integration
-   call this%fft_data%init(this%ntimes, 1, 1, this%dt)
-   this%ntimes_ft = this%fft_data%get_ntimes()
-   this%nomega    = this%fft_data%get_nomega()
-
-   allocate(this%datat(this%ntimes,1))
-   allocate(this%dataf(this%nomega,1))
-   allocate(this%seis_cut_fd(this%nomega,1))
-
-   ! FFT the cut and filtered seismogram
-   call this%fft_data%rfft(taperandzeropad(array = reshape(this%seis_cut, [this%ntimes, 1]),  &
-                                           ntimes = this%ntimes_ft, &
-                                           ntaper = 0 ),            &
-                            this%seis_cut_fd)
-
    ! Check and tabulate, which base kernels the model parameter for this 
    ! specific kernel needs
    call tabulate_kernels(this%model_parameter, this%needs_basekernel, this%strain_type)
@@ -177,6 +159,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    complex(kind=dp), allocatable           :: seis_fd(:,:)
    real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
    real(kind=dp),    allocatable           :: seis_filtered(:,:)
+   real(kind=dp)                           :: normalization_term
    integer                                 :: ntimes, ntimes_ft, nomega, isample
 
    ! Save seismogram in the timewindow of this kernel
@@ -228,10 +211,30 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
                        this%time_window,   &
                        this%t_cut )
 
-   if (sum(this%seis_cut**2).lt.1.d-100) then
+   ! Set length of kernel time window
+   this%ntimes = size(this%seis_cut,1)
+
+   ! Init FFT type for kernel time window, here for Parseval integration
+   call this%fft_data%init(this%ntimes, 1, 1, this%dt)
+   this%ntimes_ft = this%fft_data%get_ntimes()
+   this%nomega    = this%fft_data%get_nomega()
+
+   allocate(this%datat(this%ntimes,1))
+   allocate(this%dataf(this%nomega,1))
+   allocate(this%seis_cut_fd(this%nomega,1))
+
+   ! FFT the cut and filtered seismogram
+   call this%fft_data%rfft(taperandzeropad(array = reshape(this%seis_cut, [this%ntimes, 1]),  &
+                                           ntimes = this%ntimes_ft, &
+                                           ntaper = 0 ),            &
+                            this%seis_cut_fd)
+
+   ! Integrate over squared seismogram for normalization term in 5.13, TNM thesis
+   normalization_term = this%integrate_parseval(this%seis_cut, this%seis_cut)                  
+   if (normalization_term.lt.1.d-100) then
        this%normalization = 0
    else
-       this%normalization = 1.d0/sum(this%seis_cut**2)
+       this%normalization = 1.d0 / normalization_term !/sum(this%seis_cut**2)
    end if
    
    if (verbose>0) then
