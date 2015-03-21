@@ -1257,11 +1257,13 @@ function load_fw_points(this, coordinates, source_params, model)
                  utemp = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
                                                   xi, eta, this%strain_type,      &
                                                   corner_points, eltype(1), axis, &
-                                                  id_elem = id_elem) 
+                                                  id_elem = id_elem)              &
+                         / this%fwd(isim)%amplitude
               else
                  utemp = load_strain_point(this%fwd(isim),      &
-                                           pointid,     &
-                                           this%strain_type)  
+                                           pointid,             &
+                                           this%strain_type)    &
+                         / this%fwd(isim)%amplitude
               endif
 
               call check_NaN(utemp, isnan, nan_loc)
@@ -1770,8 +1772,7 @@ function load_bw_points(this, coordinates, receiver)
             else
                utemp = load_strain_point(this%bwd(1), pointid(ipoint), this%strain_type)
             endif
-            load_bw_points(:,:,ipoint) &
-                =                               utemp / this%bwd(1)%amplitude
+            load_bw_points(:,:,ipoint) = utemp / this%bwd(1)%amplitude
 
             ! Check for NaNs
             call check_NaN(utemp, isnan, nan_loc)
@@ -2241,8 +2242,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
          write(6,*) 'component "', component, '" unknown or not yet implemented'
          call pabort
     end select
-      
-    print *, 'Exiting load_fw_points_rdbm'
 
 end function load_fw_points_rdbm
 !-----------------------------------------------------------------------------------------

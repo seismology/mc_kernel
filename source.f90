@@ -40,7 +40,7 @@ contains
 subroutine init(this, lat, lon, mij, depth)
    class(src_param_type)      :: this
 
-   real(kind=dp), intent(in)  :: lat, lon, mij(6), depth
+   real(kind=dp), intent(in)  :: lat, lon, mij(6), depth ! MIJ in Nm here
 
    this%latd   = lat
    this%lond   = lon
@@ -86,7 +86,7 @@ subroutine init(this, lat, lon, mij, depth)
 
    this%have_stf = .false.
 
-end subroutine
+end subroutine init
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -97,6 +97,7 @@ subroutine read_cmtsolution(this, fname)
    character(len=*), intent(in), optional :: fname
    integer                    :: lu_cmtsolution, ioerr
    character(len=256)         :: cmtsolution_file, junk
+   real(kind=dp)              :: mij_dyncm(6)
 
    if (present(fname)) then
       cmtsolution_file = trim(fname)
@@ -133,14 +134,14 @@ subroutine read_cmtsolution(this, fname)
    this%y = dcos(this%lat) * dsin(this%lon) * this%radius
    this%z = dsin(this%lat) * this%radius
 
-   read(lu_cmtsolution,*) junk, this%mij(1)
-   read(lu_cmtsolution,*) junk, this%mij(2)
-   read(lu_cmtsolution,*) junk, this%mij(3)
-   read(lu_cmtsolution,*) junk, this%mij(4)
-   read(lu_cmtsolution,*) junk, this%mij(5)
-   read(lu_cmtsolution,*) junk, this%mij(6)
+   read(lu_cmtsolution,*) junk, mij_dyncm(1)
+   read(lu_cmtsolution,*) junk, mij_dyncm(2)
+   read(lu_cmtsolution,*) junk, mij_dyncm(3)
+   read(lu_cmtsolution,*) junk, mij_dyncm(4)
+   read(lu_cmtsolution,*) junk, mij_dyncm(5)
+   read(lu_cmtsolution,*) junk, mij_dyncm(6)
 
-   this%mij = this%mij / 1e7 ! dyn cm -> Nm
+   this%mij = mij_dyncm / 1e7 ! dyn cm -> Nm
 
    ! CMTSOLUTION : Mrr Mtt Mpp Mrt Mrp Mtp
    ! voigt in tpr: Mtt Mpp Mrr Mrp Mrt Mtp
