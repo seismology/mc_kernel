@@ -219,9 +219,22 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     
     call fft_stf%rfft(taperandzeropad(stfs, fft_stf%get_ntimes(), ntaper = 5), stfs_fd)
 
+    if (firstslave) then
+18     format('stf_spectrum_', A, 2('_', F0.3))
+19     format(5(E16.8))
+       write(fnam,18) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, this%nfreq
+           write(10,19), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
+                                        real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
+       end do
+       close(10)
+    end if
+
     ! Calculate first derivatice of stfs
-    stfs_fd(:,1) = stfs_fd(:,1) * fft_stf%get_f() * 2 * pi * cmplx(0,1)
-    stfs_fd(:,2) = stfs_fd(:,2) * fft_stf%get_f() * 2 * pi * cmplx(0,1)
+    stfs_fd(:,1) = stfs_fd(:,1) * this%f * 2.0d0 * pi * cmplx(0.0d0,1.0d0)
+    stfs_fd(:,2) = stfs_fd(:,2) * this%f * 2.0d0 * pi * cmplx(0.0d0,1.0d0)
 
     ! Divide filter by spectrum of FFTs
     this%transferfunction = this%transferfunction / sqrt(stfs_fd(:,1) * stfs_fd(:,2))
@@ -240,7 +253,7 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
        end do
        close(10)
        
-21     format('stf_spectrum_', A, 2('_', F0.3))
+21     format('stf_spectrum_deriv_', A, 2('_', F0.3))
 22     format(5(E16.8))
        write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
 
@@ -261,7 +274,7 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
        end do
        close(10)
        
-25     format('stf_deriv', A, 2('_', F0.3))
+25     format('stf_deriv_', A, 2('_', F0.3))
 26     format(3(E16.8))
        write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
 
