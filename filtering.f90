@@ -185,7 +185,7 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
     class(filter_type)              :: this
     real(kind=dp)   , intent(in)    :: stf_fwd(:), stf_bwd(:)
 
-    real(kind=dp)   , allocatable   :: stfs(:,:)
+    real(kind=dp)   , allocatable   :: stfs(:,:), stfs_td(:,:), t(:)
     complex(kind=dp), allocatable   :: stfs_fd(:,:)
 
     type(rfft_type)                 :: fft_stf
@@ -209,14 +209,25 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 
     allocate(stfs(size(stf_fwd), 2))
     allocate(stfs_fd(this%nfreq, 2))
+    allocate(stfs_td(fft_stf%get_ntimes(), 2))
+    t = fft_stf%get_t()
 
-    stfs(:,1) = firstderiv(stf_fwd)
-    stfs(:,2) = firstderiv(stf_bwd)
+    !stfs(:,1) = firstderiv(stf_fwd)
+    !stfs(:,2) = firstderiv(stf_bwd)
+    stfs(:,1) = stf_fwd
+    stfs(:,2) = stf_bwd
     
     call fft_stf%rfft(taperandzeropad(stfs, fft_stf%get_ntimes(), ntaper = 5), stfs_fd)
 
+    ! Calculate first derivatice of stfs
+    stfs_fd(:,1) = stfs_fd(:,1) * fft_stf%get_f() * 2 * pi * cmplx(0,1)
+    stfs_fd(:,2) = stfs_fd(:,2) * fft_stf%get_f() * 2 * pi * cmplx(0,1)
+
+    ! Divide filter by spectrum of FFTs
     this%transferfunction = this%transferfunction / sqrt(stfs_fd(:,1) * stfs_fd(:,2))
     
+    call fft_stf%irfft(stfs_fd, stfs_td)
+
     call fft_stf%freeme()
 
     if (firstslave) then
@@ -246,7 +257,17 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, size(stf_fwd)
-          write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,2)
+          write(10,24), t(ifreq), stfs(ifreq,1), stfs(ifreq,2)
+       end do
+       close(10)
+       
+25     format('stf_deriv', A, 2('_', F0.3))
+26     format(3(E16.8))
+       write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, size(stf_fwd)
+          write(10,26), t(ifreq), stfs_td(ifreq,1), stfs_td(ifreq,2)
        end do
        close(10)
     end if   
