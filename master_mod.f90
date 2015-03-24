@@ -44,7 +44,7 @@ subroutine do_master()
   write(fmtstring,"('(',I5,'('' '', I5),'' | '' F6.2,''%'', F10.1, ''sec'')')") nslaves + 1
 
   if (nslaves > ntasks) then
-     write(6,*) 'ERROR: more slaves then tasks'
+     write(6,*) 'ERROR: more slaves than tasks'
      stop
   elseif (nslaves < 1) then
      write(6,*) 'ERROR: need at least 1 slave'

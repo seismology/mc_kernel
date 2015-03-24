@@ -21,15 +21,18 @@ module slave_mod
     real(kind=dp), allocatable :: model(:,:,:) !< (nmodel_parameter, nbasisfuncs_per_elem, nelements)
                                                !! Model parameters in the order as defined in backgroundmodel:
                                                !! vp, vs, rho, vph, vpv, vsh, vsv, eta, phi, xi, lam, mu
+    real(kind=dp), allocatable :: hetero_model(:,:,:) !< (nmodel_parameter_hetero, nbasisfuncs_per_elem, nelements)
+                                               !! dlnvp, dlnvs, dlnrho
   end type
 
 contains
 
 !-----------------------------------------------------------------------------------------
 subroutine do_slave() 
-    use global_parameters,           only: DIETAG, id_mpi, id_read_params, id_init_fft
+    use global_parameters,           only: DIETAG, id_mpi, id_read_params, id_init_fft, id_int_hetero
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
+    use heterogeneities,             only: hetero_type
     use type_parameter,              only: parameter_type
     use fft,                         only: rfft_type, taperandzeropad
     use clocks_mod,                  only: tick
@@ -39,6 +42,7 @@ subroutine do_slave()
     type(inversion_mesh_data_type)      :: inv_mesh
     type(semdata_type)                  :: sem_data
     type(rfft_type)                     :: fft_data
+    type(hetero_type)                   :: het_model
     type(slave_result_type)             :: slave_result
 
     integer                             :: ndumps, ntimes, nomega
@@ -87,6 +91,16 @@ subroutine do_slave()
     ndumps = sem_data%ndumps
 
     iclockold = tick(id=id_read_params, since=iclockold)
+
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Initialize heterogeneity structure'
+    write(lu_out,'(A)') '***************************************************************'
+    call flush(lu_out)
+
+    call het_model%load_het_rtpv(parameters%hetero_file)
+    call het_model%build_hetero_kdtree()
+
+    iclockold = tick(id=id_int_hetero, since=iclockold)
 
     write(lu_out,'(A)') '***************************************************************'
     write(lu_out,'(A)') ' Initialize FFT'
@@ -153,13 +167,14 @@ subroutine do_slave()
                                      wt%connectivity, wt%nbasisfuncs_per_elem)
 
 
-       slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data)
+       slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data, het_model)
 
        wt%kernel_values    = slave_result%kernel_values
        wt%kernel_variance  = slave_result%kernel_variance
        wt%niterations      = slave_result%niterations
        wt%computation_time = slave_result%computation_time
        wt%model            = slave_result%model
+       wt%hetero_model     = slave_result%hetero_model
 
        ! Finished writing my part of the mesh
        call inv_mesh%freeme
@@ -211,12 +226,12 @@ end subroutine do_slave
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_result)
+function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(slave_result)
 
     use global_parameters,           only: sp, dp, pi, deg2rad, myrank, &
                                            id_fwd, id_bwd, id_fft, id_mc, id_filter_conv, &
                                            id_inv_mesh, id_kernel, id_init, id_int_model, &
-                                           id_element
+                                           id_element, id_int_hetero
 
     use inversion_mesh,              only: inversion_mesh_data_type
     use readfields,                  only: semdata_type
@@ -226,16 +241,18 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     use montecarlo,                  only: integrated_type, allallconverged, allisconverged
     use kernel,                      only: calc_basekernel, calc_physical_kernels
     use backgroundmodel,             only: backgroundmodel_type, nmodel_parameters
+    use heterogeneities,             only: hetero_type, nmodel_parameters_hetero         
     use clocks_mod,                  only: tick, get_clock, reset_clock
 
     type(inversion_mesh_data_type), intent(in)    :: inv_mesh
     type(parameter_type),           intent(in)    :: parameters
     type(semdata_type),             intent(in)    :: sem_data
     type(rfft_type),                intent(in)    :: fft_data
+    type(hetero_type),    intent(in), optional    :: het_model
     type(slave_result_type)                       :: slave_result
 
     type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
-    type(integrated_type), allocatable  :: int_kernel(:), int_model(:)
+    type(integrated_type), allocatable  :: int_kernel(:), int_model(:), int_hetero(:)
     type(backgroundmodel_type)          :: bg_model, coeffs_random_points
 
     real(kind=dp),    allocatable       :: fw_field(:,:,:)
@@ -250,6 +267,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
     integer,          allocatable       :: niterations(:,:)
     real(kind=dp),    allocatable       :: model_random_points(:,:) 
+    real(kind=dp),    allocatable       :: model_random_points_hetero(:,:) 
 
     real(kind=dp)                       :: volume
 
@@ -284,6 +302,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(slave_result%niterations(parameters%nkernel, nelements))
     allocate(slave_result%computation_time(nelements))
     allocate(slave_result%model(nmodel_parameters, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%hetero_model(nmodel_parameters_hetero, nbasisfuncs_per_elem, nelements))
     
     allocate(fw_field(ndumps, ndim, nptperstep))
     allocate(bw_field(ndumps, ndim, nptperstep))
@@ -300,6 +319,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
     allocate(kernelvalue_physical(nptperstep, parameters%nkernel))
 
     allocate(model_random_points(nptperstep_model, nmodel_parameters))
+    allocate(model_random_points_hetero(nptperstep_model, nmodel_parameters_hetero))
+
 
     volume = 0.0
 
@@ -317,6 +338,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
 
     allocate(random_points(3, nptperstep))
     allocate(int_kernel(nbasisfuncs_per_elem))
+    allocate(int_hetero(nbasisfuncs_per_elem))
     allocate(int_model(nbasisfuncs_per_elem))
 
     iclockold = tick(id=id_init, since=iclockold)
@@ -332,7 +354,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         volume = inv_mesh%get_volume(ielement)
         iclockold = tick(id=id_inv_mesh)
 
-        ! Calculate integrated model parameters for this element
+        !> Background Model Integration <
+        !  Calculate integrated model parameters for this element
         write(lu_out,'(A,I10)', advance='no') ' Integrate model parameters for element ', ielement
         call flush(lu_out)
         iclockold = tick()
@@ -351,17 +374,53 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
               model_random_points  = coeffs_random_points%weight(inv_mesh%weights(ielement,      &  
                                                                                   ibasisfunc,    & 
                                                                                   random_points) )
+
               call int_model(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points))
            end do
            istep_model = istep_model + 1
            if (istep_model.ge.9999) exit ! The model integration should not take forever
         end do
-
         iclockold = tick(id=id_int_model, since=iclockold)
         write(lu_out, '(A,I4,A)') ' ...done after ', istep_model, ' steps.'
         call flush(lu_out)
 
-        ! Initialize basis kernel Monte Carlo integrals for current element
+        !> Heterogeneity Model Integration <
+        !  Calculate integrated heterogeneity structure for this element, optional
+        if (parameters%int_over_hetero) then
+           write(lu_out,'(A,I10)', advance='no') ' Integrate heterogeneities for element ', ielement
+           call flush(lu_out)
+           iclockold = tick()
+           istep_model = 0
+           do ibasisfunc = 1, nbasisfuncs_per_elem
+              call int_hetero(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters_hetero,   & 
+                   volume = 1d0,                 & 
+                   allowed_error = 1d-3,         &
+                   allowed_relerror = 1d-2)
+           end do
+           do while (.not.allallconverged(int_hetero))
+              random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, &
+                   parameters%quasirandom)
+              do ibasisfunc = 1, nbasisfuncs_per_elem
+                 ! load weighted random points from heterogeneity structure
+                 model_random_points_hetero = het_model%load_model_coeffs(random_points,inv_mesh%weights(ielement,      &  
+                                                                                                         ibasisfunc,    & 
+                                                                                                         random_points) )
+
+!                 print*,model_random_points_hetero
+                 call int_hetero(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points_hetero))
+              end do
+              istep_model = istep_model + 1
+              if (istep_model.ge.9999) exit ! The model integration should not take forever
+           end do
+           iclockold = tick(id=id_int_hetero, since=iclockold)
+           write(lu_out, '(A,I4,A)') ' ...done after ', istep_model, ' steps.'
+           call flush(lu_out)
+        end if
+
+
+
+        !> Sensitivity Kernel Integration <
+        !  Initialize basis kernel Monte Carlo integrals for current element
         iclockold = tick()
         do ibasisfunc = 1, nbasisfuncs_per_elem
            call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel,               &
@@ -372,7 +431,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
         end do
 
         do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
-
 
            iclockold = tick(id=id_mc)
 
@@ -544,8 +602,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data) result(slave_resul
            slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
            slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
            slave_result%model(:, ibasisfunc, ielement)           = int_model(ibasisfunc)%getintegral()
+           slave_result%hetero_model(:, ibasisfunc, ielement)    = int_hetero(ibasisfunc)%getintegral()
            call int_kernel(ibasisfunc)%freeme()
            call int_model(ibasisfunc)%freeme()
+           call int_hetero(ibasisfunc)%freeme()
         end do
 
     end do ! ielement
