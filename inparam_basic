@@ -31,7 +31,7 @@ KERNEL_FOR_RELATIVE_PERTURBATIONS  true
 
 # For plotting reasons one may wish to skip the integration over cell-volume.
 # Resulting kernels bear the unit [s/m^3]
-INTEGRATE_OVER_VOLUME true
+INTEGRATE_OVER_VOLUME false
 
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
@@ -87,6 +87,12 @@ ELEMENTS_PER_TASK    100
 
 # Use quasirandom numbers instead of pseudorandom ones
 USE_QUASIRANDOM_NUMBERS true
+
+# Deconvolve the AxiSEM Source Time Function from the wavefield.
+# This is the correct way to do it, but it is not 100% stable yet. Leave it off for a while-
+# If set to false, than the wavefield is just time-shifted to account for the STF not centered 
+# at zero time.:
+DECONVOLVE_STF false
 
 # Integration scheme
 # Options:
