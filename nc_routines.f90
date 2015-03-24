@@ -1298,7 +1298,7 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
    integer, intent(in)          :: ncid, varid, start, count
    integer, intent(out)         :: values(:)
    integer                      :: xtype, ndims, status, dimsize
-   integer                      :: dimid(10)
+   integer                      :: dimid(10), status_read
    character(len=nf90_max_name) :: varname, dimname
 
 
@@ -1316,14 +1316,14 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
        stop
    end if
 
-   status = nf90_get_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = [start],        &
-                         count  = [count] )
+   status_read = nf90_get_var(ncid   = ncid,           &
+                              varid  = varid,          &
+                              values = values,         &
+                              start  = [start],        &
+                              count  = [count] )
 
                       
-   if (status.ne.NF90_NOERR) then
+   if (status_read.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -1350,7 +1350,8 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-       call check(status)
+       print *, trim(nf90_strerror(status_read))
+       stop
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -1380,7 +1381,7 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
    integer, intent(in)          :: ncid, varid, start, count
    real, intent(out)            :: values(:)
    integer                      :: xtype, ndims, status, dimsize
-   integer                      :: dimid(10)
+   integer                      :: dimid(10), status_read
    character(len=nf90_max_name) :: varname, dimname
 
 
@@ -1398,14 +1399,14 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
        stop
    end if
 
-   status = nf90_get_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = [start],        &
-                         count  = [count] )
+   status_read = nf90_get_var(ncid   = ncid,           &
+                              varid  = varid,          &
+                              values = values,         &
+                              start  = [start],        &
+                              count  = [count] )
 
                       
-   if (status.ne.NF90_NOERR) then
+   if (status_read.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -1432,7 +1433,7 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-       call check(status)
+       print *, trim(nf90_strerror(status))
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -1462,7 +1463,7 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
    integer, intent(in)          :: ncid, varid, start, count
    real(kind=dp), intent(out)   :: values(:)
    integer                      :: xtype, ndims, status, dimsize
-   integer                      :: dimid(10)
+   integer                      :: dimid(10), status_read
    character(len=nf90_max_name) :: varname, dimname
 
 
@@ -1480,14 +1481,14 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
        stop
    end if
 
-   status = nf90_get_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = [start],        &
-                         count  = [count] )
+   status_read = nf90_get_var(ncid   = ncid,           &
+                              varid  = varid,          &
+                              values = values,         &
+                              start  = [start],        &
+                              count  = [count] )
 
                       
-   if (status.ne.NF90_NOERR) then
+   if (status_read.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -1513,7 +1514,8 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-       call check(status)
+       print *, trim(nf90_strerror(status_read))
+       stop
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -1544,7 +1546,7 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
    integer, intent(in)          :: start(2), count(2)
    real, intent(out)            :: values(:,:)
    integer                      :: xtype, ndims, status, dimsize, idim
-   integer                      :: dimid(10)
+   integer                      :: dimid(10), status_read
    character(len=nf90_max_name) :: varname, dimname
 
 
@@ -1566,16 +1568,16 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
        end if
    end do
 
-   ! Write data to file
-   status = nf90_get_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = start,          &
-                         count  = count )
+   ! Read data from file
+   status_read = nf90_get_var(ncid   = ncid,           &
+                              varid  = varid,          &
+                              values = values,         &
+                              start  = start,          &
+                              count  = count )
 
                       
    ! If an error has occurred, try to find a reason                  
-   if (status.ne.NF90_NOERR) then
+   if (status_read.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -1609,7 +1611,7 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           call check(status)
+           print *, trim(nf90_strerror(status_read))
 
        end do
 
@@ -1645,7 +1647,7 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
    integer, intent(in)          :: start(2), count(2)
    integer, intent(inout), allocatable :: values(:,:)
    integer                      :: xtype, ndims, status, dimsize, idim
-   integer                      :: dimid(10)
+   integer                      :: dimid(10), status_read
    character(len=nf90_max_name) :: varname, dimname
 
    status = nf90_inquire_variable(ncid  = ncid,     &
@@ -1666,15 +1668,15 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
        end if
    end do
 
-   ! Write data to file
-   status = nf90_get_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = start,          &
-                         count  = count )
+   ! Read data from file
+   status_read = nf90_get_var(ncid   = ncid,           &
+                              varid  = varid,          &
+                              values = values,         &
+                              start  = start,          &
+                              count  = count )
 
    ! If an error has occurred, try to find a reason                  
-   if (status.ne.NF90_NOERR) then
+   if (status_read.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -1703,17 +1705,17 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
            if (start(idim) + count(idim) - 1 > dimsize) then
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
-               print *, trim(nf90_strerror(status))
+               print *, trim(nf90_strerror(status_read))
                stop 2
            end if
 
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
 
        end do
 
+       print *, trim(nf90_strerror(status_read))
        stop
    
    elseif (verbose>1) then
@@ -1746,7 +1748,7 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
    integer, intent(in)          :: start(3), count(3)
    integer, intent(out)         :: values(count(1), count(2), count(3))
    integer                      :: xtype, ndims, status, dimsize, idim
-   integer                      :: dimid(10)
+   integer                      :: dimid(10), status_read
    character(len=nf90_max_name) :: varname, dimname
 
    status = nf90_inquire_variable(ncid  = ncid,     &
@@ -1768,16 +1770,16 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
        end if
    end do
 
-   ! Write data to file
-   status = nf90_get_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = start,          &
-                         count  = count )
+   ! Read data from file
+   status_read = nf90_get_var(ncid   = ncid,           &
+                              varid  = varid,          &
+                              values = values,         &
+                              start  = start,          &
+                              count  = count )
 
                       
    ! If an error has occurred, try to find a reason                  
-   if (status.ne.NF90_NOERR) then
+   if (status_read.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -1815,7 +1817,7 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_read))
            call flush(6)
 
        end do
@@ -1852,7 +1854,7 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
    integer, intent(in)          :: start(3), count(3)
    real, intent(out)            :: values(:,:,:)
    integer                      :: xtype, ndims, status, dimsize, idim
-   integer                      :: dimid(10)
+   integer                      :: dimid(10), status_read
    character(len=nf90_max_name) :: varname, dimname
 
 
@@ -1873,8 +1875,8 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
        end if
    end do
 
-   ! Write data to file
-   status = nf90_get_var(ncid   = ncid,           &
+   ! Read data from file
+   status_read = nf90_get_var(ncid   = ncid,      &
                          varid  = varid,          &
                          values = values,         &
                          start  = start,          &
@@ -1882,7 +1884,7 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
 
                       
    ! If an error has occurred, try to find a reason                  
-   if (status.ne.NF90_NOERR) then
+   if (status_read.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -1918,7 +1920,7 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_read))
 
        end do
 
