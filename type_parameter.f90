@@ -560,6 +560,7 @@ subroutine read_kernel(this, sem_data, filter)
          if (.not.testing) then
            ! Communicate the model parameter index back to the master
            call pbroadcast_int(this%kernel(ikernel)%model_parameter_index, 1)
+           call pbroadcast_int(this%kernel(ikernel)%hetero_parameter_index, 1)
          end if
 
 

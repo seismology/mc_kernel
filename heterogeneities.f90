@@ -6,11 +6,15 @@ module heterogeneities
 
   implicit none
 
-  integer, parameter           :: nmodel_parameters_hetero = 3 !< Number of basic model parameters
-                                                               !! which may be used in these tests
-                                                               !! So far: vp, vs, rho
-  character(len=6), parameter  :: parameter_name_het(nmodel_parameters_hetero) =  &
-                                  ['dlnvp ', 'dlnvs ', 'dlnrho']
+  integer, parameter           :: nmodel_parameters_hetero = 3   !< Number of basic model parameters
+                                                                 !! which may be used in these tests
+                                                                 !! So far: vp, vs, rho
+
+  character(len=3), parameter  :: parameter_name_het(nmodel_parameters_hetero) =  &
+                                  ['vp ', 'vs ', 'rho']          ! to identify them for integration
+  character(len=6), parameter  :: parameter_name_het_store(nmodel_parameters_hetero) =  &
+                                  ['dlnvp ', 'dlnvs ', 'dlnrho'] ! how to store in netcdf
+
   type hetero_type
      private
 
@@ -25,6 +29,7 @@ module heterogeneities
        procedure, pass   :: load_het_rtpv
        procedure, pass   :: build_hetero_kdtree
        procedure, pass   :: load_model_coeffs
+       procedure, nopass   :: get_hetparam_index
 
     end type hetero_type
 
@@ -55,7 +60,6 @@ module heterogeneities
 
       ! read line by line
       do i=1,this%nhet
-!         print*,i
          ! r t p dlnvp dlnvs dlnrho
          read(iinput_hetero,*) r,t,p,this%dlnhet(:,i)
          sph(1) = r * 1000.d0 ! convert to [m]
@@ -66,11 +70,7 @@ module heterogeneities
          this%coords(1,i)=car(1) ! x
          this%coords(2,i)=car(2) ! y
          this%coords(3,i)=car(3) ! z
-!         print*,this%coords(:,i),this%dlnhet(:,i)
       end do
-
-!      print*,"Read HETEROGENEITY structure"
-
       close(iinput_hetero)
       
     end subroutine load_het_rtpv
@@ -150,6 +150,31 @@ module heterogeneities
      
     end function load_model_coeffs
     !-----------------------------------------------------------------------------------------
+
+    !-----------------------------------------------------------------------------------------
+    function get_hetparam_index(model_parameter)
+      use commpi, only   : pabort
+      character(len=3)  :: model_parameter
+      integer           :: get_hetparam_index      
+      integer           :: iparam
+      
+      ! Determine the index of the model parameter in the list defined in backgroundmodel.f90
+      do iparam = 1, nmodel_parameters_hetero
+         if (model_parameter == parameter_name_het(iparam)) then
+            get_hetparam_index = iparam
+            exit
+         end if
+      end do
+      if (iparam == nmodel_parameters_hetero + 1) then
+         print '("ERROR: Unknown hetero parameter for kernel", A)', &
+              trim(model_parameter)
+         print '("Available options: ", 10(A3))', parameter_name_het
+         call pabort(do_traceback=.false.)
+      end if
+      
+    end function get_hetparam_index
+    !-----------------------------------------------------------------------------------------
+
     
         
   end module heterogeneities

@@ -338,8 +338,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
     allocate(random_points(3, nptperstep))
     allocate(int_kernel(nbasisfuncs_per_elem))
-    allocate(int_hetero(nbasisfuncs_per_elem))
     allocate(int_model(nbasisfuncs_per_elem))
+    if (parameters%int_over_hetero) then
+       allocate(int_hetero(nbasisfuncs_per_elem))
+    end if
 
     iclockold = tick(id=id_init, since=iclockold)
 
@@ -405,8 +407,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                  model_random_points_hetero = het_model%load_model_coeffs(random_points,inv_mesh%weights(ielement,      &  
                                                                                                          ibasisfunc,    & 
                                                                                                          random_points) )
-
-!                 print*,model_random_points_hetero
                  call int_hetero(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points_hetero))
               end do
               istep_model = istep_model + 1
@@ -602,10 +602,12 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
            slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
            slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
            slave_result%model(:, ibasisfunc, ielement)           = int_model(ibasisfunc)%getintegral()
-           slave_result%hetero_model(:, ibasisfunc, ielement)    = int_hetero(ibasisfunc)%getintegral()
            call int_kernel(ibasisfunc)%freeme()
            call int_model(ibasisfunc)%freeme()
-           call int_hetero(ibasisfunc)%freeme()
+           if (parameters%int_over_hetero) then
+              slave_result%hetero_model(:, ibasisfunc, ielement)    = int_hetero(ibasisfunc)%getintegral()
+              call int_hetero(ibasisfunc)%freeme()              
+           end if
         end do
 
     end do ! ielement

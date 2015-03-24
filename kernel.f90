@@ -24,6 +24,7 @@ implicit none
     character(len=4)                     :: misfit_type
     character(len=16), public            :: model_parameter
     integer,           public            :: model_parameter_index
+    integer,           public            :: hetero_parameter_index
     character(len=32)                    :: strain_type 
     type(filter_type), pointer           :: filter
     integer, public                      :: ntimes            !< Length of time window in samples
@@ -61,6 +62,7 @@ contains
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                 seis, dt, timeshift_fwd, deconv_stf, write_smgr)
    use backgroundmodel, only                : get_parameter_index
+   use heterogeneities, only                : get_hetparam_index
               
    class(kernelspec_type)                  :: this
    character(len=*), intent(in)            :: name
@@ -119,6 +121,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    call tabulate_kernels(this%model_parameter, this%needs_basekernel, this%strain_type)
 
    this%model_parameter_index = get_parameter_index(this%model_parameter)
+   this%hetero_parameter_index = get_hetparam_index(this%model_parameter)
 
    if (verbose>0) then
       write(lu_out,*) '  ---------------------------------------------------------'
@@ -129,6 +132,7 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
       write(lu_out,'(2(A))')         '   Misfit type:  ', this%misfit_type
       write(lu_out,'(2(A))')         '   Model param:  ', this%model_parameter
       write(lu_out,'(A, I3)')        '   Param index:  ', this%model_parameter_index
+      write(lu_out,'(A, I3)')        '   Het3d index:  ', this%hetero_parameter_index
       write(lu_out,'(2(A))')         '   Filter type:  ', this%filter%filterclass
       write(lu_out,'(A,4(F8.3))')    '   Filter freq:  ', this%filter%frequencies
       if (present(timeshift_fwd)) then

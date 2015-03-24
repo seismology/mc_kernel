@@ -7,7 +7,8 @@ module master_queue
   use nc_routines,                 only: nc_create_file, nc_close_file, &
                                          nc_putvar_by_name
   use backgroundmodel,             only: nmodel_parameters, parameter_name
-  use heterogeneities,             only: nmodel_parameters_hetero,parameter_name_het
+  use heterogeneities,             only: nmodel_parameters_hetero,parameter_name_het, &
+                                         parameter_name_het_store
   implicit none
   private
   
@@ -255,6 +256,7 @@ subroutine finalize()
   real(kind=sp), allocatable    :: rel_error(:)
   character(len=64)             :: xdmf_varname
   real(kind=dp)                 :: total_time
+  real(kind=dp)                 :: delay_time
   integer                       :: imodel
 
 
@@ -304,7 +306,7 @@ subroutine finalize()
 
         call inv_mesh%add_node_variable(var_name    = 'hetero',                                  &
                                         nentries    = nmodel_parameters_hetero,              &
-                                        entry_names = parameter_name_het )
+                                        entry_names = parameter_name_het_store )
 
                                                      
         call inv_mesh%add_node_data(var_name = 'kernel',                      &
@@ -336,7 +338,7 @@ subroutine finalize()
 
         call inv_mesh%add_cell_variable(var_name    = 'hetero',                                  &
                                         nentries    = nmodel_parameters_hetero,              &
-                                        entry_names = parameter_name_het )
+                                        entry_names = parameter_name_het_store )
 
                                                      
         call inv_mesh%add_cell_data(var_name = 'kernel',                      &
@@ -424,11 +426,20 @@ subroutine finalize()
   call inv_mesh%free_node_and_cell_data()
   call inv_mesh%freeme()
 
-  ! Multiply kernels with model
+  ! Multiply kernels with model to get absolute traveltime of "phase"
   do ikernel = 1, parameters%nkernel
     total_time = sum(K_x(:, ikernel) * Bg_Model(:, parameters%kernel(ikernel)%model_parameter_index))
     print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, total_time
   end do
+
+  ! Multiply relative kernels with heterogeneities to get traveltime shift
+  if (parameters%int_over_hetero) then     
+     do ikernel = 1, parameters%nkernel
+        delay_time = sum(K_x(:, ikernel) * Het_Model(:, parameters%kernel(ikernel)%hetero_parameter_index))/100.d0
+        print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, delay_time
+     end do
+  end if
+     
 
 end subroutine finalize
 !-----------------------------------------------------------------------------------------

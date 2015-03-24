@@ -41,7 +41,7 @@ subroutine check_montecarlo_integral(this, func_values)
     integer                                   :: npoints, ifuncs
     
     if (.not.this%isinitialized) then
-       write(*,*) 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first 1'
        call pabort 
     end if
 
@@ -175,7 +175,7 @@ function getintegral(this)
     real(kind=dp), dimension(this%nfuncs) :: getintegral
 
     if (.not.this%isinitialized) then
-       write(*,*) 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first 2'
        call pabort 
     end if
     getintegral = this%integral
@@ -189,7 +189,7 @@ function getvariance(this)
     real(kind=dp), dimension(this%nfuncs) :: getvariance
 
     if (.not.this%isinitialized) then
-       write(*,*) 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first 3'
        call pabort 
     end if
     getvariance = this%variance
@@ -204,7 +204,7 @@ function countconverged(this, ikernels)
     integer, optional, intent(in) :: ikernels(:)
 
     if (.not.this%isinitialized) then
-       write(*,*) 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first 3'
        call pabort 
     end if
 
@@ -224,7 +224,7 @@ function areallconverged(this, ikernels)
     integer, optional, intent(in) :: ikernels(:)
 
     if (.not.this%isinitialized) then
-       write(*,*) 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first 4'
        call pabort 
     end if
 
@@ -244,7 +244,7 @@ function isconverged(this, ifunc)
     logical                               :: isconverged
 
     if (.not.this%isinitialized) then
-       write(*,*) 'Initialize this MC type first'
+       write(*,*) 'Initialize this MC type first 5'
        call pabort 
     end if
 
