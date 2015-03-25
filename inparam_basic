@@ -6,6 +6,7 @@ BWD_DIR              './wavefield/bwd/'
 SOURCE_FILE          'CMTSOLUTION'
 RECEIVER_FILE        'receiver.dat'
 FILTER_FILE          'filters.dat'
+STF_FILE             'stf.dat'
 
 # Select the mesh file type. Allowed values are
 # abaqus      : .inp file, can be generated with Qubit or other codes. Can

@@ -8,7 +8,6 @@ module source_class
 
     private
     public   :: src_param_type
-    public   :: fft_stf
 
     type src_param_type
         real(kind=dp)               :: mij(6)              ! Mrr Mtt Mpp Mrt Mrp Mtp
@@ -31,7 +30,7 @@ module source_class
            procedure, pass                   :: read_cmtsolution
            procedure, pass                   :: def_rot_matrix
            procedure, pass                   :: set_shift_time_sample
-           procedure, pass                   :: load_stf
+           procedure, pass                   :: read_stf
     end type
 contains
 
@@ -213,14 +212,14 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine load_stf(this, filename, dt)
+subroutine read_stf(this, filename) !, dt)
    use lanczos,             only   : lanczos_resample
    class(src_param_type)          :: this
-   character(len=*)               :: filename
-   real(kind=dp), intent(in)      :: dt           !dt to which to resample the STF
+   character(len=*)               :: filename  ! file from which to read the STF
+   !real(kind=dp), intent(in)      :: dt        ! dt to which to resample the STF
 
-   real(kind=dp), allocatable     :: time_orig(:), time_new(:)
-   real(kind=dp)                  :: dt_orig
+   !real(kind=dp), allocatable     :: time_orig(:), time_new(:)
+   !real(kind=dp)                  :: dt_orig
    integer                        :: nsamp_orig
    integer                        :: lu_stf, isamp, ioerr
 
@@ -240,13 +239,13 @@ subroutine load_stf(this, filename, dt)
    end do
    close(lu_stf)
 
-   this%stf_dt_resampled = dt
+   !this%stf_dt_resampled = dt
 
-   this%stf_resampled = lanczos_resample(this%stf, this%stf_dt, dt, a=8)
+   !this%stf_resampled = lanczos_resample(this%stf, this%stf_dt, dt, a=8)
 
    this%have_stf = .true.
 
-end subroutine load_stf
+end subroutine read_stf
 !-----------------------------------------------------------------------------------------
 
 end module
