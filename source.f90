@@ -31,7 +31,7 @@ module source_class
            procedure, pass                   :: read_cmtsolution
            procedure, pass                   :: def_rot_matrix
            procedure, pass                   :: set_shift_time_sample
-           procedure, pass                   :: resample_stf
+           procedure, pass                   :: load_stf
     end type
 contains
 
@@ -213,148 +213,40 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine resample_stf(this, dt, nsamp)
+subroutine load_stf(this, filename, dt)
+   use lanczos,             only   : lanczos_resample
    class(src_param_type)          :: this
-   real(kind=dp), intent(in)      :: dt
-   integer, intent(in)            :: nsamp
+   character(len=*)               :: filename
+   real(kind=dp), intent(in)      :: dt           !dt to which to resample the STF
 
    real(kind=dp), allocatable     :: time_orig(:), time_new(:)
    real(kind=dp)                  :: dt_orig
    integer                        :: nsamp_orig
-   integer                        :: i, j
+   integer                        :: lu_stf, isamp, ioerr
 
-   if (this%have_stf) then
+   ! Read STF from input file 'filename'
+   open(newunit=lu_stf, file=trim(filename), status='old', &
+        action='read', iostat=ioerr)
 
-      nsamp_orig = size(this%stf)
-      dt_orig = this%stf_dt
+   if (ioerr /= 0) then
+      print *, 'ERROR: Check STF input file ''', trim(filename), '''! Is it still there?' 
+      call pabort
+   end if
 
-      allocate(time_orig(nsamp_orig))
-      allocate(time_new(nsamp))
+   read(lu_stf,*) nsamp_orig, this%stf_dt
+   allocate(this%stf(nsamp_orig))
+   do isamp = 1, nsamp_orig
+     read(lu_stf,*) this%stf(isamp)
+   end do
+   close(lu_stf)
 
-      if (allocated(this%stf_resampled)) deallocate(this%stf_resampled)
-      allocate(this%stf_resampled(nsamp))
+   this%stf_dt_resampled = dt
 
-      this%stf_dt_resampled = dt
+   this%stf_resampled = lanczos_resample(this%stf, this%stf_dt, dt, a=8)
 
-      do i = 1, nsamp_orig
-         time_orig(i) = (i-1) * dt_orig
-      enddo
+   this%have_stf = .true.
 
-      do i = 1, nsamp
-         time_new(i) = (i-1) * dt
-      enddo
-
-      this%stf_resampled(:) = 0
-
-      outer: do i = 1, nsamp
-         inner: do j = 1, nsamp_orig
-            if (time_new(i) <= time_orig(j)) then
-               if (j < 2) then
-                  this%stf_resampled(i) = 0
-               else
-                  this%stf_resampled(i) = &
-                          this%stf(j-1) * (time_orig(j) - time_new(i))      / dt_orig &
-                        + this%stf(j)   * (time_new(i)  - time_orig(j - 1)) / dt_orig 
-               endif
-
-               cycle outer
-            endif
-         enddo inner
-      enddo outer
-
-   else
-      ! no stf provided, so we assume a dirac
-      if (allocated(this%stf_resampled)) deallocate(this%stf_resampled)
-      allocate(this%stf_resampled(nsamp))
-
-      this%stf_resampled = 0
-      this%stf_resampled(1) = 1d0 / dt
-      this%stf_dt_resampled = dt
-   endif
-
-end subroutine resample_stf
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine fft_stf(sources, stf_fwd)
-
-   use fft, only : rfft_type
-   type(src_param_type), intent(inout)  :: sources(:)
-   real(kind=dp), optional              :: stf_fwd(:)
-
-   type(rfft_type)                  :: fftt
-   integer                          :: nsources, nsamp
-   real(kind=dp)                    :: dt
-   integer                          :: isource
-   real(kind=dp), allocatable       :: stf_buf(:,:)
-   complex(kind=dp), allocatable    :: stf_buf_fd(:,:)
-   complex(kind=dp), allocatable    :: stf_fwd_fd(:,:)
-
-   nsources = size(sources)
-
-   do isource=1, nsources
-      if (.not. allocated(sources(isource)%stf_resampled)) then
-         write(6,*) 'ERROR: stf needs to be resampled before fft'
-         call pabort
-      endif
-   enddo
-
-   nsamp = size(sources(1)%stf_resampled)
-   dt = sources(1)%stf_dt_resampled
-
-   do isource=2, nsources
-      if (size(sources(isource)%stf_resampled) /= nsamp) then
-         write(6,*) 'ERROR: stfs have incompatible number of samples'
-         call pabort
-      endif
-
-      if (sources(isource)%stf_dt_resampled /= dt) then
-         write(6,*) 'ERROR: stfs have incompatible dt'
-         call pabort
-      endif
-   enddo
-
-   if (present(stf_fwd)) then
-      if (size(stf_fwd) /= nsamp) then
-         write(6,*) 'ERROR: stf_fwd has incompatible number of samples'
-         call pabort
-      endif
-   endif
-    
-   call fftt%init(ntimes_in=nsamp*2, ndim=1, ntraces=1, dt=dt, nfft=nsamp*2)
-
-   allocate(stf_buf(nsamp*2,1))
-   allocate(stf_buf_fd(fftt%get_nomega(),1))
-
-   if (present(stf_fwd)) then
-       allocate(stf_fwd_fd(fftt%get_nomega(),1))
-       stf_buf = 0
-       stf_buf(1:nsamp,1) = stf_fwd
-
-       call fftt%rfft(stf_buf, stf_fwd_fd)
-   endif
-
-   do isource=1, nsources
-      if (allocated(sources(isource)%stf_fd)) deallocate(sources(isource)%stf_fd)
-      allocate(sources(isource)%stf_fd(fftt%get_nomega()))
-
-      stf_buf = 0
-      stf_buf(1:nsamp,1) = sources(isource)%stf_resampled
-
-      call fftt%rfft(stf_buf, stf_buf_fd)
-
-      sources(isource)%stf_fd = stf_buf_fd(:,1)
-
-      if (present(stf_fwd)) then
-         if (allocated(sources(isource)%stf_reconv_fd)) &
-             deallocate(sources(isource)%stf_reconv_fd)
-         allocate(sources(isource)%stf_reconv_fd(fftt%get_nomega()))
-
-         sources(isource)%stf_reconv_fd = sources(isource)%stf_fd / stf_fwd_fd(:,1)
-      endif
-   enddo
-
-end subroutine
+end subroutine load_stf
 !-----------------------------------------------------------------------------------------
 
 end module
