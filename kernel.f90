@@ -152,6 +152,7 @@ end subroutine init
 !! Is called by init subroutine
 subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_fwd)
    use filtering,                     only  : timeshift_type
+   use simple_routines,               only  : check_nan
    class(kernelspec_type)                  :: this
    real(kind=dp), intent(in)               :: seis(:)
    logical, intent(in)                     :: deconv_stf
@@ -162,9 +163,10 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    type(timeshift_type)                    :: timeshift
    complex(kind=dp), allocatable           :: seis_fd(:,:)
    real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
-   real(kind=dp),    allocatable           :: seis_filtered(:,:)
+   real(kind=dp),    allocatable           :: seis_filtered(:,:), f(:)
    real(kind=dp)                           :: normalization_term
-   integer                                 :: ntimes, ntimes_ft, nomega, isample
+   integer                                 :: ntimes, ntimes_ft, nomega, isample, nan_loc(2)
+   logical                                 :: isnan 
 
    ! Save seismogram in the timewindow of this kernel
 
@@ -203,6 +205,25 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    seis_fd = this%filter%apply_2d(seis_fd)
    call fft_data%irfft(seis_fd, seis_filtered)
 
+   call check_NaN(seis_filtered, isnan, nan_loc)
+   if (isnan) then
+     print *, myrank, ': ERROR: NaN found in seismogram:'
+     print *, 'NaN index: ', nan_loc
+     print *, 'Wrote seismogram to seis_nan.txt'
+     open(unit=100, file='seis_nan.txt', action='write')
+     do isample = 1, size(seis_filtered,1)
+         write(100,*) this%t(isample), seis_filtered(isample,1)
+     end do
+     close(100)
+     open(unit=100, file='seis_nan_fd.txt', action='write')
+     f = fft_data%get_f()
+     do isample = 1, size(seis_fd,1)
+         write(100,*) f(isample), seis_fd(isample,1)
+     end do
+     close(100)
+     stop
+   end if
+
    call fft_data%freeme()
 
    ! Cut timewindow of the kernel from the seismogram
@@ -235,10 +256,10 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
 
    ! Integrate over squared seismogram for normalization term in 5.13, TNM thesis
    normalization_term = this%integrate_parseval(this%seis_cut, this%seis_cut)                  
-   if (normalization_term.lt.1.d-100) then
-       this%normalization = 0
+   if (normalization_term.gt.1.d-100) then
+       this%normalization = 1.d0 / normalization_term 
    else
-       this%normalization = 1.d0 / normalization_term !/sum(this%seis_cut**2)
+       this%normalization = 0
    end if
    
    if (verbose>0) then

@@ -175,22 +175,27 @@ end subroutine create
 
 !-----------------------------------------------------------------------------------------
 !> Devides the transferfunction of the filter with the complex spectra of 
-!! the Source time functions of the SEM simulation, to cancel its effect.
-!! The filter is multiplied with the square root of the STF spectra, since it is
-!! applied twice later. (We could get around this by having separate filters for 
-!! the forward and the backward field.
-subroutine add_stfs(this, stf_fwd, stf_bwd)
+!! the Source time function of the forward SEM simulation, to cancel its effect.
+!! The filter uses only the forward STF, since fwd and bwd simulation are checked to
+!! have the same STF in readfields.f90
+!! We could get around this by having separate filters for the forward and the backward 
+!! field. 
+!! If we had nothing else to do.
+subroutine add_stfs(this, stf_fwd, amplitude_fwd)
     use fft,                     only: rfft_type, taperandzeropad
     use simple_routines,         only: firstderiv
     class(filter_type)              :: this
-    real(kind=dp)   , intent(in)    :: stf_fwd(:), stf_bwd(:)
+    real(kind=dp)   , intent(in)    :: stf_fwd(:)
+    real(kind=dp)   , intent(in)    :: amplitude_fwd
 
-    real(kind=dp)   , allocatable   :: stfs(:,:), stfs_td(:,:), t(:)
-    complex(kind=dp), allocatable   :: stfs_fd(:,:)
+    ! The FFT routines need 2D arrays. Second dimension will be size 1
+    real(kind=dp)   , allocatable   :: stf(:,:), stf_td(:,:), t(:)
+    complex(kind=dp), allocatable   :: stf_fd(:,:), lowpass(:)
 
     type(rfft_type)                 :: fft_stf
     character(len=64)               :: fnam
     integer                         :: ifreq
+    real(kind=dp)                   :: waterlevel
 
     if (.not.this%initialized) then
        write(*,*) 'ERROR: Filter is not initialized yet'
@@ -204,20 +209,17 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 
     call fft_stf%init(ntimes_in = size(stf_fwd), &
                       ndim      = 1,             &
-                      ntraces   = 2             )
+                      ntraces   = 1             )
 
 
-    allocate(stfs(size(stf_fwd), 2))
-    allocate(stfs_fd(this%nfreq, 2))
-    allocate(stfs_td(fft_stf%get_ntimes(), 2))
+    allocate(stf(size(stf_fwd), 1))
+    allocate(stf_fd(this%nfreq, 1))
+    allocate(stf_td(fft_stf%get_ntimes(), 1))
     t = fft_stf%get_t()
 
-    !stfs(:,1) = firstderiv(stf_fwd)
-    !stfs(:,2) = firstderiv(stf_bwd)
-    stfs(:,1) = stf_fwd
-    stfs(:,2) = stf_bwd
-    
-    call fft_stf%rfft(taperandzeropad(stfs, fft_stf%get_ntimes(), ntaper = 5), stfs_fd)
+    stf(:,1) = stf_fwd 
+
+    call fft_stf%rfft(taperandzeropad(stf, fft_stf%get_ntimes(), ntaper = 5), stf_fd)
 
     if (firstslave) then
 18     format('stf_spectrum_', A, 2('_', F0.3))
@@ -226,20 +228,33 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
-           write(10,19), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
-                                        real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
+           write(10,19), this%f(ifreq), real(stf_fd(ifreq,1)), imag(stf_fd(ifreq,1))
        end do
        close(10)
     end if
 
-    ! Calculate first derivatice of stfs
-    stfs_fd(:,1) = stfs_fd(:,1) * this%f * 2.0d0 * pi * cmplx(0.0d0,1.0d0)
-    stfs_fd(:,2) = stfs_fd(:,2) * this%f * 2.0d0 * pi * cmplx(0.0d0,1.0d0)
+    ! Calculate first derivatice of the STF
+    stf_fd(:,1) = stf_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0))
 
-    ! Divide filter by spectrum of FFTs
-    this%transferfunction = this%transferfunction / sqrt(stfs_fd(:,1) * stfs_fd(:,2))
-    
-    call fft_stf%irfft(stfs_fd, stfs_td)
+
+    ! Divide filter by spectrum of forward STF. It is established at initialization
+    ! that forward and backward STF are identical.
+    this%transferfunction = this%transferfunction / stf_fd(:,1)
+
+    this%transferfunction = this%transferfunction * amplitude_fwd 
+
+    ! Apply high order butterworth filter to delete frequencies above mesh frequency
+    lowpass = butterworth_lowpass(this%f, this%f(this%nfreq/4), 16)
+    lowpass = lowpass * conjg(lowpass)
+  
+    this%transferfunction = this%transferfunction * lowpass
+
+    ! Replace NaNs with zero
+    where(abs(this%transferfunction).ne.abs(this%transferfunction)) 
+      this%transferfunction = cmplx(0d0, 0d0)
+    end where
+
+    call fft_stf%irfft(stf_fd, stf_td)
 
     call fft_stf%freeme()
 
@@ -259,8 +274,7 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
-           write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
-                                        real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
+           write(10,22), this%f(ifreq), real(stf_fd(ifreq,1)), imag(stf_fd(ifreq,1))
        end do
        close(10)
        
@@ -270,7 +284,7 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, size(stf_fwd)
-          write(10,24), t(ifreq), stfs(ifreq,1), stfs(ifreq,2)
+          write(10,24), t(ifreq), stf_fwd(ifreq)
        end do
        close(10)
        
@@ -280,18 +294,23 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, size(stf_fwd)
-          write(10,26), t(ifreq), stfs_td(ifreq,1), stfs_td(ifreq,2)
+          write(10,26), t(ifreq), stf_td(ifreq,1)
        end do
        close(10)
     end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
-       write(*,*) 'WARNING: Filter is not vanishing fast enough for high frequencies.'
-       write(*,*) 'Numerical noise from frequencies above mesh limit will be propagated'
-       write(*,*) 'into the kernels. Check the files'
-       write(*,*) 'filterresponse*'
-       write(*,*) 'filterresponse_stf_*'
-       write(*,*) 'stf_spectrum_*'
+       if (firstslave) then
+         print *, 'ERROR: Filter ', trim(this%name), ' is not vanishing fast enough for '
+         print *, 'high frequencies.'
+         print *, 'Numerical noise from frequencies above mesh limit will be propagated'
+         print *, 'into the kernels. Check the files'
+         print *, 'filterresponse*'
+         print *, 'filterresponse_stf_*'
+         print *, 'stf_spectrum_*'
+         print *, 'Maximum frequency: ', this%f(maxloc(abs(this%transferfunction),1))
+       end if
+       stop
     end if
 
     this%stf_added = .true.
