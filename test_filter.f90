@@ -73,7 +73,7 @@ subroutine test_filter_gabor_response
                                'complex part of transfer function is zero')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   data_fd = gabor%apply_2d(data_fd)
+   data_fd = gabor%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
@@ -98,7 +98,7 @@ subroutine test_filter_gabor_response
                                'complex part of transfer function is zero')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   data_fd = gabor%apply_2d(data_fd)
+   data_fd = gabor%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
@@ -156,7 +156,7 @@ subroutine test_filter_butterworth_lp_response
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   data_fd = butter%apply_2d(data_fd)
+   data_fd = butter%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
@@ -217,7 +217,7 @@ subroutine test_filter_butterworth_hp_response
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft, ntaper=0), data_fd)
-   data_fd = butter%apply_2d(data_fd)
+   data_fd = butter%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
@@ -278,7 +278,7 @@ subroutine test_filter_butterworth_bp_response
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft, ntaper=0), data_fd)
-   data_fd = butter%apply_2d(data_fd)
+   data_fd = butter%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &

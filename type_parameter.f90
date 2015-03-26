@@ -24,6 +24,7 @@ module type_parameter
         character(len=512)                   :: fwd_dir
         character(len=512)                   :: bwd_dir
         character(len=512)                   :: source_file
+        character(len=512)                   :: stf_file = 'stf.dat'
         character(len=512)                   :: receiver_file
         character(len=512)                   :: filter_file
         character(len=512)                   :: mesh_file
@@ -123,6 +124,8 @@ subroutine read_parameters(this, input_file_in)
 
         case('SOURCE_FILE')
            this%source_file = keyvalue
+        case('STF_FILE')
+           this%stf_file = keyvalue
 
         case('RECEIVER_FILE')
            this%receiver_file = keyvalue
@@ -298,6 +301,7 @@ subroutine read_source(this)
    call pbroadcast_dble_arr(Mij_dyncm, 0)
 
    call this%source%init(lat=latd, lon=lond, mij=Mij_dyncm*1.E-7, depth=depth)
+   call this%source%read_stf(this%stf_file)
 
    write(lu_out,*)
    call flush(lu_out)
@@ -481,9 +485,11 @@ subroutine read_kernel(this, sem_data, filter)
 
        if (this%deconv_stf) then
           do ifilter = 1, nfilter
-              call filter(ifilter)%add_stfs(sem_data%stf_fwd, &
+              call filter(ifilter)%add_stfs(sem_data%stf_fwd,       &
+                                            sem_data%dt,            &
                                             sem_data%amplitude_fwd, &
-                                            sem_data%dt)
+                                            this%source%stf,        &
+                                            this%source%stf_dt)
           end do
        end if
    else
@@ -538,6 +544,7 @@ subroutine read_kernel(this, sem_data, filter)
                                             model_parameter = model_parameter           , &
                                             seis            = sem_data%veloseis(:,irec) , &
                                             dt              = sem_data%dt               , &
+                                            deconv_stf      = this%deconv_stf           , &
                                             timeshift_fwd   = sem_data%timeshift_fwd    , &
                                             write_smgr      = this%write_smgr)
 
