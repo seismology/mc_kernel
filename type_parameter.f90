@@ -544,6 +544,7 @@ subroutine read_kernel(this, sem_data, filter)
                                             model_parameter = model_parameter           , &
                                             seis            = sem_data%veloseis(:,irec) , &
                                             dt              = sem_data%dt               , &
+                                            deconv_stf      = this%deconv_stf           , &
                                             timeshift_fwd   = sem_data%timeshift_fwd    , &
                                             write_smgr      = this%write_smgr)
 
