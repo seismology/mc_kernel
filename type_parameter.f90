@@ -481,7 +481,9 @@ subroutine read_kernel(this, sem_data, filter)
 
        if (this%deconv_stf) then
           do ifilter = 1, nfilter
-              call filter(ifilter)%add_stfs(sem_data%stf_fwd, sem_data%amplitude_fwd)
+              call filter(ifilter)%add_stfs(sem_data%stf_fwd, &
+                                            sem_data%amplitude_fwd, &
+                                            sem_data%dt)
           end do
        end if
    else

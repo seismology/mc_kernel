@@ -181,12 +181,12 @@ end subroutine create
 !! We could get around this by having separate filters for the forward and the backward 
 !! field. 
 !! If we had nothing else to do.
-subroutine add_stfs(this, stf_fwd, amplitude_fwd)
+subroutine add_stfs(this, stf_fwd, amplitude_fwd, stf_dt)
     use fft,                     only: rfft_type, taperandzeropad
     use simple_routines,         only: firstderiv
     class(filter_type)              :: this
     real(kind=dp)   , intent(in)    :: stf_fwd(:)
-    real(kind=dp)   , intent(in)    :: amplitude_fwd
+    real(kind=dp)   , intent(in)    :: amplitude_fwd, stf_dt
 
     ! The FFT routines need 2D arrays. Second dimension will be size 1
     real(kind=dp)   , allocatable   :: stf(:,:), stf_td(:,:), t(:)
@@ -209,7 +209,8 @@ subroutine add_stfs(this, stf_fwd, amplitude_fwd)
 
     call fft_stf%init(ntimes_in = size(stf_fwd), &
                       ndim      = 1,             &
-                      ntraces   = 1             )
+                      ntraces   = 1,             &
+                      dt        = stf_dt )
 
 
     allocate(stf(size(stf_fwd), 1))
