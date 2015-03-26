@@ -131,8 +131,11 @@ subroutine plot_wavefields()
       testing = .false.
 
       write(*,*) ' Timeshift forward field'
-      call timeshift_fwd%init_ts(fft_data%get_f(), sem_data%timeshift_fwd)
-      call timeshift_fwd%apply(fw_field_fd)
+      if (.not.parameters%deconv_stf) then
+        call timeshift_fwd%init_ts(fft_data%get_f(), sem_data%timeshift_fwd)
+        call timeshift_fwd%apply(fw_field_fd)
+      end if
+
       allocate(fw_field(ntimes, ndim, nvertices))
 
       call fft_data%irfft(fw_field_fd, fw_field)
@@ -179,9 +182,12 @@ subroutine plot_wavefields()
           call fft_data%rfft(taperandzeropad(bw_field, ntimes, 2), bw_field_fd)
           deallocate(bw_field)
           
-          write(*,*) ' Timeshift backward field'
-          call timeshift_bwd%init_ts(fft_data%get_f(), sem_data%timeshift_bwd)
-          call timeshift_bwd%apply(bw_field_fd)
+          if (.not.parameters%deconv_stf) then
+            write(*,*) ' Timeshift backward field'
+            call timeshift_bwd%init_ts(fft_data%get_f(), sem_data%timeshift_bwd)
+            call timeshift_bwd%apply(bw_field_fd)
+          end if
+
           allocate(bw_field(ntimes, ndim, nvertices))
           
           call fft_data%irfft(bw_field_fd, bw_field)
@@ -312,9 +318,10 @@ subroutine plot_wavefields()
         testing = .true.
         fw_field_fd = parameters%kernel(1)%apply_filter(fw_field_fd)
         testing = .false.
-
+        
         !Timeshift forward field
-        call timeshift_fwd%apply(fw_field_fd)
+        if (.not.parameters%deconv_stf) call timeshift_fwd%apply(fw_field_fd)
+
         iclockold = tick(id=id_filter_conv, since=iclockold)
 
         call fft_data%irfft(fw_field_fd, fw_field_td)
