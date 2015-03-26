@@ -36,7 +36,7 @@ function lanczos_resample(si, dt_old, dt_new, a)
   real(kind=dp)                   :: dt
 
   n_old = size(si)
-  n_new = n_old * int(dt_old / dt_new)
+  n_new = n_old * dt_old / dt_new
   dt = dt_new / dt_old
 
   allocate(lanczos_resample(n_new))
