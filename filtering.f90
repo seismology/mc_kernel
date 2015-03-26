@@ -243,6 +243,19 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     stf_resampled = lanczos_resample(stf_source, stf_dt, sem_dt, a=8)
     stf_src(1:size(stf_resampled,1),1) = stf_resampled
 
+    ! Write out original Source STF
+    if (firstslave) then
+16     format('stf_source_', A, 2('_', F0.3))
+17     format(3(E16.8))
+       write(fnam,16) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, size(stf_source)
+         write(10,17), stf_dt*(ifreq-1), stf_source(ifreq)
+       end do
+       close(10)
+    end if
+
     ! FT STF of AxiSEM
     call fft_stf%rfft(taperandzeropad(stf_sem, fft_stf%get_ntimes(), ntaper = 5), stf_sem_fd)
 
@@ -300,47 +313,53 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     call fft_stf%freeme()
 
-!    if (firstslave) then
-!20     format('filterresponse_stf_', A, 2('_', F0.3))
-!       write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
-!       open(10, file=trim(fnam), action='write')
-!       do ifreq = 1, this%nfreq
-!          write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
-!                                      imag(this%transferfunction(ifreq))
-!       end do
-!       close(10)
-!       
-!21     format('stf_spectrum_deriv_', A, 2('_', F0.3))
-!22     format(5(E16.8))
-!       write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
-!
-!       open(10, file=trim(fnam), action='write')
-!       do ifreq = 1, this%nfreq
-!           write(10,22), this%f(ifreq), real(stf_sem_fd(ifreq,1)), &
-!                                        imag(stf_sem_fd(ifreq,1))
-!       end do
-!       close(10)
-!       
-!23     format('stf_', A, 2('_', F0.3))
-!24     format(3(E16.8))
-!       write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
-!
-!       open(10, file=trim(fnam), action='write')
-!       do ifreq = 1, size(stf_sem_fwd)
-!          write(10,24), t(ifreq), stf_sem_fwd(ifreq)
-!       end do
-!       close(10)
-!       
-!25     format('stf_deriv_', A, 2('_', F0.3))
-!26     format(3(E16.8))
-!       write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
-!
-!       open(10, file=trim(fnam), action='write')
-!       do ifreq = 1, size(stf_sem_fwd)
-!          write(10,26), t(ifreq), stf_sem_td(ifreq,1)
-!       end do
-!       close(10)
-!    end if   
+    if (firstslave) then
+20     format('filterresponse_stf_', A, 2('_', F0.3))
+       write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, this%nfreq
+          write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
+                                      imag(this%transferfunction(ifreq)), &
+                                      real(this%transferfunction_fwd(ifreq)), &
+                                      imag(this%transferfunction_fwd(ifreq)), &
+                                      real(this%transferfunction_bwd(ifreq)), &
+                                      imag(this%transferfunction_bwd(ifreq))
+       end do
+       close(10)
+       
+21     format('stf_spectrum_deriv_', A, 2('_', F0.3))
+22     format(5(E16.8))
+       write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, this%nfreq
+           write(10,22), this%f(ifreq), real(stf_sem_fd(ifreq,1)), &
+                                        imag(stf_sem_fd(ifreq,1)), &
+                                        real(stf_src_fd(ifreq,1)), &
+                                        imag(stf_src_fd(ifreq,1))
+       end do
+       close(10)
+       
+23     format('stf_', A, 2('_', F0.3))
+24     format(3(E16.8))
+       write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, size(stf_sem_fwd)
+         write(10,24), t(ifreq), stf_sem_fwd(ifreq), stf_src(ifreq,1)
+       end do
+       close(10)
+       
+25     format('stf_deriv_', A, 2('_', F0.3))
+26     format(3(E16.8))
+       write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, size(stf_sem_fwd)
+         write(10,26), t(ifreq), stf_sem_td(ifreq,1), stf_src_td(ifreq,1)
+       end do
+       close(10)
+    end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
        if (firstslave) then
