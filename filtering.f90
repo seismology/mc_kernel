@@ -6,9 +6,13 @@ module filtering
    use commpi,           only           : pabort
    
    implicit none
+   private
+
+   public   filter_type, timeshift_type
 
    type filter_type
-       character(len=32)               :: name
+       private
+       character(len=32), public       :: name
        complex(kind=dp), allocatable   :: transferfunction(:)
        complex(kind=dp), allocatable   :: transferfunction_fwd(:)
        complex(kind=dp), allocatable   :: transferfunction_bwd(:)
@@ -16,8 +20,8 @@ module filtering
        real(kind=dp), allocatable      :: f(:)
        logical                         :: initialized = .false.
        logical                         :: stf_added = .false.
-       character(len=32)               :: filterclass
-       real(kind=dp)                   :: frequencies(4)
+       character(len=32), public       :: filterclass
+       real(kind=dp),     public       :: frequencies(4)
 
        contains
        procedure, pass   :: create
@@ -80,6 +84,9 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     end do
 
     select case(trim(filterclass))
+    case('ident')
+       this%transferfunction = ident(this%f)
+
     case('Gabor')
        this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2))
 
@@ -586,6 +593,19 @@ end subroutine
 !-----------------------------------------------------------------------------!
 !                 BLOCK WITH SEPARATE FILTER ROUTINES                         !
 !-----------------------------------------------------------------------------!
+
+!-----------------------------------------------------------------------------------------
+function ident(f)                        !< identical filter, returns a vector of ones the 
+                                         !! length of f. Exists just for testing reasons.
+
+    real(kind=dp), intent(in)   :: f(:)  !< Frequency array
+
+    real(kind=dp)               :: ident(size(f))
+
+    ident(:) = complex(1.0, 0.0)
+
+end function ident
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by K. Sigloch
