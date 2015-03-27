@@ -284,6 +284,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! Calculate first derivatice of the STF
     stf_sem_fd(:,1) = stf_sem_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0))
+    stf_src_fd(:,1) = stf_src_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0))
 
 
     ! Divide filter by spectrum of forward STF. It is established at initialization
