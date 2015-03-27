@@ -6,6 +6,7 @@ module unit_tests
   use test_source
   use test_montecarlo
   use test_halton_sequence
+  use test_lanczos
   use test_fft_type
   use test_tetrahedra
   use test_voxel
@@ -170,6 +171,10 @@ subroutine test_all
   call test(test_init_halton, 'Init_Halton sequence')
   call test(test_get_halton,  'Get_Halton sequence')
 
+  ! test_lanczos
+  write(6,'(/,a)') 'TEST LANCZOS RESAMPLING MODULE'
+  call test(test_lanczos_resample, 'Lanczos resampling')
+
   ! test_fft_type
   write(6,'(/,a)') 'TEST FFT MODULE'
   call test(test_fft_dirac, 'FFT_dirac')
@@ -183,6 +188,7 @@ subroutine test_all
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
+  call test(test_filter_ident, 'Test Identical filter')
   call test(test_filter_gabor_response, 'Test Gabor filter')
   call test(test_filter_butterworth_lp_response, 'Test Butterworth LP filter')
   call test(test_filter_butterworth_hp_response, 'Test Butterworth HP filter')

@@ -1566,9 +1566,6 @@ subroutine load_seismogram_rdbm(this, rec_in, src_in)
    real(kind=dp), allocatable        :: seismogram_disp(:,:,:)
    real(kind=dp), allocatable        :: seismogram_velo(:,:,:)
 
-   character(len=1)                 :: component   
-   character(len=256)               :: fname
-
    if (.not.this%kdtree_built) then
       print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
       call pabort()

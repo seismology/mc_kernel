@@ -202,7 +202,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
      call timeshift%freeme()
    end if
 
-   seis_fd = this%filter%apply_2d(seis_fd)
+   seis_fd = this%filter%apply_2d(seis_fd, kind='fwd')
    call fft_data%irfft(seis_fd, seis_filtered)
 
    call check_NaN(seis_filtered, isnan, nan_loc)
@@ -715,8 +715,8 @@ function apply_filter_3d(this, freq_series)
                                                        size(freq_series,3))
 
 
-   apply_filter_3d = this%filter%apply_3d(freq_series)
-   apply_filter_3d = this%filter%apply_3d(apply_filter_3d)
+   apply_filter_3d = this%filter%apply_3d(freq_series, kind='fwd')
+   apply_filter_3d = this%filter%apply_3d(apply_filter_3d, kind='bwd')
 
 end function apply_filter_3d
 !-------------------------------------------------------------------------------
@@ -729,8 +729,8 @@ function apply_filter_2d(this, freq_series)
                                                        size(freq_series,2))
 
 
-   apply_filter_2d = this%filter%apply_2d(freq_series)
-   apply_filter_2d = this%filter%apply_2d(apply_filter_2d)
+   apply_filter_2d = this%filter%apply_2d(freq_series, kind='fwd')
+   apply_filter_2d = this%filter%apply_2d(apply_filter_2d, kind='bwd')
 
 end function apply_filter_2d
 !-------------------------------------------------------------------------------

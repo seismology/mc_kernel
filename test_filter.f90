@@ -1,12 +1,85 @@
 !=========================================================================================
 module test_filter
 
-   use global_parameters, only: sp, pi
+   use global_parameters, only: sp, dp, pi
+   use fft, only: rfft_type, taperandzeropad
    use filtering
    use ftnunit
    implicit none
    public
 contains
+
+!-----------------------------------------------------------------------------------------
+subroutine test_filter_ident
+   ! Test identical filter. Is later used to test STF deconvolution, so we should be 
+   ! certain that it works
+   type(filter_type)             :: ident
+   type(rfft_type)               :: fft_data
+   integer, parameter            :: ntimes = 1000, npoints = 1
+   integer                       :: ntimes_ft, nomega
+   character(len=32)             :: filtername, filterclass
+   real(kind=dp)                 :: data_in(ntimes,1)
+   real(kind=dp), allocatable    :: data_filtered_ref(:,:), data_filtered(:,:), tf(:,:), tf_ref(:,:)
+   complex(kind=dp), allocatable :: data_fd(:,:)
+   real(kind=dp)                 :: df, thalf
+   real(kind=dp), parameter      :: dt = 0.1d0
+   integer                       :: x
+
+   filterclass = 'ident'
+   filtername  = 'identical'
+
+   call fft_data%init(ntimes, 1, npoints, dt)
+   ntimes_ft = fft_data%get_ntimes()
+   nomega = fft_data%get_nomega()
+   df = fft_data%get_df()
+
+   allocate(data_filtered(ntimes_ft,1))
+   allocate(data_filtered_ref(ntimes_ft, 1))
+   allocate(data_fd(nomega,1))
+   allocate(tf(nomega, 3))
+   allocate(tf_ref(nomega,2))
+
+   ! Reference transfer function: Real part: 1, imaginary part: 0
+   tf_ref(:,1) = 1.0d0
+   tf_ref(:,2) = 0.0d0
+
+   ! Data to filter: Fumiko-style STF:
+   thalf = 20.d0
+   data_in(1:ntimes/4,1) = 0
+   data_in(ntimes/4+1:ntimes,1) = [(2.d0 * exp(-(x/thalf)**2)*x/thalf**2, x=1, ntimes-ntimes/4 )]
+   data_filtered_ref(:, 1) = 0d0
+   data_filtered_ref(1:ntimes, 1) = data_in(:,1)
+
+   ! Test identical filter
+   call ident%create(filtername, df, nomega, filterclass, [0.0d0, 0.0d0, 0.d0, 0.d0])
+
+   call assert_true(ident%isinitialized(), 'filter is initialized after creation')
+
+   tf = ident%get_transferfunction() 
+  
+   call assert_comparable_real(real(tf(2,1)-tf(1,1)), real(df), 1e-10, &
+                               'df returned by filter equal to df')
+
+   call assert_comparable_real1d(real(tf_ref(1:1024,1)), real(tf(1:1024,2)), 1e-5, &
+                                 ' real part of transfer function is one')
+
+   call assert_comparable_real(real(sum(tf(:,3))), 0.0, 1e-10, &
+                               'complex part of transfer function is zero')
+
+   call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
+   data_fd = ident%apply_2d(data_fd, kind='def')
+   call fft_data%irfft(data_fd, data_filtered)
+
+   call assert_comparable(data_filtered(:,1)+1.d0, &
+                          data_filtered_ref(:,1)+1.d0, 1d-15, &
+                          'Response of ident filter ')
+
+   call ident%deleteme()
+
+   call assert_true(.not.ident%isinitialized(), 'filter is not initialized after deletion')
+
+end subroutine test_filter_ident
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine test_filter_gabor_response
@@ -29,6 +102,7 @@ subroutine test_filter_gabor_response
    call fft_data%init(ntimes, 1, npoints, dt)
    ntimes_ft = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
+   df = fft_data%get_df()
 
    call assert_equal(ntimes_ft, 2048, 'ntimes==expected value')
 
@@ -51,7 +125,6 @@ subroutine test_filter_gabor_response
    read(100,*) tf_ref(1:1024,2)
    close(100)
 
-   df = fft_data%get_df()
 
    ! Test filter with 5s period
    filterclass = 'Gabor'
@@ -73,7 +146,7 @@ subroutine test_filter_gabor_response
                                'complex part of transfer function is zero')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   data_fd = gabor%apply_2d(data_fd)
+   data_fd = gabor%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
@@ -98,7 +171,7 @@ subroutine test_filter_gabor_response
                                'complex part of transfer function is zero')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   data_fd = gabor%apply_2d(data_fd)
+   data_fd = gabor%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
@@ -156,7 +229,7 @@ subroutine test_filter_butterworth_lp_response
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   data_fd = butter%apply_2d(data_fd)
+   data_fd = butter%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
@@ -217,7 +290,7 @@ subroutine test_filter_butterworth_hp_response
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft, ntaper=0), data_fd)
-   data_fd = butter%apply_2d(data_fd)
+   data_fd = butter%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
@@ -278,7 +351,7 @@ subroutine test_filter_butterworth_bp_response
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 
    call fft_data%rfft(taperandzeropad(data_in, ntimes_ft, ntaper=0), data_fd)
-   data_fd = butter%apply_2d(data_fd)
+   data_fd = butter%apply_2d(data_fd, kind='def')
    call fft_data%irfft(data_fd, data_filtered)
 
    call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
