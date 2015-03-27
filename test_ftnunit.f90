@@ -6,6 +6,7 @@ module unit_tests
   use test_source
   use test_montecarlo
   use test_halton_sequence
+  use test_lanczos
   use test_fft_type
   use test_tetrahedra
   use test_voxel
@@ -169,6 +170,10 @@ subroutine test_all
   write(6,'(/,a)') 'TEST HALTON SEQUENCE MODULE'
   call test(test_init_halton, 'Init_Halton sequence')
   call test(test_get_halton,  'Get_Halton sequence')
+
+  ! test_lanczos
+  write(6,'(/,a)') 'TEST LANCZOS RESAMPLING MODULE'
+  call test(test_lanczos_resample, 'Lanczos resampling')
 
   ! test_fft_type
   write(6,'(/,a)') 'TEST FFT MODULE'
