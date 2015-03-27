@@ -381,17 +381,17 @@ subroutine assert_comparable_dble1d( array1, array2, margin, text )
             nofails = nofails + 1
             write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'
             count = 0
+            write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
             do i = 1,size(array1)
                 if ( abs(array1(i)-array2(i)) > &
                          0.5 * margin * (abs(array1(i))+abs(array2(i))) ) then
                     count = count + 1
-                    write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
                     if ( count < 50 ) then
                         write(*,'(i10,e15.5,e15.5)')    i, array1(i), array2(i)
                     endif
-                    write(*,*) 'Number of differences: ', count
                 endif
             enddo
+            write(*,*) 'Number of differences: ', count
         endif
     endif
 end subroutine assert_comparable_dble1d
@@ -486,17 +486,17 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
             nofails = nofails + 1
             write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'
             count = 0
+            write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
             do i = 1,size(array1)
                 if ( abs(array1(i)-array2(i)) > &
                          0.5 * margin * (abs(array1(i))+abs(array2(i))) ) then
                     count = count + 1
-                    write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
                     if ( count < 50 ) then
                         write(*,'(i10,e15.5,e15.5)')    i, array1(i), array2(i)
                     endif
-                    write(*,*) 'Number of differences: ', count
                 endif
             enddo
+            write(*,*) 'Number of differences: ', count
         endif
     endif
 end subroutine assert_comparable_real1d
