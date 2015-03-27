@@ -5,7 +5,7 @@ include make_kerner.macros
 SRCS =	commpi.F90 background_model.f90 buffer.f90 calc_kernels.f90 \
 	clocks.f90 fft_type.f90 filtering.f90 finite_elem_mapping.f90 \
 	ftnunit.f90 global_parameters.f90 halton.f90 inv_mesh.f90 kdtree2.f90 \
-	kernel.f90 master_mod.f90 master_queue.f90 \
+	kernel.f90 lanczos.f90 master_mod.f90 master_queue.f90 \
 	master_slave_parameters.f90 mc_integration.f90 nc_routines.f90 \
 	plot_wavefields.f90 random_tetrahedron.f90 random_voxel.f90 \
 	readfields.f90 receiver.f90 receivers_rdbm.f90 rotations.f90 \
@@ -21,7 +21,7 @@ SRCS =	commpi.F90 background_model.f90 buffer.f90 calc_kernels.f90 \
 
 OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	fft_type.o filtering.o finite_elem_mapping.o ftnunit.o \
-	global_parameters.o halton.o inv_mesh.o kdtree2.o kernel.o \
+	global_parameters.o halton.o inv_mesh.o kdtree2.o kernel.o lanczos.o \
 	master_mod.o master_queue.o master_slave_parameters.o \
 	mc_integration.o nc_routines.o plot_wavefields.o random_tetrahedron.o \
 	random_voxel.o readfields.o receiver.o receivers_rdbm.o rotations.o \
@@ -91,6 +91,7 @@ inv_mesh.o: commpi.o global_parameters.o nc_routines.o random_tetrahedron.o \
 	random_voxel.o Makefile make_kerner.macros 
 kernel.o: background_model.o commpi.o fft_type.o filtering.o \
 	global_parameters.o simple_routines.o Makefile make_kerner.macros 
+lanczos.o: global_parameters.o Makefile make_kerner.macros 
 master_mod.o: master_queue.o master_slave_parameters.o worktype.o Makefile make_kerner.macros 
 master_queue.o: background_model.o clocks.o global_parameters.o inv_mesh.o \
 	nc_routines.o simple_routines.o type_parameter.o worktype.o Makefile make_kerner.macros 
