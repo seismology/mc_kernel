@@ -183,6 +183,7 @@ subroutine test_all
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
+  call test(test_filter_ident, 'Test Identical filter')
   call test(test_filter_gabor_response, 'Test Gabor filter')
   call test(test_filter_butterworth_lp_response, 'Test Butterworth LP filter')
   call test(test_filter_butterworth_hp_response, 'Test Butterworth HP filter')
