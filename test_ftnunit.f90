@@ -144,6 +144,7 @@ subroutine test_all
   call test(test_readfields_read_meshes, 'Read meshes')
   call test(test_readfields_load_fw_points, 'Read FWD points')
   call test(test_readfields_load_model_coeffs, 'Read Model coefficients from SEM mesh')
+  call test(test_load_seismograms_rdbm, 'Read seismograms')
   call test(test_get_chunk_bounds, 'Get_chunk_bounds')
 
   ! test_rotations

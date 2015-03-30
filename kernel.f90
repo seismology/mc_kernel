@@ -1,6 +1,6 @@
 !=========================================================================================
 module kernel
-use global_parameters,                    only: sp, dp, verbose, lu_out, firstslave, myrank
+use global_parameters,                    only: sp, dp, verbose, lu_out, firstslave, myrank, testing
 use filtering,                            only: filter_type
 use fft,                                  only: rfft_type, taperandzeropad
 use commpi,                               only: pabort
@@ -239,7 +239,8 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    ! Set length of kernel time window
    this%ntimes = size(this%seis_cut,1)
 
-   ! Init FFT type for kernel time window, here for Parseval integration
+   ! Init FFT type for kernel time window, here for Parseval integration, but 
+   ! will be used later for integration over waveform kernels
    call this%fft_data%init(this%ntimes, 1, 1, this%dt)
    this%ntimes_ft = this%fft_data%get_ntimes()
    this%nomega    = this%fft_data%get_nomega()
@@ -270,7 +271,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    end if
 
    ! Write seismogram to disk (raw, filtered and cut to time window)
-   if (firstslave.and.write_smgr) then
+   if ((firstslave.and.write_smgr).or.testing) then
       open(unit=100,file='seismogram_raw_'//trim(this%name), action='write')
       do isample = 1, size(seis,1)
          write(100,*) this%t(isample), seis(isample)

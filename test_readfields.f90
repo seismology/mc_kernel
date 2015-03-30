@@ -215,6 +215,85 @@ end subroutine test_readfields_load_fw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+!> Load a seismogram and compare with instaseis
+subroutine test_load_seismograms_rdbm
+   use readfields,     only : semdata_type
+   use type_parameter, only : parameter_type
+   use fft,                                  only: rfft_type, taperandzeropad
+   type(parameter_type)    :: parameters
+   type(semdata_type)      :: sem_data
+   type(rfft_type)         :: fft_data
+   integer                 :: nomega, ntimes, ntimes_reference, isample, lu_seis
+   real(kind=dp)           :: df, dt, t
+   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   
+   call parameters%read_parameters('unit_tests/inparam_load_seismogram')
+   call parameters%read_source()
+   call parameters%read_receiver()
+
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = parameters%strain_type_fwd,  &
+                            desired_source_depth = parameters%source%depth)
+
+   call sem_data%open_files()
+   call sem_data%read_meshes()
+   call sem_data%build_kdtree()
+   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+
+   ! Initialize FFT - just needed to get df and nomega
+   call fft_data%init(ntimes_in = sem_data%ndumps,     &
+                      ndim      = sem_data%get_ndim(), &
+                      ntraces   = 1,                   &
+                      dt        = sem_data%dt)
+
+   ntimes = fft_data%get_ntimes()
+   nomega = fft_data%get_nomega()
+   df     = fft_data%get_df()
+   call fft_data%freeme()
+
+
+   ! Read filters
+   call parameters%read_filter(nomega=nomega, df=df)
+   call parameters%read_kernel(sem_data, parameters%filter)
+
+
+   ! Retrieve seismograms
+   ! 1st one filtered with Butterworth, 6th order at 40s
+   allocate(seis(ntimes))
+   open(newunit=lu_seis, file='seismogram_T001_P_BW', action='read')
+   do isample = 1, ntimes
+     read(lu_seis,*) t, seis(isample)
+   end do
+   close(lu_seis)
+
+   ! Load reference seismogram
+   open(newunit=lu_seis, file='unit_tests/seismogram_ref_T001_P_BW', action='read')
+   read(lu_seis,*) ntimes_reference
+   allocate(seis_ref(ntimes_reference))
+   do isample = 1, ntimes_reference
+     read(lu_seis,*) seis_ref(isample)
+   end do
+   close(lu_seis)
+
+   !call assert_equal(ntimes, ntimes_reference, 'Seismogram length is equal to reference length')
+
+   open(newunit=lu_seis, file='unit_tests_output/seis_comparison.txt', action='write')
+   do isample = 1, ntimes_reference
+     write(lu_seis, *) seis(isample), seis_ref(isample)
+   end do
+   close(lu_seis)
+   call assert_comparable(seis(1:ntimes_reference), seis_ref, 1d-6, &
+                          'Seismogram is comparable to reference seismogram')
+
+
+   call sem_data%close_files()
+
+end subroutine test_load_seismograms_rdbm
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine test_readfields_load_model_coeffs
    use type_parameter, only    : parameter_type
    use backgroundmodel, only   : backgroundmodel_type
