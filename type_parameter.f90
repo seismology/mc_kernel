@@ -126,6 +126,7 @@ subroutine read_parameters(this, input_file_in)
 
         case('SOURCE_FILE')
            this%source_file = keyvalue
+
         case('STF_FILE')
            this%stf_file = keyvalue
 
@@ -225,6 +226,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%filter_file, 0)
   call pbroadcast_char(this%mesh_file_type, 0)
   call pbroadcast_char(this%output_file, 0)
+  call pbroadcast_char(this%stf_file, 0)
   call pbroadcast_char(this%dump_type, 0)
   call pbroadcast_int(this%strain_buffer_size, 0)
   call pbroadcast_int(this%displ_buffer_size, 0)
