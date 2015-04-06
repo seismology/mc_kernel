@@ -448,7 +448,7 @@ function weights(this, ielem, ivertex, points)
                             + this%abinv(ivertex, 4, ielem) * 1
 
 
-          if (weights(ipoint)<0.0) then
+          if (weights(ipoint)<-1d-9) then
             print *, 'ERROR: weights is smaller zero! Check whether point is outside of element'
             print *, '       weight:', weights(ipoint)
             print *, '       dx    :', dx
@@ -456,7 +456,7 @@ function weights(this, ielem, ivertex, points)
             print *, '       dz    :', dz
             call pabort()
           end if
-          if (weights(ipoint)>1.0) then
+          if (weights(ipoint)>1.d0+1d-9) then
             print *, 'ERROR: weights is larger one! Check whether point is outside of element'
             print *, '       weight:', weights(ipoint)
             print *, '       dx    :', dx
