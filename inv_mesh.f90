@@ -419,12 +419,13 @@ end function get_model_coeff
 function weights(this, ielem, ivertex, points)
 !< Calculates the weight that a value at location "points" has on a kernel on vertex 
 !! "ivertex" of element "ielement". Quadrature rules come in here   
+!! Based on Nolet, Breviary, 12.2, p.225
   class(inversion_mesh_type)     :: this
   integer, intent(in)            :: ielem, ivertex
   real(kind=dp), intent(in)      :: points(:,:)
   real(kind=dp)                  :: weights(size(points,2))
   real(kind=dp)                  :: dx, dy, dz
-  integer                        :: ipoint
+  integer                        :: ipoint, i
 
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
@@ -438,34 +439,54 @@ function weights(this, ielem, ivertex, points)
     select case(this%element_type) 
     case('tet')
        do ipoint = 1, size(points, 2)
-          dx = points(1, ipoint) - this%vertices(1, this%connectivity(1,ielem)+1)
-          dy = points(2, ipoint) - this%vertices(2, this%connectivity(1,ielem)+1)
-          dz = points(3, ipoint) - this%vertices(3, this%connectivity(1,ielem)+1)
+         dx = points(1, ipoint) - this%vertices(1, this%connectivity(1, ielem) + 1)
+         dy = points(2, ipoint) - this%vertices(2, this%connectivity(1, ielem) + 1)
+         dz = points(3, ipoint) - this%vertices(3, this%connectivity(1, ielem) + 1)
 
-          weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
-                            + this%abinv(ivertex, 2, ielem) * dy &
-                            + this%abinv(ivertex, 3, ielem) * dz &
-                            + this%abinv(ivertex, 4, ielem) * 1
-
-
-          if (weights(ipoint)<-1d-9) then
-            print *, 'ERROR: weights is smaller zero! Check whether point is outside of element'
-            print *, '       weight:', weights(ipoint)
-            print *, '       dx    :', dx
-            print *, '       dy    :', dy
-            print *, '       dz    :', dz
-            call pabort()
-          end if
-          if (weights(ipoint)>1.d0+1d-9) then
-            print *, 'ERROR: weights is larger one! Check whether point is outside of element'
-            print *, '       weight:', weights(ipoint)
-            print *, '       dx    :', dx
-            print *, '       dy    :', dy
-            print *, '       dz    :', dz
-            call pabort()
-          end if
+         weights(ipoint) =   this%abinv(ivertex, 1, ielem) * dx &
+                           + this%abinv(ivertex, 2, ielem) * dy &
+                           + this%abinv(ivertex, 3, ielem) * dz &
+                           + this%abinv(ivertex, 4, ielem) * 1
 
        end do
+
+       if (any(weights<-1d-9)) then
+         print *, 'ERROR: weight is smaller zero! Check whether point is outside of element'
+         print *, '       Element (local numbering): ', ielem, ', ivertex: ', ivertex
+         print *, '       Vertices:'
+         do i = 1, 4
+           print *, '       ', i, this%vertices(1:3, this%connectivity(i, 1) + 1)
+         end do
+         print *, '       Volume: ', this%get_volume(ielem)
+         print *, ''
+         do ipoint = 1, size(points, 2)
+           print *, '       Point:    ', ipoint
+           print *, '                 ', points(:, ipoint)
+           print *, '       weight:   ', weights(ipoint)
+           print *, '       dx,dy,dz: ', dx, dy, dz
+           print *, ''
+         end do
+         call pabort()
+       end if
+       if (any(weights>1.d0+1d-9)) then
+         print *, 'ERROR: weight is larger one! Check whether point is outside of element'
+         print *, '       Element (local numbering): ', ielem, ', ivertex: ', ivertex
+         print *, '       Vertices:'
+         do i = 1, 4
+           print *, '       ', i, this%vertices(1:3, this%connectivity(i, 1) + 1)
+         end do
+         print *, '       Volume: ', this%get_volume(ielem)
+         print *, ''
+         do ipoint = 1, size(points, 2)
+           print *, '       Point:    ', ipoint
+           print *, '                 ', points(:, ipoint)
+           print *, '       weight:   ', weights(ipoint)
+           print *, '       dx,dy,dz: ', dx, dy, dz
+           print *, ''
+         end do
+         call pabort()
+       end if
+
     case default
         ! Least sophisticated version possible
         weights = 1
