@@ -488,21 +488,21 @@ end subroutine test_point_in_triangle_3d_quasi
 
 
 !-----------------------------------------------------------------------------------------
-subroutine test_rmat4_det
+subroutine test_determinant
   real(kind=dp), dimension(4,4)    :: matrix
-  real(kind=sp)                    :: determinant
+  real(kind=dp)                    :: determinant
 
   matrix(1,:) = [  -1.564774d-01,   8.314711d-01,   5.844147d-01,    9.189849d-01]
   matrix(2,:) = [   3.114814d-01,  -9.285766d-01,   6.982586d-01,    8.679865d-01]
   matrix(3,:) = [   3.574703d-01,   5.154803d-01,   4.862649d-01,   -2.155460d-01] 
   matrix(4,:) = [   3.109558d-01,  -6.576266d-01,   4.120922d-01,   -9.363343d-01]
 
-  determinant = -6.062465e-01
+  determinant = -0.6062464456222997d0
 
-  call assert_comparable_real(real(rmat4_det(matrix)), determinant, 1e-8, &
-                              'Determinant of random matrix')
+  call assert_comparable(determinant_4(matrix), determinant, 1d-15, &
+                         'Determinant of random matrix')
 
-end subroutine test_rmat4_det
+end subroutine test_determinant
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

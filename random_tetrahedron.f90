@@ -8,21 +8,14 @@ module tetrahedra
   public :: generate_random_points_tet, generate_random_points_poly
   public :: generate_random_points_ref_tri
   public :: get_volume_tet, get_volume_poly, get_center_tet
-  public :: rmat4_det, point_in_triangle, point_in_triangle_3d
+  public :: determinant_4, point_in_triangle, point_in_triangle_3d
   public :: point_in_tetrahedron
 contains
 
 !-----------------------------------------------------------------------------------------
-function generate_random_points_tet(v, n, quasirandom)
+function generate_random_points_tet(v, npoints, quasirandom)
 !  returns uniform points in a tetrahedron.
-!
-!    This code is distributed under the GNU LGPL license.
-!
-!  Author:
-!
-!    John Burkardt
-!
-!  Reference:
+!  Adapted from J. Burkardt's code collection, referencing:
 !
 !    Claudio Rocchini, Paolo Cignoni,
 !    Generating Random Points in a Tetrahedron,
@@ -32,16 +25,15 @@ function generate_random_points_tet(v, n, quasirandom)
   use halton_sequence, only: get_halton
   use simple_routines, only: check_limits
 
-  integer, intent(in)           ::  n
+  integer, intent(in)           ::  npoints
   real(kind=dp), intent(in)     ::  v(3,4)
   logical, intent(in), optional ::  quasirandom
-  real(kind=dp)                 ::  generate_random_points_tet(3,n)
+  real(kind=dp)                 ::  generate_random_points_tet(3,npoints)
 
   logical                       ::  invalid_random_number
-  real(kind=dp)                 ::  c(4)
-  real(kind=dp)                 ::  coordinates(3,n)
-  integer                       ::  j
-  real(kind=dp )                ::  t
+  real(kind=dp)                 ::  c(4), t
+  real(kind=dp)                 ::  coordinates(3,npoints)
+  integer                       ::  ipoint
 
   if (present(quasirandom)) then
     if (quasirandom) then
@@ -62,30 +54,30 @@ function generate_random_points_tet(v, n, quasirandom)
     print *, '       quasirandom: ', quasirandom
   end if
 
-  do j = 1, n
+  do ipoint = 1, npoints
 
-     c(1:3) = dble(coordinates(:, j))
+     c(1:3) = coordinates(:, ipoint)
 
-     if ( 1.0D+00 < c(1) + c(2) ) then
-        c(1) = 1.0D+00 - c(1)
-        c(2) = 1.0D+00 - c(2)
+     if (sum(c(1:2)) > 1.0d0) then
+        c(1) = 1.0d0 - c(1)
+        c(2) = 1.0d0 - c(2)
      end if
 
-     if ( 1.0D+00 < c(2) + c(3) ) then
+     if (sum(c(2:3)) > 1.0d0) then
         t = c(3)
-        c(3) = 1.0D+00 - c(1) - c(2)
-        c(2) = 1.0D+00 - t
-     else if ( 1.0D+00 < c(1) + c(2) + c(3) ) then
+        c(3) = 1.0d0 - c(1) - c(2)
+        c(2) = 1.0d0 - t
+     else if (sum(c(1:3)) > 1.0d0) then
         t = c(3)
-        c(3) = c(1) + c(2) + c(3) - 1.0D+00
-        c(1) = 1.0D+00 - c(2) - t
+        c(3) = sum(c(1:3)) - 1.0d0
+        c(1) = 1.0d0 - c(2) - t
      end if
 
-     c(4) = 1.0D+00 - c(1) - c(2) - c(3)
+     c(4) = 1.0d0 - sum(c(1:3))
   
      ! c(1:4) are the barycentric coordinates of the point.
   
-     generate_random_points_tet(1:3,j) = matmul( dble(v(1:3,1:4)), dble(c(1:4)) )
+     generate_random_points_tet(1:3, ipoint) = matmul(v(1:3, 1:4), c(1:4))
 
   end do
 
@@ -293,30 +285,34 @@ function generate_random_points_poly( nv, v, n, quasirandom ) result(x)
 end function
 
 !-----------------------------------------------------------------------------------------
-function rmat4_det ( a )
-! RMAT4_DET computes the determinant of a 4 by 4 matrix.
+function determinant_4(a)
+! computes the determinant of a 4 by 4 matrix, uses qp internally.
   real(kind=dp), intent(in)  :: a(4,4)
-  real(kind=dp)              :: rmat4_det
+  real(kind=qp)              :: a_qp(4,4)
+  real(kind=dp)              :: determinant_4
 
-  rmat4_det = &
-      a(1,1) * ( &
-        a(2,2) * ( a(3,3) * a(4,4) - a(3,4) * a(4,3) ) &
-      - a(2,3) * ( a(3,2) * a(4,4) - a(3,4) * a(4,2) ) &
-      + a(2,4) * ( a(3,2) * a(4,3) - a(3,3) * a(4,2) ) ) &
-    - a(1,2) * ( &
-        a(2,1) * ( a(3,3) * a(4,4) - a(3,4) * a(4,3) ) &
-      - a(2,3) * ( a(3,1) * a(4,4) - a(3,4) * a(4,1) ) &
-      + a(2,4) * ( a(3,1) * a(4,3) - a(3,3) * a(4,1) ) ) &
-    + a(1,3) * ( &
-        a(2,1) * ( a(3,2) * a(4,4) - a(3,4) * a(4,2) ) &
-      - a(2,2) * ( a(3,1) * a(4,4) - a(3,4) * a(4,1) ) &
-      + a(2,4) * ( a(3,1) * a(4,2) - a(3,2) * a(4,1) ) ) &
-    - a(1,4) * ( &
-        a(2,1) * ( a(3,2) * a(4,3) - a(3,3) * a(4,2) ) &
-      - a(2,2) * ( a(3,1) * a(4,3) - a(3,3) * a(4,1) ) &
-      + a(2,3) * ( a(3,1) * a(4,2) - a(3,2) * a(4,1) ) )
+  a_qp = a
 
-end function rmat4_det
+  determinant_4 = real(&
+      a_qp(1,1) * ( &
+        a_qp(2,2) * ( a_qp(3,3) * a_qp(4,4) - a_qp(3,4) * a_qp(4,3) ) &
+      - a_qp(2,3) * ( a_qp(3,2) * a_qp(4,4) - a_qp(3,4) * a_qp(4,2) ) &
+      + a_qp(2,4) * ( a_qp(3,2) * a_qp(4,3) - a_qp(3,3) * a_qp(4,2) ) ) &
+    - a_qp(1,2) * ( &
+        a_qp(2,1) * ( a_qp(3,3) * a_qp(4,4) - a_qp(3,4) * a_qp(4,3) ) &
+      - a_qp(2,3) * ( a_qp(3,1) * a_qp(4,4) - a_qp(3,4) * a_qp(4,1) ) &
+      + a_qp(2,4) * ( a_qp(3,1) * a_qp(4,3) - a_qp(3,3) * a_qp(4,1) ) ) &
+    + a_qp(1,3) * ( &
+        a_qp(2,1) * ( a_qp(3,2) * a_qp(4,4) - a_qp(3,4) * a_qp(4,2) ) &
+      - a_qp(2,2) * ( a_qp(3,1) * a_qp(4,4) - a_qp(3,4) * a_qp(4,1) ) &
+      + a_qp(2,4) * ( a_qp(3,1) * a_qp(4,2) - a_qp(3,2) * a_qp(4,1) ) ) &
+    - a_qp(1,4) * ( &
+        a_qp(2,1) * ( a_qp(3,2) * a_qp(4,3) - a_qp(3,3) * a_qp(4,2) ) &
+      - a_qp(2,2) * ( a_qp(3,1) * a_qp(4,3) - a_qp(3,3) * a_qp(4,1) ) &
+      + a_qp(2,3) * ( a_qp(3,1) * a_qp(4,2) - a_qp(3,2) * a_qp(4,1) ) ) &
+                       , kind = dp)
+
+end function determinant_4
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -435,7 +431,7 @@ end subroutine triangle_area_2d
 
 !-----------------------------------------------------------------------------------------
 function get_volume_tet(v)
-! TETRA_VOLUME_3D computes the volume of a tetrahedron in 3D.
+! computes the volume of a tetrahedron in 3D.
   real(kind=dp), intent(in)  ::  v(3,4) !< Vertices
   real(kind=dp)              ::  a(4,4)
   real(kind=dp)              ::  get_volume_tet
@@ -443,7 +439,7 @@ function get_volume_tet(v)
   a(1:4,1:3) = transpose(v)
   a(1:4,4) = [1, 1, 1, 1]
 
-  get_volume_tet = abs ( rmat4_det ( a ) ) / 6.0d+00
+  get_volume_tet = abs(determinant_4(a)) / 6.0d0
 
 end function get_volume_tet
 !-----------------------------------------------------------------------------------------
@@ -627,7 +623,7 @@ function point_in_tetrahedron(r, p, isonplane, isdegenerate)
 
   M0(1:ndim,:) = r
   M0(4,:)      = 1
-  D0           = rmat4_det(M0)
+  D0           = determinant_4(M0)
 
   ! Check, whether the tetrahedron is degenerate, i.e. all points are in a plane
   if (abs(D0).lt.epsilon(D0)) then
@@ -640,22 +636,22 @@ function point_in_tetrahedron(r, p, isonplane, isdegenerate)
     M1(1:ndim,:) = r
     M1(4,:)      = 1
     M1(1:ndim,1) = p(:, ipoint)
-    D1           = rmat4_det(M1) / D0
+    D1           = determinant_4(M1) / D0
 
     M2(1:ndim,:) = r
     M2(4,:)      = 1
     M2(1:ndim,2) = p(:, ipoint)
-    D2           = rmat4_det(M2) / D0
+    D2           = determinant_4(M2) / D0
 
     M3(1:ndim,:) = r
     M3(4,:)      = 1
     M3(1:ndim,3) = p(:, ipoint)
-    D3           = rmat4_det(M3) / D0
+    D3           = determinant_4(M3) / D0
 
     M4(1:ndim,:) = r
     M4(4,:)      = 1
     M4(1:ndim,4) = p(:, ipoint)
-    D4           = rmat4_det(M4) / D0
+    D4           = determinant_4(M4) / D0
 
     ! Since all Di are divided by D0, they should all be positive now
     if (any([D1, D2, D3, D4] < 0)) then
