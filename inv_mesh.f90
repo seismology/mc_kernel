@@ -420,10 +420,13 @@ function weights(this, ielem, ivertex, points)
 !< Calculates the weight that a value at location "points" has on a kernel on vertex 
 !! "ivertex" of element "ielement". Quadrature rules come in here   
 !! Based on Nolet, Breviary, 12.2, p.225
+  use tetrahedra, only            : point_in_tetrahedron
   class(inversion_mesh_type)     :: this
   integer, intent(in)            :: ielem, ivertex
   real(kind=dp), intent(in)      :: points(:,:)
   real(kind=dp)                  :: weights(size(points,2))
+  logical                        :: isonplane(size(points,2)), isintetrahedron(size(points,2))
+  logical                        :: isdegenerate
   real(kind=dp)                  :: dx, dy, dz
   integer                        :: ipoint, i
 
@@ -451,17 +454,29 @@ function weights(this, ielem, ivertex, points)
        end do
 
        if (any(weights<-1d-9)) then
+         isintetrahedron = point_in_tetrahedron(this%vertices(:, this%connectivity(1, ielem) + 1), &
+                                                points(:, :),                                      &
+                                                isonplane, isdegenerate)
+
          print *, 'ERROR: weight is smaller zero! Check whether point is outside of element'
          print *, '       Element (local numbering): ', ielem, ', ivertex: ', ivertex
-         print *, '       Vertices:'
+         print *, '       Vertices:  '
          do i = 1, 4
            print *, '       ', i, this%vertices(1:3, this%connectivity(i, 1) + 1)
          end do
-         print *, '       Volume: ', this%get_volume(ielem)
+         print *, '       Volume:   ', this%get_volume(ielem)
+         print *, '       Degener:  ', isdegenerate
          print *, ''
+
          do ipoint = 1, size(points, 2)
+           dx = points(1, ipoint) - this%vertices(1, this%connectivity(1, ielem) + 1)
+           dy = points(2, ipoint) - this%vertices(2, this%connectivity(1, ielem) + 1)
+           dz = points(3, ipoint) - this%vertices(3, this%connectivity(1, ielem) + 1)
+
            print *, '       Point:    ', ipoint
            print *, '                 ', points(:, ipoint)
+           print *, '       isintet?  ', isintetrahedron(ipoint)
+           print *, '       isonsurf? ', isonplane(ipoint)
            print *, '       weight:   ', weights(ipoint)
            print *, '       dx,dy,dz: ', dx, dy, dz
            print *, ''
@@ -478,6 +493,10 @@ function weights(this, ielem, ivertex, points)
          print *, '       Volume: ', this%get_volume(ielem)
          print *, ''
          do ipoint = 1, size(points, 2)
+           dx = points(1, ipoint) - this%vertices(1, this%connectivity(1, ielem) + 1)
+           dy = points(2, ipoint) - this%vertices(2, this%connectivity(1, ielem) + 1)
+           dz = points(3, ipoint) - this%vertices(3, this%connectivity(1, ielem) + 1)
+
            print *, '       Point:    ', ipoint
            print *, '                 ', points(:, ipoint)
            print *, '       weight:   ', weights(ipoint)
