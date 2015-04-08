@@ -30,12 +30,14 @@ function generate_random_points_tet(v, n, quasirandom)
 !    Volume 5, Number 5, 2000, pages 9-12.
 
   use halton_sequence, only: get_halton
+  use simple_routines, only: check_limits
 
   integer, intent(in)           ::  n
   real(kind=dp), intent(in)     ::  v(3,4)
   logical, intent(in), optional ::  quasirandom
   real(kind=dp)                 ::  generate_random_points_tet(3,n)
 
+  logical                       ::  invalid_random_number
   real(kind=dp)                 ::  c(4)
   real(kind=dp)                 ::  coordinates(3,n)
   integer                       ::  j
@@ -51,6 +53,14 @@ function generate_random_points_tet(v, n, quasirandom)
     call random_number(coordinates)
   end if
 
+  invalid_random_number = check_limits(real(coordinates, kind=sp),   &
+                                       limits = [0.0, 1.0],          &
+                                       array_name = 'random_number')
+
+  if (invalid_random_number) then
+    print *, 'ERROR: random number generator returned number outside range [0,1]'
+    print *, '       quasirandom: ', quasirandom
+  end if
 
   do j = 1, n
 
@@ -87,11 +97,13 @@ function generate_random_points_ref_tri( npoints, quasirandom ) result(x)
 !< Generate random points in the reference triangle (0,0), (0,1), (1,0)
 
   use halton_sequence, only: get_halton
+  use simple_routines, only: check_limits
 
   integer, parameter            :: dim_num = 2
   integer, intent(in)           :: npoints  ! Number of points
   logical, intent(in), optional :: quasirandom
 
+  logical                       ::  invalid_random_number
   real(kind=dp)                 :: x(dim_num, npoints)
   real(kind=dp)                 :: r(dim_num, npoints)
   integer                       :: ipoint
@@ -105,6 +117,16 @@ function generate_random_points_ref_tri( npoints, quasirandom ) result(x)
   else
     call random_number(r)
   end if
+
+  invalid_random_number = check_limits(real(r, kind=sp),             &
+                                       limits = [0.0, 1.0],          &
+                                       array_name = 'random_number')
+
+  if (invalid_random_number) then
+    print *, 'ERROR: random number generator returned number outside range [0,1]'
+    print *, '       quasirandom: ', quasirandom
+  end if
+
 
   do ipoint = 1, npoints
 
@@ -133,6 +155,7 @@ function generate_random_points_poly( nv, v, n, quasirandom ) result(x)
 !    This routine is valid for spatial dimension DIM_NUM = 2.
 !
   use halton_sequence, only: get_halton
+  use simple_routines, only: check_limits
 
   integer, parameter            :: dim_num = 2
   integer, intent(in)           :: n  ! Number of points
@@ -141,6 +164,7 @@ function generate_random_points_poly( nv, v, n, quasirandom ) result(x)
   logical, intent(in), optional :: quasirandom
 
   real(kind=dp)                 :: x(dim_num, n)
+  logical                       ::  invalid_random_number
 
   real(kind=dp)                 :: area(nv)
   real(kind=dp)                 :: area_norm(nv)
@@ -159,6 +183,15 @@ function generate_random_points_poly( nv, v, n, quasirandom ) result(x)
     end if
   else
     call random_number(r)
+  end if
+
+  invalid_random_number = check_limits(real(r, kind=sp),             &
+                                       limits = [0.0, 1.0],          &
+                                       array_name = 'random_number')
+
+  if (invalid_random_number) then
+    print *, 'ERROR: random number generator returned number outside range [0,1]'
+    print *, '       quasirandom: ', quasirandom
   end if
 
 

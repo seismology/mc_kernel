@@ -329,9 +329,13 @@ end subroutine test_generate_random_point_poly_4_quasi
 
 !-----------------------------------------------------------------------------------------
 subroutine test_generate_random_point_tet_quasi
+  use tetrahedra, only               : point_in_tetrahedron
 
-  real(kind=dp), dimension(3,1000)  :: points
-  real(kind=dp), dimension(3,4)     :: vertices
+  integer, parameter                    :: npoints = 10000
+  real(kind=dp), dimension(3,npoints)   :: points
+  real(kind=dp), dimension(3,4)         :: vertices
+  logical                               :: isonplane(npoints), isdegenerate
+
 
   call free_halton()
 
@@ -340,9 +344,11 @@ subroutine test_generate_random_point_tet_quasi
   vertices(:,3) = [0, 0, 1]
   vertices(:,4) = [0, 0, 0]
 
-  points = generate_random_points_tet(vertices, 1000, quasirandom = .true. )
+  points = generate_random_points_tet(vertices, npoints, quasirandom = .true. )
 
-  call assert_true(all(sum(points,1)<1), 'Random points are in tetrahedron')
+  call assert_true(all(point_in_tetrahedron(vertices, points, isonplane, isdegenerate)), &
+                     'Random points are in tetrahedron')
+
 
 end subroutine test_generate_random_point_tet_quasi
 !-----------------------------------------------------------------------------------------
