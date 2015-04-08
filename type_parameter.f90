@@ -32,6 +32,7 @@ module type_parameter
         character(len=512)                   :: mesh_file_vert
         character(len=512)                   :: mesh_file_face
         character(len=512)                   :: output_file = 'kerner'
+        character(len=512)                   :: hetero_file
         character(len=1)                     :: component
         character(len=32)                    :: whattodo
         character(len=32)                    :: int_type
@@ -58,6 +59,7 @@ module type_parameter
         logical                              :: quasirandom          = .true.
         logical                              :: relative_kernel      = .true.
         logical                              :: int_over_volume      = .true.
+        logical                              :: int_over_hetero      = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -152,6 +154,9 @@ subroutine read_parameters(this, input_file_in)
         case('DUMP_TYPE')
            this%dump_type = keyvalue
 
+        case('HETEROGENEITY_FILE')
+           this%hetero_file = keyvalue
+
         case('STRAIN_BUFFER_SIZE')
            read(keyvalue, *) this%strain_buffer_size
 
@@ -178,6 +183,9 @@ subroutine read_parameters(this, input_file_in)
 
         case('INTEGRATE_OVER_VOLUME')
            read(keyvalue, *) this%int_over_volume
+
+        case('INTEGRATE_OVER_3D_HETEROGENEITIES')
+           read(keyvalue, *) this%int_over_hetero
 
         case('DECONVOLVE_STF')
            read(keyvalue, *) this%deconv_stf
@@ -219,6 +227,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%stf_file, 0)
   call pbroadcast_char(this%mesh_file_type, 0)
   call pbroadcast_char(this%output_file, 0)
+  call pbroadcast_char(this%stf_file, 0)
   call pbroadcast_char(this%dump_type, 0)
   call pbroadcast_int(this%strain_buffer_size, 0)
   call pbroadcast_int(this%displ_buffer_size, 0)
@@ -231,9 +240,11 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_log(this%quasirandom, 0)
   call pbroadcast_log(this%relative_kernel, 0)
   call pbroadcast_log(this%int_over_volume, 0)
+  call pbroadcast_log(this%int_over_hetero, 0)
   call pbroadcast_char(this%fftw_plan, 0)
   call pbroadcast_char(this%whattodo, 0)
   call pbroadcast_char(this%int_type, 0)
+  call pbroadcast_char(this%hetero_file, 0)
   call pbroadcast_char(this%int_scheme, 0)
 
   select case(lowtrim(this%mesh_file_type))
@@ -561,6 +572,7 @@ subroutine read_kernel(this, sem_data, filter)
          if (.not.testing) then
            ! Communicate the model parameter index back to the master
            call pbroadcast_int(this%kernel(ikernel)%model_parameter_index, 1)
+           call pbroadcast_int(this%kernel(ikernel)%hetero_parameter_index, 1)
          end if
 
 

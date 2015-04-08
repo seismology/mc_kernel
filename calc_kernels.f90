@@ -17,6 +17,7 @@ program kerner_code
     use work_type_mod,               only: init_work_type
     use plot_wavefields_mod,         only: plot_wavefields
     use backgroundmodel,             only: nmodel_parameters
+    use heterogeneities,             only: nmodel_parameters_hetero
 
     implicit none
 
@@ -95,12 +96,14 @@ program kerner_code
        write(lu_out,*) '***************************************************************'
 
 
-        call init_work_type(nkernel              = parameters%nkernel,          &
-                            nelems_per_task      = parameters%nelems_per_task,  &
-                            nvertices            = nvertices_per_task,          &
-                            nvertices_per_elem   = nvertices_per_elem,          &
-                            nmodel_parameters    = nmodel_parameters,           &
-                            nbasisfuncs_per_elem = nbasisfuncs_per_elem)
+        call init_work_type(nkernel                  = parameters%nkernel,          &
+                            nelems_per_task          = parameters%nelems_per_task,  &
+                            nvertices                = nvertices_per_task,          &
+                            nvertices_per_elem       = nvertices_per_elem,          &
+                            nbasisfuncs_per_elem     = nbasisfuncs_per_elem,        &
+                            nmodel_parameters        = nmodel_parameters,           &
+                            nmodel_parameters_hetero = nmodel_parameters_hetero)
+
       
 
         write(lu_out,*) '***************************************************************'
@@ -200,6 +203,7 @@ subroutine start_clock_slave
   id_filter_conv     = clock_id('Filtering and convolution')
   id_inv_mesh        = clock_id('Inversion mesh routines')
   id_int_model       = clock_id('Integrate model paramaters')
+  id_int_hetero      = clock_id('Integrate heterogeneity model')
   id_kernel          = clock_id('Kernel routines')
   id_init            = clock_id('Initialization per task')
   id_mpi             = clock_id('MPI communication with Master')
