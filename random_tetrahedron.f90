@@ -9,6 +9,7 @@ module tetrahedra
   public :: generate_random_points_ref_tri
   public :: get_volume_tet, get_volume_poly, get_center_tet
   public :: rmat4_det, point_in_triangle, point_in_triangle_3d
+  public :: point_in_tetrahedron
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -570,8 +571,82 @@ function point_in_triangle_3d(r, p, isinplane)
  end do
 
 end function point_in_triangle_3d
+!------------------------------------------------------------------------------
 
-! Da hab ich mich gestern hingestellt und die Eier gekocht. Un heute werd ich faul genannt.
+!------------------------------------------------------------------------------
+! Tests whether a point is in a tetrahedron, by testing whether it is on the 
+! same side of each plane, by testing whether all Di have the same sign.
+function point_in_tetrahedron(r, p, isonplane, isdegenerate)
+  integer, parameter             :: ndim = 3
+  real(kind=dp), intent(in)      :: r(ndim,4)  !< Vertices of the tetrahedron
+  real(kind=dp), intent(in)      :: p(:,:)     !< Set of points to check
+  logical,       intent(out)     :: isonplane(size(p,2)), isdegenerate
+  logical                        :: point_in_tetrahedron(size(p,2))
+
+  real(kind=dp), dimension(4,4)  :: M0, M1, M2, M3, M4
+  real(kind=dp)                  :: D0, D1, D2, D3, D4
+  integer                        :: ipoint, npoints
+
+  npoints = size(p,2)
+  isdegenerate         = .false.
+  isonplane            = .false.
+  point_in_tetrahedron = .false.
+
+  M0(1:ndim,:) = r
+  M0(4,:)      = 1
+  D0           = rmat4_det(M0)
+
+  ! Check, whether the tetrahedron is degenerate, i.e. all points are in a plane
+  if (abs(D0).lt.epsilon(D0)) then
+    isdegenerate = .true.
+    point_in_tetrahedron = .false.
+    return
+  end if
+
+  do ipoint = 1, npoints
+    M1(1:ndim,:) = r
+    M1(4,:)      = 1
+    M1(1:ndim,1) = p(:, ipoint)
+    D1           = rmat4_det(M1) / D0
+
+    M2(1:ndim,:) = r
+    M2(4,:)      = 1
+    M2(1:ndim,2) = p(:, ipoint)
+    D2           = rmat4_det(M2) / D0
+
+    M3(1:ndim,:) = r
+    M3(4,:)      = 1
+    M3(1:ndim,3) = p(:, ipoint)
+    D3           = rmat4_det(M3) / D0
+
+    M4(1:ndim,:) = r
+    M4(4,:)      = 1
+    M4(1:ndim,4) = p(:, ipoint)
+    D4           = rmat4_det(M4) / D0
+
+    ! Since all Di are divided by D0, they should all be positive now
+    if (any([D1, D2, D3, D4] < 0)) then
+      point_in_tetrahedron(ipoint) = .false.
+
+    else
+      point_in_tetrahedron(ipoint) = .true.
+      
+      ! Test whether point is on any of the surfaces
+      if (any(abs([D1, D2, D3, D4]) < epsilon(D0))) then
+        point_in_tetrahedron(ipoint) = .true.
+        isonplane(ipoint) = .true.
+        print *, 'Point is on plane: ', (abs([D1, D2, D3, D4]) < epsilon(D0))
+      end if
+
+    end if
+
+
+
+  end do
+
+end function point_in_tetrahedron
+!------------------------------------------------------------------------------
+
 
 end module
 !=========================================================================================
