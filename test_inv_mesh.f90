@@ -932,6 +932,7 @@ end subroutine test_get_connected_elements
 !-----------------------------------------------------------------------------------------
 subroutine test_random_points_triangle_mesh
   use tetrahedra, only        : point_in_triangle_3d
+  use halton_sequence, only   : free_halton
   type(inversion_mesh_type)  :: inv_mesh
   integer, parameter         :: ndim = 3, nvertices = 4
   real(kind=dp)              :: vertices(ndim, nvertices), offset(ndim)
@@ -959,8 +960,16 @@ subroutine test_random_points_triangle_mesh
       nbasisfuncs_per_elem = 1
       call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
       
+      ! Using pseudorandom numbers 
+      points = inv_mesh%generate_random_points(1, npoints, .false.)
+      isintriangle = point_in_triangle_3d(vertices, points, isinplane)
+
+      call assert_true(isinplane,    'Points are in plane of triangle')
+      call assert_true(isintriangle, 'Points are in triangle')
+
+      ! Using quasirandom numbers 
+      call free_halton()
       points = inv_mesh%generate_random_points(1, npoints, .true.)
-      
       isintriangle = point_in_triangle_3d(vertices, points, isinplane)
 
       call assert_true(isinplane,    'Points are in plane of triangle')
@@ -1015,7 +1024,7 @@ end subroutine test_initialize_mesh
 
 !-----------------------------------------------------------------------------------------
 subroutine test_weight
-  use netcdf
+  use halton_sequence, only          : free_halton
   type(inversion_mesh_data_type)    :: inv_mesh
   integer, parameter                :: nrandom = 10
   real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
@@ -1049,8 +1058,134 @@ subroutine test_weight
     end do
   end do
 
+  ! Test with quasi-random numbers
+  
+  ! Reset Halton number generator (may have been used in earlier tests)
+  call free_halton()
+
+  do ielement = 1, inv_mesh%get_nelements()
+    random_points = inv_mesh%generate_random_points( ielement, nrandom, .true. )
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+    end do
+  end do
 
 end subroutine test_weight
+!-----------------------------------------------------------------------------------------
+
+!!-----------------------------------------------------------------------------------------
+!! Test the weight<0 issue occuring on KH's huge mesh
+!! Tests the specific element where it was occuring
+!subroutine test_weight_issue30
+!  use halton_sequence, only          : free_halton
+!  type(inversion_mesh_data_type)    :: inv_mesh
+!  integer, parameter                :: nrandom = 100000
+!  real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
+!  real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
+!  real(kind=dp)                     :: random_point(3,1), weight_random_single(1)
+!  integer                           :: ielement, ivertex, ivertex_test
+! 
+!
+!
+!  call inv_mesh%read_tet_mesh('unit_tests/vertices.issue30', &
+!                              'unit_tests/facets.issue30', &
+!                              'onvertices')
+!
+!  ! Weight should be one at each of the vertices for the respective parameter and 
+!  ! zero for all the others
+!  do ielement = 1, inv_mesh%get_nelements()
+!    points = inv_mesh%get_element(ielement)
+!    do ivertex = 1, 4 ! Tetrahedral mesh
+!      weight = inv_mesh%weights(ielement, ivertex, points)
+!      weight_ref = 0
+!      weight_ref(ivertex) = 1
+!      call assert_comparable(weight, weight_ref, 1d-10, 'Weight at vertex is one')
+!    end do
+!  end do
+!
+!  ! Weight should be between one and zero everywhere (inside the element)
+!  do ielement = 1, inv_mesh%get_nelements()
+!    random_points = inv_mesh%generate_random_points( ielement, nrandom, .false. )
+!    do ivertex = 1, 4 ! Tetrahedral mesh
+!      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+!      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+!      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+!    end do
+!  end do
+!
+!  ! Weight should be between one and zero everywhere (inside the element)
+!  ! Test with quasi-random numbers
+!  
+!  ! Reset Halton number generator (may have been used in earlier tests)
+!  call free_halton()
+!
+!  do ielement = 1, inv_mesh%get_nelements()
+!    random_points = inv_mesh%generate_random_points( ielement, nrandom, .true. )
+!    do ivertex = 1, 4 ! Tetrahedral mesh
+!      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+!      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+!      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+!    end do
+!  end do
+!
+!end subroutine test_weight_issue30
+!!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! Not called by default
+! Takes several hours to finish and tests mainly the stability of the Halton sequencies 
+! for more than 1e9 random numbers (int4 overflow)
+subroutine test_weight_large
+  use halton_sequence, only          : free_halton
+  type(inversion_mesh_data_type)    :: inv_mesh
+  integer, parameter                :: nrandom = 1000
+  real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
+  real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
+  integer                           :: ielement, ivertex, ivertex_test
+ 
+
+
+  call inv_mesh%read_tet_mesh('Meshes/vertices.fine_20_96', &
+                              'Meshes/facets.fine_20_96',   &
+                              'onvertices')
+
+  ! Weight should be one at each of the vertices for the respective parameter and 
+  ! zero for all the others
+  do ielement = 1, inv_mesh%get_nelements()
+    points = inv_mesh%get_element(ielement)
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight = inv_mesh%weights(ielement, ivertex, points)
+      weight_ref = 0
+      weight_ref(ivertex) = 1
+      call assert_comparable(1+weight, 1+weight_ref, 1d-10, 'Weight at vertex is one')
+    end do
+  end do
+
+  ! Weight should be between one and zero everywhere (inside the element)
+  do ielement = 1, inv_mesh%get_nelements()
+    random_points = inv_mesh%generate_random_points( ielement, nrandom, .false. )
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+    end do
+  end do
+
+  ! Reset Halton number generator (may have been used in earlier tests)
+  call free_halton()
+
+  do ielement = 1, inv_mesh%get_nelements()
+    random_points = inv_mesh%generate_random_points( ielement, nrandom, .true. )
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+    end do
+  end do
+
+end subroutine test_weight_large
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
