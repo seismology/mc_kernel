@@ -132,16 +132,16 @@ test_ftnunit.o: ftnunit.o global_parameters.o test_background_model.o \
 	test_spectral_basis.o test_tetrahedra.o test_type_parameter.o \
 	test_voxel.o Makefile make_kerner.macros 
 test_halton.o: ftnunit.o global_parameters.o halton.o Makefile make_kerner.macros 
-test_inv_mesh.o: ftnunit.o global_parameters.o inv_mesh.o mc_integration.o \
-	nc_routines.o random_tetrahedron.o Makefile make_kerner.macros 
+test_inv_mesh.o: ftnunit.o global_parameters.o halton.o inv_mesh.o \
+	mc_integration.o nc_routines.o random_tetrahedron.o Makefile make_kerner.macros 
 test_kernel.o: ftnunit.o global_parameters.o kernel.o Makefile make_kerner.macros 
 test_lanczos.o: ftnunit.o global_parameters.o lanczos.o Makefile make_kerner.macros 
 test_master_queue.o: ftnunit.o global_parameters.o master_queue.o Makefile make_kerner.macros 
 test_mc.o: ftnunit.o global_parameters.o mc_integration.o \
 	random_tetrahedron.o Makefile make_kerner.macros 
 test_nc_routines.o: ftnunit.o global_parameters.o nc_routines.o Makefile make_kerner.macros 
-test_readfields.o: background_model.o ftnunit.o global_parameters.o \
-	readfields.o type_parameter.o Makefile make_kerner.macros 
+test_readfields.o: background_model.o fft_type.o ftnunit.o \
+	global_parameters.o readfields.o type_parameter.o Makefile make_kerner.macros 
 test_rotations.o: ftnunit.o global_parameters.o rotations.o Makefile make_kerner.macros 
 test_sem_derivatives.o: finite_elem_mapping.o ftnunit.o global_parameters.o \
 	sem_derivatives.o spectral_basis.o Makefile make_kerner.macros 
