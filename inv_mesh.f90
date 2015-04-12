@@ -360,7 +360,7 @@ function get_center(this, ielement)
   real(kind=dp)                     :: get_center(3)
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
-     call pabort 
+     call pabort
   end if
 
   get_center = 0
@@ -368,14 +368,17 @@ function get_center(this, ielement)
   select case(this%element_type)
   case('tet')
      get_center = get_center_tet(this%get_element(ielement))
-  case('quad')
+!  case('quad')
 !    get_center = get_center_poly(4, this%get_element(ielement))
-  case('tri')
+!  case('tri')
 !    get_center = get_center_poly(3, this%get_element(ielement))
   case('vox')
      get_center = get_center_vox(this%get_element(ielement))
-  case('hex')
+!  case('hex')
 !    get_center = get_center_hex(this%get_element(ielement))
+  case default
+     write(*,'(A,A,A)') 'ERROR: get_center for element type ', this%element_type, ' not implemented'
+     call pabort 
   end select
 
 end function get_center
