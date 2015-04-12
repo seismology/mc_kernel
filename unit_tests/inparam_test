@@ -1,6 +1,93 @@
-FWD_DIR         'test_wavefield/fwd/'
-BWD_DIR         'test_wavefield/bwd/'
+FWD_DIR         'test_wavefields/kerner_fwd/'
+BWD_DIR         'test_wavefields/kerner_bwd/'
 ALLOWED_ERROR   1e-1
 SOURCE_FILE     'unit_tests/CMTSOLUTION'
 RECEIVER_FILE   'unit_tests/receiver.dat'
 FILTER_FILE     'unit_tests/filters.dat'
+MESH_FILE_TYPE       'abaqus'
+MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
+
+#MESH_FILE_TYPE       'tetrahedral'
+#MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
+#MESH_FILE_FACETS     'unit_tests/facets.TEST'
+# Prefix of output file names.
+# Kernel files are called $OUTPUT_FILE_kernel.xdmf
+# Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
+OUTPUT_FILE          'unit_tests/test_master_queue'
+
+# Output format when dumping kernels and wavefields. 
+# Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
+# ascii.
+# Yet, the allowed error below is assumed as the truncation threshold in 
+# csr and ascii storage
+DUMP_TYPE            'xdmf'
+
+# Write out seismograms? (default: true)
+# Seismograms (raw full trace, filtered full trace and cut trace) can be 
+# written out. Produces three files per kernel. Disable to avoid congesting 
+# your rundir.
+WRITE_SEISMOGRAMS    true
+
+# Monte Carlo integration
+# Absolute and relative error limits can be defined separately. The convergence
+# conditions are connected by OR
+# Allowed absolute error per cell
+ALLOWED_ERROR        1e-4
+
+# Allowed relative error per cell
+ALLOWED_RELATIVE_ERROR 2e-2
+
+# Number of points on which the kernel should be evaluated per MC iteration
+POINTS_PER_MC_STEP   20
+
+# Maximum number of iterations after which to cancel Monte Carlo integration 
+# in one cell, regardless of error.
+MAXIMUM_ITERATIONS   100
+
+# Write detailed convergence of elements (default: false)
+# Every slave writes out the values of all the kernels and their respective 
+# estimated errors into his OUTPUT_??? file after each MC step. This can lead 
+# to huge ASCII files (>1GB) with inane line lengths (approx. 20 x nkernel).
+# However, it might be interesting to study the convergence behaviour. 
+# When set to false, only one summary per cell is written out.
+WRITE_DETAILED_CONVERGENCE  false
+
+# Size of buffers for strain and displacement.
+#  - fullfields: only strain buffer is used for chunkwise IO
+#  - displ_only: displacement buffer is used for chunkwise IO and strain buffer contains
+#                the strain in the GLL basis for whole elements
+STRAIN_BUFFER_SIZE   1000
+DISPL_BUFFER_SIZE    100
+
+# Number of elements in each MPI task. 
+ELEMENTS_PER_TASK    100 
+
+# Use quasirandom numbers instead of pseudorandom ones
+USE_QUASIRANDOM_NUMBERS true
+
+# Integration scheme
+# Options:
+# parseval:    FFT seismogram and convolved wavefield and use Parseval's Theorem
+#              then trapezoidal rule is used in frequency domain
+# trapezoidal: Use the trapezoidal rule in time domain
+INTEGRATION_SCHEME  parseval
+
+# FFTW Planning to use
+# Options: 
+# ESTIMATE:   Use heuristic to find best FFT plan
+# MEASURE:    Compute several test FFTs to find best plan (default)
+# PATIENT:    Compute a lot of test FFTs to find best plan
+# EXHAUSTIVE: Compute an awful amount of test FFTs to find best plan
+# for a detailed explanation: http://www.fftw.org/doc/Planner-Flags.html
+FFTW_PLAN              MEASURE
+
+# Do you want to calculate a kernel or just plot wavefields? 
+# integratekernel has to be run with MPI and at least two processors
+WHAT_TO_DO           'integratekernel'
+
+# plot_wavefield has to be run in serial
+#WHAT_TO_DO           'plot_wavefield'
+
+# Do you want your kernels to be given on the vertices ('onvertices') or
+# inside ('volumetric') each elements?
+INT_TYPE             'volumetric'

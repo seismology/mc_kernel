@@ -19,6 +19,8 @@ module receiver_class
         real(kind=dp), dimension(3,3)  :: rot_mat, trans_rot_mat
         integer                        :: nkernel
         integer                        :: firstkernel, lastkernel
+        logical                        :: needs_basekernel(6)
+        character(len=32)              :: strain_type
         type(kernelspec_type), pointer :: kernel(:)
         contains
            procedure, pass      :: rotate_receiver

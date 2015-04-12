@@ -1,6 +1,6 @@
 !=========================================================================================
 module halton_sequence
-  use global_parameters
+  use global_parameters, only : long, dp, qp, sp
   implicit none
   private
   
@@ -9,11 +9,12 @@ module halton_sequence
   public :: free_halton
                             
 
-  integer, save, allocatable :: step(:)   !< stores current step of the sequence
-  integer, save, allocatable :: seed(:)   !< initial seed (step that first sequence member 
-                                          !! corresponds to)
-  integer, save, allocatable :: base(:)   !< base of the halton sequence
-  integer, save, allocatable :: leap(:)   !< how many sequence members to leap over
+  integer(kind=long), save, allocatable :: step(:)   !< stores current step of the sequence
+  integer(kind=long), save, allocatable :: seed(:)   !< initial seed (step that first sequence member 
+                                                     !! corresponds to)
+  integer(kind=long), save, allocatable :: base(:)   !< base of the halton sequence
+  integer(kind=long), save, allocatable :: leap(:)   !< how many sequence members to leap over
+
   integer, save              :: ndim
 
   integer, parameter         :: dim_max = 10
@@ -89,9 +90,9 @@ subroutine get_halton(r)
   implicit none
 
   real(kind=dp), intent(out) :: r(:,:) ! (ndim, npoints)
-  real(kind=8)               :: digit(size(r,2))
-  real(kind=8)               :: base_inv(size(r,2))
-  integer                    :: seed2(size(r,2)), i_dim, j
+  real(kind=qp)              :: digit(size(r,2))
+  real(kind=qp)              :: base_inv(size(r,2))
+  integer(kind=long)         :: seed2(size(r,2)), i_dim, j
   integer                    :: npoints
 
   npoints = size(r,2)
@@ -109,15 +110,15 @@ subroutine get_halton(r)
   do i_dim = 1, ndim 
 
     do j = 1, npoints
-      seed2(j) = seed(i_dim) + ( step(i_dim) + j - 1 ) * leap(i_dim)
+      seed2(j) = seed(i_dim) + (step(i_dim) + j - 1) * leap(i_dim)
     end do
 
-    base_inv = 1.0D+00 / real ( base(i_dim), kind = 8 )
+    base_inv = 1 / real(base(i_dim), kind=dp)
 
-    do while ( any ( seed2(:) /= 0 ) )
-      digit(:) = mod ( seed2(:), base(i_dim) )
-      r(i_dim,:) = r(i_dim,:) + real ( digit(:), kind = 8 ) * base_inv
-      base_inv = base_inv / real ( base(i_dim), kind = 8 )
+    do while ( any(seed2(:) /= 0) )
+      digit(:) = mod(seed2(:), base(i_dim))
+      r(i_dim,:) = r(i_dim,:) + real(digit(:) * base_inv, kind=dp) 
+      base_inv = base_inv / real(base(i_dim), kind=qp)
       seed2(:) = seed2(:) / base(i_dim)
     end do
 

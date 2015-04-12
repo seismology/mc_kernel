@@ -178,8 +178,9 @@ function rotate_straintensor(tensor_vector, phi, mij, isim) result(tensor_return
                                           conv_mat)
         ! seriously? can this happen? just 20 lines earlier, this tensor is
         ! hardcoded symmetric (MvD)
-        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) /        &
-            abs(tensor_matrix(1,3,idump))>1e-5) then
+        ! Looks weird. Especially, it should not crash for tensor_matrix(1,3)=0
+        if (abs(tensor_matrix(1,3,idump)-tensor_matrix(3,1,idump)) >        &
+            abs(tensor_matrix(1,3,idump))*1e-5) then
             print *, 'nonsymmetric strain components (1,3) at dump', idump
             print *, '(1,3),(3,1):',tensor_matrix(1,3,idump),tensor_matrix(3,1,idump)
         end if

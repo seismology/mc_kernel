@@ -1,0 +1,7 @@
+*.o
+*.mod
+*.swp
+fort.*
+*.old
+*.org
+*.tmp

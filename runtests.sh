@@ -5,7 +5,10 @@
 #
 #    $Id: runtests.sh,v 1.2 2008/01/26 11:15:10 arjenmarkus Exp $
 #
-make -sj
+set -e 
+echo "Compiling code"
+make -s
+
 
 if [ ! -d test_wavefields ] ; then
     echo "Downloading test wavefield files"
@@ -23,7 +26,7 @@ if test -f runtests.log ; then
 fi
 
 echo "Running test"
-
+set +e 
 echo ALL >ftnunit.run
 
 chk=1

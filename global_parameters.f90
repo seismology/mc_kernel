@@ -7,6 +7,9 @@ module global_parameters
   integer, parameter         :: dp = selected_real_kind(15, 307)
   integer, parameter         :: qp = selected_real_kind(33, 4931)
 
+  integer,parameter          :: int4 = selected_int_kind(5)
+  integer,parameter          :: long = selected_int_kind(15)
+
   real(kind=dp), parameter   :: pi = 3.1415926535898D0
   real(kind=dp), parameter   :: deg2rad = pi / 180.d0
   real(kind=dp), parameter   :: rad2deg = 180.d0 / pi
@@ -16,16 +19,24 @@ module global_parameters
   integer, parameter         :: DIETAG  = 2
   
   logical                    :: master, firstslave
+  logical                    :: testing = .false. !< Set to true only for unit test, 
+                                                  !! because some routines require action
+                                                  !! from master or slave, which would not 
+                                                  !! be tested otherwise
   integer, protected         :: myrank, nproc
   integer, protected         :: lu_out !< Logical unit for output. 
                                        !! 6 (Screen) for master
                                        !! File 'OUTPUT_#rank' for slaves
 
   integer                    :: id_read, id_fft, id_fwd, id_bwd, id_mc, id_mpi,&
-                                id_filter_conv, id_inv_mesh, id_kernel, id_init, &
-                                id_buffer, id_netcdf, id_rotate, id_load_strain, &
-                                id_kdtree, id_calc_strain, id_find_point_fwd,    &
-                                id_find_point_bwd, id_lagrange
+                                id_filter_conv, id_inv_mesh, id_kernel, id_init,   &
+                                id_buffer, id_netcdf, id_rotate, id_load_strain,   &
+                                id_kdtree, id_calc_strain, id_find_point_fwd,      &
+                                id_find_point_bwd, id_lagrange, id_int_model,      &
+                                id_read_params, id_create_tasks, id_get_next_task, &
+                                id_extract, id_write_kernel, id_mult_kernel,       &
+                                id_init_fft, id_dump, id_finalize, id_element,     &
+                                id_int_hetero
   integer                    :: id_load, id_resamp, id_out
 
   contains

@@ -19,6 +19,8 @@ module work_type_mod
      integer                    :: nvertices
      integer                    :: nvertices_per_elem
      integer                    :: nbasisfuncs_per_elem
+     integer                    :: nmodel_parameters
+     integer                    :: nmodel_parameters_hetero
      integer                    :: mpitype
      integer                    :: itask
      integer                    :: ielement_type !1-tet, 2-quad, 3-tri, 4-hex, 5-vox
@@ -27,6 +29,9 @@ module work_type_mod
      real(kind=dp), allocatable :: kernel_values(:,:,:)
      real(kind=dp), allocatable :: kernel_variance(:,:,:)
      integer, allocatable       :: niterations(:,:)
+     real(kind=dp), allocatable :: computation_time(:)
+     real(kind=dp), allocatable :: model(:,:,:)
+     real(kind=dp), allocatable :: hetero_model(:,:,:)
 
   end type
 
@@ -35,23 +40,33 @@ module work_type_mod
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_elem, nbasisfuncs_per_elem)
+subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_elem, &
+                          nbasisfuncs_per_elem, nmodel_parameters, nmodel_parameters_hetero)
 
+# ifndef include_mpi
   use mpi
+# endif
   
-  integer, intent(in)   :: nkernel, nelems_per_task, nvertices, nvertices_per_elem, nbasisfuncs_per_elem
+# ifdef include_mpi
+  include 'mpif.h'
+# endif
+
+  integer, intent(in)   :: nkernel, nelems_per_task, nvertices, nvertices_per_elem
+  integer, intent(in)   :: nbasisfuncs_per_elem, nmodel_parameters, nmodel_parameters_hetero
+
   integer               :: ierr, i
   integer, allocatable  :: oldtypes(:), blocklengths(:)
   integer(kind=MPI_ADDRESS_KIND), allocatable  :: offsets(:)
-  integer, parameter    :: nblocks = 6
+  integer, parameter    :: nblocks = 9
   character(len=64)     :: fmtstring
 
-  wt%ntotal_kernel      = nkernel
-  wt%nelems_per_task    = nelems_per_task
-  wt%nvertices          = nvertices
-  wt%nvertices_per_elem = nvertices_per_elem
+  wt%ntotal_kernel        = nkernel
+  wt%nelems_per_task      = nelems_per_task
+  wt%nvertices            = nvertices
+  wt%nvertices_per_elem   = nvertices_per_elem
   wt%nbasisfuncs_per_elem = nbasisfuncs_per_elem
-
+  wt%nmodel_parameters    = nmodel_parameters
+  wt%nmodel_parameters_hetero    = nmodel_parameters_hetero
 
   fmtstring = '(A32, I5)'
   write(lu_out, fmtstring) 'nkernel:', wt%ntotal_kernel
@@ -59,6 +74,8 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   write(lu_out, fmtstring) 'nvertices:', wt%nvertices          
   write(lu_out, fmtstring) 'nvertices_per_elem:', wt%nvertices_per_elem 
   write(lu_out, fmtstring) 'nbasisfuncs_per_elem:', wt%nbasisfuncs_per_elem 
+  write(lu_out, fmtstring) 'nmodel_parameters:', wt%nmodel_parameters
+  write(lu_out, fmtstring) 'nmodel_parameters_hetero:', wt%nmodel_parameters_hetero
 
 
   allocate(wt%connectivity(wt%nvertices_per_elem, wt%nelems_per_task))
@@ -66,12 +83,17 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   allocate(wt%kernel_values(wt%ntotal_kernel, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
   allocate(wt%kernel_variance(wt%ntotal_kernel, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
   allocate(wt%niterations(wt%ntotal_kernel, wt%nelems_per_task))
+  allocate(wt%computation_time(wt%nelems_per_task))
+  allocate(wt%model(wt%nmodel_parameters, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
+  allocate(wt%hetero_model(wt%nmodel_parameters_hetero, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
 
   wt%connectivity    = 0
   wt%vertices        = 0
   wt%kernel_values   = 0
   wt%kernel_variance = 0
   wt%niterations     = 0
+  wt%model           = 0
+  wt%hetero_model    = 0
 
   ! define blocks for the mpi type. NB: it seems to be necessary to define one
   ! block per array, otherwise having segfaults.
@@ -79,12 +101,17 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   allocate(blocklengths(nblocks))
   allocate(offsets(nblocks))
 
-  blocklengths(1) = 8 ! variable sizes and itask
+  blocklengths(1) = 10 ! variable sizes and itask
   blocklengths(2) = wt%nelems_per_task * wt%nvertices_per_elem ! connectivity
   blocklengths(3) = wt%nvertices * 3                           ! vertices
   blocklengths(4) = wt%ntotal_kernel * wt%nbasisfuncs_per_elem * wt%nelems_per_task !kernel_values
   blocklengths(5) = wt%ntotal_kernel * wt%nbasisfuncs_per_elem * wt%nelems_per_task !kernel_variance
   blocklengths(6) = wt%ntotal_kernel * wt%nelems_per_task                           !niterations
+  blocklengths(7) = wt%nelems_per_task                                              !computation_time
+  blocklengths(8) = wt%nmodel_parameters * wt%nbasisfuncs_per_elem &
+                    * wt%nelems_per_task                                            !model
+  blocklengths(9) = wt%nmodel_parameters_hetero * wt%nbasisfuncs_per_elem &
+                    * wt%nelems_per_task                                            !model
 
   oldtypes(1) = MPI_INTEGER            ! all variable sizes and itask
   oldtypes(2) = MPI_INTEGER            ! connectivity
@@ -92,14 +119,20 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   oldtypes(4) = MPI_DOUBLE_PRECISION   ! kernel_values 
   oldtypes(5) = MPI_DOUBLE_PRECISION   ! kernel_variance
   oldtypes(6) = MPI_INTEGER            ! niterations
+  oldtypes(7) = MPI_DOUBLE_PRECISION   ! computation_time
+  oldtypes(8) = MPI_DOUBLE_PRECISION   ! model 
+  oldtypes(9) = MPI_DOUBLE_PRECISION   ! heterogeneity model 
 
   ! find memory offsets, more stable then computing with MPI_TYPE_EXTEND
-  call MPI_GET_ADDRESS(wt%ntotal_kernel,   offsets(1), ierr)
-  call MPI_GET_ADDRESS(wt%connectivity,    offsets(2), ierr)
-  call MPI_GET_ADDRESS(wt%vertices,        offsets(3), ierr)
-  call MPI_GET_ADDRESS(wt%kernel_values,   offsets(4), ierr)
-  call MPI_GET_ADDRESS(wt%kernel_variance, offsets(5), ierr)
-  call MPI_GET_ADDRESS(wt%niterations,     offsets(6), ierr)
+  call MPI_GET_ADDRESS(wt%ntotal_kernel,    offsets(1), ierr)
+  call MPI_GET_ADDRESS(wt%connectivity,     offsets(2), ierr)
+  call MPI_GET_ADDRESS(wt%vertices,         offsets(3), ierr)
+  call MPI_GET_ADDRESS(wt%kernel_values,    offsets(4), ierr)
+  call MPI_GET_ADDRESS(wt%kernel_variance,  offsets(5), ierr)
+  call MPI_GET_ADDRESS(wt%niterations,      offsets(6), ierr)
+  call MPI_GET_ADDRESS(wt%computation_time, offsets(7), ierr)
+  call MPI_GET_ADDRESS(wt%model,            offsets(8), ierr)
+  call MPI_GET_ADDRESS(wt%hetero_model,     offsets(9), ierr)
 
   ! make offsets relative
   do i=2, size(offsets)

@@ -6,6 +6,7 @@ module unit_tests
   use test_source
   use test_montecarlo
   use test_halton_sequence
+  use test_lanczos
   use test_fft_type
   use test_tetrahedra
   use test_voxel
@@ -13,20 +14,27 @@ module unit_tests
   use test_buffer
   use test_filter
   use test_kernel
+  use test_nc_routines
   use test_readfields
+  use test_background_models
   use test_rotations
   use test_finite_elem_mapping
   use test_spectral_basis
   use test_sem_derivatives
   use test_simple_routines
+  use test_type_parameter
+  use test_master_queue
 
   implicit none
 
 contains
 !-----------------------------------------------------------------------------------------
 subroutine test_all
+  integer   :: oldverbose
 
   verbose = 1
+  master  = .true.
+  testing = .true.
 
   call init_output()
 
@@ -45,6 +53,14 @@ subroutine test_all
   call test(test_lowtrim,  'Transform string to lowercase and trim')
   call test(test_absreldiff, 'Calculate absolute relative difference')
   call test(test_cross, 'Cross product')
+  oldverbose = verbose; verbose = 0 !These tests produce too much output otherwise
+  call test(test_checklim_1d_int, 'Check limits 1D (integer)')
+  call test(test_checklim_2d_int, 'Check limits 2D (integer)')
+  call test(test_checklim_3d_int, 'Check limits 3D (integer)')
+  call test(test_checklim_1d,     'Check limits 1D (float)')
+  call test(test_checklim_2d,     'Check limits 2D (float)')
+  call test(test_checklim_3d,     'Check limits 3D (float)')
+  verbose = oldverbose
 
   ! test sem derivatives
   write(6,'(/,a)') 'TEST SEM DERIVATIVE MODULE'
@@ -97,12 +113,39 @@ subroutine test_all
   call test(test_jacobian_subpar, 'jacobian subpar')
   call test(test_inv_jacobian_subpar, 'inverse jacobian subpar')
 
+  ! test_background_models
+  write(6,'(/,a)') 'TEST BACKGROUND_MODELS MODULE'
+  call test(test_background_models_combine, 'Combine model parameters')
+  call test(test_background_models_weight,  'Weight model parameters')
+  call test(test_background_models_get_parameter_names, 'Get model parameter names')
+
+  ! test_nc_routines
+  write(6,'(/,a)') 'TEST NC_ROUTINES MODULE'
+  call test_nc_create_testfile()
+  call test(test_nc_create_file, 'Create NetCDF file')
+  call test(test_nc_create_group, 'Create Group')
+  call test(test_nc_open_for_read, 'Open NetCDF file for reading')
+  call test(test_nc_open_for_write, 'Open NetCDF file for writing')
+  call test(test_nc_getvar_1d_float, 'Read 1D Float by name')
+  call test(test_nc_getvar_2d_float, 'Read 2D Float by name')
+  call test(test_nc_getvar_3d_float, 'Read 3D Float by name')
+  call test(test_nc_getvar_1d_int, 'Read 1D Integer by name')
+  call test(test_nc_getvar_2d_int, 'Read 2D Integer by name')
+  call test(test_nc_getvar_3d_int, 'Read 3D Integer by name')
+  call test(test_nc_putvar_1d, 'Write 1D Float by name')
+  call test(test_nc_putvar_2d, 'Write 2D Float by name')
+  call test(test_nc_putvar_3d, 'Write 3D Float by name')
+  call test(test_nc_putvar_1d_into_nd, 'Write 1D slices into 3D variable by name')
 
   ! test_readfields
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
   call test(test_readfields_set_params, 'Set SEM file params')
   call test(test_readfields_open_files, 'Open SEM file')
-  call test(test_readfields_load_seismogram, 'Load seismogram')
+  call test(test_readfields_read_meshes, 'Read meshes')
+  call test(test_readfields_load_fw_points, 'Read FWD points')
+  call test(test_readfields_load_model_coeffs, 'Read Model coefficients from SEM mesh')
+  call test(test_load_seismograms_rdbm, 'Read seismograms')
+  call test(test_get_chunk_bounds, 'Get_chunk_bounds')
 
   ! test_rotations
   write(6,'(/,a)') 'TEST ROTATIONS MODULE'
@@ -129,6 +172,10 @@ subroutine test_all
   call test(test_init_halton, 'Init_Halton sequence')
   call test(test_get_halton,  'Get_Halton sequence')
 
+  ! test_lanczos
+  write(6,'(/,a)') 'TEST LANCZOS RESAMPLING MODULE'
+  call test(test_lanczos_resample, 'Lanczos resampling')
+
   ! test_fft_type
   write(6,'(/,a)') 'TEST FFT MODULE'
   call test(test_fft_dirac, 'FFT_dirac')
@@ -142,6 +189,7 @@ subroutine test_all
 
   ! test filter
   write(6,'(/,a)') 'TEST FILTER MODULE'
+  call test(test_filter_ident, 'Test Identical filter')
   call test(test_filter_gabor_response, 'Test Gabor filter')
   call test(test_filter_butterworth_lp_response, 'Test Butterworth LP filter')
   call test(test_filter_butterworth_hp_response, 'Test Butterworth HP filter')
@@ -151,7 +199,13 @@ subroutine test_all
   ! test kernel
   write(6,'(/,a)') 'TEST KERNEL MODULE'
   call test(test_kernel_init, 'Test Kernel initialization')
+  call test(test_integrate_parseval, 'Test Parseval integration')
   call test(test_kernel_cut_timewindow, 'Test Time window cutting')
+  call test(test_tabulate_kernel, 'Test base kernel tabulation')
+
+  ! test type_parameter
+  write(6,'(/,a)') 'TEST TYPE_PARAMETER MODULE'
+  call test(test_parameter_reading, 'Reading in all parameters')
 
   ! test_tetrahedra
   write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'
@@ -183,23 +237,22 @@ subroutine test_all
   call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
   call test(test_mesh_dump2, 'reading/dumping tetrahedral mesh from abaqus')
   call test(test_mesh_dump3, 'reading/dumping tetrahedral mesh from abaqus with multiple element blocks')
-  call test(test_mesh_data_dump, 'reading/dumping tetrahedral mesh with data')
-  call test(test_mesh_data_dump2, &
-            'reading/dumping triangular mesh from abaqus file with data')
-  call test(test_mesh_data_dump3, &
-            'reading/dumping quadrilateral mesh from abaqus file with data')
-  call test(test_mesh_data_dump4, &
-            'reading/dumping hexahedral mesh from abaqus file with data')
-  call test(test_mesh_data_dump5, &
-            'reading/dumping tetrahedral mesh from abaqus file with data')
-  call test(test_mesh_data_blocks, &
-            'reading/dumping tetrahedral mesh from abaqus file with blocks and data')
-  call test(test_mesh_tracedata_dump, 'reading/dumping tetrahedral mesh with tracedata')
+  call test(test_mesh_sort, 'sorting a mesh and dumping to xdmf')
+  call test(test_append_variable, 'Append data to variable type')
+  call test(test_init_node_data, 'Initialize node data')
+  call test(test_init_cell_data, 'Initialize cell data')
+  call test(test_init_mixed_data, 'Initialize mixed data')
+  call test(test_set_node_data_and_dump, 'Set node data')
+  call test(test_set_cell_data_and_dump, 'Set cell data')
+  call test(test_set_mixed_data_and_dump, 'Set mixed data')
+  call test(test_set_mixed_data, 'Set mixed data with entry names')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
   call test(test_initialize_mesh, 'initialize mesh')
   call test(test_random_points_triangle_mesh, &
             'generate random numbers on triangular mesh')
+  call test(test_weight, 'weight function (hat functions)')
+  call test(test_integration_in_tetrahedron, 'MC-integrate in tetrahedral mesh element')
 
   ! test_buffer
   write(6,'(/,a)') 'TEST BUFFER MODULE'
@@ -212,6 +265,12 @@ subroutine test_all
   call test(test_buffer_retrieval_3d, 'get 3d data back from the buffer')
   call test(test_buffer_retrieval_4d, 'get 4d data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
+
+  ! Test master queue
+  ! @TODO: Test does not work, should be checked
+  !write(6,'(/,a)') 'TEST MASTER QUEUE'
+  !call test(test_master_all, 'Master queue init_queue and finalize')
+  
 
   call finish_output()
 end subroutine

@@ -6,16 +6,22 @@ module filtering
    use commpi,           only           : pabort
    
    implicit none
+   private
+
+   public   filter_type, timeshift_type
 
    type filter_type
-       character(len=32)               :: name
+       private
+       character(len=32), public       :: name
        complex(kind=dp), allocatable   :: transferfunction(:)
+       complex(kind=dp), allocatable   :: transferfunction_fwd(:)
+       complex(kind=dp), allocatable   :: transferfunction_bwd(:)
        integer                         :: nfreq                !< Number of frequencies
        real(kind=dp), allocatable      :: f(:)
        logical                         :: initialized = .false.
        logical                         :: stf_added = .false.
-       character(len=32)               :: filterclass
-       real(kind=dp)                   :: frequencies(4)
+       character(len=32), public       :: filterclass
+       real(kind=dp),     public       :: frequencies(4)
 
        contains
        procedure, pass   :: create
@@ -78,6 +84,9 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     end do
 
     select case(trim(filterclass))
+    case('ident')
+       this%transferfunction = ident(this%f)
+
     case('Gabor')
        this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2))
 
@@ -155,6 +164,11 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        call pabort
     end select
 
+    ! Set forward and backward transfer functions.
+    ! STF of fwd and bwd earthquake may be added later
+    this%transferfunction_fwd = this%transferfunction
+    this%transferfunction_bwd = this%transferfunction
+
     if (firstslave) then
 20     format('filterresponse_', A, 2('_', F0.6))
        write(fnam,20) trim(filterclass), frequencies(1:2)
@@ -175,22 +189,33 @@ end subroutine create
 
 !-----------------------------------------------------------------------------------------
 !> Devides the transferfunction of the filter with the complex spectra of 
-!! the Source time functions of the SEM simulation, to cancel its effect.
-!! The filter is multiplied with the square root of the STF spectra, since it is
-!! applied twice later. (We could get around this by having separate filters for 
-!! the forward and the backward field.
-subroutine add_stfs(this, stf_fwd, stf_bwd)
+!! the Source time function of the forward SEM simulation, to cancel its effect.
+!! The filter uses only the forward STF, since fwd and bwd simulation are checked to
+!! have the same STF in readfields.f90
+!! We could get around this by having separate filters for the forward and the backward 
+!! field. 
+!! If we had nothing else to do.
+subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt)
     use fft,                     only: rfft_type, taperandzeropad
     use simple_routines,         only: firstderiv
+    use lanczos,                 only: lanczos_resample
     class(filter_type)              :: this
-    real(kind=dp)   , intent(in)    :: stf_fwd(:), stf_bwd(:)
+    real(kind=dp)   , intent(in)    :: stf_sem_fwd(:) ! STF of the AxiSEM simulation
+    real(kind=dp)   , intent(in)    :: sem_dt         ! time step of STF
+    real(kind=dp)   , intent(in)    :: amplitude_fwd
+    real(kind=dp)   , intent(in)    :: stf_source(:)  ! STF of the actual earthquake
+    real(kind=dp)   , intent(in)    :: stf_dt         ! time step of STF
 
-    real(kind=dp)   , allocatable   :: stfs(:,:)
-    complex(kind=dp), allocatable   :: stfs_fd(:,:)
+    ! The FFT routines need 2D arrays. Second dimension will be size 1
+    real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_sem_td(:,:), t(:)
+    complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:), lowpass(:)
+
+    real(kind=dp)   , allocatable   :: stf_resampled(:), stf_src(:,:), stf_src_td(:,:)
 
     type(rfft_type)                 :: fft_stf
     character(len=64)               :: fnam
     integer                         :: ifreq
+    real(kind=dp)                   :: waterlevel
 
     if (.not.this%initialized) then
        write(*,*) 'ERROR: Filter is not initialized yet'
@@ -202,21 +227,93 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
        call pabort
     end if
 
-    call fft_stf%init(ntimes_in = size(stf_fwd), &
-                      ndim      = 1,             &
-                      ntraces   = 2             )
+    call fft_stf%init(ntimes_in = size(stf_sem_fwd), &
+                      ndim      = 1,                 &
+                      ntraces   = 1,                 &           
+                      dt        = sem_dt)
 
 
-    allocate(stfs(size(stf_fwd), 2))
-    allocate(stfs_fd(this%nfreq, 2))
+    allocate(stf_sem(size(stf_sem_fwd), 1))
+    allocate(stf_sem_fd(this%nfreq, 1))
+    allocate(stf_sem_td(fft_stf%get_ntimes(), 1))
+    allocate(stf_src(size(stf_sem_fwd), 1))
+    allocate(stf_src_fd(this%nfreq, 1))
+    allocate(stf_src_td(fft_stf%get_ntimes(), 1))
+    t = fft_stf%get_t()
 
-    stfs(:,1) = firstderiv(stf_fwd)
-    stfs(:,2) = firstderiv(stf_bwd)
-    
-    call fft_stf%rfft(taperandzeropad(stfs, fft_stf%get_ntimes(), ntaper = 5), stfs_fd)
+    stf_sem(:,1) = stf_sem_fwd 
 
-    this%transferfunction = this%transferfunction / sqrt(stfs_fd(:,1) * stfs_fd(:,2))
-    
+    ! Resample earthquake STF to sampling rate of the SEM simulation
+    stf_src(:,:) = 0.0d0
+    stf_resampled = lanczos_resample(stf_source, stf_dt, sem_dt, a=8)
+    stf_src(1:size(stf_resampled,1),1) = stf_resampled
+
+    ! Write out original Source STF
+    if (firstslave) then
+16     format('stf_source_', A, 2('_', F0.3))
+17     format(3(E16.8))
+       write(fnam,16) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, size(stf_source)
+         write(10,17), stf_dt*(ifreq-1), stf_source(ifreq)
+       end do
+       close(10)
+    end if
+
+    ! FT STF of AxiSEM
+    call fft_stf%rfft(taperandzeropad(stf_sem, fft_stf%get_ntimes(), ntaper = 5), stf_sem_fd)
+
+    ! FT STF of Earthquake
+    call fft_stf%rfft(taperandzeropad(stf_src, fft_stf%get_ntimes(), ntaper = 5), stf_src_fd)
+
+    if (firstslave) then
+18     format('stf_spectrum_', A, 2('_', F0.3))
+19     format(5(E16.8))
+       write(fnam,18) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, this%nfreq
+           write(10,19), this%f(ifreq), real(stf_sem_fd(ifreq,1)),    &
+                                        imag(stf_sem_fd(ifreq,1)),    &
+                                        real(stf_src_fd(ifreq,1)), &
+                                        imag(stf_src_fd(ifreq,1))
+       end do
+       close(10)
+    end if
+
+    ! Calculate first derivatice of the STF
+    stf_sem_fd(:,1) = stf_sem_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0))
+    stf_src_fd(:,1) = stf_src_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0))
+
+
+    ! Divide filter by spectrum of forward STF. It is established at initialization
+    ! that forward and backward STF are identical.
+    this%transferfunction_fwd = this%transferfunction / stf_sem_fd(:,1)
+    this%transferfunction_fwd = this%transferfunction_fwd * amplitude_fwd 
+    this%transferfunction_bwd = this%transferfunction_fwd
+
+    ! Apply Earthquake STF, but only to forward transfer function
+    this%transferfunction_fwd = this%transferfunction_fwd * stf_src_fd(:,1)
+
+    ! Apply high order butterworth filter to delete frequencies above mesh frequency
+    lowpass = butterworth_lowpass(this%f, this%f(this%nfreq/4), 16)
+    lowpass = lowpass * conjg(lowpass)
+  
+    this%transferfunction_fwd = this%transferfunction_fwd * lowpass
+    this%transferfunction_bwd = this%transferfunction_bwd * lowpass
+
+    ! Replace NaNs with zero
+    where(abs(this%transferfunction_fwd).ne.abs(this%transferfunction_fwd)) 
+      this%transferfunction_fwd = cmplx(0d0, 0d0)
+    end where
+
+    where(abs(this%transferfunction_bwd).ne.abs(this%transferfunction_bwd)) 
+      this%transferfunction_bwd = cmplx(0d0, 0d0)
+    end where
+
+    call fft_stf%irfft(stf_sem_fd, stf_sem_td)
+
     call fft_stf%freeme()
 
     if (firstslave) then
@@ -225,18 +322,24 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
           write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
-                                      imag(this%transferfunction(ifreq))
+                                      imag(this%transferfunction(ifreq)), &
+                                      real(this%transferfunction_fwd(ifreq)), &
+                                      imag(this%transferfunction_fwd(ifreq)), &
+                                      real(this%transferfunction_bwd(ifreq)), &
+                                      imag(this%transferfunction_bwd(ifreq))
        end do
        close(10)
        
-21     format('stf_spectrum_', A, 2('_', F0.3))
+21     format('stf_spectrum_deriv_', A, 2('_', F0.3))
 22     format(5(E16.8))
        write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
-           write(10,22), this%f(ifreq), real(stfs_fd(ifreq,1)), imag(stfs_fd(ifreq,1)), &
-                                        real(stfs_fd(ifreq,2)), imag(stfs_fd(ifreq,2))
+           write(10,22), this%f(ifreq), real(stf_sem_fd(ifreq,1)), &
+                                        imag(stf_sem_fd(ifreq,1)), &
+                                        real(stf_src_fd(ifreq,1)), &
+                                        imag(stf_src_fd(ifreq,1))
        end do
        close(10)
        
@@ -245,19 +348,34 @@ subroutine add_stfs(this, stf_fwd, stf_bwd)
        write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
-       do ifreq = 1, size(stf_fwd)
-          write(10,24), real(ifreq), stfs(ifreq,1), stfs(ifreq,2)
+       do ifreq = 1, size(stf_sem_fwd)
+         write(10,24), t(ifreq), stf_sem_fwd(ifreq), stf_src(ifreq,1)
+       end do
+       close(10)
+       
+25     format('stf_deriv_', A, 2('_', F0.3))
+26     format(3(E16.8))
+       write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do ifreq = 1, size(stf_sem_fwd)
+         write(10,26), t(ifreq), stf_sem_td(ifreq,1), stf_src_td(ifreq,1)
        end do
        close(10)
     end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
-       write(*,*) 'WARNING: Filter is not vanishing fast enough for high frequencies.'
-       write(*,*) 'Numerical noise from frequencies above mesh limit will be propagated'
-       write(*,*) 'into the kernels. Check the files'
-       write(*,*) 'filterresponse*'
-       write(*,*) 'filterresponse_stf_*'
-       write(*,*) 'stf_spectrum_*'
+       if (firstslave) then
+         print *, 'ERROR: Filter ', trim(this%name), ' is not vanishing fast enough for '
+         print *, 'high frequencies.'
+         print *, 'Numerical noise from frequencies above mesh limit will be propagated'
+         print *, 'into the kernels. Check the files'
+         print *, 'filterresponse*'
+         print *, 'filterresponse_stf_*'
+         print *, 'stf_spectrum_*'
+         print *, 'Maximum frequency: ', this%f(maxloc(abs(this%transferfunction),1))
+       end if
+       stop
     end if
 
     this%stf_added = .true.
@@ -281,68 +399,89 @@ end subroutine deleteme
 
 !-----------------------------------------------------------------------------------------
 !> Apply this filter to one trace (in the frequency domain)
-function apply_1d(this, freq_series)
+function apply_1d(this, freq_series, kind)
 
    class(filter_type)               :: this
    complex(kind=dp), intent(in)     :: freq_series(:)
+   character(len=3), intent(in)     :: kind
    complex(kind=dp)                 :: apply_1d(size(freq_series))
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
 
    if (size(freq_series, 1).ne.this%nfreq) then
       write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', &
                     size(freq_series, 1)
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
 
+   select case(kind)
+   case('fwd')
+     apply_1d = freq_series * this%transferfunction_fwd
+   case('bwd')
+     apply_1d = freq_series * this%transferfunction_bwd
+   case default
    apply_1d = freq_series * this%transferfunction
+   end select
 end function apply_1d 
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> Apply this filter to multiple traces (in the frequency domain)
-function apply_2d(this, freq_series)
+function apply_2d(this, freq_series, kind)
 
    class(filter_type)               :: this
    complex(kind=dp), intent(in)     :: freq_series(:,:)
+   character(len=3), intent(in)     :: kind
    complex(kind=dp)                 :: apply_2d(size(freq_series,1), size(freq_series,2))
    integer                          :: itrace
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
 
    if (size(freq_series, 1).ne.this%nfreq) then
       write(*,*) 'ERROR: Filter length: ', this%nfreq, ', data length: ', &
                     size(freq_series, 1)
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
    
+   select case(kind)
+   case('fwd')
+     do itrace = 1, (size(freq_series, 2))
+        apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_fwd(:)
+     end do
+   case('bwd')
+     do itrace = 1, (size(freq_series, 2))
+        apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_bwd(:)
+     end do
+   case default
    do itrace = 1, (size(freq_series, 2))
       apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction(:)
    end do
+   end select
 
 end function apply_2d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !> Apply this filter to multiple dimensions and traces (in the frequency domain)
-function apply_3d(this, freq_series)
+function apply_3d(this, freq_series, kind)
 
    use simple_routines, only       :  mult3d_1d
    
    class(filter_type)              :: this
    complex(kind=dp), intent(in)    :: freq_series(:,:,:)
+   character(len=3), intent(in)    :: kind
    complex(kind=dp)                :: apply_3d(size(freq_series,1), size(freq_series,2), &
                                                size(freq_series,3))
 
    if (.not.this%initialized) then
       write(*,*) 'ERROR: Filter is not initialized yet'
-      call pabort
+      call pabort(do_traceback=.false.)
    end if
 
    if (size(freq_series, 1).ne.this%nfreq) then
@@ -351,7 +490,14 @@ function apply_3d(this, freq_series)
       call pabort
    end if
 
+   select case(kind)
+   case('fwd')
+     apply_3d = mult3d_1d(freq_series, this%transferfunction_fwd)
+   case('bwd')
+     apply_3d = mult3d_1d(freq_series, this%transferfunction_bwd)
+   case default
    apply_3d = mult3d_1d(freq_series, this%transferfunction)
+   end select
 
 end function apply_3d
 !-----------------------------------------------------------------------------------------
@@ -450,6 +596,19 @@ end subroutine
 !-----------------------------------------------------------------------------!
 
 !-----------------------------------------------------------------------------------------
+function ident(f)                        !< identical filter, returns a vector of ones the 
+                                         !! length of f. Exists just for testing reasons.
+
+    real(kind=dp), intent(in)   :: f(:)  !< Frequency array
+
+    real(kind=dp)               :: ident(size(f))
+
+    ident(:) = complex(1.0, 0.0)
+
+end function ident
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by K. Sigloch
 
     real(kind=dp), intent(in)   :: f(:)  !< Frequency array
@@ -466,7 +625,8 @@ function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by 
     real(kind=dp)               :: f_c
 
     f_c = 1 / p_c
-    loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )
+    loggabor = 0
+    where (f>0.0d0) loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )
     ! G(f,k) = exp( -(ln(f/f_k))^2 / (2*ln(sigmaIfc)^2)  )
 
 end function loggabor

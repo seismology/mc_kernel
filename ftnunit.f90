@@ -51,6 +51,12 @@ module ftnunit
         module procedure assert_allfalse_log1d
     end interface
 
+    interface isnan
+        module procedure isnan_sp
+        module procedure isnan_dp
+        module procedure isnan_int
+    end interface
+
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -305,15 +311,19 @@ subroutine assert_comparable_dble( value1, value2, margin, text )
 
     if (value1 > infinity .or. -value1 > infinity) then
         write(*,*) '   value1 is infinite - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (value2 > infinity .or. -value2 > infinity) then
         write(*,*) '   value2 is infinite - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (isnan(value1)) then
         write(*,*) '   value1 is NAN - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (isnan(value2)) then
         write(*,*) '   value2 is NAN - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     endif
 
@@ -351,15 +361,19 @@ subroutine assert_comparable_dble1d( array1, array2, margin, text )
     else
         if (any(array1 > infinity) .or. any(-array1 > infinity)) then
             write(*,*) '   array1 contains infinite values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(array2 > infinity) .or. any(-array2 > infinity)) then
             write(*,*) '   array2 contains infinite values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(isnan(array1))) then
             write(*,*) '   array1 contains NAN values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(isnan(array2))) then
             write(*,*) '   array2 contains NAN values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         endif
 
@@ -367,17 +381,17 @@ subroutine assert_comparable_dble1d( array1, array2, margin, text )
             nofails = nofails + 1
             write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'
             count = 0
+            write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
             do i = 1,size(array1)
                 if ( abs(array1(i)-array2(i)) > &
                          0.5 * margin * (abs(array1(i))+abs(array2(i))) ) then
                     count = count + 1
-                    write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
                     if ( count < 50 ) then
                         write(*,'(i10,e15.5,e15.5)')    i, array1(i), array2(i)
                     endif
-                    write(*,*) 'Number of differences: ', count
                 endif
             enddo
+            write(*,*) 'Number of differences: ', count
         endif
     endif
 end subroutine assert_comparable_dble1d
@@ -402,15 +416,19 @@ subroutine assert_comparable_real( value1, value2, margin, text )
 
     if (value1 > infinity .or. -value1 > infinity) then
         write(*,*) '   value1 is infinite - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (value2 > infinity .or. -value2 > infinity) then
         write(*,*) '   value2 is infinite - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (isnan(value1)) then
         write(*,*) '   value1 is NAN - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     elseif (isnan(value2)) then
         write(*,*) '   value2 is NAN - assertion failed'
+        write(*,*) trim(text)
         nofails = nofails + 1
     endif
 
@@ -448,15 +466,19 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
     else
         if (any(array1 > infinity) .or. any(-array1 > infinity)) then
             write(*,*) '   array1 contains infinite values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(array2 > infinity) .or. any(-array2 > infinity)) then
             write(*,*) '   array2 contains infinite values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(isnan(array1))) then
             write(*,*) '   array1 contains NAN values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         elseif (any(isnan(array2))) then
             write(*,*) '   array2 contains NAN values - assertion failed'
+            write(*,*) trim(text)
             nofails = nofails + 1
         endif
 
@@ -464,17 +486,17 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
             nofails = nofails + 1
             write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'
             count = 0
+            write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
             do i = 1,size(array1)
                 if ( abs(array1(i)-array2(i)) > &
                          0.5 * margin * (abs(array1(i))+abs(array2(i))) ) then
                     count = count + 1
-                    write(*,'(a10,2a15)')    '    Index', '          First', '         Second'
                     if ( count < 50 ) then
                         write(*,'(i10,e15.5,e15.5)')    i, array1(i), array2(i)
                     endif
-                    write(*,*) 'Number of differences: ', count
                 endif
             enddo
+            write(*,*) 'Number of differences: ', count
         endif
     endif
 end subroutine assert_comparable_real1d
@@ -674,6 +696,32 @@ subroutine ftnunit_make_empty_file( filename )
     endif
 
 end subroutine ftnunit_make_empty_file
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+elemental logical function isnan_sp(array)
+  real(kind=sp), intent(in) :: array
+
+  isnan_sp = array.ne.array
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+elemental logical function isnan_dp(array)
+  real(kind=dp), intent(in) :: array
+
+  isnan_dp = array.ne.array
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+elemental logical function isnan_int(array)
+  integer, intent(in)       :: array
+
+  isnan_int = array.ne.array
+end function
+!-----------------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 
 end module ftnunit

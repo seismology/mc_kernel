@@ -13,7 +13,8 @@ subroutine test_mesh_read
   type(inversion_mesh_type)    :: inv_mesh
   integer                      :: npoints, nelems
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   npoints = inv_mesh%get_nvertices()
   nelems = inv_mesh%get_nelements()
@@ -22,7 +23,7 @@ subroutine test_mesh_read
   call assert_equal(nelems, 2, 'number of elements in facets.TEST')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_read
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -40,16 +41,17 @@ subroutine test_mesh_dump
   open(newunit=myunit, file='unit_tests/testmesh_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
   
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
-  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh')
+  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh')
 
-  call assert_file_exists('unit_tests/testmesh.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_grid.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_grid.dat', 'test xdmf dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_dump
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -58,25 +60,26 @@ subroutine test_mesh_dump2
   integer                      :: myunit, ierr
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
   call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
+  !call inv_mesh%read_abaqus_mesh('Meshes/mantle_only_300km.inp','onvertices')
 
-  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh_abaqus')
+  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus')
 
-  call assert_file_exists('unit_tests/testmesh_abaqus.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_abaqus_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_abaqus_grid.dat', 'test xdmf dump')
-  
+  call assert_file_exists('unit_tests_output/testmesh_abaqus.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_grid.dat', 'test xdmf dump')
+
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_dump2
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -85,594 +88,842 @@ subroutine test_mesh_dump3
   integer                      :: myunit, ierr
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testmesh_abaqus_merge_grid.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
   call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
 
-  call inv_mesh%dump_mesh_xdmf('unit_tests/testmesh_abaqus_merge')
+  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_merge')
 
-  call assert_file_exists('unit_tests/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
   
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_dump3
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_mesh_data_dump
-  type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
-  integer                           :: npoints, nelements, myunit, ierr, i
+subroutine test_mesh_sort
+  type(inversion_mesh_type)    :: inv_mesh
+  integer                      :: myunit, ierr, i
 
   ! tidy up
-  open(newunit=myunit, file='unit_tests/testdata.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted.xdmf', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testdata_points.dat', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted_points.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testdata_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testdata_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testcelldata.xdmf', iostat=ierr)
+  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted_grid.dat', iostat=ierr)
   if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testcelldata_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
+  !call inv_mesh%read_abaqus_mesh('Meshes/mantle_only_300km.inp','onvertices')
 
-  open(newunit=myunit, file='unit_tests/testcelldata_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testcelldata_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%tree_sort()
 
-  call inv_mesh%init_node_data(3)
+  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_sorted')
 
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat_node(3,npoints))
-
-  datat_node(:,:) = inv_mesh%get_vertices()
-  call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'y')
-  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'z')
-
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testdata')
-
-  call assert_file_exists('unit_tests/testdata.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testdata_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testdata_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testdata_data.dat', 'test xdmf data dump')
-
-
-  call inv_mesh%init_cell_data(3)
-
-  nelements = inv_mesh%get_nelements()
-  allocate(datat_cell(3,nelements))
-
-  do i=1, nelements
-    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
-  enddo
-  datat_cell(2,:) = datat_cell(2,:) + 1
-  datat_cell(3,:) = datat_cell(3,:) + 2
-
-  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
-
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcelldata')
-
-  call assert_file_exists('unit_tests/testcelldata.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcelldata_points.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcelldata_grid.dat', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcelldata_data.dat', 'test xdmf cell data dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted.xdmf', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted_points.dat', 'test xdmf dump')
+  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted_grid.dat', 'test xdmf dump')
 
   call inv_mesh%freeme()
-end subroutine
+end subroutine test_mesh_sort
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_mesh_data_dump2
+subroutine test_append_variable
+  type (inversion_mesh_variable_type), allocatable  :: variable(:)
+  character(len=16), dimension(:), allocatable      :: entry_names_ref_1
+  character(len=16), dimension(:), allocatable      :: entry_names_ref_2
+  character(len=16), dimension(:), allocatable      :: entry_names_ref_3
+
+  entry_names_ref_1 = ['entry1', 'entry2']
+  ! Test initialization of inversion_mesh_data_type variable
+  call append_variable(variable, var_name = 'variable_test', &  
+                                 nentries = 2,               &
+                                 istime   = .false.,         &
+                                 entry_names = entry_names_ref_1)
+
+  call assert_true(allocated(variable), 'variable is allocated')
+  call assert_equal(size(variable), 1,  'variable has size 1')
+  call assert_equal(variable(1)%nentries, 2,  'First datum has has size 2')
+  call assert_false(variable(1)%istime,    'variable is not a time')
+  call assert_true(variable(1)%entry_names.eq.entry_names_ref_1, &
+                   'Entry names are correct: ')
+
+  entry_names_ref_2 = ['entry1', 'entry2', 'entry3', 'entry4']
+  ! Test initialization of inversion_mesh_data_type variable
+  call append_variable(variable, var_name = 'variable_test_2', &  
+                                 nentries = 4,                 &
+                                 istime   = .false.,           &
+                                 entry_names = entry_names_ref_2)
+
+  call assert_true(allocated(variable), 'variable is allocated')
+  call assert_equal(size(variable), 2,  'variable has size 2')
+  
+  ! First verify that existing entries are not compromised
+  call assert_equal(variable(1)%nentries, 2,  'First datum has has size 2')
+  call assert_false(variable(1)%istime,    'variable is not a time')
+  call assert_true(variable(1)%entry_names.eq.entry_names_ref_1, &
+                   'Entry names are correct: ')
+
+  ! Now check the new entries               
+  call assert_equal(variable(2)%nentries, 4,  'Second datum has has size 3')
+  call assert_false(variable(2)%istime,    'variable is not a time')
+  call assert_true(variable(2)%entry_names.eq.entry_names_ref_2, &
+                   'Entry names are correct: ')
+
+  entry_names_ref_3 = ['entry1']
+  ! Test initialization of inversion_mesh_data_type variable
+  call append_variable(variable, var_name = 'variable_test_3', &  
+                                 nentries = 1,                 &
+                                 istime   = .false.,           &
+                                 entry_names = entry_names_ref_3)
+
+  call assert_true(allocated(variable), 'variable is allocated')
+  call assert_equal(size(variable), 3,  'variable has size 3')
+
+  ! First verify that existing entries are not compromised
+  call assert_equal(variable(1)%nentries, 2,  'First datum has has size 2')
+  call assert_false(variable(1)%istime,    'variable is not a time')
+  call assert_true(variable(1)%entry_names.eq.entry_names_ref_1, &
+                   'Entry names are correct: ')
+
+  call assert_equal(variable(2)%nentries, 4,  'Second datum has has size 3')
+  call assert_false(variable(2)%istime,    'variable is not a time')
+  call assert_true(variable(2)%entry_names.eq.entry_names_ref_2, &
+                   'Entry names are correct: ')
+
+  ! Now check the new entries               
+  call assert_equal(variable(3)%nentries, 1,  'Third datum has has size 3')
+  call assert_false(variable(3)%istime,    'variable is not a time')
+  call assert_true(variable(3)%entry_names.eq.entry_names_ref_3, &
+                   'Entry names are correct: ')
+
+
+
+end subroutine test_append_variable
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_init_node_data
+  use netcdf
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
-  integer                           :: npoints, nelements, myunit, ierr, i
-
-  ! tidy up
-  open(newunit=myunit, file='unit_tests/testcircle.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testcircle_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testcircle_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testcircle_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testcellcircle.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testcellcircle_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testcellcircle_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testcellcircle_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  call inv_mesh%read_abaqus_mesh('unit_tests/circle.inp','onvertices')
-  call inv_mesh%init_node_data(3)
-
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat_node(3,npoints))
-
-  datat_node(:,:) = inv_mesh%get_vertices()
-  call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
-
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testcircle')
-
-  call assert_file_exists('unit_tests/testcircle.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_data.dat', 'test xdmf data dump')
+  integer                           :: nf_status, ncid, grp_ncid, dim_len, dimid
+  character(len=nf90_max_name)      :: dim_name
 
 
-  call inv_mesh%init_cell_data(3)
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
-  nelements = inv_mesh%get_nelements()
-  allocate(datat_cell(3,nelements))
+  call inv_mesh%init_node_data()
+  nf_status = nf90_close(ncid = inv_mesh%ncid)
 
-  do i=1, nelements
-    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
-  enddo
-  datat_cell(2,:) = datat_cell(2,:) + 1
-  datat_cell(3,:) = datat_cell(3,:) + 2
+  nf_status = nf90_open(ncid = ncid, path=inv_mesh%filename_tmp_out, mode=NF90_NOWRITE)
+  call assert_equal(nf_status, NF90_NOERR, &
+                    'Error at nf90_open: '//trim(nf90_strerror(nf_status)))
 
-  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
+  nf_status = nf90_inq_ncid(ncid = ncid, name='node_data', grp_ncid = grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, &
+                    'Error at Group inquiry: '//trim(nf90_strerror(nf_status)))
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcellcircle')
+  nf_status = nf90_close(ncid = ncid)
 
-  call assert_file_exists('unit_tests/testcellcircle.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_points.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_grid.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_data.dat', &
-                          'test xdmf cell data dump')
-
-  call inv_mesh%freeme()
-end subroutine
+end subroutine test_init_node_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_mesh_data_dump3
+subroutine test_init_mixed_data
+  use netcdf
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
-  integer                           :: npoints, nelements, myunit, ierr, i
-
-  ! tidy up
-  open(newunit=myunit, file='unit_tests/testcircle_quad.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testcircle_quad_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testcircle_quad_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testcircle_quad_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testcellcircle_quad.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testcellcircle_quad_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testcellcircle_quad_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testcellcircle_quad_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  integer                           :: nf_status, ncid, grp_ncid, dim_len, dimid
+  character(len=nf90_max_name)      :: dim_name
 
 
-  call inv_mesh%read_abaqus_mesh('unit_tests/circle_quad2.inp','onvertices')
-  call inv_mesh%init_node_data(3)
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat_node(3,npoints))
+  call inv_mesh%init_cell_data()
 
-  datat_node(:,:) = inv_mesh%get_vertices()
-  call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
+  call inv_mesh%init_node_data()
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testcircle_quad')
+  call inv_mesh%init_cell_data()
 
-  call assert_file_exists('unit_tests/testcircle_quad.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_quad_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_quad_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testcircle_quad_data.dat', 'test xdmf data dump')
+  call inv_mesh%init_node_data()
 
+  nf_status = nf90_close(ncid = inv_mesh%ncid)
 
-  call inv_mesh%init_cell_data(3)
+  nf_status = nf90_open(ncid = ncid, path=inv_mesh%filename_tmp_out, mode=NF90_NOWRITE)
+  call assert_equal(nf_status, NF90_NOERR, &
+                    'Error at nf90_open: '//trim(nf90_strerror(nf_status)))
 
-  nelements = inv_mesh%get_nelements()
-  allocate(datat_cell(3,nelements))
+  nf_status = nf90_inq_ncid(ncid = ncid, name='cell_data', grp_ncid = grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, &
+                    'Error at Cell group inquiry: '//trim(nf90_strerror(nf_status)))
 
-  do i=1, nelements
-    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
-  enddo
-  datat_cell(2,:) = datat_cell(2,:) + 1
-  datat_cell(3,:) = datat_cell(3,:) + 2
+  nf_status = nf90_inq_ncid(ncid = ncid, name='node_data', grp_ncid = grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, &
+                    'Error at Node group inquiry: '//trim(nf90_strerror(nf_status)))
 
-  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
+  nf_status = nf90_close(ncid = ncid)
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcellcircle_quad')
-
-  call assert_file_exists('unit_tests/testcellcircle_quad.xdmf', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_points.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_grid.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testcellcircle_quad_data.dat', &
-                          'test xdmf cell data dump')
-
-  call inv_mesh%freeme()
-end subroutine
+end subroutine test_init_mixed_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_mesh_data_dump4
+subroutine test_init_cell_data
+  use netcdf
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
-  integer                           :: npoints, nelements, myunit, ierr, i
-
-  ! tidy up
-  open(newunit=myunit, file='unit_tests/testsphere.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testsphere_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testsphere_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testsphere_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testspherecell.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testspherecell_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testspherecell_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testspherecell_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  call inv_mesh%read_abaqus_mesh('unit_tests/sphere.inp','onvertices')
-  call inv_mesh%init_node_data(3)
-
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat_node(3,npoints))
-
-  datat_node(:,:) = inv_mesh%get_vertices()
-  call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
-
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testsphere')
-
-  call assert_file_exists('unit_tests/testsphere.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testsphere_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testsphere_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testsphere_data.dat', 'test xdmf data dump')
+  integer                           :: nf_status, ncid, grp_ncid, dim_len, dimid
+  character(len=nf90_max_name)      :: dim_name
 
 
-  call inv_mesh%init_cell_data(3)
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
-  nelements = inv_mesh%get_nelements()
-  allocate(datat_cell(3,nelements))
+  call inv_mesh%init_cell_data()
+  nf_status = nf90_close(ncid = inv_mesh%ncid)
 
-  do i=1, nelements
-    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
-  enddo
-  datat_cell(2,:) = datat_cell(2,:) + 1
-  datat_cell(3,:) = datat_cell(3,:) + 2
+  nf_status = nf90_open(ncid = ncid, path=inv_mesh%filename_tmp_out, mode=NF90_NOWRITE)
+  call assert_equal(nf_status, NF90_NOERR, &
+                    'Error at nf90_open: '//trim(nf90_strerror(nf_status)))
 
-  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
-
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testspherecell')
-
-  call assert_file_exists('unit_tests/testspherecell.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_points.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_grid.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testspherecell_data.dat', &
-                          'test xdmf cell data dump')
-
+  nf_status = nf90_inq_ncid(ncid = ncid, name='cell_data', grp_ncid = grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, &
+                    'Error at Group inquiry: '//trim(nf90_strerror(nf_status)))
 
   call inv_mesh%freeme()
-end subroutine
+
+  nf_status = nf90_close(ncid = ncid)
+
+end subroutine test_init_cell_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_mesh_data_dump5
+subroutine test_set_mixed_data
+  use netcdf
+  use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
-  integer                           :: npoints, nelements, myunit, ierr, i
+  character(len=nf90_max_name)      :: variable_names(3)
+  integer                           :: variable_length(3)
 
-  ! tidy up
-  open(newunit=myunit, file='unit_tests/testtetrahedrons.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  integer                           :: nf_status, ncid, id, jd, grp_ncid
+  real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), &
+                                       testvar3_ref(:,:), testvar4_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_ref_node(:,:), testvar2_ref_node(:,:), &
+                                       testvar3_ref_node(:,:), testvar4_ref_node(:,:)
+  character(len=nf90_max_name)      :: dim_name
+  character(len=16), dimension(:), allocatable  :: entry_names_cell_1, entry_names_cell_2, &
+                                                   entry_names_cell_3, entry_names_cell_4
+  character(len=16), dimension(:), allocatable  :: entry_names_node_1, entry_names_node_2, &
+                                                   entry_names_node_3, entry_names_node_4
 
-  open(newunit=myunit, file='unit_tests/testtetrahedrons_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testtetrahedrons_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  variable_names  = ['variable_1', 'variable_2', 'variable_3']
+  variable_length = [2, 3, 4]
+
+  allocate(testvar1_ref(2,2)) ! Mesh has two cells
+  call random_number(testvar1_ref)
+  allocate(testvar2_ref(2,3)) ! Mesh has two cells
+  call random_number(testvar2_ref)
+  allocate(testvar3_ref(2,4)) ! Mesh has two cells
+  call random_number(testvar3_ref)
+  allocate(testvar4_ref(2,1)) ! Mesh has two cells
+  call random_number(testvar4_ref)
+
+  allocate(testvar1_ref_node(5,2)) ! Mesh has five points
+  call random_number(testvar1_ref_node)
+  allocate(testvar2_ref_node(5,3)) ! Mesh has five points
+  call random_number(testvar2_ref_node)
+  allocate(testvar3_ref_node(5,4)) ! Mesh has five points
+  call random_number(testvar3_ref_node)
+  allocate(testvar4_ref_node(5,1)) ! Mesh has five points
+  call random_number(testvar4_ref_node)
+
+  ! CELL DATA
+  call inv_mesh%init_cell_data()
+
+  ! Write whole variable at once
+  entry_names_cell_1 = ['entry1', 'entry2']
+  call inv_mesh%add_cell_variable('cell_variable_1', &
+                                  nentries = 2,      &
+                                  entry_names = entry_names_cell_1)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_1',   &
+                              values    = testvar1_ref)
+
+  ! Write variable element-wise
+  entry_names_cell_2 = ['entry1', 'entry2', 'entry3']
+  call inv_mesh%add_cell_variable('cell_variable_2',         &
+                                  nentries    = 3,           &
+                                  entry_names = entry_names_cell_2)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar2_ref(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar2_ref(2:2,:),   &
+                              ielement  = [2, 2])
   
-  open(newunit=myunit, file='unit_tests/testtetrahedrons_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testtetrahedronscell.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
 
-  open(newunit=myunit, file='unit_tests/testtetrahedronscell_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  ! Write variable snap-wise
+  entry_names_cell_3 = ['entry1', 'entry2', 'entry3', 'entry4']
+  call inv_mesh%add_cell_variable('cell_variable_3', &
+                                  nentries = 4,      &
+                                  entry_names = entry_names_cell_3)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar3_ref(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar3_ref(:,2:4),   &
+                              ientry    = [2, 4])
 
-  open(newunit=myunit, file='unit_tests/testtetrahedronscell_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  open(newunit=myunit, file='unit_tests/testtetrahedronscell_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp', 'onvertices')
-  call inv_mesh%init_node_data(3)
+  ! Add one-entry variable at the end
+  entry_names_cell_4 = ['entry1']
+  call inv_mesh%add_cell_variable('cell_variable_4', &
+                                  nentries = 1,      &
+                                  entry_names = entry_names_cell_4)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_4',          &
+                              values    = testvar4_ref(:,:),   &
+                              ientry    = [1, 1])
 
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat_node(3,npoints))
+  ! END OF CELL DATA                          
 
-  datat_node(:,:) = inv_mesh%get_vertices()
-  call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
+  ! NODE DATA                          
+  call inv_mesh%init_node_data()
 
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testtetrahedrons')
+  ! Write whole variable at once
+  entry_names_node_1 = ['entry1', 'entry2']
+  call inv_mesh%add_node_variable('node_variable_1', &
+                                  nentries = 2,      &
+                                  entry_names = entry_names_node_1)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_1',   &
+                              values    = testvar1_ref_node)
 
-  call assert_file_exists('unit_tests/testtetrahedrons.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testtetrahedrons_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testtetrahedrons_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testtetrahedrons_data.dat', 'test xdmf data dump')
+  ! Write variable element-wise
+  entry_names_node_2 = ['entry1', 'entry2', 'entry3']
+  call inv_mesh%add_node_variable('node_variable_2',         &
+                                  nentries    = 3,           &
+                                  entry_names = entry_names_node_2)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(2:2,:),   &
+                              ielement  = [2, 2])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(3:5,:),   &
+                              ielement  = [3, 5])
+
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  entry_names_node_3 = ['entry1', 'entry2', 'entry3', 'entry4']
+  call inv_mesh%add_node_variable('node_variable_3', &
+                                  nentries = 4,      &
+                                  entry_names = entry_names_node_3)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar3_ref_node(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar3_ref_node(:,2:4),   &
+                              ientry    = [2, 4])
+
+  ! Add one-entry variable at the end
+  entry_names_node_4 = ['entry1']
+  call inv_mesh%add_node_variable('node_variable_4', &
+                                  nentries = 1,      &
+                                  entry_names = entry_names_node_4)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_4',          &
+                              values    = testvar4_ref_node(:,:),   &
+                              ientry    = [1, 1])
+
+  ! END OF NODE DATA                           
+
+  ! Test variables in inv_mesh object
+
+  ! First cell variable, 2 entries
+  call assert_equal(inv_mesh%variable_cell(1)%nentries, 2, 'First cell variable has has size 2')
+  call assert_false(inv_mesh%variable_cell(1)%istime,      'First cell variable is not a time')
+  call assert_true(inv_mesh%variable_cell(1)%entry_names.eq.entry_names_cell_1, &
+                   'Entry names are correct: ')
+
+  ! Second cell variable, 3 entries
+  call assert_equal(inv_mesh%variable_cell(2)%nentries, 3, 'Second cell variable has has size 2')
+  call assert_false(inv_mesh%variable_cell(2)%istime,      'Second cell variable is not a time')
+  call assert_true(inv_mesh%variable_cell(2)%entry_names.eq.entry_names_cell_2, &
+                   'Entry names are correct: ')
+
+  ! Third cell variable, 4 entries
+  call assert_equal(inv_mesh%variable_cell(3)%nentries, 4, 'Third cell variable has has size 4')
+  call assert_false(inv_mesh%variable_cell(3)%istime,      'Third cell variable is not a time')
+  call assert_true(inv_mesh%variable_cell(3)%entry_names.eq.entry_names_cell_3, &
+                   'Entry names are correct: ')
+
+  ! Fourth cell variable, 4 entries
+  call assert_equal(inv_mesh%variable_cell(4)%nentries, 1, 'Fourth cell variable has has size 4')
+  call assert_false(inv_mesh%variable_cell(4)%istime,      'Fourth cell variable is not a time')
+  call assert_true(inv_mesh%variable_cell(4)%entry_names.eq.entry_names_cell_4, &
+                   'Entry names are correct: ')
+
+  ! First node variable, 2 entries
+  call assert_equal(inv_mesh%variable_node(1)%nentries, 2, 'First node variable has has size 2')
+  call assert_false(inv_mesh%variable_node(1)%istime,      'First node variable is not a time')
+  call assert_true(inv_mesh%variable_node(1)%entry_names.eq.entry_names_node_1, &
+                   'Entry names are correct: ')
+
+  ! Second node variable, 3 entries
+  call assert_equal(inv_mesh%variable_node(2)%nentries, 3, 'Second node variable has has size 2')
+  call assert_false(inv_mesh%variable_node(2)%istime,      'Second node variable is not a time')
+  call assert_true(inv_mesh%variable_node(2)%entry_names.eq.entry_names_node_2, &
+                   'Entry names are correct: ')
+
+  ! Third node variable, 4 entries
+  call assert_equal(inv_mesh%variable_node(3)%nentries, 4, 'Third node variable has has size 4')
+  call assert_false(inv_mesh%variable_node(3)%istime,      'Third node variable is not a time')
+  call assert_true(inv_mesh%variable_node(3)%entry_names.eq.entry_names_node_3, &
+                   'Entry names are correct: ')
+
+  ! Fourth node variable, 4 entries
+  call assert_equal(inv_mesh%variable_node(4)%nentries, 1, 'Fourth node variable has has size 4')
+  call assert_false(inv_mesh%variable_node(4)%istime,      'Fourth node variable is not a time')
+  call assert_true(inv_mesh%variable_node(4)%entry_names.eq.entry_names_node_4, &
+                   'Entry names are correct: ')
 
 
-  call inv_mesh%init_cell_data(3)
-
-  nelements = inv_mesh%get_nelements()
-  allocate(datat_cell(3,nelements))
-
-  do i=1, nelements
-    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
-  enddo
-  datat_cell(2,:) = datat_cell(2,:) + 1
-  datat_cell(3,:) = datat_cell(3,:) + 2
-
-  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
-
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testtetrahedronscell')
-
-  call assert_file_exists('unit_tests/testtetrahedronscell.xdmf', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_points.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_grid.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testtetrahedronscell_data.dat', &
-                          'test xdmf cell data dump')
-
-  call inv_mesh%freeme()
-end subroutine
+end subroutine test_set_mixed_data
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_mesh_data_blocks
+subroutine test_set_node_data_and_dump()
+  use netcdf
+  use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
-  integer                           :: npoints, nelements, myunit, ierr, i
+  character(len=nf90_max_name)      :: variable_names(3)
+  integer                           :: variable_length(3)
 
-  ! tidy up
-  open(newunit=myunit, file='unit_tests/testblocknode.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  integer                           :: nf_status, ncid, id, jd, grp_ncid
+  real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
+  character(len=nf90_max_name)      :: dim_name
 
-  open(newunit=myunit, file='unit_tests/testblocknode_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testblocknode_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  variable_names  = ['variable_1', 'variable_2', 'variable_3']
+  variable_length = [2, 3, 4]
+
+  allocate(testvar1_ref(5,2)) ! Mesh has five vertices
+  call random_number(testvar1_ref)
+
+  allocate(testvar2_ref(5,3)) ! Mesh has five vertices
+  call random_number(testvar2_ref)
   
-  open(newunit=myunit, file='unit_tests/testblocknode_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  allocate(testvar3_ref(5,4)) ! Mesh has five vertices
+  call random_number(testvar3_ref)
+
+  call inv_mesh%init_node_data()
+
+  ! Write whole variable at once
+  call inv_mesh%add_node_variable('variable_1', &
+                                  nentries = 2)
+  call inv_mesh%add_node_data(var_name  = 'variable_1',   &
+                              values    = testvar1_ref)
+
+  ! Write variable element-wise
+  call inv_mesh%add_node_variable('variable_2', &
+                                  nentries = 3)
+  call inv_mesh%add_node_data(var_name  = 'variable_2',          &
+                              values    = testvar2_ref(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'variable_2',          &
+                              values    = testvar2_ref(2:2,:),   &
+                              ielement  = [2, 2])
+  call inv_mesh%add_node_data(var_name  = 'variable_2',          &
+                              values    = testvar2_ref(3:5,:),   &
+                              ielement  = [3, 5])
+
+  ! Write variable snap-wise
+  call inv_mesh%add_node_variable('variable_3', &
+                                  nentries = 4)
+  call inv_mesh%add_node_data(var_name  = 'variable_3',          &
+                              values    = testvar3_ref(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'variable_3',          &
+                              values    = testvar3_ref(:,2:4),   &
+                              ientry    = [2, 4])
+
+  ! Write file to disk
+  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_node_data')
+
+  call nc_open_for_read(filename = 'unit_tests_output/test_set_node_data.nc', ncid = ncid)
+  nf_status = nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for node data has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'variable_1', & 
+                         values  = testvar1_res, &
+                         limits  = [0.,1.] )
+
+  do id = 1, size(testvar1_ref, 1) 
+    call assert_comparable(testvar1_ref(id,:), testvar1_res(id,:),  &
+                           1e-7, 'Variable 1 retrieved successfully')
+  end do
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'variable_2', & 
+                         values  = testvar2_res, &
+                         limits  = [0.,1.] )
   
-  open(newunit=myunit, file='unit_tests/testblockcell.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  do id = 1, size(testvar2_ref, 1) 
+    call assert_comparable(testvar2_ref(id,:), testvar2_res(id,:),  &
+                           1e-7, 'Variable 2 retrieved successfully')
+  end do
 
-  open(newunit=myunit, file='unit_tests/testblockcell_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testblockcell_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'variable_3', & 
+                         values  = testvar3_res, &
+                         limits  = [0.,1.] )
   
-  open(newunit=myunit, file='unit_tests/testblockcell_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
-  call inv_mesh%init_node_data(3)
+  do id = 1, size(testvar3_ref, 1) 
+    call assert_comparable(testvar3_ref(id,:), testvar3_res(id,:),  &
+                           1e-7, 'Variable 3 retrieved successfully')
+  end do
 
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat_node(3,npoints))
+  nf_status = nf90_close(ncid = ncid)
 
-  datat_node(:,:) = inv_mesh%get_vertices()
-  call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
-
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testblocknode')
-
-  call assert_file_exists('unit_tests/testblocknode.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testblocknode_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testblocknode_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testblocknode_data.dat', 'test xdmf data dump')
-
-
-  call inv_mesh%init_cell_data(3)
-
-  nelements = inv_mesh%get_nelements()
-  allocate(datat_cell(3,nelements))
-
-  do i=1, nelements
-    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
-  enddo
-  datat_cell(2,:) = datat_cell(2,:) + 1
-  datat_cell(3,:) = datat_cell(3,:) + 2
-
-  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
-
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testblockcell')
-
-  call assert_file_exists('unit_tests/testblockcell.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testblockcell_points.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testblockcell_grid.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testblockcell_data.dat', &
-                          'test xdmf cell data dump')
-
-  call inv_mesh%freeme()
-end subroutine
+end subroutine test_set_node_data_and_dump
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_mesh_tracedata_dump
+subroutine test_set_cell_data_and_dump()
+  use netcdf
+  use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
-  integer                           :: npoints, nelements, myunit, ierr, i
+  character(len=nf90_max_name)      :: variable_names(3)
+  integer                           :: variable_length(3)
 
-  ! tidy up
-  open(newunit=myunit, file='unit_tests/testtracedata.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  integer                           :: nf_status, ncid, id, jd, grp_ncid
+  real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
+  character(len=nf90_max_name)      :: dim_name
 
-  open(newunit=myunit, file='unit_tests/testtracedata_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
 
-  open(newunit=myunit, file='unit_tests/testtracedata_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  variable_names  = ['variable_1', 'variable_2', 'variable_3']
+  variable_length = [2, 3, 4]
+
+  allocate(testvar1_ref(2,2)) ! Mesh has two cells
+  call random_number(testvar1_ref)
+  allocate(testvar2_ref(2,3)) ! Mesh has two cells
+  call random_number(testvar2_ref)
+  allocate(testvar3_ref(2,4)) ! Mesh has two cells
+  call random_number(testvar3_ref)
+
+  call inv_mesh%init_cell_data()
+
+  ! Write whole variable at once
+  call inv_mesh%add_cell_variable('variable_1', &
+                                  nentries = 2)
+  call inv_mesh%add_cell_data(var_name  = 'variable_1',   &
+                              values    = testvar1_ref)
+
+  ! Write variable element-wise
+  call inv_mesh%add_cell_variable('variable_2', &
+                                  nentries = 3)
+  call inv_mesh%add_cell_data(var_name  = 'variable_2',          &
+                              values    = testvar2_ref(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'variable_2',          &
+                              values    = testvar2_ref(2:2,:),   &
+                              ielement  = [2, 2])
+
+  ! Write variable snap-wise
+  call inv_mesh%add_cell_variable('variable_3', &
+                                  nentries = 4)
+  call inv_mesh%add_cell_data(var_name  = 'variable_3',          &
+                              values    = testvar3_ref(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'variable_3',          &
+                              values    = testvar3_ref(:,2:4),   &
+                              ientry    = [2, 4])
+
+  ! Write file to disk
+  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_cell_data')
+
+  call nc_open_for_read(filename = 'unit_tests_output/test_set_cell_data.nc', ncid = ncid)
+  nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for cell data has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'variable_1', & 
+                         values  = testvar1_res, &
+                         limits  = [0.,1.] )
+
+  do id = 1, size(testvar1_ref, 2) 
+    call assert_comparable(testvar1_ref(:,id), testvar1_res(:,id),  &
+                           1e-7, 'Variable 1 retrieved successfully')
+  end do
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'variable_2', & 
+                         values  = testvar2_res, &
+                         limits  = [0.,1.] )
   
-  open(newunit=myunit, file='unit_tests/testtracedata_tracedata.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  do id = 1, size(testvar2_ref, 2) 
+    call assert_comparable(testvar2_ref(:,id), testvar2_res(:,id),  &
+                           1e-7, 'Variable 2 retrieved successfully')
+  end do
+
+
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'variable_3', & 
+                         values  = testvar3_res, &
+                         limits  = [0.,1.] )
   
-  open(newunit=myunit, file='unit_tests/testcelltracedata.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  do id = 1, size(testvar3_ref, 2) 
+    call assert_comparable(testvar3_ref(:,id), testvar3_res(:,id),  &
+                           1e-7, 'Variable 3 retrieved successfully')
+  end do
 
-  open(newunit=myunit, file='unit_tests/testcelltracedata_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  nf_status = nf90_close(ncid = ncid)
 
-  open(newunit=myunit, file='unit_tests/testcelltracedata_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+end subroutine test_set_cell_data_and_dump
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_set_mixed_data_and_dump()
+  use netcdf
+  use nc_routines
+  type(inversion_mesh_data_type)    :: inv_mesh
+  character(len=nf90_max_name)      :: variable_names(3)
+  integer                           :: variable_length(3)
+
+  integer                           :: nf_status, ncid, id, jd, grp_ncid
+  real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_ref_node(:,:), testvar2_ref_node(:,:), testvar3_ref_node(:,:)
+  real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
+  real(kind=sp), allocatable        :: testvar1_res_node(:,:), testvar2_res_node(:,:), testvar3_res_node(:,:)
+  character(len=nf90_max_name)      :: dim_name
+
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  variable_names  = ['variable_1', 'variable_2', 'variable_3']
+  variable_length = [2, 3, 4]
+
+  allocate(testvar1_ref(2,2)) ! Mesh has two cells
+  call random_number(testvar1_ref)
+  allocate(testvar2_ref(2,3)) ! Mesh has two cells
+  call random_number(testvar2_ref)
+  allocate(testvar3_ref(2,4)) ! Mesh has two cells
+  call random_number(testvar3_ref)
+
+  allocate(testvar1_ref_node(5,2)) ! Mesh has five points
+  call random_number(testvar1_ref_node)
+  allocate(testvar2_ref_node(5,3)) ! Mesh has five points
+  call random_number(testvar2_ref_node)
+  allocate(testvar3_ref_node(5,4)) ! Mesh has five points
+  call random_number(testvar3_ref_node)
+
+  ! CELL DATA
+  call inv_mesh%init_cell_data()
+
+  ! Write whole variable at once
+  call inv_mesh%add_cell_variable('cell_variable_1', &
+                                  nentries = 2)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_1',   &
+                              values    = testvar1_ref)
+
+  ! Write variable element-wise
+  call inv_mesh%add_cell_variable('cell_variable_2', &
+                                  nentries = 3)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar2_ref(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar2_ref(2:2,:),   &
+                              ielement  = [2, 2])
   
-  open(newunit=myunit, file='unit_tests/testcelltracedata_tracedata.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  call inv_mesh%add_cell_variable('cell_variable_3', &
+                                  nentries = 4)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar3_ref(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar3_ref(:,2:4),   &
+                              ientry    = [2, 4])
+
+  ! END OF CELL DATA                          
+
+  ! NODE DATA                          
+  call inv_mesh%init_node_data()
+
+  ! Write whole variable at once
+  call inv_mesh%add_node_variable('node_variable_1', &
+                                  nentries = 2)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_1',   &
+                              values    = testvar1_ref_node)
+
+  ! Write variable element-wise
+  call inv_mesh%add_node_variable('node_variable_2', &
+                                  nentries = 3)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(2:2,:),   &
+                              ielement  = [2, 2])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(3:5,:),   &
+                              ielement  = [3, 5])
+
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  call inv_mesh%add_node_variable('node_variable_3', &
+                                  nentries = 4)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar3_ref_node(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar3_ref_node(:,2:4),   &
+                              ientry    = [2, 4])
+
+  ! END OF NODE DATA                           
+
+
+  ! Write file to disk
+  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_mixed_data')
+
+  call nc_open_for_read(filename = 'unit_tests_output/test_set_mixed_data.nc', ncid = ncid)
+
+  ! CHECK FOR CELL DATA
+  nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for cell data has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_1', & 
+                         values  = testvar1_res, &
+                         limits  = [0.,1.] )
+
+  do id = 1, size(testvar1_ref, 2) 
+    call assert_comparable(testvar1_ref(:,id), testvar1_res(:,id),  &
+                           1e-7, 'Variable 1 retrieved successfully')
+  end do
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_2', & 
+                         values  = testvar2_res, &
+                         limits  = [0.,1.] )
   
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
-
-  call inv_mesh%init_node_data(3, 'tracedata')
-
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat_node(3,npoints))
-
-  datat_node(:,:) = inv_mesh%get_vertices()
-  do i=1, npoints
-     call inv_mesh%set_node_data_trace(datat_node(:,i), i, 'tracedata')
-  enddo
-
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testtracedata')
-
-  call assert_file_exists('unit_tests/testtracedata.xdmf', &
-                          'test xdmf tracedata dump')
-  call assert_file_exists('unit_tests/testtracedata_points.dat', &
-                          'test xdmf tracedata dump')
-  call assert_file_exists('unit_tests/testtracedata_grid.dat', &
-                          'test xdmf tracedata dump')
-  call assert_file_exists('unit_tests/testtracedata_data.dat', &
-                          'test xdmf tracedata dump')
+  do id = 1, size(testvar2_ref, 2) 
+    call assert_comparable(testvar2_ref(:,id), testvar2_res(:,id),  &
+                           1e-7, 'Variable 2 retrieved successfully')
+  end do
 
 
-  call inv_mesh%init_cell_data(3, 'tracedata')
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_3', & 
+                         values  = testvar3_res, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar3_ref, 2) 
+    call assert_comparable(testvar3_ref(:,id), testvar3_res(:,id),  &
+                           1e-7, 'Variable 3 retrieved successfully')
+  end do
 
-  nelements = inv_mesh%get_nelements()
-  allocate(datat_cell(3,nelements))
+  deallocate(testvar1_res)
+  deallocate(testvar2_res)
+  deallocate(testvar3_res)
 
-  do i=1, nelements
-    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
-  enddo
-  datat_cell(2,:) = datat_cell(2,:) + 1
-  datat_cell(3,:) = datat_cell(3,:) + 2
 
-  do i=1, nelements
-     call inv_mesh%set_cell_data_trace(datat_cell(:,i), i)
-  enddo
+  ! CHECK FOR NODE DATA
+  nf_status = nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for node data has been created')
 
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testcelltracedata')
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_1', & 
+                         values  = testvar1_res_node, &
+                         limits  = [0.,1.] )
 
-  call assert_file_exists('unit_tests/testcelltracedata.xdmf', &
-                          'test xdmf cell tracedata dump')
-  call assert_file_exists('unit_tests/testcelltracedata_points.dat', &
-                          'test xdmf cell tracedata dump')
-  call assert_file_exists('unit_tests/testcelltracedata_grid.dat', &
-                          'test xdmf cell tracedata dump')
-  call assert_file_exists('unit_tests/testcelltracedata_data.dat', &
-                          'test xdmf cell tracedata dump')
+  do id = 1, size(testvar1_ref, 2) 
+    call assert_comparable(testvar1_ref_node(:,id), testvar1_res_node(:,id),  &
+                           1e-7, 'Variable 1 retrieved successfully')
+  end do
 
-  call inv_mesh%freeme()
-end subroutine
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_2', & 
+                         values  = testvar2_res_node, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar2_ref, 2) 
+    call assert_comparable(testvar2_ref_node(:,id), testvar2_res_node(:,id),  &
+                           1e-7, 'Variable 2 retrieved successfully')
+  end do
+
+
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_3', & 
+                         values  = testvar3_res_node, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar3_ref, 2) 
+    call assert_comparable(testvar3_ref_node(:,id), testvar3_res_node(:,id),  &
+                           1e-7, 'Variable 3 retrieved successfully')
+  end do
+
+  nf_status = nf90_close(ncid = ncid)
+
+end subroutine test_set_mixed_data_and_dump
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine test_valence
-  type(inversion_mesh_type)    :: inv_mesh
+  type(inversion_mesh_type) :: inv_mesh
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   call assert_equal(inv_mesh%get_valence(1), 2, 'valence of first vertex in facets.TEST')
   call assert_equal(inv_mesh%get_valence(2), 2, 'valence of second vertex in facets.TEST')
@@ -681,15 +932,17 @@ subroutine test_valence
   call assert_equal(inv_mesh%get_valence(5), 1, 'valence of fifth vertex in facets.TEST')
 
   call inv_mesh%freeme()
-end subroutine
+
+end subroutine test_valence
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine test_get_connected_elements
-  type(inversion_mesh_type)    :: inv_mesh
-  integer, allocatable         :: cn_elems(:)
+  type(inversion_mesh_type) :: inv_mesh
+  integer, allocatable      :: cn_elems(:)
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST')
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
 
   ! uncomment to NOT use automatic allocation
   allocate(cn_elems(inv_mesh%get_valence(1)))
@@ -698,91 +951,19 @@ subroutine test_get_connected_elements
   ! somewhat redundant two tests, for now to test ftnunit :)
   call assert_true(.not. any(cn_elems == -1), 'get connected elements')
   call assert_true(cn_elems /= -1, 'get connected elements')
-
-  call assert_equal(inv_mesh%get_connected_elements(1), (/1 ,2/), &
-                    'get connected elements')
-  call assert_equal(inv_mesh%get_connected_elements(4), (/1/), 'get connected elements')
-  call assert_equal(inv_mesh%get_connected_elements(5), (/2/), 'get connected elements')
-
-  call inv_mesh%freeme()
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine test_voxel_mesh_io
-  type(inversion_mesh_data_type)    :: inv_mesh
-  real(kind=sp), allocatable        :: datat_node(:,:), datat_cell(:,:)
-  integer                           :: npoints, nelements, myunit, ierr, i
-
-  ! tidy up
-  open(newunit=myunit, file='unit_tests/testvoxeldata.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxeldata_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxeldata_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxeldata_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxelcelldata.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxelcelldata_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxelcelldata_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  open(newunit=myunit, file='unit_tests/testvoxelcelldata_data.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  call inv_mesh%read_abaqus_mesh('unit_tests/vox_15l_5deg.dat','onvertices')
-  call inv_mesh%init_node_data(3)
-
-  npoints = inv_mesh%get_nvertices()
-  allocate(datat_node(3,npoints))
-
-  datat_node(:,:) = inv_mesh%get_vertices()
-  call inv_mesh%set_node_data_snap(datat_node(1,:), 1, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(2,:), 2, 'x')
-  call inv_mesh%set_node_data_snap(datat_node(3,:), 3, 'x')
-
-  call inv_mesh%dump_node_data_xdmf('unit_tests/testvoxeldata')
-
-  call assert_file_exists('unit_tests/testvoxeldata.xdmf', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testvoxeldata_points.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testvoxeldata_grid.dat', 'test xdmf data dump')
-  call assert_file_exists('unit_tests/testvoxeldata_data.dat', 'test xdmf data dump')
-
-  call inv_mesh%init_cell_data(3)
-
-  nelements = inv_mesh%get_nelements()
-  allocate(datat_cell(3,nelements))
-
-  do i=1, nelements
-    datat_cell(:,i) = real(inv_mesh%get_volume(i), kind=sp)
-  enddo
-  datat_cell(2,:) = datat_cell(2,:) + 1
-  datat_cell(3,:) = datat_cell(3,:) + 2
-
-  call inv_mesh%set_cell_data_snap(datat_cell(1,:), 1, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(2,:), 2, 'x')
-  call inv_mesh%set_cell_data_snap(datat_cell(3,:), 3, 'x')
-
-  call inv_mesh%dump_cell_data_xdmf('unit_tests/testvoxelcelldata')
-
-  call assert_file_exists('unit_tests/testvoxelcelldata.xdmf', 'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_points.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_grid.dat', &
-                          'test xdmf cell data dump')
-  call assert_file_exists('unit_tests/testvoxelcelldata_data.dat', &
-                          'test xdmf cell data dump')
+  call assert_equal(inv_mesh%get_connected_elements(1), [1 ,2], 'get connected elements')
+  call assert_equal(inv_mesh%get_connected_elements(4), [1], 'get connected elements')
+  call assert_equal(inv_mesh%get_connected_elements(5), [2], 'get connected elements')
 
   call inv_mesh%freeme()
 
-end subroutine test_voxel_mesh_io
+end subroutine test_get_connected_elements
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine test_random_points_triangle_mesh
   use tetrahedra, only        : point_in_triangle_3d
+  use halton_sequence, only   : free_halton
   type(inversion_mesh_type)  :: inv_mesh
   integer, parameter         :: ndim = 3, nvertices = 4
   real(kind=dp)              :: vertices(ndim, nvertices), offset(ndim)
@@ -810,8 +991,16 @@ subroutine test_random_points_triangle_mesh
       nbasisfuncs_per_elem = 1
       call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
       
+      ! Using pseudorandom numbers 
+      points = inv_mesh%generate_random_points(1, npoints, .false.)
+      isintriangle = point_in_triangle_3d(vertices, points, isinplane)
+
+      call assert_true(isinplane,    'Points are in plane of triangle')
+      call assert_true(isintriangle, 'Points are in triangle')
+
+      ! Using quasirandom numbers 
+      call free_halton()
       points = inv_mesh%generate_random_points(1, npoints, .true.)
-      
       isintriangle = point_in_triangle_3d(vertices, points, isinplane)
 
       call assert_true(isinplane,    'Points are in plane of triangle')
@@ -861,9 +1050,226 @@ subroutine test_initialize_mesh
 
   call inv_mesh%freeme()
 
-end subroutine
+end subroutine test_initialize_mesh
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+subroutine test_weight
+  use halton_sequence, only          : free_halton
+  type(inversion_mesh_data_type)    :: inv_mesh
+  integer, parameter                :: nrandom = 10
+  real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
+  real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
+  integer                           :: ielement, ivertex, ivertex_test
+ 
 
-end module
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  ! Weight should be one at each of the vertices for the respective parameter and 
+  ! zero for all the others
+  do ielement = 1, inv_mesh%get_nelements()
+    points = inv_mesh%get_element(ielement)
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight = inv_mesh%weights(ielement, ivertex, points)
+      weight_ref = 0
+      weight_ref(ivertex) = 1
+      call assert_comparable(weight, weight_ref, 1d-10, 'Weight at vertex is one')
+    end do
+  end do
+
+  ! Weight should be between one and zero everywhere (inside the element)
+  do ielement = 1, inv_mesh%get_nelements()
+    random_points = inv_mesh%generate_random_points( ielement, nrandom, .false. )
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+    end do
+  end do
+
+  ! Test with quasi-random numbers
+  
+  ! Reset Halton number generator (may have been used in earlier tests)
+  call free_halton()
+
+  do ielement = 1, inv_mesh%get_nelements()
+    random_points = inv_mesh%generate_random_points( ielement, nrandom, .true. )
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+    end do
+  end do
+
+end subroutine test_weight
+!-----------------------------------------------------------------------------------------
+
+!!-----------------------------------------------------------------------------------------
+!! Test the weight<0 issue occuring on KH's huge mesh
+!! Tests the specific element where it was occuring
+!subroutine test_weight_issue30
+!  use halton_sequence, only          : free_halton
+!  type(inversion_mesh_data_type)    :: inv_mesh
+!  integer, parameter                :: nrandom = 100000
+!  real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
+!  real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
+!  real(kind=dp)                     :: random_point(3,1), weight_random_single(1)
+!  integer                           :: ielement, ivertex, ivertex_test
+! 
+!
+!
+!  call inv_mesh%read_tet_mesh('unit_tests/vertices.issue30', &
+!                              'unit_tests/facets.issue30', &
+!                              'onvertices')
+!
+!  ! Weight should be one at each of the vertices for the respective parameter and 
+!  ! zero for all the others
+!  do ielement = 1, inv_mesh%get_nelements()
+!    points = inv_mesh%get_element(ielement)
+!    do ivertex = 1, 4 ! Tetrahedral mesh
+!      weight = inv_mesh%weights(ielement, ivertex, points)
+!      weight_ref = 0
+!      weight_ref(ivertex) = 1
+!      call assert_comparable(weight, weight_ref, 1d-10, 'Weight at vertex is one')
+!    end do
+!  end do
+!
+!  ! Weight should be between one and zero everywhere (inside the element)
+!  do ielement = 1, inv_mesh%get_nelements()
+!    random_points = inv_mesh%generate_random_points( ielement, nrandom, .false. )
+!    do ivertex = 1, 4 ! Tetrahedral mesh
+!      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+!      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+!      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+!    end do
+!  end do
+!
+!  ! Weight should be between one and zero everywhere (inside the element)
+!  ! Test with quasi-random numbers
+!  
+!  ! Reset Halton number generator (may have been used in earlier tests)
+!  call free_halton()
+!
+!  do ielement = 1, inv_mesh%get_nelements()
+!    random_points = inv_mesh%generate_random_points( ielement, nrandom, .true. )
+!    do ivertex = 1, 4 ! Tetrahedral mesh
+!      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+!      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+!      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+!    end do
+!  end do
+!
+!end subroutine test_weight_issue30
+!!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! Not called by default
+! Takes several hours to finish and tests mainly the stability of the Halton sequencies 
+! for more than 1e9 random numbers (int4 overflow)
+subroutine test_weight_large
+  use halton_sequence, only          : free_halton
+  type(inversion_mesh_data_type)    :: inv_mesh
+  integer, parameter                :: nrandom = 1000
+  real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
+  real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
+  integer                           :: ielement, ivertex, ivertex_test
+ 
+
+
+  call inv_mesh%read_tet_mesh('Meshes/vertices.fine_20_96', &
+                              'Meshes/facets.fine_20_96',   &
+                              'onvertices')
+
+  ! Weight should be one at each of the vertices for the respective parameter and 
+  ! zero for all the others
+  do ielement = 1, inv_mesh%get_nelements()
+    points = inv_mesh%get_element(ielement)
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight = inv_mesh%weights(ielement, ivertex, points)
+      weight_ref = 0
+      weight_ref(ivertex) = 1
+      call assert_comparable(1+weight, 1+weight_ref, 1d-10, 'Weight at vertex is one')
+    end do
+  end do
+
+  ! Weight should be between one and zero everywhere (inside the element)
+  do ielement = 1, inv_mesh%get_nelements()
+    random_points = inv_mesh%generate_random_points( ielement, nrandom, .false. )
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+    end do
+  end do
+
+  ! Reset Halton number generator (may have been used in earlier tests)
+  call free_halton()
+
+  do ielement = 1, inv_mesh%get_nelements()
+    random_points = inv_mesh%generate_random_points( ielement, nrandom, .true. )
+    do ivertex = 1, 4 ! Tetrahedral mesh
+      weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
+      call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
+    end do
+  end do
+
+end subroutine test_weight_large
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_integration_in_tetrahedron
+  use netcdf
+  use montecarlo,                  only: integrated_type, allallconverged, allisconverged
+  type(integrated_type)             :: int_test
+  type(inversion_mesh_data_type)    :: inv_mesh
+  integer, parameter                :: nptperstep = 10000
+  real(kind=dp)                     :: values(nptperstep,1), coords(3, nptperstep), integral(1)
+  real(kind=dp), parameter          :: pi = 3.141419265d0
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+
+  ! First integrate over constant value in tetrahedron - should result in volume
+  call int_test%initialize_montecarlo(nfuncs = 1,                        & 
+                                      volume = inv_mesh%get_volume(1),   & 
+                                      allowed_error = 1d-2,              &
+                                      allowed_relerror = 1d-2)
+  
+  values = 1
+  call int_test%check_montecarlo_integral(values)
+
+  call assert_comparable(int_test%getintegral(), [1.d9/6.d0], 1d-10, &
+                         'Integration over constant function gives volume')
+  call int_test%freeme()
+
+
+
+  ! Integrate over sphere inscribed into tetrahedron
+  call int_test%initialize_montecarlo(nfuncs = 1,                        & 
+                                      volume = inv_mesh%get_volume(1),   & 
+                                      allowed_error = 1d-3,              &
+                                      allowed_relerror = 1d-3)
+  do while (.not.int_test%areallconverged()) ! Beginning of Monte Carlo loop
+      coords = inv_mesh%generate_random_points(1, nptperstep, .false.)
+      values = 0
+
+      ! Sphere with radius sqrt(1e3/3), which touches tetrahedral large plane
+      where( sum(coords**2, dim=1) < (1d6/3.) ) values(:,1) = 1
+
+      call int_test%check_montecarlo_integral(values)
+  end do
+ 
+
+  integral = int_test%getintegral()
+  call assert_comparable(integral, [pi*(1./3.)**(1.5) * 1d9/6.], &
+                         1d-3, 'Integral == 1.10076')
+
+end subroutine test_integration_in_tetrahedron
+!-----------------------------------------------------------------------------------------
+
+end module test_inversion_mesh
 !=========================================================================================
