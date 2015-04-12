@@ -237,6 +237,7 @@ subroutine test_all
   call test(test_mesh_dump, 'reading/dumping tetrahedral mesh')
   call test(test_mesh_dump2, 'reading/dumping tetrahedral mesh from abaqus')
   call test(test_mesh_dump3, 'reading/dumping tetrahedral mesh from abaqus with multiple element blocks')
+  call test(test_mesh_sort, 'sorting a mesh and dumping to xdmf')
   call test(test_append_variable, 'Append data to variable type')
   call test(test_init_node_data, 'Initialize node data')
   call test(test_init_cell_data, 'Initialize cell data')

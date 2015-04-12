@@ -59,6 +59,7 @@ module inversion_mesh
      procedure, pass :: read_tet_mesh
      procedure, pass :: read_abaqus_mesh
      procedure, pass :: read_abaqus_meshtype
+     procedure, pass :: tree_sort
      procedure, pass :: dump_mesh_xdmf
      procedure, pass :: get_volume
      procedure, pass :: get_center
@@ -1143,6 +1144,39 @@ subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
      p_2d(2,i) = dot_product ( p_3d(:,i) - p_ref(:,2), vec(:,2) )
   end do
   
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine tree_sort(this)
+!< resorts the mesh such that consecutive elements are more likely to be close to each other
+!  based on a KD-tree traversal, hence does the sorting in a split second for meshes with 
+!  10^5 elements
+
+  use kdtree2_module
+  class(inversion_mesh_type)        :: this
+  type(kdtree2), pointer            :: tree
+  real(kind=sp)                     :: midpoints(3, this%nelements)
+  integer                           :: connectivity_sorted(this%nvertices_per_elem, this%nelements)
+  integer                           :: i
+
+  ! compute element midpoints
+  do i = 1, this%nelements
+     midpoints(:,i) = this%get_center(i)
+  enddo
+
+  ! build a kdtree on element midpoints
+  tree => kdtree2_create(midpoints, dim = 3, sort = .true., rearrange = .true.)
+
+  ! traverse the tree
+  do i = 1, this%nelements
+     connectivity_sorted(:,i) = this%connectivity(:, tree%ind(i))
+  enddo
+
+  ! update connectivity
+  this%connectivity(:,:) = connectivity_sorted(:,:)
+
+  call kdtree2_destroy(tree)
 end subroutine
 !-----------------------------------------------------------------------------------------
 
