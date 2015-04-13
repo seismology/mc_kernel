@@ -59,6 +59,7 @@ module inversion_mesh
      procedure, pass :: read_tet_mesh
      procedure, pass :: read_abaqus_mesh
      procedure, pass :: read_abaqus_meshtype
+     procedure, pass :: tree_sort
      procedure, pass :: dump_mesh_xdmf
      procedure, pass :: get_volume
      procedure, pass :: get_center
@@ -359,7 +360,7 @@ function get_center(this, ielement)
   real(kind=dp)                     :: get_center(3)
   if (.not. this%initialized) then
      write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
-     call pabort 
+     call pabort
   end if
 
   get_center = 0
@@ -367,14 +368,17 @@ function get_center(this, ielement)
   select case(this%element_type)
   case('tet')
      get_center = get_center_tet(this%get_element(ielement))
-  case('quad')
+!  case('quad')
 !    get_center = get_center_poly(4, this%get_element(ielement))
-  case('tri')
+!  case('tri')
 !    get_center = get_center_poly(3, this%get_element(ielement))
   case('vox')
      get_center = get_center_vox(this%get_element(ielement))
-  case('hex')
+!  case('hex')
 !    get_center = get_center_hex(this%get_element(ielement))
+  case default
+     write(*,'(A,A,A)') 'ERROR: get_center for element type ', this%element_type, ' not implemented'
+     call pabort 
   end select
 
 end function get_center
@@ -1143,6 +1147,39 @@ subroutine plane_exp_pro2 ( p_ref, npoints, p_3d, p_2d, vec )
      p_2d(2,i) = dot_product ( p_3d(:,i) - p_ref(:,2), vec(:,2) )
   end do
   
+end subroutine
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine tree_sort(this)
+!< resorts the mesh such that consecutive elements are more likely to be close to each other
+!  based on a KD-tree traversal, hence does the sorting in a split second for meshes with 
+!  10^5 elements
+
+  use kdtree2_module
+  class(inversion_mesh_type)        :: this
+  type(kdtree2), pointer            :: tree
+  real(kind=sp)                     :: midpoints(3, this%nelements)
+  integer                           :: connectivity_sorted(this%nvertices_per_elem, this%nelements)
+  integer                           :: i
+
+  ! compute element midpoints
+  do i = 1, this%nelements
+     midpoints(:,i) = this%get_center(i)
+  enddo
+
+  ! build a kdtree on element midpoints
+  tree => kdtree2_create(midpoints, dim = 3, sort = .true., rearrange = .true.)
+
+  ! traverse the tree
+  do i = 1, this%nelements
+     connectivity_sorted(:,i) = this%connectivity(:, tree%ind(i))
+  enddo
+
+  ! update connectivity
+  this%connectivity(:,:) = connectivity_sorted(:,:)
+
+  call kdtree2_destroy(tree)
 end subroutine
 !-----------------------------------------------------------------------------------------
 
