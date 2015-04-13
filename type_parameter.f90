@@ -60,6 +60,7 @@ module type_parameter
         logical                              :: relative_kernel      = .true.
         logical                              :: int_over_volume      = .true.
         logical                              :: int_over_hetero      = .false.
+        logical                              :: sort_mesh_elements   = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -148,6 +149,9 @@ subroutine read_parameters(this, input_file_in)
         case('MESH_FILE_FACETS')
            this%mesh_file_face = keyvalue
 
+        case('SORT_MESH_ELEMENTS')
+           read(keyvalue, *) this%sort_mesh_elements 
+
         case('OUTPUT_FILE')
            this%output_file = keyvalue
 
@@ -226,6 +230,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%filter_file, 0)
   call pbroadcast_char(this%stf_file, 0)
   call pbroadcast_char(this%mesh_file_type, 0)
+  call pbroadcast_log(this%sort_mesh_elements, 0)
   call pbroadcast_char(this%output_file, 0)
   call pbroadcast_char(this%stf_file, 0)
   call pbroadcast_char(this%dump_type, 0)

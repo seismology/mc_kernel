@@ -71,6 +71,11 @@ subroutine init_queue(ntasks, inparam_file)
   
   wt%ielement_type = inv_mesh%get_element_type()
   print *, 'Inversion mesh type: ', wt%ielement_type
+
+  if (parameters%sort_mesh_elements) then
+    print *, 'Sorting inversion mesh'
+    call inv_mesh%tree_sort()
+  end if
   
   nelems    = inv_mesh%get_nelements()
   allocate(connectivity(inv_mesh%nvertices_per_elem, nelems))

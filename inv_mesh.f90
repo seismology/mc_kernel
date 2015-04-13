@@ -1180,7 +1180,7 @@ subroutine tree_sort(this)
   this%connectivity(:,:) = connectivity_sorted(:,:)
 
   call kdtree2_destroy(tree)
-end subroutine
+end subroutine tree_sort
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

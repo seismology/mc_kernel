@@ -93,6 +93,10 @@ DISPL_BUFFER_SIZE    100
 # Number of elements in each MPI task. 
 ELEMENTS_PER_TASK    100 
 
+# Sort mesh by element midpoint coordinates. This should allow to use the buffer more 
+# efficiently. Testing
+SORT_MESH_ELEMENTS true
+
 # Use quasirandom numbers instead of pseudorandom ones
 USE_QUASIRANDOM_NUMBERS true
 
