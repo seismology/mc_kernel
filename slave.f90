@@ -92,15 +92,17 @@ subroutine do_slave()
 
     iclockold = tick(id=id_read_params, since=iclockold)
 
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Initialize heterogeneity structure'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
+    if (parameters%int_over_hetero) then
+      write(lu_out,'(A)') '***************************************************************'
+      write(lu_out,'(A)') ' Initialize heterogeneity structure'
+      write(lu_out,'(A)') '***************************************************************'
+      call flush(lu_out)
 
-    call het_model%load_het_rtpv(parameters%hetero_file)
-    call het_model%build_hetero_kdtree()
+      call het_model%load_het_rtpv(parameters%hetero_file)
+      call het_model%build_hetero_kdtree()
 
-    iclockold = tick(id=id_int_hetero, since=iclockold)
+      iclockold = tick(id=id_int_hetero, since=iclockold)
+    end if
 
     write(lu_out,'(A)') '***************************************************************'
     write(lu_out,'(A)') ' Initialize FFT'
