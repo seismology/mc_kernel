@@ -214,7 +214,7 @@ subroutine test_all
   call test(test_generate_random_point_tet, 'Random points in Tetrahedra')
   call test(test_generate_random_point_triangle_space, 'Random points in Triangle in Space')
   call test(test_generate_random_point_triangle, 'Random points in reference triangle')
-  call test(test_rmat4_det, 'Matrix determinant')
+  call test(test_determinant, 'Matrix determinant')
   call test(test_tetra_volume_3d, 'Tetrahedron volume')
   call test(test_get_volume_poly_3, 'Triangle area')
   call test(test_get_volume_poly_4, 'Quadrilateral area')
@@ -251,6 +251,8 @@ subroutine test_all
   call test(test_random_points_triangle_mesh, &
             'generate random numbers on triangular mesh')
   call test(test_weight, 'weight function (hat functions)')
+  !call test(test_weight_issue30, 'weight function (specific case of issue 30)')
+  !!call test(test_weight_large, 'weight function on a very large mesh (hat functions)')
   call test(test_integration_in_tetrahedron, 'MC-integrate in tetrahedral mesh element')
 
   ! test_buffer
