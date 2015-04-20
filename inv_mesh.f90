@@ -6,6 +6,7 @@ module inversion_mesh
   use tetrahedra,        only: get_volume_tet,                  &
                                get_volume_poly,                 &
                                get_center_tet,                  &
+                               get_center_tri,                  &
                                generate_random_points_tet,      &
                                generate_random_points_poly,     &
                                generate_random_points_ref_tri
@@ -370,8 +371,9 @@ function get_center(this, ielement)
      get_center = get_center_tet(this%get_element(ielement))
 !  case('quad')
 !    get_center = get_center_poly(4, this%get_element(ielement))
-!  case('tri')
-!    get_center = get_center_poly(3, this%get_element(ielement))
+  case('tri')
+     ! We do not need the center here, barycenter is enough
+     get_center = get_center_tri(this%get_element(ielement))
   case('vox')
      get_center = get_center_vox(this%get_element(ielement))
 !  case('hex')
@@ -2056,6 +2058,7 @@ subroutine dump_data_xdmf(this, filename)
   sys_cmd = 'mv '//this%filename_tmp_out//' '//trim(filename)//'.nc'
   call execute_command_line(command = sys_cmd, wait = .true., exitstat = exitstat, &
                             cmdmsg = cmdmsg)
+
   if (exitstat.ne.0) then
     write(*,*) 'ERROR: Renaming of the temporary output file failed with status', exitstat
     write(*,*) '       and message:'
