@@ -51,6 +51,8 @@ subroutine do_master()
      stop
   endif
 
+  write(6, '(A,I8,A,I8)') 'Master initialized, ntasks :', ntasks, ', nslaves:', nslaves
+
   call system_clock(count=iclock_ref, count_rate=ticks_per_sec)
 
   itask = 0
@@ -164,6 +166,8 @@ subroutine do_master()
   enddo
 
   call finalize()
+
+  call delete_intermediate()
 
 end subroutine
 !-----------------------------------------------------------------------------------------

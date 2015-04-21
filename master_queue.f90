@@ -1,22 +1,25 @@
 !=========================================================================================
 module master_queue
-  use global_parameters,           only: sp, dp, lu_out, long
+  use global_parameters,           only: sp, dp, lu_out, long, verbose
   use inversion_mesh,              only: inversion_mesh_data_type
   use type_parameter,              only: parameter_type
   use simple_routines,             only: lowtrim
   use nc_routines,                 only: nc_create_file, nc_close_file, &
-                                         nc_putvar_by_name
+                                         nc_putvar_by_name, nc_getvar_by_name, &
+                                         nc_open_for_read
   use backgroundmodel,             only: nmodel_parameters, parameter_name
   use heterogeneities,             only: nmodel_parameters_hetero,parameter_name_het, &
                                          parameter_name_het_store
+  use master_helper,               only: create_tasks
   implicit none
   private
   
-  public :: init_queue, get_next_task, extract_receive_buffer, finalize, dump_intermediate
+  public :: init_queue, get_next_task, extract_receive_buffer, finalize, & 
+            dump_intermediate, delete_intermediate
 
   type(inversion_mesh_data_type), save :: inv_mesh
   type(parameter_type),           save :: parameters
-  integer, allocatable,           save :: tasks(:), elems_in_task(:,:)
+  integer, allocatable,           save :: elems_in_task(:,:)
   real(kind=dp), allocatable,     save :: K_x(:,:), Var(:,:), Bg_Model(:,:), Het_Model(:,:)
   integer,       allocatable,     save :: connectivity(:,:)
   integer,       allocatable,     save :: niterations(:,:), element_proc(:)
@@ -30,15 +33,20 @@ contains
 subroutine init_queue(ntasks, inparam_file)
 ! anything that should be done before starting the loop over the work. for now,
 ! the number of tasks is fixed here
+! Reads the intermediate results file and returns the boolean array 'completed', which
+! tells, which values have already been completed.
 
   use clocks_mod,    only                   : tick
   use global_parameters, only               : id_read_params, id_create_tasks
   use work_type_mod, only                   : wt
   integer, intent(out)                     :: ntasks
   character(len=*), intent(in), optional   :: inparam_file
-  integer                                  :: itask, nelems, iel
+  integer                                  :: itask, nelems, iel, iel_in_task, ncompleted
   integer(kind=long)                       :: iclockold
   character(len=64)                        :: fmtstring, filename
+  logical                                  :: intermediate_results_exist
+  logical, allocatable                     :: completed(:)
+  real(kind=sp), allocatable               :: real_temp(:,:)
   
   iclockold = tick()
 
@@ -95,25 +103,6 @@ subroutine init_queue(ntasks, inparam_file)
 
   iclockold = tick(id=id_read_params, since=iclockold)
 
-  fmtstring = '(A, I8, A, I8)'
-  ! Calculate number of tasks
-  ntasks = ceiling(real(inv_mesh%get_nelements()) / parameters%nelems_per_task)
-  print fmtstring, '  nelements: ',  nelems, ', ntasks: ', ntasks
-   
-  allocate(tasks(ntasks))
-  allocate(elems_in_task(ntasks, parameters%nelems_per_task))
-  do itask = 1, ntasks
-     tasks(itask) = itask
-     do iel = 1, parameters%nelems_per_task
-         if (iel + (itask-1) * parameters%nelems_per_task <= nelems) then
-             elems_in_task(itask, iel) = iel + (itask-1) * parameters%nelems_per_task
-         else
-             elems_in_task(itask, iel) = -1
-         end if
-     end do
-  enddo
-  
-
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Allocate variables to store result'
   write(lu_out,'(A)') '***************************************************************'
@@ -134,35 +123,30 @@ subroutine init_queue(ntasks, inparam_file)
   niterations(:,:)     = -1
   computation_time(:)  = -1
   element_proc(:)      = -1
-  
 
+  ! Allocate variable to store whether task has already been completed
+  allocate(completed(nelems))
+  completed(:) = .false.
+  
+  ! Check for intermediate results and load them if available
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Check for intermediate results from previous run'
+  write(lu_out,'(A)') '***************************************************************'
+  filename = 'intermediate_results.nc'
+  inquire( file = trim(filename), exist = intermediate_results_exist)
+
+  ! If available, read (sets global variables)
+  if (intermediate_results_exist) call read_intermediate(filename, completed)
+
+  ! Create mapping array elems_in_task that contains which element belongs to which
+  ! task. Uses the boolean array completed as input
+  call create_tasks(completed, parameters%nelems_per_task, ntasks, elems_in_task)
   iclockold = tick(id=id_create_tasks, since=iclockold)
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Create file for intermediate results '
   write(lu_out,'(A)') '***************************************************************'
-  filename = 'intermediate_results.nc'
-  call nc_create_file(filename = filename, ncid = ncid_intermediate, overwrite=.true.)
-
-  call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                         varname = 'K_x',             & 
-                         values  = real(K_x, kind=sp) )
-  call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                         varname = 'Var',             & 
-                         values  = real(Var, kind=sp) )
-  call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                         varname = 'Bg_Model',        & 
-                         values  = real(Bg_Model, kind=sp) )
-  call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                         varname = 'Het_Model',        & 
-                         values  = real(Het_Model, kind=sp) )
-  call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                         varname = 'niterations',     & 
-                         values  = niterations )
-  call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                         varname = 'element_proc',    & 
-                         values  = element_proc )
-
+  call create_intermediate(filename)
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Starting to distribute the work'
@@ -257,9 +241,7 @@ end subroutine extract_receive_buffer
 
 !-----------------------------------------------------------------------------------------
 subroutine finalize()
-  integer                       :: ikernel, imodel_parameter
-  real(kind=sp), allocatable    :: rel_error(:)
-  character(len=64)             :: xdmf_varname
+  integer                       :: ikernel
   real(kind=dp)                 :: total_time
   real(kind=dp)                 :: delay_time
   integer                       :: imodel
@@ -444,17 +426,97 @@ subroutine finalize()
         print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, delay_time
      end do
   end if
+
      
 
 end subroutine finalize
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+!> Create intermediate NetCDF file
+subroutine create_intermediate(filename)
+  character(len=*), intent(in)  :: filename
+
+  call nc_create_file(filename = filename, ncid = ncid_intermediate, overwrite=.true.)
+
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'K_x',             & 
+                         values  = real(K_x, kind=sp) )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'Var',             & 
+                         values  = real(Var, kind=sp) )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'Bg_Model',        & 
+                         values  = real(Bg_Model, kind=sp) )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'Het_Model',        & 
+                         values  = real(Het_Model, kind=sp) )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'niterations',     & 
+                         values  = niterations )
+  call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                         varname = 'element_proc',    & 
+                         values  = element_proc )
+
+end subroutine create_intermediate                       
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Read intermediate results and set to global variables
+subroutine read_intermediate(filename, completed)
+  character(len=*), intent(in)             :: filename
+  logical, allocatable, intent(out)        :: completed(:)
+
+  real(kind=sp), allocatable               :: real_temp(:,:)
+  integer                                  :: ncid_old_intermediate
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Intermediate results found, loading'
+  write(lu_out,'(A)') '***************************************************************'
+  call nc_open_for_read(filename = filename, ncid = ncid_old_intermediate)
+
+  call nc_getvar_by_name(ncid    = ncid_old_intermediate, &
+                         varname = 'K_x',             & 
+                         values  = real_temp )
+  K_x = real(real_temp, kind=dp)
+  deallocate(real_temp)
+  call nc_getvar_by_name(ncid    = ncid_old_intermediate, &
+                         varname = 'Var',             & 
+                         values  = real_temp)
+  Var = real(real_temp, kind=dp)
+  deallocate(real_temp)
+  call nc_getvar_by_name(ncid    = ncid_old_intermediate, &
+                         varname = 'Bg_Model',        & 
+                         values  = real_temp)
+  Bg_Model = real(real_temp, kind=dp)
+  deallocate(real_temp)
+  call nc_getvar_by_name(ncid    = ncid_old_intermediate, &
+                         varname = 'Het_Model',        & 
+                         values  = real_temp)
+  Het_Model = real(real_temp, kind=dp)
+  deallocate(real_temp)
+  call nc_getvar_by_name(ncid    = ncid_old_intermediate, &
+                         varname = 'niterations',     & 
+                         values  = niterations )
+  call nc_getvar_by_name(ncid    = ncid_old_intermediate, &
+                         varname = 'element_proc',    & 
+                         values  = element_proc )
+
+  ! Since master has proc 0, all slaves have proc ids >= 1.
+  completed = (element_proc .ge. 1)
+
+  call nc_close_file(ncid_old_intermediate)
+
+end subroutine read_intermediate
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine dump_intermediate(itask)
+  use netcdf,            only : nf90_sync
   use clocks_mod,        only : tick
   use global_parameters, only : id_dump, long, int4
   integer, intent(in)        :: itask
-  integer(kind=int4)         :: iel, ielement, ibasisfunc, ipoint
+  integer(kind=int4)         :: iel, ielement, ibasisfunc, ipoint, status
   integer(kind=long)         :: iclockold
 
   iclockold = tick()
@@ -522,13 +584,33 @@ subroutine dump_intermediate(itask)
   end do
 
   call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                         varname = 'element_proc',        & 
+                         varname = 'element_proc',    & 
                          values  = element_proc)
   
+  status = nf90_sync(ncid_intermediate)
   iclockold = tick(id=id_dump, since=iclockold)
 
 
 end subroutine dump_intermediate
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine delete_intermediate
+  character(len=512)                :: cmdmsg, sys_cmd
+  integer                           :: exitstat
+
+  ! Delete intermediate file
+  sys_cmd = 'rm intermediate_results.nc'
+  call execute_command_line(command = trim(sys_cmd), wait = .true., exitstat = exitstat, &
+                            cmdmsg = cmdmsg)
+
+  if (exitstat.ne.0) then
+    write(*,*) 'WARNING: Deleting the intermediate file failed with status ', exitstat
+    write(*,*) '         and message:'
+    write(*,*) cmdmsg
+  end if
+
+end subroutine delete_intermediate
 !-----------------------------------------------------------------------------------------
 
 end module

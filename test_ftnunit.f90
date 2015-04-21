@@ -24,6 +24,7 @@ module unit_tests
   use test_simple_routines
   use test_type_parameter
   use test_master_queue
+  use test_master_helper
 
   implicit none
 
@@ -273,6 +274,9 @@ subroutine test_all
   !write(6,'(/,a)') 'TEST MASTER QUEUE'
   !call test(test_master_all, 'Master queue init_queue and finalize')
   
+  ! Test master helper
+  write(6,'(/,a)') 'TEST MASTER HELPER'
+  call test(test_create_tasks, 'Create tasks from ''completed'' array')
 
   call finish_output()
 end subroutine
