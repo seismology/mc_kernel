@@ -1954,7 +1954,7 @@ subroutine putvar_real1d(ncid, varid, values, start, count)
 !< Help interpret the inane NetCDF error messages
    integer, intent(in)          :: ncid, varid, start, count
    real, intent(in)             :: values(:)
-   integer                      :: xtype, ndims, status, dimsize
+   integer                      :: xtype, ndims, status, dimsize, status_write
    integer                      :: dimid(10)
    character(len=nf90_max_name) :: varname, dimname
 
@@ -1974,21 +1974,21 @@ subroutine putvar_real1d(ncid, varid, values, start, count)
        stop
    end if
 
-   status = nf90_put_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = [start],        &
-                         count  = [count] )
+   status_write = nf90_put_var(ncid   = ncid,           &
+                               varid  = varid,          &
+                               values = values,         &
+                               start  = [start],        &
+                               count  = [count] )
 
                       
-   if (status.ne.NF90_NOERR) then
+   if (status_write.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
                                       ndims = ndims)
        if (ndims.ne.1) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
            stop
        end if
        status = nf90_inquire_variable(ncid   = ncid,     &
@@ -2004,12 +2004,12 @@ subroutine putvar_real1d(ncid, varid, values, start, count)
                                        len   = dimsize )
        if (start + count - 1 > dimsize) then
            write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
            stop
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-       print *, trim(nf90_strerror(status))
+       print *, trim(nf90_strerror(status_write))
        stop
    
    elseif (verbose>1) then
@@ -2040,7 +2040,7 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
    integer, intent(in)          :: ncid, varid
    integer, intent(in)          :: start(2), count(2)
    real, intent(in)             :: values(:,:)
-   integer                      :: xtype, ndims, status, dimsize, idim
+   integer                      :: xtype, ndims, status, dimsize, idim, status_write
    integer                      :: dimid(10)
    character(len=nf90_max_name) :: varname, dimname
 
@@ -2063,15 +2063,15 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
    end do
 
    ! Write data to file
-   status = nf90_put_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = start,          &
-                         count  = count )
+   status_write = nf90_put_var(ncid   = ncid,           &
+                               varid  = varid,          &
+                               values = values,         &
+                               start  = start,          &
+                               count  = count )
 
                       
    ! If an error has occurred, try to find a reason                  
-   if (status.ne.NF90_NOERR) then
+   if (status_write.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -2080,7 +2080,7 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
        ! Check whether variable in NetCDF file has more or less than three dimensions
        if (ndims.ne.2) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
            stop
        end if
 
@@ -2100,14 +2100,14 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
            if (start(idim) + count(idim) - 1 > dimsize) then
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
-               print *, trim(nf90_strerror(status))
+               print *, trim(nf90_strerror(status_write))
                stop
            end if
 
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
 
        end do
 
@@ -2142,7 +2142,7 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
    integer, intent(in)          :: ncid, varid
    integer, intent(in)          :: start(3), count(3)
    real, intent(in)             :: values(:,:,:)
-   integer                      :: xtype, ndims, status, dimsize, idim
+   integer                      :: xtype, ndims, status, dimsize, idim, status_write
    integer                      :: dimid(10)
    character(len=nf90_max_name) :: varname, dimname
 
@@ -2165,15 +2165,15 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
    end do
 
    ! Write data to file
-   status = nf90_put_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = start,          &
-                         count  = count )
+   status_write = nf90_put_var(ncid   = ncid,           &
+                               varid  = varid,          &
+                               values = values,         &
+                               start  = start,          &
+                               count  = count )
 
                       
    ! If an error has occurred, try to find a reason                  
-   if (status.ne.NF90_NOERR) then
+   if (status_write.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -2182,7 +2182,7 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
        ! Check whether variable in NetCDF file has more or less than three dimensions
        if (ndims.ne.3) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
            stop
        end if
 
@@ -2202,14 +2202,14 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
            if (start(idim) + count(idim) - 1 > dimsize) then
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
-               print *, trim(nf90_strerror(status))
+               print *, trim(nf90_strerror(status_write))
                stop
            end if
 
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
 
        end do
 
@@ -2244,7 +2244,7 @@ subroutine putvar_int1d(ncid, varid, values, start, count)
 !< Help interpret the inane NetCDF error messages
    integer, intent(in)          :: ncid, varid, start, count
    integer, intent(in)          :: values(:)
-   integer                      :: xtype, ndims, status, dimsize
+   integer                      :: xtype, ndims, status, dimsize, status_write
    integer                      :: dimid(10)
    character(len=nf90_max_name) :: varname, dimname
 
@@ -2264,21 +2264,21 @@ subroutine putvar_int1d(ncid, varid, values, start, count)
        stop
    end if
 
-   status = nf90_put_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = [start],        &
-                         count  = [count] )
+   status_write = nf90_put_var(ncid   = ncid,           &
+                               varid  = varid,          &
+                               values = values,         &
+                               start  = [start],        &
+                               count  = [count] )
 
                       
-   if (status.ne.NF90_NOERR) then
+   if (status_write.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
                                       ndims = ndims)
        if (ndims.ne.1) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
            stop
        end if
        status = nf90_inquire_variable(ncid   = ncid,     &
@@ -2294,12 +2294,12 @@ subroutine putvar_int1d(ncid, varid, values, start, count)
                                        len   = dimsize )
        if (start + count - 1 > dimsize) then
            write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
            stop
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
-       print *, trim(nf90_strerror(status))
+       print *, trim(nf90_strerror(status_write))
        stop
    
    elseif (verbose>1) then
@@ -2330,7 +2330,7 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
    integer, intent(in)          :: ncid, varid
    integer, intent(in)          :: start(2), count(2)
    integer, intent(in)          :: values(:,:)
-   integer                      :: xtype, ndims, status, dimsize, idim
+   integer                      :: xtype, ndims, status, dimsize, idim, status_write
    integer                      :: dimid(10)
    character(len=nf90_max_name) :: varname, dimname
 
@@ -2353,15 +2353,15 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
    end do
 
    ! Write data to file
-   status = nf90_put_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = start,          &
-                         count  = count )
+   status_write = nf90_put_var(ncid   = ncid,           &
+                               varid  = varid,          &
+                               values = values,         &
+                               start  = start,          &
+                               count  = count )
 
                       
    ! If an error has occurred, try to find a reason                  
-   if (status.ne.NF90_NOERR) then
+   if (status_write.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -2370,7 +2370,7 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
        ! Check whether variable in NetCDF file has more or less than three dimensions
        if (ndims.ne.2) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
            stop
        end if
 
@@ -2390,7 +2390,7 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
            if (start(idim) + count(idim) - 1 > dimsize) then
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
-               print *, trim(nf90_strerror(status))
+               print *, trim(nf90_strerror(status_write))
                call pabort()
                stop
            end if
@@ -2398,7 +2398,7 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
 
        end do
 
@@ -2433,7 +2433,7 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
    integer, intent(in)          :: ncid, varid
    integer, intent(in)          :: start(3), count(3)
    integer, intent(in)          :: values(:,:,:)
-   integer                      :: xtype, ndims, status, dimsize, idim
+   integer                      :: xtype, ndims, status, dimsize, idim, status_write
    integer                      :: dimid(10)
    character(len=nf90_max_name) :: varname, dimname
 
@@ -2456,15 +2456,15 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
    end do
 
    ! Write data to file
-   status = nf90_put_var(ncid   = ncid,           &
-                         varid  = varid,          &
-                         values = values,         &
-                         start  = start,          &
-                         count  = count )
+   status_write = nf90_put_var(ncid   = ncid,           &
+                               varid  = varid,          &
+                               values = values,         &
+                               start  = start,          &
+                               count  = count )
 
                       
    ! If an error has occurred, try to find a reason                  
-   if (status.ne.NF90_NOERR) then
+   if (status_write.ne.NF90_NOERR) then
        status = nf90_inquire_variable(ncid  =  ncid,    &
                                       varid = varid,    &
                                       name  = varname,  &
@@ -2473,7 +2473,7 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
        ! Check whether variable in NetCDF file has more or less than three dimensions
        if (ndims.ne.3) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
            stop
        end if
 
@@ -2493,14 +2493,14 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
            if (start(idim) + count(idim) - 1 > dimsize) then
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
-               print *, trim(nf90_strerror(status))
+               print *, trim(nf90_strerror(status_write))
                stop
            end if
 
            ! Otherwise just dump as much information as possible and stop
            write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                         dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status))
+           print *, trim(nf90_strerror(status_write))
 
        end do
 
