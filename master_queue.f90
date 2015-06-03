@@ -268,77 +268,80 @@ subroutine finalize()
     do imodel = 1, nmodel_parameters
       print *, imodel, parameter_name(imodel), minval(Bg_Model(:,imodel)), maxval(Bg_Model(:,imodel))
     end do
-    do imodel = 1, nmodel_parameters_hetero
-      print *, imodel, parameter_name_het(imodel), minval(Het_Model(:,imodel)), maxval(Het_Model(:,imodel))
-    end do
+
+    if (parameters%int_over_hetero) then
+      do imodel = 1, nmodel_parameters_hetero
+        print *, imodel, parameter_name_het(imodel), minval(Het_Model(:,imodel)), maxval(Het_Model(:,imodel))
+      end do
+    end if
                                       
-     ! Distiguish between volumetric and node-based mode
-     select case(trim(parameters%int_type))
-     case ('onvertices')
-        call inv_mesh%init_node_data()
+    ! Distiguish between volumetric and node-based mode
+    select case(trim(parameters%int_type))
+    case ('onvertices')
+       call inv_mesh%init_node_data()
 
-        call inv_mesh%add_node_variable(var_name    = 'kernel',           &
-                                        nentries    = parameters%nkernel, &
-                                        entry_names = [('K_x_'//parameters%kernel(ikernel)%name, &
-                                                        ikernel = 1, parameters%nkernel)] )
+       call inv_mesh%add_node_variable(var_name    = 'kernel',           &
+                                       nentries    = parameters%nkernel, &
+                                       entry_names = [('K_x_'//parameters%kernel(ikernel)%name, &
+                                                       ikernel = 1, parameters%nkernel)] )
 
-        call inv_mesh%add_node_variable(var_name    = 'error',            &
-                                        nentries    = parameters%nkernel, &
-                                        entry_names = [('err_'//parameters%kernel(ikernel)%name, &
-                                                        ikernel = 1, parameters%nkernel)] )
+       call inv_mesh%add_node_variable(var_name    = 'error',            &
+                                       nentries    = parameters%nkernel, &
+                                       entry_names = [('err_'//parameters%kernel(ikernel)%name, &
+                                                       ikernel = 1, parameters%nkernel)] )
 
-        call inv_mesh%add_node_variable(var_name    = 'model',                                  &
-                                        nentries    = nmodel_parameters,              &
-                                        entry_names = parameter_name )
+       call inv_mesh%add_node_variable(var_name    = 'model',                                  &
+                                       nentries    = nmodel_parameters,              &
+                                       entry_names = parameter_name )
 
-        call inv_mesh%add_node_variable(var_name    = 'hetero',                                  &
-                                        nentries    = nmodel_parameters_hetero,              &
-                                        entry_names = parameter_name_het_store )
+       call inv_mesh%add_node_variable(var_name    = 'hetero',                                  &
+                                       nentries    = nmodel_parameters_hetero,              &
+                                       entry_names = parameter_name_het_store )
 
-                                                     
-        call inv_mesh%add_node_data(var_name = 'kernel',                      &
-                                    values   = real(K_x, kind=sp) )
-        call inv_mesh%add_node_data(var_name = 'error',                       &
-                                    values   = real(sqrt(Var/K_x), kind=sp) )
-        call inv_mesh%add_node_data(var_name = 'model',                       &
-                                    values   = real(Bg_Model, kind=sp) )
-        call inv_mesh%add_node_data(var_name = 'hetero',                       &
-                                    values   = real(Het_Model, kind=sp) )
+                                                    
+       call inv_mesh%add_node_data(var_name = 'kernel',                      &
+                                   values   = real(K_x, kind=sp) )
+       call inv_mesh%add_node_data(var_name = 'error',                       &
+                                   values   = real(sqrt(Var/K_x), kind=sp) )
+       call inv_mesh%add_node_data(var_name = 'model',                       &
+                                   values   = real(Bg_Model, kind=sp) )
+       call inv_mesh%add_node_data(var_name = 'hetero',                       &
+                                   values   = real(Het_Model, kind=sp) )
 
-                                      
-     case ('volumetric')
-        call inv_mesh%init_cell_data()
+                                     
+    case ('volumetric')
+       call inv_mesh%init_cell_data()
 
-        call inv_mesh%add_cell_variable(var_name    = 'kernel',           &
-                                        nentries    = parameters%nkernel, &
-                                        entry_names = [('K_x_'//parameters%kernel(ikernel)%name, &
-                                                        ikernel = 1, parameters%nkernel)] )
+       call inv_mesh%add_cell_variable(var_name    = 'kernel',           &
+                                       nentries    = parameters%nkernel, &
+                                       entry_names = [('K_x_'//parameters%kernel(ikernel)%name, &
+                                                       ikernel = 1, parameters%nkernel)] )
 
-        call inv_mesh%add_cell_variable(var_name    = 'error',            &
-                                        nentries    = parameters%nkernel, &
-                                        entry_names = [('err_'//parameters%kernel(ikernel)%name, &
-                                                        ikernel = 1, parameters%nkernel)] )
+       call inv_mesh%add_cell_variable(var_name    = 'error',            &
+                                       nentries    = parameters%nkernel, &
+                                       entry_names = [('err_'//parameters%kernel(ikernel)%name, &
+                                                       ikernel = 1, parameters%nkernel)] )
 
-        call inv_mesh%add_cell_variable(var_name    = 'model',                                  &
-                                        nentries    = nmodel_parameters,              &
-                                        entry_names = parameter_name )
+       call inv_mesh%add_cell_variable(var_name    = 'model',                                  &
+                                       nentries    = nmodel_parameters,              &
+                                       entry_names = parameter_name )
 
-        call inv_mesh%add_cell_variable(var_name    = 'hetero',                                  &
-                                        nentries    = nmodel_parameters_hetero,              &
-                                        entry_names = parameter_name_het_store )
+       call inv_mesh%add_cell_variable(var_name    = 'hetero',                                  &
+                                       nentries    = nmodel_parameters_hetero,              &
+                                       entry_names = parameter_name_het_store )
 
-                                                     
-        call inv_mesh%add_cell_data(var_name = 'kernel',                      &
-                                    values   = real(K_x, kind=sp) )
-        call inv_mesh%add_cell_data(var_name = 'error',                       &
-                                    values   = real(sqrt(Var/K_x), kind=sp) )
-        call inv_mesh%add_cell_data(var_name = 'model',                       &
-                                    values   = real(Bg_Model, kind=sp) )
-        call inv_mesh%add_cell_data(var_name = 'hetero',                       &
-                                    values   = real(Het_Model, kind=sp) )
+                                                    
+       call inv_mesh%add_cell_data(var_name = 'kernel',                      &
+                                   values   = real(K_x, kind=sp) )
+       call inv_mesh%add_cell_data(var_name = 'error',                       &
+                                   values   = real(sqrt(Var/K_x), kind=sp) )
+       call inv_mesh%add_cell_data(var_name = 'model',                       &
+                                   values   = real(Bg_Model, kind=sp) )
+       call inv_mesh%add_cell_data(var_name = 'hetero',                       &
+                                   values   = real(Het_Model, kind=sp) )
 
 
-     end select
+    end select
   
   ! Save kernels in Yale-style csr format
   case ('csr')
