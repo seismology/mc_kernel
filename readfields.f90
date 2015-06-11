@@ -1929,7 +1929,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
     enddo
     
     ! Rotate points to FWD coordinate system
-    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates * 1d3, &
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates, &
                           reci_source_params%lon, reci_source_params%colat)
 
     allocate(nextpoint(nnext_points))
