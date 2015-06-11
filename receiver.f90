@@ -14,6 +14,9 @@ module receiver_class
         real(kind=dp)                  :: colatd, latd, lond !< receiver coordinates
                                                              !! in the earth system
                                                              !! (degrees)
+        real(kind=dp)                  :: x, y, z            !< receiver location 
+                                                             !! in cartesian coordinates
+                                                             !! in meters!
         real(kind=dp)                  :: theta, phi         !< receiver coordinates 
                                                              !! in the source system
         real(kind=dp), dimension(3,3)  :: rot_mat, trans_rot_mat
@@ -48,13 +51,17 @@ subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkerne
    this%lon         = this%lond   * deg2rad
    this%lat         = this%latd   * deg2rad
 
+   this%x = dcos(this%lat) * dcos(this%lon) * 6371e3
+   this%y = dcos(this%lat) * dsin(this%lon) * 6371e3
+   this%z = dsin(this%lat)                  * 6371e3
+
    this%nkernel     = nkernel
    this%firstkernel = firstkernel
    this%lastkernel  = lastkernel
 
    allocate(this%kernel(this%nkernel))
 
-end subroutine
+end subroutine init
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
