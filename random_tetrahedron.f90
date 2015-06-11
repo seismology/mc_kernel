@@ -10,6 +10,13 @@ module tetrahedra
   public :: get_volume_tet, get_volume_poly, get_center_tet, get_center_tri
   public :: determinant_4, point_in_triangle, point_in_triangle_3d
   public :: point_in_tetrahedron
+
+  interface determinant_4
+     module procedure  :: determinant_4_dp
+     module procedure  :: determinant_4_qp
+  end interface determinant_4
+
+
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -282,18 +289,19 @@ function generate_random_points_poly( nv, v, n, quasirandom ) result(x)
 
   end if ! nv==3
 
-end function
+end function generate_random_points_poly
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function determinant_4(a)
+function determinant_4_dp(a)
 ! computes the determinant of a 4 by 4 matrix, uses qp internally.
   real(kind=dp), intent(in)  :: a(4,4)
   real(kind=qp)              :: a_qp(4,4)
-  real(kind=dp)              :: determinant_4
+  real(kind=dp)              :: determinant_4_dp
 
   a_qp = a
 
-  determinant_4 = real(&
+  determinant_4_dp = real(&
       a_qp(1,1) * ( &
         a_qp(2,2) * ( a_qp(3,3) * a_qp(4,4) - a_qp(3,4) * a_qp(4,3) ) &
       - a_qp(2,3) * ( a_qp(3,2) * a_qp(4,4) - a_qp(3,4) * a_qp(4,2) ) &
@@ -312,7 +320,37 @@ function determinant_4(a)
       + a_qp(2,3) * ( a_qp(3,1) * a_qp(4,2) - a_qp(3,2) * a_qp(4,1) ) ) &
                        , kind = dp)
 
-end function determinant_4
+end function determinant_4_dp
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function determinant_4_qp(a)
+! computes the determinant of a 4 by 4 matrix with quadruple precision
+  real(kind=qp), intent(in)  :: a(4,4)
+  real(kind=qp)              :: a_qp(4,4)
+  real(kind=qp)              :: determinant_4_qp
+
+  a_qp = a
+
+  determinant_4_qp = &
+      a_qp(1,1) * ( &
+        a_qp(2,2) * ( a_qp(3,3) * a_qp(4,4) - a_qp(3,4) * a_qp(4,3) ) &
+      - a_qp(2,3) * ( a_qp(3,2) * a_qp(4,4) - a_qp(3,4) * a_qp(4,2) ) &
+      + a_qp(2,4) * ( a_qp(3,2) * a_qp(4,3) - a_qp(3,3) * a_qp(4,2) ) ) &
+    - a_qp(1,2) * ( &
+        a_qp(2,1) * ( a_qp(3,3) * a_qp(4,4) - a_qp(3,4) * a_qp(4,3) ) &
+      - a_qp(2,3) * ( a_qp(3,1) * a_qp(4,4) - a_qp(3,4) * a_qp(4,1) ) &
+      + a_qp(2,4) * ( a_qp(3,1) * a_qp(4,3) - a_qp(3,3) * a_qp(4,1) ) ) &
+    + a_qp(1,3) * ( &
+        a_qp(2,1) * ( a_qp(3,2) * a_qp(4,4) - a_qp(3,4) * a_qp(4,2) ) &
+      - a_qp(2,2) * ( a_qp(3,1) * a_qp(4,4) - a_qp(3,4) * a_qp(4,1) ) &
+      + a_qp(2,4) * ( a_qp(3,1) * a_qp(4,2) - a_qp(3,2) * a_qp(4,1) ) ) &
+    - a_qp(1,4) * ( &
+        a_qp(2,1) * ( a_qp(3,2) * a_qp(4,3) - a_qp(3,3) * a_qp(4,2) ) &
+      - a_qp(2,2) * ( a_qp(3,1) * a_qp(4,3) - a_qp(3,3) * a_qp(4,1) ) &
+      + a_qp(2,3) * ( a_qp(3,1) * a_qp(4,2) - a_qp(3,2) * a_qp(4,1) ) ) 
+
+end function determinant_4_qp
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -537,14 +575,6 @@ function point_in_triangle(r, x)
       point_in_triangle(ipoint) = ((0 <= a).and.(a <= 1).and.(0 <= b).and.(b <= 1).and.(0 <= c).and.(c <= 1))
    end do
 
-!   function pointInTriangle(x1, y1, x2, y2, x3, y3, x, y:Number):Boolean
-!      {
-!        var a:Number = ((y2 - y3)*(x - x3) + (x3 - x2)*(y - y3)) / denominator;
-!         var b:Number = ((y3 - y1)*(x - x3) + (x1 - x3)*(y - y3)) / denominator;
-!          var c:Number = 1 - a - b;
-!           
-!           return 0 <= a && a <= 1 && 0 <= b && b <= 1 && 0 <= c && c <= 1;
-!
 end function point_in_triangle
 !------------------------------------------------------------------------------
 
@@ -558,8 +588,8 @@ function point_in_triangle_3d(r, p, isinplane)
  real(kind=dp), intent(in)      :: p(:,:)     !< Set of points to check
  logical, intent(out), optional :: isinplane(size(p,2))
  
- real(kind=dp)                  :: a, b, c
- real(kind=dp)                  :: x(3), y(3), k(3), area
+ real(kind=qp)                  :: a, b, c
+ real(kind=dp)                  :: x(3), y(3), k, area
  integer                        :: ipoint, npoints
  logical                        :: point_in_triangle_3d(size(p,2))
 
@@ -577,20 +607,37 @@ function point_in_triangle_3d(r, p, isinplane)
    y = cross(r(:,2)-p(:,ipoint), r(:,3)-p(:,ipoint) ) 
 
    ! Check whether x and y are parallel
-   k = x/y
-   if ((absreldiff(k(1),k(2))>1e-8) .or. absreldiff(k(1),k(3))>1e-8) cycle
+   k = norm2(cross(x, y))
+
+   ! If they are not, cycle, and point_in_triangle_3d(ipoint) remains false
+   if (abs(k)>1d-10) cycle
    
    if (present(isinplane)) isinplane(ipoint) = .true.
 
    ! Step 2:
    ! Check whether point is within triangle, based on barycentric coordinates
    ! a,b,c
-   a = norm2(cross( r(:,2)-p(:,ipoint), r(:,3)-p(:,ipoint) )) / (2*area)
-   b = norm2(cross( r(:,3)-p(:,ipoint), r(:,1)-p(:,ipoint) )) / (2*area)
-   c = norm2(cross( r(:,1)-p(:,ipoint), r(:,2)-p(:,ipoint) )) / (2*area) !1 - a - b
+   a = norm2(cross( r(:,2) - p(:,ipoint), r(:,3) - p(:,ipoint) )) / (2*area)
+   b = norm2(cross( r(:,3) - p(:,ipoint), r(:,1) - p(:,ipoint) )) / (2*area)
+   c = norm2(cross( r(:,1) - p(:,ipoint), r(:,2) - p(:,ipoint) )) / (2*area) !1 - a - b
 
-   if ((0 <= a).and.(a <= 1).and.(0 <= b).and.(b <= 1).and.(0 <= c).and.(c <= 1)) &
-     point_in_triangle_3d(ipoint) = .true.
+   !print *, 'a=', a, ', b=', b, ', c=', c, ', sum:', a+b+c
+   !if (.not.-1d-10 <= a)     then; print *, 'a<0'; cycle; endif 
+   !if (.not.a <= 1+1d-10)    then; print *, 'a>1'; cycle; endif 
+   !if (.not.-1d-10 <= b)     then; print *, 'b<0'; cycle; endif 
+   !if (.not.b <= 1+1d-10)    then; print *, 'b>1'; cycle; endif 
+   !if (.not.-1d-10 <= c)     then; print *, 'c<0'; cycle; endif 
+   !if (.not.c <= 1+1d-10)    then; print *, 'c>1'; cycle; endif 
+   !if (.not.a+b+c <= 1+1d-8) then; print *, 'sum>1'; cycle; endif
+
+
+   !if ((     (-1d-8 <= a).and.(a <= 1+1d-8))  &
+   !    .and.((-1d-8 <= b).and.(b <= 1+1d-8))  &
+   !    .and.((-1d-8 <= c).and.(c <= 1+1d-8))  &
+   !    .and.((a+b+c <= 1+1d-8) )) &
+   if (any([a,b,c]<=-1d-8).or.any([a,b,c]>1+1d-8).or.(sum([a,b,c])>1+1d-8)) cycle
+
+   point_in_triangle_3d(ipoint) = .true.
 
  end do
 
@@ -600,20 +647,20 @@ end function point_in_triangle_3d
 !------------------------------------------------------------------------------
 ! Tests whether a point is in a tetrahedron, by testing whether it is on the 
 ! same side of each plane, by testing whether all Di have the same sign.
-function point_in_tetrahedron(r, p, isonplane, isdegenerate)
+function point_in_tetrahedron(r, p) !, isonplane, isdegenerate)
   integer, parameter             :: ndim = 3
   real(kind=dp), intent(in)      :: r(ndim,4)  !< Vertices of the tetrahedron
   real(kind=dp), intent(in)      :: p(:,:)     !< Set of points to check
-  logical,       intent(out)     :: isonplane(size(p,2)), isdegenerate
+  !logical, optional, intent(out) :: isonplane(size(p,2)), isdegenerate
   logical                        :: point_in_tetrahedron(size(p,2))
 
-  real(kind=dp), dimension(4,4)  :: M0, M1, M2, M3, M4
-  real(kind=dp)                  :: D0, D1, D2, D3, D4
+  real(kind=qp), dimension(4,4)  :: M0, M1, M2, M3, M4
+  real(kind=qp)                  :: D0, D1, D2, D3, D4
   integer                        :: ipoint, npoints
 
+
   npoints = size(p,2)
-  isdegenerate         = .false.
-  isonplane            = .false.
+  !if (present(isonplane)) isonplane = .false.
   point_in_tetrahedron = .false.
 
   M0(1:ndim,:) = r
@@ -622,9 +669,11 @@ function point_in_tetrahedron(r, p, isonplane, isdegenerate)
 
   ! Check, whether the tetrahedron is degenerate, i.e. all points are in a plane
   if (abs(D0).lt.epsilon(D0)) then
-    isdegenerate = .true.
+    !if (present(isdegenerate)) isdegenerate = .true.
     point_in_tetrahedron = .false.
     return
+  !else 
+    !if (present(isdegenerate)) isdegenerate = .false.
   end if
 
   do ipoint = 1, npoints
@@ -649,18 +698,21 @@ function point_in_tetrahedron(r, p, isonplane, isdegenerate)
     D4           = determinant_4(M4) / D0
 
     ! Since all Di are divided by D0, they should all be positive now
-    if (any([D1, D2, D3, D4] < 0)) then
+    ! Since the D? are normalized 1d-10 is enough to take care of fp inaccuracy
+    if (any([D1, D2, D3, D4] < -1d-10)) then
       point_in_tetrahedron(ipoint) = .false.
 
     else
       point_in_tetrahedron(ipoint) = .true.
-      
-      ! Test whether point is on any of the surfaces
-      if (any(abs([D1, D2, D3, D4]) < epsilon(D0))) then
-        point_in_tetrahedron(ipoint) = .true.
-        isonplane(ipoint) = .true.
-        print *, 'Point is on plane: ', (abs([D1, D2, D3, D4]) < epsilon(D0))
-      end if
+     
+      !if (present(isonplane)) then
+      !  ! Test whether point is on any of the surfaces
+      !  if (any(abs([D1, D2, D3, D4]) < epsilon(D0))) then
+      !    point_in_tetrahedron(ipoint) = .true.
+      !    isonplane(ipoint) = .true.
+      !    print *, 'Point is on plane: ', (abs([D1, D2, D3, D4]) < epsilon(D0))
+      !  end if
+      !end if
 
     end if
 

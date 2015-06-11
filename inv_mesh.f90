@@ -65,6 +65,10 @@ module inversion_mesh
      procedure, pass :: get_volume
      procedure, pass :: get_center
      procedure, pass :: get_model_coeff
+     procedure, pass :: point_in_element_onepoint
+     procedure, pass :: point_in_element_npoints
+     generic         :: point_in_element => point_in_element_onepoint, &
+                                            point_in_element_npoints
      procedure, pass :: generate_random_points
      procedure, pass :: make_2d_vectors
      procedure, pass :: weights
@@ -166,7 +170,7 @@ end function
 !-----------------------------------------------------------------------------------------
 function get_element(this, ielement)
   class(inversion_mesh_type)        :: this
-  real(kind=dp)                     :: get_element(3,this%nvertices_per_elem)
+  real(kind=dp)                     :: get_element(3, this%nvertices_per_elem)
   integer, intent(in)               :: ielement
   integer                           :: ivert
 
@@ -422,6 +426,72 @@ end function get_model_coeff
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function point_in_element_onepoint(this, ielem, point) 
+  use tetrahedra, only           : point_in_tetrahedron, point_in_triangle_3d
+  use voxel,      only           : point_in_voxel
+  class(inversion_mesh_type)    :: this
+  integer, intent(in)           :: ielem
+  real(kind=dp), intent(in)     :: point(3)
+  logical                       :: point_in_element_onepoint, point_in_element(1)
+
+  real(kind=dp)                 :: point_work(3, 1) ! Because point_in_tetrahedron et al 
+                                                    ! request 2d arrays
+
+  point_work(:,1) = point
+
+  !print *, 'R1: ', this%get_element(ielem)
+  !print *, 'R1: ', this%vertices(1, this%connectivity(1, ielem) + 1)
+  !print *, 'R2: ', this%vertices(2, this%connectivity(1, ielem) + 1)
+  !print *, 'R3: ', this%vertices(3, this%connectivity(1, ielem) + 1)
+  !print *, 'P:  ', point_work
+
+  select case(this%element_type)
+  case('tet')
+    point_in_element = point_in_tetrahedron(r = this%get_element(ielem), &
+                                            p = point_work)
+  case('tri')
+    point_in_element = point_in_triangle_3d(r = this%get_element(ielem), &
+                                            p = point_work)
+  case('vox')
+    point_in_element = point_in_voxel(this%get_element(ielem), &
+                                      point_work)
+  case default
+    call pabort()
+  end select
+
+  point_in_element_onepoint = point_in_element(1)
+
+end function point_in_element_onepoint
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function point_in_element_npoints(this, ielem, points)
+  use tetrahedra, only           : point_in_tetrahedron, point_in_triangle_3d
+  use voxel,      only           : point_in_voxel
+  class(inversion_mesh_type)    :: this
+  integer, intent(in)           :: ielem
+  real(kind=dp), intent(in)     :: points(:, :)
+  logical                       :: point_in_element_npoints(size(points, 2))
+
+
+  select case(this%element_type)
+  case('tet')
+    point_in_element_npoints = point_in_tetrahedron(this%vertices(:, this%connectivity(1, ielem) + 1), &
+                                                    points)
+  case('tri')
+    point_in_element_npoints = point_in_triangle_3d(this%vertices(:, this%connectivity(1, ielem) + 1), &
+                                                    points)
+  case('vox')
+    point_in_element_npoints = point_in_voxel(this%vertices(:, this%connectivity(1, ielem) + 1), &
+                                              points)
+  case default
+    call pabort()
+  end select
+
+end function point_in_element_npoints
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function weights(this, ielem, ivertex, points)
 !< Calculates the weight that a value at location "points" has on a kernel on vertex 
 !! "ivertex" of element "ielement". Quadrature rules come in here   
@@ -461,8 +531,8 @@ function weights(this, ielem, ivertex, points)
 
        if (any(weights<-1d-9)) then
          isintetrahedron = point_in_tetrahedron(this%vertices(:, this%connectivity(1, ielem) + 1), &
-                                                points(:, :),                                      &
-                                                isonplane, isdegenerate)
+                                                points(:, :)) !,                                      &
+                                                !isonplane, isdegenerate)
 
          print *, 'ERROR: weight is smaller zero! Check whether point is outside of element'
          print *, '       Element (local numbering): ', ielem, ', ivertex: ', ivertex
@@ -471,7 +541,7 @@ function weights(this, ielem, ivertex, points)
            print *, '       ', i, this%vertices(1:3, this%connectivity(i, 1) + 1)
          end do
          print *, '       Volume:   ', this%get_volume(ielem)
-         print *, '       Degener:  ', isdegenerate
+         !print *, '       Degener:  ', isdegenerate
          print *, ''
 
          do ipoint = 1, size(points, 2)
@@ -482,7 +552,7 @@ function weights(this, ielem, ivertex, points)
            print *, '       Point:    ', ipoint
            print *, '                 ', points(:, ipoint)
            print *, '       isintet?  ', isintetrahedron(ipoint)
-           print *, '       isonsurf? ', isonplane(ipoint)
+           !print *, '       isonsurf? ', isonplane(ipoint)
            print *, '       weight:   ', weights(ipoint)
            print *, '       dx,dy,dz: ', dx, dy, dz
            print *, ''
@@ -664,7 +734,7 @@ end subroutine read_tet_mesh
 !-----------------------------------------------------------------------------------------
 subroutine initialize_mesh(this, ielem_type, vertices, connectivity, nbasisfuncs_per_elem) 
   class(inversion_mesh_type)        :: this
-  integer                          :: ielem_type !1-tet, 2-quad, 3-tri, 4-hex
+  integer                          :: ielem_type !1-tri, 2-quad, 3-hex, 4-tet, 5-vox
   integer                          :: nbasisfuncs_per_elem
   real(kind=dp),    intent(in)     :: vertices(:,:)
   integer,          intent(in)     :: connectivity(:,:)

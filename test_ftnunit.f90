@@ -250,6 +250,8 @@ subroutine test_all
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')
   call test(test_initialize_mesh, 'initialize mesh')
+  call test(test_point_in_element_triangle_mesh, 'point_in_element for triangle mesh')
+  call test(test_point_in_element_tetrahedral_mesh, 'point_in_element for tetrahedral mesh')
   call test(test_random_points_triangle_mesh, &
             'generate random numbers on triangular mesh')
   call test(test_weight, 'weight function (hat functions)')

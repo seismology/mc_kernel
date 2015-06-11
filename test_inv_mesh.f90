@@ -961,6 +961,214 @@ end subroutine test_get_connected_elements
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_point_in_element_triangle_mesh
+  type(inversion_mesh_type)  :: inv_mesh
+  integer, parameter         :: ndim = 3, nvertices = 3, nstep = 10
+  real(kind=dp)              :: vertices(ndim, 0:nvertices-1), offset(ndim)
+  integer                    :: connectivity(3, 1), itest
+  integer, parameter         :: ntest = (nstep+3)**2, nbasisfuncs_per_elem = 1
+  real(kind=dp)              :: testpoint_in(ndim, ntest)
+  logical                    :: is_in_element_one, is_in_element_npoint_ref_temp(ntest)
+  logical, allocatable       :: is_in_element_npoint(:), is_in_element_npoint_ref(:)
+  integer                    :: ix, iy, ntest_tot
+
+  ! Simple vertex
+  vertices(:, 0) = [0, 0, 0]
+  vertices(:, 1) = [1, 0, 0]
+  vertices(:, 2) = [1, 1, 0]
+
+  itest = 0
+
+  ! Create along each base vector of the tetrahedron points from [-0.1 to 1.1]
+  do ix = -1, nstep + 1
+    do iy = -1, nstep - ix + 1
+      itest = itest + 1
+      testpoint_in(:, itest) =   vertices(:,0)                                        & 
+                               + (real(ix, kind=dp) / nstep) * (vertices(:,1) - vertices(:,0))  &
+                               + (real(iy, kind=dp) / nstep) * (vertices(:,2) - vertices(:,0))
+
+      if (any([ix, iy] == -1)) then
+        is_in_element_npoint_ref_temp(itest) = .false.
+      elseif (ix+iy>nstep) then
+        is_in_element_npoint_ref_temp(itest) = .false.
+      else
+        is_in_element_npoint_ref_temp(itest) = .true.
+      end if
+
+    end do
+  end do
+
+  ntest_tot = itest
+  is_in_element_npoint_ref = is_in_element_npoint_ref_temp(1:ntest_tot)
+
+  connectivity(:,1) = [1, 2, 3]
+  call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
+
+  do itest = 1, ntest_tot
+    is_in_element_one = inv_mesh%point_in_element(1, testpoint_in(:, itest))
+    call assert_true((is_in_element_one .eqv. is_in_element_npoint_ref(itest)), &
+                     'Points are correctly found to be in element - 1 point')
+    if (is_in_element_one .neqv. is_in_element_npoint_ref(itest)) then
+      print *, 'Is inside ', is_in_element_one, ', should be: ', is_in_element_npoint_ref(itest)
+      print *, 'P: ', testpoint_in(:, itest)
+    end if
+  end do
+
+  is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
+  call assert_true((is_in_element_npoint .eqv. is_in_element_npoint_ref), &
+                   'Points are correctly found to be in element - n points')
+  call inv_mesh%freeme()
+
+
+  vertices(:, 0) = [2, 1, 0]
+  vertices(:, 1) = [4,-3, 1]
+  vertices(:, 2) = [2, 2, 2]
+
+  itest = 0
+
+  ! Create along each base vector of the tetrahedron points from [-0.1 to 1.1]
+  do ix = -1, nstep + 1
+    do iy = -1, nstep - ix + 1
+      itest = itest + 1
+      testpoint_in(:, itest) =   vertices(:,0)                                        & 
+                               + (real(ix, kind=dp) / nstep) * (vertices(:,1) - vertices(:,0))  &
+                               + (real(iy, kind=dp) / nstep) * (vertices(:,2) - vertices(:,0))
+
+      if (any([ix, iy] == -1)) then
+        is_in_element_npoint_ref_temp(itest) = .false.
+      elseif (ix+iy>nstep) then
+        is_in_element_npoint_ref_temp(itest) = .false.
+      else
+        is_in_element_npoint_ref_temp(itest) = .true.
+      end if
+
+    end do
+  end do
+
+  ntest_tot = itest
+  is_in_element_npoint_ref = is_in_element_npoint_ref_temp(1:ntest_tot)
+
+  connectivity(:,1) = [1, 2, 3]
+  call inv_mesh%initialize_mesh(1, vertices, connectivity, nbasisfuncs_per_elem)
+
+  do itest = 1, ntest_tot
+    is_in_element_one = inv_mesh%point_in_element(1, testpoint_in(:, itest))
+    call assert_true((is_in_element_one .eqv. is_in_element_npoint_ref(itest)), &
+                     'Points are correctly found to be in element - 1 point')
+    if (is_in_element_one .neqv. is_in_element_npoint_ref(itest)) then
+      print *, 'Is inside ', is_in_element_one, ', should be: ', is_in_element_npoint_ref(itest)
+      print *, 'P: ', testpoint_in(:, itest)
+    end if
+  end do
+
+  is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
+  call assert_true((is_in_element_npoint .eqv. is_in_element_npoint_ref), &
+                   'Points are correctly found to be in element - n points')
+  call inv_mesh%freeme()
+
+end subroutine test_point_in_element_triangle_mesh
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_point_in_element_tetrahedral_mesh
+  type(inversion_mesh_type)  :: inv_mesh
+  integer, parameter         :: ndim = 3, nvertices = 4
+  real(kind=dp)              :: vertices(ndim, 0:nvertices-1), offset(ndim)
+  integer                    :: connectivity(4, 1), itest
+  integer, parameter         :: nbasisfuncs_per_elem = 1, nstep = 10
+  integer, parameter         :: ntest = (nstep+3)**3 / 3
+  real(kind=dp)              :: testpoint_in(ndim, ntest)
+  logical                    :: is_in_element_one, is_in_element_npoint_ref_temp(ntest)
+  logical, allocatable       :: is_in_element_npoint(:), is_in_element_npoint_ref(:)
+  integer                    :: ix, iy, iz, ntest_tot
+
+  ! Try simplistic tetrahedron
+  vertices(:, 0) = [0, 0, 0]
+  vertices(:, 1) = [1, 0, 0]
+  vertices(:, 2) = [0, 1, 0]
+  vertices(:, 3) = [0, 0, 1]
+
+  itest = 0
+
+  ! Create along each base vector of the tetrahedron points from [-0.1 to 1.1]
+  do ix = -1, nstep + 1
+    do iy = -1, nstep - ix + 1
+      do iz = -1, nstep - ix - iy + 1
+        itest = itest + 1
+        testpoint_in(:, itest) =   vertices(:,0)                                        & 
+                                 + (real(ix, kind=dp) / nstep) * (vertices(:,1) - vertices(:,0))  &
+                                 + (real(iy, kind=dp) / nstep) * (vertices(:,2) - vertices(:,0))  &
+                                 + (real(iz, kind=dp) / nstep) * (vertices(:,3) - vertices(:,0))
+
+        if (any([ix, iy, iz] == -1)) then
+          is_in_element_npoint_ref_temp(itest) = .false.
+        elseif (ix+iy+iz>nstep) then
+          is_in_element_npoint_ref_temp(itest) = .false.
+        else
+          is_in_element_npoint_ref_temp(itest) = .true.
+        end if
+
+      end do
+    end do
+  end do
+
+  ntest_tot = itest
+  is_in_element_npoint_ref = is_in_element_npoint_ref_temp(1:ntest_tot)
+
+  connectivity(:,1) = [1, 2, 3, 4]
+  call inv_mesh%initialize_mesh(4, vertices, connectivity, nbasisfuncs_per_elem)
+
+  do itest = 1, ntest_tot
+    is_in_element_one = inv_mesh%point_in_element(1, testpoint_in(:, itest))
+    call assert_true((is_in_element_one .eqv. is_in_element_npoint_ref(itest)), &
+                     'Points are correctly found to be in element - 1 point')
+  end do
+
+  is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
+  call assert_true((is_in_element_npoint .eqv. is_in_element_npoint_ref), &
+                   'Points are correctly found to be in element - n points')
+  call inv_mesh%freeme()
+
+  ! Try rotated tetrahedron at arbitrary location
+  vertices(:, 0) = [2, 1, 0]
+  vertices(:, 1) = [4,-3, 1]
+  vertices(:, 2) = [2, 2, 2]
+  vertices(:, 3) = [2,-8, 1]
+
+  itest = 0
+  do ix = 1, nstep
+    do iy = 1, nstep - ix
+      do iz = 1, nstep - ix - iy
+        itest = itest + 1
+        testpoint_in(:, itest) =   vertices(:,0)                                        & 
+                                 + (real(ix, kind=dp) / nstep) * (vertices(:,1) - vertices(:,0))  &
+                                 + (real(iy, kind=dp) / nstep) * (vertices(:,2) - vertices(:,0))  &
+                                 + (real(iz, kind=dp) / nstep) * (vertices(:,3) - vertices(:,0))
+
+      end do
+    end do
+  end do
+
+  ntest_tot = itest
+
+  connectivity(:,1) = [1, 2, 3, 4]
+  call inv_mesh%initialize_mesh(4, vertices, connectivity, nbasisfuncs_per_elem)
+
+  do itest = 1, ntest_tot
+
+    is_in_element_one = inv_mesh%point_in_element(1, testpoint_in(:, itest))
+    call assert_true(is_in_element_one, 'Points are correctly found to be in element - 1 point')
+
+  end do
+
+  is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
+  call assert_true(is_in_element_npoint, 'Points are correctly found to be in element - n points')
+  call inv_mesh%freeme()
+
+end subroutine test_point_in_element_tetrahedral_mesh
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_random_points_triangle_mesh
   use tetrahedra, only        : point_in_triangle_3d
   use halton_sequence, only   : free_halton
