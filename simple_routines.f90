@@ -1,5 +1,5 @@
 module simple_routines
-   use global_parameters, only: sp, dp, verbose
+   use global_parameters, only: sp, dp, qp, verbose
 
    implicit none
    private
@@ -17,13 +17,15 @@ module simple_routines
    end interface mult3d_1d
 
    interface absreldiff
-      module procedure  :: absreldiff_real
-      module procedure  :: absreldiff_dble
+      module procedure  :: absreldiff_sp
+      module procedure  :: absreldiff_dp
+      module procedure  :: absreldiff_qp
    end interface absreldiff
 
    interface cross
      module procedure   :: cross_sp
      module procedure   :: cross_dp
+     module procedure   :: cross_qp
    end interface cross
 
    interface check_NaN
@@ -134,7 +136,7 @@ end function firstderiv
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-pure real(kind=sp) function absreldiff_real(x1,x2)
+pure real(kind=sp) function absreldiff_sp(x1,x2)
 !< Calculate the absolute relative difference between two numbers. Relative to
 !! X1 or the non-zero one, that is. Single precision version
   real(kind=sp), intent(in) :: x1, x2
@@ -143,16 +145,16 @@ pure real(kind=sp) function absreldiff_real(x1,x2)
   denominator = max(abs(x1), abs(x2))
 
   if (denominator == 0) then
-     absreldiff_real = 0
+     absreldiff_sp = 0
   else
-     absreldiff_real = abs(x1-x2) / denominator
+     absreldiff_sp = abs(x1-x2) / denominator
   end if
 
-end function absreldiff_real
+end function absreldiff_sp
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-pure real(kind=dp) function absreldiff_dble(x1,x2)
+pure real(kind=dp) function absreldiff_dp(x1,x2)
 !< Calculate the absolute relative difference between two numbers. Relative to
 !! X1 or the non-zero one, that is. Double precision version
   real(kind=dp), intent(in) :: x1, x2
@@ -161,12 +163,30 @@ pure real(kind=dp) function absreldiff_dble(x1,x2)
   denominator = max(abs(x1), abs(x2))
 
   if (denominator == 0) then
-     absreldiff_dble = 0
+     absreldiff_dp = 0
   else
-     absreldiff_dble = dabs(x1-x2) / denominator
+     absreldiff_dp = dabs(x1-x2) / denominator
   end if
 
-end function absreldiff_dble
+end function absreldiff_dp
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+pure real(kind=qp) function absreldiff_qp(x1,x2)
+!< Calculate the absolute relative difference between two numbers. Relative to
+!! X1 or the non-zero one, that is. Quadruple precision version
+  real(kind=qp), intent(in) :: x1, x2
+  real(kind=qp)             :: denominator
+
+  denominator = max(abs(x1), abs(x2))
+
+  if (denominator == 0) then
+     absreldiff_qp = 0
+  else
+     absreldiff_qp = abs(x1-x2) / denominator
+  end if
+
+end function absreldiff_qp
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
@@ -174,10 +194,14 @@ pure function cross_sp(a,b)
 !< Compute the cross product between vectors a and b
   real(kind=sp)             :: cross_sp(3)
   real(kind=sp), intent(in) :: a(3), b(3)
+  real(kind=qp)             :: a_qp(3), b_qp(3)
+
+  a_qp = a
+  b_qp = b
            
-  cross_sp(1) = a(2)*b(3) - a(3)*b(2)
-  cross_sp(2) = a(3)*b(1) - a(1)*b(3)
-  cross_sp(3) = a(1)*b(2) - a(2)*b(1)
+  cross_sp(1) = real(a_qp(2)*b_qp(3) - a_qp(3)*b_qp(2), kind=sp)
+  cross_sp(2) = real(a_qp(3)*b_qp(1) - a_qp(1)*b_qp(3), kind=sp)
+  cross_sp(3) = real(a_qp(1)*b_qp(2) - a_qp(2)*b_qp(1), kind=sp)
 
 end function cross_sp
 !------------------------------------------------------------------------------
@@ -187,12 +211,29 @@ pure function cross_dp(a,b)
 !< Compute the cross product between vectors a and b
   real(kind=dp)             :: cross_dp(3)
   real(kind=dp), intent(in) :: a(3), b(3)
-           
-  cross_dp(1) = a(2)*b(3) - a(3)*b(2)
-  cross_dp(2) = a(3)*b(1) - a(1)*b(3)
-  cross_dp(3) = a(1)*b(2) - a(2)*b(1)
+  real(kind=qp)             :: a_qp(3), b_qp(3)
 
+  a_qp = a
+  b_qp = b
+           
+  cross_dp(1) = real(a_qp(2)*b_qp(3) - a_qp(3)*b_qp(2), kind=dp)
+  cross_dp(2) = real(a_qp(3)*b_qp(1) - a_qp(1)*b_qp(3), kind=dp)
+  cross_dp(3) = real(a_qp(1)*b_qp(2) - a_qp(2)*b_qp(1), kind=dp)
+                                                
 end function cross_dp
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+pure function cross_qp(a,b)
+!< Compute the cross product between vectors a and b
+  real(kind=qp)             :: cross_qp(3)
+  real(kind=qp), intent(in) :: a(3), b(3)
+
+  cross_qp(1) = a(2)*b(3) - a(3)*b(2)
+  cross_qp(2) = a(3)*b(1) - a(1)*b(3)
+  cross_qp(3) = a(1)*b(2) - a(2)*b(1)
+                                                
+end function cross_qp
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
