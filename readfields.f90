@@ -24,6 +24,8 @@ module readfields
                                              rotate_frame_rd
     use kdtree2_module,    only            : kdtree2
 
+    use interpolate_mesh,  only            : parameter_interpolator
+
     implicit none
     private
     public                                 :: semdata_type, meshtype, get_chunk_bounds
@@ -38,9 +40,12 @@ module readfields
         real(kind=sp), allocatable         :: s_mp(:), z_mp(:)      !< Coordinates of element midpoints
         integer, allocatable               :: corner_point_ids(:,:) !< (4,nelem)
         integer, allocatable               :: eltype(:)             !< (nelem)
-        real(kind=sp), allocatable         :: vp(:), vs(:), rho(:)  !< Model parameters
-        real(kind=sp), allocatable         :: lambda(:), mu(:)      !< Elastic parameters
-        real(kind=sp), allocatable         :: phi(:), xi(:), eta(:) !< Anisotropic parameters
+        type(parameter_interpolator)       :: vp, vs, rho           !< Model parameters
+        type(parameter_interpolator)       :: lambda, mu            !< Elastic parameters
+        type(parameter_interpolator)       :: phi, xi, eta          !< Anisotropic parameters
+        !real(kind=sp), allocatable         :: vp(:), vs(:), rho(:)  !< Model parameters
+        !real(kind=sp), allocatable         :: lambda(:), mu(:)      !< Elastic parameters
+        !real(kind=sp), allocatable         :: phi(:), xi(:), eta(:) !< Anisotropic parameters
         integer, allocatable               :: isaxis(:)             !< Is this point at the axis?
         integer, allocatable               :: gll_point_ids(:,:,:)  !< IDs of GLL points for this element
         integer                            :: npoints, nelem
@@ -130,7 +135,7 @@ module readfields
             procedure, pass                :: open_files
             procedure, pass                :: check_consistency
             procedure, pass                :: read_meshes
-            procedure, pass                :: build_kdtree
+            procedure, pass, private       :: build_kdtree
             procedure, pass                :: load_fw_points
             procedure, pass                :: load_fw_points_rdbm
             procedure, pass                :: load_bw_points
@@ -1137,6 +1142,10 @@ function load_fw_points(this, coordinates, source_params, model)
                           coordinates,                                  &
                           source_params%lon, source_params%colat)
 
+    if (present(model)) then
+      coeffs = get_model_coeffs(this, norm2(coordinates, dim=1))
+    end if
+
     allocate(nextpoint(nnext_points))
     load_fw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
@@ -1245,10 +1254,6 @@ function load_fw_points(this, coordinates, source_params, model)
             pointid = nextpoint(1)%idx
         end select ! dump_type
     
-        if (present(model)) then
-          coeffs(:, ipoint) = get_model_coeffs(this, pointid)
-        end if
-
         select case(trim(this%strain_type))
         case('straintensor_trace')    
            
@@ -1359,20 +1364,15 @@ end function load_fw_points
 
 !-----------------------------------------------------------------------------------------
 !> Loads the model coefficients for a selected coordinate 
-function load_model_coeffs(this, coordinates_xyz, s, z) result(model)
+function load_model_coeffs(this, coordinates_xyz) result(model)
    use backgroundmodel, only          : backgroundmodel_type
    use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest
 
    class(semdata_type)               :: this
    real(kind=dp), intent(in)         :: coordinates_xyz(:,:)
    type(backgroundmodel_type)        :: model
-   real(kind=sp), intent(out), optional :: s(size(coordinates_xyz,2)), z(size(coordinates_xyz,2))
 
-   type(kdtree2_result), allocatable :: nextpoint(:)
-   integer, parameter                :: nnext_points = 1
-   integer                           :: npoints, ipoint
-   integer                           :: pointid
-   real(kind=sp)                     :: coordinates_sz(2, size(coordinates_xyz,2)) 
+   real(kind=dp)                     :: coordinates_r(size(coordinates_xyz,2))
    real(kind=sp)                     :: coeffs(nmodel_parameters_sem_file, size(coordinates_xyz,2)) 
 
    if (.not.this%kdtree_built) then
@@ -1380,29 +1380,9 @@ function load_model_coeffs(this, coordinates_xyz, s, z) result(model)
       call pabort()
    end if
 
-   coordinates_sz(1,:) = sqrt(coordinates_xyz(1,:)**2 + coordinates_xyz(2,:)**2) ! S
-   coordinates_sz(2,:) = coordinates_xyz(3,:) ! Z
+   coordinates_r = norm2(coordinates_xyz, dim=1)
 
-   ! nextpoint has to be allocatable in kdtree module
-   allocate(nextpoint(nnext_points))
-
-   npoints = size(coordinates_xyz, 2)
-   do ipoint = 1, npoints
-      ! Find nearest point
-      call kdtree2_n_nearest( this%fwdtree,              &
-                              coordinates_sz(:, ipoint), &
-                              nn = nnext_points,         &
-                              results = nextpoint )
-      pointid = nextpoint(1)%idx
-
-      ! Get 6 model coefficients of nearest point from Mesh
-      coeffs(:, ipoint) = get_model_coeffs(this, pointid)
-
-      ! For debugging purposes, s and z of the next point may be returned
-      if (present(s)) s(ipoint) = this%fwdmesh%s(pointid)
-      if (present(z)) z(ipoint) = this%fwdmesh%z(pointid)
-
-   end do ! ipoint
+   coeffs = get_model_coeffs(this, coordinates_r)
 
    ! Combine 6 mesh values to get the 12 parameters of backgroundmodel.f90
    call model%combine(coeffs)
@@ -1412,24 +1392,24 @@ end function load_model_coeffs
 
 !-----------------------------------------------------------------------------------------
 !> Gets the model coefficients for a selected point
-function get_model_coeffs(this, ipoint) result(coeffs)
+function get_model_coeffs(this, r) result(coeffs)
    class(semdata_type), intent(in) :: this
-   integer, intent(in)             :: ipoint
-   real(kind=sp)                   :: coeffs(nmodel_parameters_sem_file)
+   real(kind=dp), intent(in)       :: r(:)
+   real(kind=sp)                   :: coeffs(nmodel_parameters_sem_file, size(r))
    
    ! Load model coefficients vp, vs and rho at point ipoint
    ! Load coefficient vp
-   coeffs(1) = this%fwdmesh%vp(ipoint)
+   coeffs(1,:) = this%fwdmesh%vp%get(r)
    ! Load coefficient vs
-   coeffs(2) = this%fwdmesh%vs(ipoint)
+   coeffs(2,:) = this%fwdmesh%vs%get(r)
    ! Load coefficient rho
-   coeffs(3) = this%fwdmesh%rho(ipoint)
+   coeffs(3,:) = this%fwdmesh%rho%get(r)
    ! Load coefficient phi
-   coeffs(4) = this%fwdmesh%phi(ipoint)
+   coeffs(4,:) = this%fwdmesh%phi%get(r)
    ! Load coefficient xi
-   coeffs(5) = this%fwdmesh%xi(ipoint)
+   coeffs(5,:) = this%fwdmesh%xi%get(r)
    ! Load coefficient eta
-   coeffs(6) = this%fwdmesh%eta(ipoint)
+   coeffs(6,:) = this%fwdmesh%eta%get(r)
 
 end function get_model_coeffs
 !-----------------------------------------------------------------------------------------
@@ -1874,7 +1854,7 @@ end function load_bw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points_rdbm(this, source_params, reci_source_params, component, mu)
+function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     use finite_elem_mapping, only       : inside_element
     use kdtree2_module, only            : kdtree2_result, kdtree2_n_nearest
 
@@ -1882,7 +1862,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
     type(src_param_type), intent(in)        :: source_params(:)
     type(src_param_type), intent(in)        :: reci_source_params
     character(len=1), intent(in)            :: component
-    real(kind=dp), intent(out), optional    :: mu(size(source_params))
     real(kind=dp), allocatable              :: load_fw_points_rdbm(:,:,:)
 
     type(kdtree2_result), allocatable :: nextpoint(:)
@@ -1987,11 +1966,6 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component,
         gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem) + 1
         if (verbose > 1) &
             write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
-
-        ! get mu of midpoint
-        if (present(mu)) then
-            mu(ipoint) = this%fwdmesh%mu(gll_point_ids(this%npol/2, this%npol/2))
-        endif
 
         if (this%fwdmesh%isaxis(id_elem) == 1) then
            axis = .true.
@@ -2821,11 +2795,11 @@ subroutine build_kdtree(this)
     class(semdata_type)        :: this
     real(kind=sp), allocatable :: mesh(:,:)
 
-    if (.not.this%meshes_read) then
-        print *, 'ERROR in build_kdtree(): Meshes have not been read yet'
-        print *, 'Call read_meshes() before build_kdtree!'
-        call pabort
-    end if
+    !if (.not.this%meshes_read) then
+    !    print *, 'ERROR in build_kdtree(): Meshes have not been read yet'
+    !    print *, 'Call read_meshes() before build_kdtree!'
+    !    call pabort
+    !end if
 
     ! Destroy kdtree
     if (this%kdtree_built) then
@@ -2836,9 +2810,6 @@ subroutine build_kdtree(this)
       call kdtree2_destroy(this%fwdtree)
       call kdtree2_destroy(this%bwdtree)
     end if
-
-    write(lu_out,*) ' Reshaping mesh variables'
-    call flush(lu_out)
 
     allocate(mesh(2, this%fwdmesh%npoints))
     mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z],       &
@@ -2977,6 +2948,20 @@ subroutine read_meshes(this)
       call calc_gradient_terms(this)
    end if
 
+   ! Build KDTree
+   write(lu_out, *) 'Build KD-Trees'
+   call flush(lu_out)
+   call this%build_kdtree()
+
+   ! Load mesh model 
+   write(lu_out, *) 'Load forward mesh model parameters and create interpolation objects'
+   call flush(lu_out)
+   call load_model_parameter(this%fwd(1)%mesh, this%fwdmesh, this%fwdtree, this%fwd(1)%planet_radius)
+
+   write(lu_out, *) 'Load backward mesh model parameters and create interpolation objects'
+   call flush(lu_out)
+   call load_model_parameter(this%bwd(1)%mesh, this%bwdmesh, this%bwdtree, this%bwd(1)%planet_radius)
+
    this%meshes_read = .true.
 
    write(lu_out, *) 'Forward and backward SEM mesh reading succeeded'
@@ -3005,44 +2990,6 @@ subroutine cache_mesh(ncid, mesh, dump_type)
                          limits = [-1e9, 1e9],   & 
                          values = mesh%z   )
               
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_vp',     &
-                         limits = [0.0, 2e4],    & 
-                         values = mesh%vp  )
-              
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_vs',     &
-                         limits = [0.0, 2e4],    & 
-                         values = mesh%vs  )
-              
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_rho',    &
-                         limits = [0.0, 2e4],    & 
-                         values = mesh%rho )
-              
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_lambda', &
-                         limits = [1e9, 1e15],   & 
-                         values = mesh%lambda)
-              
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_mu',     &
-                         limits = [0.0, 1e12],   & 
-                         values = mesh%mu  )
-              
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_phi',    &
-                         values = mesh%phi )
-              
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_xi',     &
-                         limits = [0.0, 3.0],    & 
-                         values = mesh%xi  )
-              
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_eta',    &
-                         limits = [0.0, 1e12],   & 
-                         values = mesh%eta )
 
   if (trim(dump_type) == 'displ_only') then
       
@@ -3081,6 +3028,75 @@ subroutine cache_mesh(ncid, mesh, dump_type)
   write(lu_out, *) ' done'
 
 end subroutine cache_mesh
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine load_model_parameter(ncid, mesh, tree, radius)
+  use interpolate_mesh, only  : create_interpolator
+  use nc_routines,      only  : nc_getvar_by_name
+  type(meshtype)             :: mesh
+  integer, intent(in)        :: ncid
+  real(kind=dp), intent(in)  :: radius
+  type(kdtree2), pointer     :: tree
+  real(kind=sp), allocatable :: param_tmp(:)
+
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         varname   = 'mesh_vp',     &
+                         limits = [0.0, 2e4],    & 
+                         values = param_tmp  )
+  mesh%vp = create_interpolator(param_tmp, tree, radius)
+  deallocate(param_tmp)
+              
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         varname   = 'mesh_vs',     &
+                         limits = [0.0, 2e4],    & 
+                         values = param_tmp)
+  mesh%vs = create_interpolator(param_tmp, tree, radius)
+  deallocate(param_tmp)
+              
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         varname   = 'mesh_rho',    &
+                         limits = [0.0, 2e4],    & 
+                         values = param_tmp)
+  mesh%rho = create_interpolator(param_tmp, tree, radius)
+  deallocate(param_tmp)
+              
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         varname   = 'mesh_lambda', &
+                         limits = [1e9, 1e15],   & 
+                         values = param_tmp)
+  mesh%lambda = create_interpolator(param_tmp, tree, radius)
+  deallocate(param_tmp)
+              
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         varname   = 'mesh_mu',     &
+                         limits = [0.0, 1e12],   & 
+                         values = param_tmp)
+  mesh%mu = create_interpolator(param_tmp, tree, radius)
+  deallocate(param_tmp)
+              
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         varname   = 'mesh_phi',    &
+                         limits = [0.0, 3.0],    & 
+                         values = param_tmp)
+  mesh%phi = create_interpolator(param_tmp, tree, radius)
+  deallocate(param_tmp)
+              
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         varname   = 'mesh_xi',  &
+                         limits = [0.0, 3.0],    & 
+                         values = param_tmp)
+  mesh%xi = create_interpolator(param_tmp, tree, radius)
+  deallocate(param_tmp)
+              
+  call nc_getvar_by_name(ncid   = ncid,          &
+                         varname   = 'mesh_eta',    &
+                         limits = [0.0, 1e12],   & 
+                         values = param_tmp)
+  mesh%eta = create_interpolator(param_tmp, tree, radius)
+  deallocate(param_tmp)
+
+end subroutine load_model_parameter 
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

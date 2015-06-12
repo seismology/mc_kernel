@@ -85,7 +85,7 @@ subroutine do_slave()
 
     call sem_data%open_files()
     call sem_data%read_meshes()
-    call sem_data%build_kdtree()
+    !call sem_data%build_kdtree()
 
     call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
 

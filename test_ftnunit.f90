@@ -142,7 +142,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
   call test(test_readfields_set_params, 'Set SEM file params')
   call test(test_readfields_open_files, 'Open SEM file')
-  call test(test_readfields_read_meshes, 'Read meshes')
+  !call test(test_readfields_read_meshes, 'Read meshes')
   call test(test_readfields_load_fw_points, 'Read FWD points')
   call test(test_readfields_load_model_coeffs, 'Read Model coefficients from SEM mesh')
   call test(test_load_seismograms_rdbm, 'Read seismograms')
