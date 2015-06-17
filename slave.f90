@@ -550,29 +550,34 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                   iclockold = tick(id=id_mc, since=iclockold)
 
                 else ! Receiver is inside element!
-                  print *, 'FOUND RECEIVER, DU KÖRPERKLAUS!'
-                  do ikernel = parameters%receiver(irec)%firstkernel, &
-                               parameters%receiver(irec)%lastkernel 
-                              
-                        ! Check whether kernel (ikernel) actually needs the base kernel 
-                        ! (ibasekernel), otherwise cycle
-                        if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
 
-                        ! If this kernel is already converged, go to the next one
-                        if (allisconverged(int_kernel, ikernel)) cycle
-                        niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
-                        iclockold = tick(id=id_mc, since=iclockold)
+                   print *, 'FOUND RECEIVER, DU KÖRPERKLAUS!'
 
-                        ! Calculate scalar misfit base kernels from convolved time traces
-                        kernelvalue_basekers(:,ikernel,ibasekernel) = 0      
-                                                                                            
-                        iclockold = tick(id=id_kernel, since=iclockold)
+                   do ibasekernel = 1, nbasekernels
 
-                  end do ! ikernel
+                      if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
+
+                      do ikernel = parameters%receiver(irec)%firstkernel, &
+                           parameters%receiver(irec)%lastkernel 
+                         
+                         ! Check whether kernel (ikernel) actually needs the base kernel 
+                         ! (ibasekernel), otherwise cycle
+                         ! If this kernel is already converged, go to the next one
+                         if (allisconverged(int_kernel, ikernel)) cycle
+                         niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                         iclockold = tick(id=id_mc, since=iclockold)
+                         ! Calculate scalar misfit base kernels from convolved time traces
+                         kernelvalue_basekers(:,ikernel,ibasekernel) = 0.d0
+                         iclockold = tick(id=id_kernel, since=iclockold)
+                         
+                      end do ! ikernel
+
+                   end do ! ibasekernel                    
 
                 end if ! Receiver is inside element?
 
              end do ! irec
+
              iclockold = tick(id=id_mc, since=iclockold)
 
              ! Check for convergence           
@@ -659,7 +664,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           do ibasisfunc = 1, nbasisfuncs_per_elem          
             slave_result%model(:, ibasisfunc, ielement) = int_model(ibasisfunc)%getintegral()
             call int_model(ibasisfunc)%freeme()
-
             if (parameters%int_over_hetero) then
                slave_result%hetero_model(:, ibasisfunc, ielement)    = int_hetero(ibasisfunc)%getintegral()
                call int_hetero(ibasisfunc)%freeme()              

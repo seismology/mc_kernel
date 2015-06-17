@@ -193,7 +193,7 @@ function point_in_voxel(v, u)
 ! Checks whether the n points contained in x are in the voxel defied by v
 
    real(kind=dp), intent(in)  :: v(3,8)       ! a voxel defined by its cartesian coordinates 
-   real(kind=dp), intent(in)  :: u(:,:)       ! arbitrary number of spherical points
+   real(kind=dp), intent(in)  :: u(:,:)       ! arbitrary number of cartesian points
    real(kind=dp)              :: w(size(u,1),size(u,2))       ! npoints in spherical coordinates   
    real(kind=dp)              :: sph_rng(6)   ! spherical range: rmin, rmax, phmin, 
                                               !                  phmax, thmin, thmax
@@ -204,6 +204,8 @@ function point_in_voxel(v, u)
    
    call cartesian_to_spherical_range(v, sph_rng)
    call cartesian_to_spherical_points(u, w)
+
+   point_in_voxel(:) = .false.
    
    do ipoint=1,npoints
       if (((w(1,ipoint).ge.sph_rng(1)).and.(w(1,ipoint).le.sph_rng(2))) .and. &
