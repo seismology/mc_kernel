@@ -13,6 +13,7 @@ module inversion_mesh
 
   use voxel,             only: get_volume_vox,                  &
                                get_center_vox,                  &
+                               get_unique_vox,                  &
                                generate_random_points_vox
                                
   use commpi,            only: pabort
@@ -1236,9 +1237,17 @@ subroutine tree_sort(this)
   integer                           :: i
 
   ! compute element midpoints
-  do i = 1, this%nelements
-     midpoints(:,i) = this%get_center(i)
-  enddo
+  select case(this%element_type)
+  case('vox')     
+     ! our voxel center coords are sometimes (at the poles) not unique, hence ...
+     do i = 1, this%nelements
+        midpoints(:,i) = get_unique_vox(this%get_element(i))
+     enddo
+  case default
+     do i = 1, this%nelements
+        midpoints(:,i) = this%get_center(i)
+     enddo     
+  end select
 
   ! build a kdtree on element midpoints
   tree => kdtree2_create(midpoints, dim = 3, sort = .true., rearrange = .true.)

@@ -8,6 +8,7 @@ module voxel
   public :: generate_random_points_vox
   public :: get_volume_vox
   public :: get_center_vox
+  public :: get_unique_vox
   public :: point_in_voxel
 
   public :: spherical_to_cartesian_point
@@ -118,6 +119,22 @@ function get_center_vox(v)
   call spherical_to_cartesian_point(sph_pnt,get_center_vox)
 
 end function get_center_vox
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_unique_vox(v)
+!
+! returns a unique id for an input voxel given in sph. coordinates
+!
+  real(kind=dp), intent(in)  ::  v(3,8)     ! voxel in sph. coord
+  real(kind=dp)              ::  get_unique_vox(3)       ! output "id"
+  integer i
+
+  do i = 1,3
+    get_unique_vox(i) = sum(v(i,1:8)) / 8.0d0
+  end do
+
+end function get_unique_vox
 !-----------------------------------------------------------------------------------------
 
 
