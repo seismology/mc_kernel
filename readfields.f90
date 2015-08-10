@@ -28,7 +28,7 @@ module readfields
 
     implicit none
     private
-    public                                 :: semdata_type, meshtype, get_chunk_bounds
+    public                                 :: semdata_type, meshtype, get_chunk_bounds, dampen_field
 
     integer, parameter                     :: min_file_version = 3
     integer, parameter                     :: nmodel_parameters_sem_file = 6 !< For the anisotropic
@@ -3194,6 +3194,31 @@ subroutine get_chunk_bounds(pointid, chunksize, npoints, start_chunk, count_chun
   count_chunk = min(chunksize, npoints - start_chunk + 1)
                                             
 end subroutine get_chunk_bounds
+!-----------------------------------------------------------------------------------------
+ 
+!-----------------------------------------------------------------------------------------
+!> Dampen field variable around a central point
+subroutine dampen_field(field, r_points, r_src_rec, r_max)
+  use simple_routines, only          : subt2d_1d
+  real(kind=dp), intent(inout)      :: field(:,:,:)    !< Variable to dampen
+  real(kind=dp), intent(in)         :: r_points(:,:)   !< Locations of points
+  real(kind=dp), intent(in)         :: r_src_rec(3)    !< Location of damping center
+  real(kind=dp), intent(in)         :: r_max           !< Distance at which damping starts
+
+  real(kind=dp)                     :: dist
+  integer                           :: ipoint, npoints 
+  
+  
+  npoints = size(field,1)
+  
+  do ipoint = 1, npoints
+    dist = norm2(r_points(:,ipoint)- r_src_rec)
+    if (dist<r_max) then
+      field(ipoint,:,:) = field(ipoint,:,:) * dist / r_max
+    end if
+  end do
+
+end subroutine dampen_field
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------

@@ -388,6 +388,38 @@ end subroutine test_readfields_load_model_coeffs
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_dampen_field
+  integer, parameter :: npoints = 1000
+  real(kind=dp)      :: field(npoints,2,6), field_ref(npoints,2,6)
+  real(kind=dp)      :: r_points(3,npoints), r_src(3), r_max, pre_fac
+  integer            :: iz, ipoint
+
+  call random_number(field)
+  field_ref = field
+
+  call random_number(r_points)
+
+  r_src = [0.5d0, 0.5d0, 0.5d0]
+
+  r_max = 0.2d0
+
+  call dampen_field(field, r_points, r_src, r_max)
+
+  do ipoint = 1, npoints
+    if (norm2(r_src-r_points(:, ipoint))>r_max) then
+      call assert_comparable(field(ipoint,:,:), field_ref(ipoint,:,:), &
+                             1d-5, 'Value outside r_max equal')
+    else
+      pre_fac = norm2(r_src-r_points(:, ipoint))/r_max
+      call assert_comparable(field(ipoint,:,:), field_ref(ipoint,:,:)*pre_fac, &
+                             1d-5, 'Value inside r_max corrected')
+    end if
+  end do
+
+end subroutine test_dampen_field
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 !> The wicked PREM subroutine from background_models.f90 in the AxiSEM MESHER
 function prem_ani_sub(r0, idom) result(model)
   use backgroundmodel, only     : backgroundmodel_type
