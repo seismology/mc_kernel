@@ -236,7 +236,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                            id_element, id_int_hetero
 
     use inversion_mesh,              only: inversion_mesh_data_type
-    use readfields,                  only: semdata_type
+    use readfields,                  only: semdata_type, dampen_field
     use type_parameter,              only: parameter_type
     use fft,                         only: rfft_type, taperandzeropad
     use filtering,                   only: timeshift_type
@@ -287,6 +287,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                                                   !! Integration of model parameters
                                                                   !! Larger than for kernels, since
                                                                   !! evaluation is very cheap
+    real(kind=dp), parameter            :: r_max = 100d3          !! Maximum distance for damping
+                                                                  !! of convolved wavefield around 
+                                                                  !! source or receiver in meters
+                                                                  !! Could be replaced by a frequency-dependent
+                                                                  !! value later
 
     iclockold = tick()
 
@@ -508,7 +513,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                                      parameters%strain_type_fwd,            &
                                                      parameters%strain_type_fwd,            &
                                                      fw_field_fd, bw_field_fd)
-                     
+
                      iclockold = tick(id=id_filter_conv, since=iclockold)
                      
                      do ikernel = parameters%receiver(irec)%firstkernel, &
@@ -534,13 +539,23 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                            kernelvalue_basekers(:,ikernel,ibasekernel) =         &
                                                 parameters%kernel(ikernel)       &
                                                 %calc_misfit_kernel(conv_field, parameters%int_scheme)
+
                                                                                                
                            iclockold = tick(id=id_kernel, since=iclockold)
 
                            niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
                      end do ! ikernel
-
+                     
                   end do ! ibasekernel 
+
+                  ! Dampen kernel values, if the points are close to receiver or source
+                  call dampen_field(kernelvalue_basekers, random_points, &
+                                    parameters%receiver(irec)%r,  &
+                                    r_max)
+                  call dampen_field(kernelvalue_basekers, random_points, &
+                                    parameters%source%r,          &
+                                    r_max)
+
                   iclockold = tick(id=id_mc, since=iclockold)
 
                 else ! Receiver is inside element!
