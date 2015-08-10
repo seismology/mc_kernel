@@ -14,7 +14,7 @@ module receiver_class
         real(kind=dp)                  :: colatd, latd, lond !< receiver coordinates
                                                              !! in the earth system
                                                              !! (degrees)
-        real(kind=dp)                  :: x, y, z            !< receiver location 
+        real(kind=dp), dimension(3)    :: r                  !< receiver location 
                                                              !! in cartesian coordinates
                                                              !! in meters!
         real(kind=dp)                  :: theta, phi         !< receiver coordinates 
@@ -51,9 +51,9 @@ subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkerne
    this%lon         = this%lond   * deg2rad
    this%lat         = this%latd   * deg2rad
 
-   this%x = dcos(this%lat) * dcos(this%lon) * 6371e3
-   this%y = dcos(this%lat) * dsin(this%lon) * 6371e3
-   this%z = dsin(this%lat)                  * 6371e3
+   this%r(1) = dcos(this%lat) * dcos(this%lon) * 6371e3
+   this%r(2) = dcos(this%lat) * dsin(this%lon) * 6371e3
+   this%r(3) = dsin(this%lat)                  * 6371e3
 
    this%nkernel     = nkernel
    this%firstkernel = firstkernel

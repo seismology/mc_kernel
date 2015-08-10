@@ -1902,9 +1902,7 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     npoints = size(source_params)    
 
     do ipoint = 1, npoints
-        coordinates(1,ipoint) = source_params(ipoint)%x
-        coordinates(2,ipoint) = source_params(ipoint)%y
-        coordinates(3,ipoint) = source_params(ipoint)%z
+        coordinates(:,ipoint) = source_params(ipoint)%r
     enddo
     
     ! Rotate points to FWD coordinate system

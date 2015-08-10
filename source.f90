@@ -14,7 +14,7 @@ module source_class
         real(kind=dp)               :: mij_voigt(6)        ! Mtt Mpp Mrr Mrp Mrt Mtp
         real(kind=dp)               :: colat, lat, lon     ! in radians
         real(kind=dp)               :: colatd, latd, lond  ! in degrees
-        real(kind=dp)               :: x, y, z             ! cartesian coordinates in m
+        real(kind=dp), dimension(3) :: r                   ! cartesian coordinates in m
         real(kind=dp)               :: depth, radius       ! in km
         real(kind=dp)               :: shift_time          ! in seconds
         real(kind=dp), allocatable  :: shift_time_sample   ! in samples (based on sampling
@@ -55,9 +55,9 @@ subroutine init(this, lat, lon, mij, depth)
    !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
    this%radius = 6371 - depth
 
-   this%x = cos(real(this%lat, kind=qp)) * cos(real(this%lon, kind=qp)) * this%radius * 1d3
-   this%y = cos(real(this%lat, kind=qp)) * sin(real(this%lon, kind=qp)) * this%radius * 1d3
-   this%z = sin(real(this%lat, kind=qp))                  * this%radius * 1d3
+   this%r(1) = cos(this%lat) * cos(this%lon) * this%radius * 1d3
+   this%r(2) = cos(this%lat) * sin(this%lon) * this%radius * 1d3
+   this%r(3) = sin(this%lat)                 * this%radius * 1d3
 
    this%mij    = mij
 
@@ -129,9 +129,10 @@ subroutine read_cmtsolution(this, fname)
    !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
    this%radius = 6371 - this%depth
 
-   this%x = dcos(this%lat) * dcos(this%lon) * this%radius * 1e3
-   this%y = dcos(this%lat) * dsin(this%lon) * this%radius * 1e3
-   this%z = dsin(this%lat) * this%radius * 1e3
+   this%r(1) = cos(this%lat) * cos(this%lon) * this%radius * 1d3
+   this%r(2) = cos(this%lat) * sin(this%lon) * this%radius * 1d3
+   this%r(3) = sin(this%lat)                 * this%radius * 1d3
+
 
    read(lu_cmtsolution,*) junk, mij_dyncm(1)
    read(lu_cmtsolution,*) junk, mij_dyncm(2)

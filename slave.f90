@@ -65,7 +65,6 @@ subroutine do_slave()
     call parameters%read_source()
     call parameters%read_receiver()
 
-    print *, [parameters%source%x, parameters%source%y, parameters%source%z]
     nptperstep = parameters%npoints_per_step
 
     ! Master and slave part ways here for some time. 
@@ -421,8 +420,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         end if
 
         ! Check, whether source is inside element. If so, do not do Monte Carlo integration
-        if (.not.inv_mesh%point_in_element(ielement,            &
-                                           [parameters%source%x, parameters%source%y, parameters%source%z]) ) then
+        if (.not.inv_mesh%point_in_element(ielement, parameters%source%r) ) then
 
           !> Sensitivity Kernel Integration <
           !  Initialize basis kernel Monte Carlo integrals for current element
@@ -467,10 +465,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
              ! Loop over all receivers in receiver input file
              do irec = 1, parameters%nrec
                 
-                if (.not.inv_mesh%point_in_element(ielement,            &
-                                                   [parameters%receiver(irec)%x, &
-                                                    parameters%receiver(irec)%y, &
-                                                    parameters%receiver(irec)%z]) ) then
+                if (.not.inv_mesh%point_in_element(ielement, parameters%receiver(irec)%r) ) then
 
                   if (allallconverged(int_kernel,[(ikernel, ikernel =                         &
                                                    parameters%receiver(irec)%firstkernel,     &
@@ -513,8 +508,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                                      parameters%strain_type_fwd,            &
                                                      parameters%strain_type_fwd,            &
                                                      fw_field_fd, bw_field_fd)
-                      
-
+                     
                      iclockold = tick(id=id_filter_conv, since=iclockold)
                      
                      do ikernel = parameters%receiver(irec)%firstkernel, &
@@ -526,7 +520,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
                            ! If this kernel is already converged, go to the next one
                            if (allisconverged(int_kernel, ikernel)) cycle
-                           niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
                            iclockold = tick(id=id_mc, since=iclockold)
 
                            ! Apply Filter 
@@ -544,6 +537,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                                                                                
                            iclockold = tick(id=id_kernel, since=iclockold)
 
+                           niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
                      end do ! ikernel
 
                   end do ! ibasekernel 
@@ -555,21 +549,22 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
                    do ibasekernel = 1, nbasekernels
 
-                      if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
-
                       do ikernel = parameters%receiver(irec)%firstkernel, &
                            parameters%receiver(irec)%lastkernel 
                          
                          ! Check whether kernel (ikernel) actually needs the base kernel 
                          ! (ibasekernel), otherwise cycle
+                         if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
+
                          ! If this kernel is already converged, go to the next one
                          if (allisconverged(int_kernel, ikernel)) cycle
-                         niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
                          iclockold = tick(id=id_mc, since=iclockold)
-                         ! Calculate scalar misfit base kernels from convolved time traces
+
+                         ! Set scalar misfit base kernels to zero
                          kernelvalue_basekers(:,ikernel,ibasekernel) = 0.d0
                          iclockold = tick(id=id_kernel, since=iclockold)
-                         
+
+                         niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
                       end do ! ikernel
 
                    end do ! ibasekernel                    
