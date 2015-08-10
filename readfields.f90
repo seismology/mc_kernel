@@ -3199,7 +3199,6 @@ end subroutine get_chunk_bounds
 !-----------------------------------------------------------------------------------------
 !> Dampen field variable around a central point
 subroutine dampen_field(field, r_points, r_src_rec, r_max)
-  use simple_routines, only          : subt2d_1d
   real(kind=dp), intent(inout)      :: field(:,:,:)    !< Variable to dampen
   real(kind=dp), intent(in)         :: r_points(:,:)   !< Locations of points
   real(kind=dp), intent(in)         :: r_src_rec(3)    !< Location of damping center
