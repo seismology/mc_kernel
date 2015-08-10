@@ -80,10 +80,11 @@ function get(this, r) result(values)
 
   idx = r/this%dr + 1
 
-  if (any(idx.gt.this%ndepth)) then
-    print *, 'Depth out of range!'
-    stop
-  elseif (any(idx.le.0)) then
+  ! Some meshes have points outside of the earth
+  ! Set values to outermost layer in this case
+  where (idx.gt.this%ndepth) idx=this%ndepth
+
+  if (any(idx.le.0)) then
     print *, 'Depth out of range!'
     stop
   end if
