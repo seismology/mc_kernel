@@ -37,8 +37,10 @@ module ftnunit
     interface assert_comparable
         module procedure assert_comparable_real
         module procedure assert_comparable_real1d
+        module procedure assert_comparable_real2d
         module procedure assert_comparable_dble
         module procedure assert_comparable_dble1d
+        module procedure assert_comparable_dble2d
     end interface
     
     interface assert_true
@@ -398,6 +400,70 @@ end subroutine assert_comparable_dble1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+! assert_compatable_dble2d --
+!     Subroutine to check if two double precision arrays are comparable
+! Arguments:
+!     array1        First array
+!     array2        Second array
+!     margin        Allowed margin (relative)
+!     text          Text describing the assertion
+! Side effects:
+!     If the assertion fails, this is reported to standard
+!     output. Also, nofails is increased by one.
+subroutine assert_comparable_dble2d( array1, array2, margin, text )
+    real(kind=dp), dimension(:,:), intent(in)  :: array1
+    real(kind=dp), dimension(:,:), intent(in)  :: array2
+    real(kind=dp), intent(in)                  :: margin
+    character(len=*), intent(in)               :: text
+
+    integer                                    :: i, j
+    integer                                    :: count
+
+    if ( size(array1) /= size(array2) ) then
+        nofails = nofails + 1
+        write(*,*) '    Arrays have different sizes: "',trim(text), '" - assertion failed'
+    else
+        if (any(array1 > infinity) .or. any(-array1 > infinity)) then
+            write(*,*) '   array1 contains infinite values - assertion failed'
+            write(*,*) trim(text)
+            nofails = nofails + 1
+        elseif (any(array2 > infinity) .or. any(-array2 > infinity)) then
+            write(*,*) '   array2 contains infinite values - assertion failed'
+            write(*,*) trim(text)
+            nofails = nofails + 1
+        elseif (any(isnan(array1))) then
+            write(*,*) '   array1 contains NAN values - assertion failed'
+            write(*,*) trim(text)
+            nofails = nofails + 1
+        elseif (any(isnan(array2))) then
+            write(*,*) '   array2 contains NAN values - assertion failed'
+            write(*,*) trim(text)
+            nofails = nofails + 1
+        endif
+
+        if ( any( abs(array1-array2) > 0.5d0 * margin * (abs(array1)+abs(array2)) ) ) then
+            nofails = nofails + 1
+            write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'
+            count = 0
+            write(*,'(2a10,2a15)')    '    Index          ', '          First', '         Second'
+            do i = 1,size(array1, 1)
+                do j = 1,size(array1, 2)
+                    if ( abs(array1(i,j)-array2(i,j)) > &
+                             0.5 * margin * (abs(array1(i,j))+abs(array2(i,j))) ) then
+                        count = count + 1
+                        if ( count < 50 ) then
+                            write(*,'(i10,i10,e15.5,e15.5)')    i, j, array1(i,j), array2(i,j)
+                        endif
+                    endif
+                end do
+            enddo
+            write(*,*) 'Number of differences: ', count
+        endif
+    endif
+end subroutine assert_comparable_dble2d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 ! assert_comparable_real --
 !     Subroutine to check if two reals are approximately equal
 ! Arguments:
@@ -500,6 +566,70 @@ subroutine assert_comparable_real1d( array1, array2, margin, text )
         endif
     endif
 end subroutine assert_comparable_real1d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! assert_compatable_real2d --
+!     Subroutine to check if two single precision arrays are comparable
+! Arguments:
+!     array1        First array
+!     array2        Second array
+!     margin        Allowed margin (relative)
+!     text          Text describing the assertion
+! Side effects:
+!     If the assertion fails, this is reported to standard
+!     output. Also, nofails is increased by one.
+subroutine assert_comparable_real2d( array1, array2, margin, text )
+    real(kind=sp), dimension(:,:), intent(in)  :: array1
+    real(kind=sp), dimension(:,:), intent(in)  :: array2
+    real(kind=sp), intent(in)                  :: margin
+    character(len=*), intent(in)               :: text
+
+    integer                                    :: i, j
+    integer                                    :: count
+
+    if ( size(array1) /= size(array2) ) then
+        nofails = nofails + 1
+        write(*,*) '    Arrays have different sizes: "',trim(text), '" - assertion failed'
+    else
+        if (any(array1 > infinity) .or. any(-array1 > infinity)) then
+            write(*,*) '   array1 contains infinite values - assertion failed'
+            write(*,*) trim(text)
+            nofails = nofails + 1
+        elseif (any(array2 > infinity) .or. any(-array2 > infinity)) then
+            write(*,*) '   array2 contains infinite values - assertion failed'
+            write(*,*) trim(text)
+            nofails = nofails + 1
+        elseif (any(isnan(array1))) then
+            write(*,*) '   array1 contains NAN values - assertion failed'
+            write(*,*) trim(text)
+            nofails = nofails + 1
+        elseif (any(isnan(array2))) then
+            write(*,*) '   array2 contains NAN values - assertion failed'
+            write(*,*) trim(text)
+            nofails = nofails + 1
+        endif
+
+        if ( any( abs(array1-array2) > 0.5d0 * margin * (abs(array1)+abs(array2)) ) ) then
+            nofails = nofails + 1
+            write(*,*) '    One or more values different: "',trim(text), '" - assertion failed'
+            count = 0
+            write(*,'(2a10,2a15)')    '    Index          ', '          First', '         Second'
+            do i = 1,size(array1, 1)
+                do j = 1,size(array1, 2)
+                    if ( abs(array1(i,j)-array2(i,j)) > &
+                             0.5 * margin * (abs(array1(i,j))+abs(array2(i,j))) ) then
+                        count = count + 1
+                        if ( count < 50 ) then
+                            write(*,'(i10,i10,e15.5,e15.5)')    i, j, array1(i,j), array2(i,j)
+                        endif
+                    endif
+                end do
+            enddo
+            write(*,*) 'Number of differences: ', count
+        endif
+    endif
+end subroutine assert_comparable_real2d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
