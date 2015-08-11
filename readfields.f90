@@ -3207,15 +3207,16 @@ subroutine dampen_field(field, r_points, r_src_rec, r_max)
   real(kind=dp)                     :: dist
   integer                           :: ipoint, npoints 
   
-  
-  npoints = size(field,1)
-  
-  do ipoint = 1, npoints
-    dist = norm2(r_points(:,ipoint)- r_src_rec)
-    if (dist<r_max) then
-      field(ipoint,:,:) = field(ipoint,:,:) * dist / r_max
-    end if
-  end do
+  ! Only damp, if r_max is larger zero
+  if (r_max > 0.0d0) then
+    npoints = size(field,1)
+    do ipoint = 1, npoints
+      dist = norm2(r_points(:,ipoint) - r_src_rec)
+      if (dist<r_max) then
+        field(ipoint,:,:) = field(ipoint,:,:) * dist / r_max
+      end if
+    end do
+  end if
 
 end subroutine dampen_field
 !-----------------------------------------------------------------------------------------

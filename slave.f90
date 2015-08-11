@@ -287,11 +287,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                                                   !! Integration of model parameters
                                                                   !! Larger than for kernels, since
                                                                   !! evaluation is very cheap
-    real(kind=dp), parameter            :: r_max = 100d3          !! Maximum distance for damping
-                                                                  !! of convolved wavefield around 
-                                                                  !! source or receiver in meters
-                                                                  !! Could be replaced by a frequency-dependent
-                                                                  !! value later
 
     iclockold = tick()
 
@@ -425,7 +420,29 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         end if
 
         ! Check, whether source is inside element. If so, do not do Monte Carlo integration
-        if (.not.inv_mesh%point_in_element(ielement, parameters%source%r) ) then
+        if (inv_mesh%point_in_element(ielement, parameters%source%r) &
+            .and.parameters%mask_src_rec ) then
+
+          fmtstring = "('Element', I6, ': Contains source, not calculating kernel')"
+          write(lu_out, fmtstring) ielement
+          print *, 'FOUND THE SOURCE! CHECKADECKADINGELING!'
+
+          slave_result%computation_time(ielement)    = 0.0
+          slave_result%niterations(:,ielement)       = 0
+
+          slave_result%kernel_values(:, :, ielement)   = 0.0
+          slave_result%kernel_variance(:, :, ielement) = 0.0
+
+          do ibasisfunc = 1, nbasisfuncs_per_elem          
+            slave_result%model(:, ibasisfunc, ielement) = int_model(ibasisfunc)%getintegral()
+            call int_model(ibasisfunc)%freeme()
+            if (parameters%int_over_hetero) then
+               slave_result%hetero_model(:, ibasisfunc, ielement)    = int_hetero(ibasisfunc)%getintegral()
+               call int_hetero(ibasisfunc)%freeme()              
+            end if
+          end do
+
+        else
 
           !> Sensitivity Kernel Integration <
           !  Initialize basis kernel Monte Carlo integrals for current element
@@ -470,7 +487,22 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
              ! Loop over all receivers in receiver input file
              do irec = 1, parameters%nrec
                 
-                if (.not.inv_mesh%point_in_element(ielement, parameters%receiver(irec)%r) ) then
+                if (inv_mesh%point_in_element(ielement, parameters%receiver(irec)%r) &
+                    .and.parameters%mask_src_rec) then
+
+                  do ikernel = parameters%receiver(irec)%firstkernel, &
+                       parameters%receiver(irec)%lastkernel 
+                     
+                     ! Set scalar misfit base kernels to zero
+                     kernelvalue_basekers(:,ikernel,:) = 0.d0
+                     iclockold = tick(id=id_kernel, since=iclockold)
+
+                     niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                  end do ! ikernel
+
+
+                else
+                  !Receiver not in element
 
                   if (allallconverged(int_kernel,[(ikernel, ikernel =                         &
                                                    parameters%receiver(irec)%firstkernel,     &
@@ -518,32 +550,32 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                      
                      do ikernel = parameters%receiver(irec)%firstkernel, &
                                   parameters%receiver(irec)%lastkernel 
-                                 
-                           ! Check whether kernel (ikernel) actually needs the base kernel 
-                           ! (ibasekernel), otherwise cycle
-                           if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
+                             
+                        ! Check whether kernel (ikernel) actually needs the base kernel 
+                        ! (ibasekernel), otherwise cycle
+                        if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
 
-                           ! If this kernel is already converged, go to the next one
-                           if (allisconverged(int_kernel, ikernel)) cycle
-                           iclockold = tick(id=id_mc, since=iclockold)
+                        ! If this kernel is already converged, go to the next one
+                        if (allisconverged(int_kernel, ikernel)) cycle
+                        iclockold = tick(id=id_mc, since=iclockold)
 
-                           ! Apply Filter 
-                           conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
-                           iclockold = tick(id=id_filter_conv, since=iclockold)
+                        ! Apply Filter 
+                        conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
+                        iclockold = tick(id=id_filter_conv, since=iclockold)
 
-                           ! Apply Inverse FFT
-                           call fft_data%irfft(conv_field_fd_filt, conv_field)
-                           iclockold = tick(id=id_fft, since=iclockold)
+                        ! Apply Inverse FFT
+                        call fft_data%irfft(conv_field_fd_filt, conv_field)
+                        iclockold = tick(id=id_fft, since=iclockold)
 
-                           ! Calculate scalar misfit base kernels from convolved time traces
-                           kernelvalue_basekers(:,ikernel,ibasekernel) =         &
-                                                parameters%kernel(ikernel)       &
-                                                %calc_misfit_kernel(conv_field, parameters%int_scheme)
+                        ! Calculate scalar misfit base kernels from convolved time traces
+                        kernelvalue_basekers(:,ikernel,ibasekernel) =         &
+                                             parameters%kernel(ikernel)       &
+                                             %calc_misfit_kernel(conv_field, parameters%int_scheme)
 
-                                                                                               
-                           iclockold = tick(id=id_kernel, since=iclockold)
+                                                                                            
+                        iclockold = tick(id=id_kernel, since=iclockold)
 
-                           niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                        niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
                      end do ! ikernel
                      
                   end do ! ibasekernel 
@@ -551,38 +583,12 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                   ! Dampen kernel values, if the points are close to receiver or source
                   call dampen_field(kernelvalue_basekers, random_points, &
                                     parameters%receiver(irec)%r,  &
-                                    r_max)
+                                    parameters%damp_radius)
                   call dampen_field(kernelvalue_basekers, random_points, &
                                     parameters%source%r,          &
-                                    r_max)
+                                    parameters%damp_radius)
 
                   iclockold = tick(id=id_mc, since=iclockold)
-
-                else ! Receiver is inside element!
-
-                   print *, 'FOUND RECEIVER, DU KÖRPERKLAUS!'
-
-                   do ibasekernel = 1, nbasekernels
-
-                      do ikernel = parameters%receiver(irec)%firstkernel, &
-                           parameters%receiver(irec)%lastkernel 
-                         
-                         ! Check whether kernel (ikernel) actually needs the base kernel 
-                         ! (ibasekernel), otherwise cycle
-                         if (.not.parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) cycle
-
-                         ! If this kernel is already converged, go to the next one
-                         if (allisconverged(int_kernel, ikernel)) cycle
-                         iclockold = tick(id=id_mc, since=iclockold)
-
-                         ! Set scalar misfit base kernels to zero
-                         kernelvalue_basekers(:,ikernel,ibasekernel) = 0.d0
-                         iclockold = tick(id=id_kernel, since=iclockold)
-
-                         niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
-                      end do ! ikernel
-
-                   end do ! ibasekernel                    
 
                 end if ! Receiver is inside element?
 
@@ -658,28 +664,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                 call int_hetero(ibasisfunc)%freeme()              
              end if
           end do
-
-        else ! Source is in element  
-
-          fmtstring = "('Element', I6, ': Contains source, not calculating kernel')"
-          write(lu_out, fmtstring) ielement
-          print *, 'FOUND THE SOURCE! CHECKADECKADINGELING!'
-
-          slave_result%computation_time(ielement)    = 0.0
-          slave_result%niterations(:,ielement)       = 0
-
-          slave_result%kernel_values(:, :, ielement)   = 0.0
-          slave_result%kernel_variance(:, :, ielement) = 0.0
-
-          do ibasisfunc = 1, nbasisfuncs_per_elem          
-            slave_result%model(:, ibasisfunc, ielement) = int_model(ibasisfunc)%getintegral()
-            call int_model(ibasisfunc)%freeme()
-            if (parameters%int_over_hetero) then
-               slave_result%hetero_model(:, ibasisfunc, ielement)    = int_hetero(ibasisfunc)%getintegral()
-               call int_hetero(ibasisfunc)%freeme()              
-            end if
-          end do
-
         end if 
 
     end do ! ielement

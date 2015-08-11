@@ -20,6 +20,7 @@ module type_parameter
 
         real(kind=dp)                        :: allowed_error
         real(kind=dp)                        :: allowed_relative_error = 1d-10
+        real(kind=dp)                        :: damp_radius = -1d0
 
         character(len=512)                   :: fwd_dir
         character(len=512)                   :: bwd_dir
@@ -61,6 +62,7 @@ module type_parameter
         logical                              :: int_over_volume      = .true.
         logical                              :: int_over_hetero      = .false.
         logical                              :: sort_mesh_elements   = .false.
+        logical                              :: mask_src_rec         = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -208,6 +210,12 @@ subroutine read_parameters(this, input_file_in)
 
         case('INTEGRATION_SCHEME')
            read(keyvalue, *) this%int_scheme
+
+        case('MASK_SOURCE_RECEIVER')
+           read(keyvalue, *) this%mask_src_rec
+
+        case('DAMP_RADIUS_SOURCE_RECEIVER')
+           read(keyvalue, *) this%damp_radius
 
         end select parameter_to_read
         if (verbose>0) write(lu_out, "('  ', A32,' ',A)")  keyword, trim(keyvalue)
