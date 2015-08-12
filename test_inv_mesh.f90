@@ -26,118 +26,117 @@ subroutine test_mesh_read
 end subroutine test_mesh_read
 !-----------------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------------------
-subroutine test_mesh_dump
-  type(inversion_mesh_type)    :: inv_mesh
-  integer                      :: myunit, ierr
-
-  ! tidy up
-  open(newunit=myunit, file='unit_tests/testmesh.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testmesh_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests/testmesh_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-  
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
-                              'onvertices')
-
-  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh')
-
-  call assert_file_exists('unit_tests_output/testmesh.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests_output/testmesh_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests_output/testmesh_grid.dat', 'test xdmf dump')
-
-  call inv_mesh%freeme()
-end subroutine test_mesh_dump
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine test_mesh_dump2
-  type(inversion_mesh_type)    :: inv_mesh
-  integer                      :: myunit, ierr
-
-  ! tidy up
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
-  !call inv_mesh%read_abaqus_mesh('Meshes/mantle_only_300km.inp','onvertices')
-
-  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus')
-
-  call assert_file_exists('unit_tests_output/testmesh_abaqus.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests_output/testmesh_abaqus_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests_output/testmesh_abaqus_grid.dat', 'test xdmf dump')
-
-  call inv_mesh%freeme()
-end subroutine test_mesh_dump2
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine test_mesh_dump3
-  type(inversion_mesh_type)    :: inv_mesh
-  integer                      :: myunit, ierr
-
-  ! tidy up
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
-
-  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_merge')
-
-  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
-  
-  call inv_mesh%freeme()
-end subroutine test_mesh_dump3
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-subroutine test_mesh_sort
-  type(inversion_mesh_type)    :: inv_mesh
-  integer                      :: myunit, ierr, i
-
-  ! tidy up
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted.xdmf', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted_points.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted_grid.dat', iostat=ierr)
-  if (ierr == 0) close(myunit, status='delete')
-
-  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
-  !call inv_mesh%read_abaqus_mesh('Meshes/mantle_only_300km.inp','onvertices')
-
-  call inv_mesh%tree_sort()
-
-  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_sorted')
-
-  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted.xdmf', 'test xdmf dump')
-  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted_points.dat', 'test xdmf dump')
-  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted_grid.dat', 'test xdmf dump')
-
-  call inv_mesh%freeme()
-end subroutine test_mesh_sort
-!-----------------------------------------------------------------------------------------
+!!-----------------------------------------------------------------------------------------
+!subroutine test_mesh_dump
+!  type(inversion_mesh_type)    :: inv_mesh
+!  integer                      :: myunit, ierr
+!
+!  ! tidy up
+!  open(newunit=myunit, file='unit_tests/testmesh.xdmf', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  open(newunit=myunit, file='unit_tests/testmesh_points.dat', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  open(newunit=myunit, file='unit_tests/testmesh_grid.dat', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!  
+!  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+!                              'onvertices')
+!
+!  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh')
+!
+!  call assert_file_exists('unit_tests_output/testmesh.xdmf', 'test xdmf dump')
+!  call assert_file_exists('unit_tests_output/testmesh_points.dat', 'test xdmf dump')
+!  call assert_file_exists('unit_tests_output/testmesh_grid.dat', 'test xdmf dump')
+!
+!  call inv_mesh%freeme()
+!end subroutine test_mesh_dump
+!!-----------------------------------------------------------------------------------------
+!
+!!-----------------------------------------------------------------------------------------
+!subroutine test_mesh_dump2
+!  type(inversion_mesh_type)    :: inv_mesh
+!  integer                      :: myunit, ierr
+!
+!  ! tidy up
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus.xdmf', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_points.dat', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_grid.dat', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
+!  !call inv_mesh%read_abaqus_mesh('Meshes/mantle_only_300km.inp','onvertices')
+!
+!  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus')
+!
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus.xdmf', 'test xdmf dump')
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus_points.dat', 'test xdmf dump')
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus_grid.dat', 'test xdmf dump')
+!
+!  call inv_mesh%freeme()
+!end subroutine test_mesh_dump2
+!!-----------------------------------------------------------------------------------------
+!
+!!-----------------------------------------------------------------------------------------
+!subroutine test_mesh_dump3
+!  type(inversion_mesh_type)    :: inv_mesh
+!  integer                      :: myunit, ierr
+!
+!  ! tidy up
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge.xdmf', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_points.dat', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_grid.dat', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
+!
+!  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_merge')
+!
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
+!  
+!  call inv_mesh%freeme()
+!end subroutine test_mesh_dump3
+!!!-----------------------------------------------------------------------------------------
+!
+!!-----------------------------------------------------------------------------------------
+!subroutine test_mesh_sort
+!  type(inversion_mesh_type)    :: inv_mesh
+!  integer                      :: myunit, ierr, i
+!
+!  ! tidy up
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted.xdmf', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted_points.dat', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted_grid.dat', iostat=ierr)
+!  if (ierr == 0) close(myunit, status='delete')
+!
+!  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
+!
+!  call inv_mesh%tree_sort()
+!
+!  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_sorted')
+!
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted.xdmf', 'test xdmf dump')
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted_points.dat', 'test xdmf dump')
+!  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted_grid.dat', 'test xdmf dump')
+!
+!  call inv_mesh%freeme()
+!end subroutine test_mesh_sort
+!!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine test_append_variable

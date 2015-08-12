@@ -62,7 +62,6 @@ module inversion_mesh
       procedure, pass :: read_abaqus_mesh
       procedure, pass :: read_abaqus_meshtype
       procedure, pass :: tree_sort
-      procedure, pass :: dump_mesh_xdmf
       procedure, pass :: get_volume
       procedure, pass :: get_center
       procedure, pass :: get_model_coeff
@@ -500,10 +499,9 @@ function weights(this, ielem, ivertex, points)
   integer, intent(in)            :: ielem, ivertex
   real(kind=dp), intent(in)      :: points(:,:)
   real(kind=dp)                  :: weights(size(points,2))
-  logical                        :: isonplane(size(points,2)), isintetrahedron(size(points,2))
-  logical                        :: isdegenerate
   real(kind=dp)                  :: dx, dy, dz
   integer                        :: ipoint, i
+  logical, allocatable           :: isintetrahedron(:)
 
   if (.not. this%initialized) then
     write(*,'(A)') 'ERROR: accessing inversion mesh type that is not initialized'
@@ -1260,94 +1258,6 @@ end subroutine tree_sort
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine dump_mesh_xdmf(this, filename)
-  class(inversion_mesh_type)        :: this
-  character(len=*), intent(in)      :: filename
-  integer                           :: iinput_xdmf, iinput_heavy_data
-  character(len=16)                 :: xdmf_elem_type
-  character(len=512)                :: filename_np
-
-  if (.not. this%initialized) then
-     write(*,*) 'ERROR: trying to dump a non initialized mesh'
-     call pabort 
-  end if
-
-  ! relative filename for xdmf content
-  filename_np = trim(filename(index(filename, '/', back=.true.)+1:))
-
-  select case(this%element_type)
-  case('tri')
-     xdmf_elem_type = 'Triangle'
-  case('tet')
-     xdmf_elem_type = 'Tetrahedron'
-  case('quad')
-     xdmf_elem_type = 'Quadrilateral'
-  case('hex')
-     xdmf_elem_type = 'Hexahedron'
-  case('vox')
-     xdmf_elem_type = 'Hexahedron'
-  case default
-     write(6,*) 'ERROR: xdmf dumping for element type ', this%element_type, &
-                ' not implemented'
-     call pabort
-  end select
-
-  ! XML Data
-  open(newunit=iinput_xdmf, file=trim(filename)//'.xdmf')
-  write(iinput_xdmf, 732) trim(xdmf_elem_type), this%nelements, this%nelements, &
-                      this%nvertices_per_elem, 'binary', &
-                      trim(filename_np)//'_grid.dat', this%nvertices, 'binary', &
-                      trim(filename_np)//'_points.dat', &
-                      this%nelements, trim(filename_np)//'_block.dat'
-  close(iinput_xdmf)
-
-732 format(&    
-    '<?xml version="1.0" ?>',/&
-    '<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>',/&
-    '<Xdmf xmlns:xi="http://www.w3.org/2003/XInclude" Version="2.2">',/&
-    '<Domain>',/&
-    '  <Grid GridType="Uniform">',/&
-    '    <Topology TopologyType="', A, '" NumberOfElements="',i10,'">',/&
-    '      <DataItem Dimensions="',i10, i3, '" NumberType="Int" Format="',A,'">',/&
-    '        ',A,/&
-    '      </DataItem>',/&
-    '    </Topology>',/&
-    '    <Geometry GeometryType="XYZ">',/&
-    '      <DataItem Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
-    '        ',A/&
-    '      </DataItem>',/&
-    '    </Geometry>',/&
-    '    <Attribute Name="blockid" AttributeType="Scalar" Center="Cell">',/&
-    '      <DataItem Dimensions="',i10,'" NumberType="Int" Format="binary">',/&
-    '        ',A,/&
-    '      </DataItem>',/&
-    '    </Attribute>',/&
-    '  </Grid>',/&
-    '</Domain>',/&
-    '</Xdmf>')
-
-  ! VERTEX data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_points.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) real(this%vertices, kind=sp)
-  close(iinput_heavy_data)
-
-  ! CONNECTIVITY data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_grid.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%connectivity
-  close(iinput_heavy_data)
-
-  ! BLOCK data
-  open(newunit=iinput_heavy_data, file=trim(filename)//'_block.dat', access='stream', &
-      status='replace', form='unformatted', convert='little_endian')
-  write(iinput_heavy_data) this%block_id
-  close(iinput_heavy_data)
-  
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
 subroutine free_node_and_cell_data(this)
   class(inversion_mesh_data_type)   :: this
 
@@ -1404,8 +1314,6 @@ use ifport, only: getpid ! For ifort, this module needs to be loaded,
   class(inversion_mesh_data_type)        :: this
   real(kind=dp), intent(in), optional    :: dt, starttime
 
-  character(len=80)                      :: filename
-
   ! Check whether the NetCDF output file has already been created and opened
   if (this%ncid.eq.-1) then ! If it has not, do so
     this%nvar_node = 0 
@@ -1441,8 +1349,6 @@ use ifport, only: getpid ! For ifort, this module needs to be loaded,
   class(inversion_mesh_data_type)        :: this
   real(kind=dp), intent(in), optional    :: dt, starttime
 
-  character(len=80)                      :: filename
-
   ! Check whether the NetCDF output file has already been created and opened
   if (this%ncid.eq.-1) then ! If it has not, do so
     this%nvar_cell = 0 
@@ -1477,7 +1383,6 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
   character(len=*), intent(in), optional    :: entry_names(:)
   logical, intent(in), optional             :: istime
 
-  integer                                   :: ivar, ientry
   logical                                   :: istime_loc = .false.
   character(len=80), allocatable            :: entry_names_loc(:)
 
@@ -1524,7 +1429,6 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
   character(len=*), intent(in), optional    :: entry_names(:)
   logical, intent(in), optional             :: istime
 
-  integer                                   :: ivar
   logical                                   :: istime_loc = .false.
   character(len=80), allocatable            :: entry_names_loc(:)
 
@@ -1918,7 +1822,7 @@ subroutine dump_data_xdmf(this, filename)
   class(inversion_mesh_data_type)   :: this
   character(len=*), intent(in)      :: filename
 
-  integer                           :: iinput_xdmf, iinput_heavy_data
+  integer                           :: iinput_xdmf
   integer                           :: itime, ivar, ientry, exitstat = 1
   character(len=16)                 :: xdmf_elem_type
   character(len=512)                :: filename_np, filename_nc
