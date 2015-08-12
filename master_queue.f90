@@ -85,7 +85,7 @@ subroutine init_queue(ntasks, inparam_file)
     call inv_mesh%tree_sort()
   end if
   
-  nelems    = inv_mesh%get_nelements()
+  nelems = inv_mesh%get_nelements()
   allocate(connectivity(inv_mesh%nvertices_per_elem, nelems))
   connectivity = inv_mesh%get_connectivity()
   
@@ -113,7 +113,7 @@ subroutine init_queue(ntasks, inparam_file)
   allocate(Bg_Model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
                     nmodel_parameters))
   allocate(Het_Model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
-                    nmodel_parameters_hetero))
+                     nmodel_parameters_hetero))
   Bg_Model(:,:) = 0.0
   Het_Model(:,:) = 0.0
 
@@ -172,12 +172,12 @@ subroutine get_next_task(itask)
   wt%itask = itask
 
   do iel = 1, parameters%nelems_per_task
-      ielement = elems_in_task(itask, iel)
-      if (ielement.eq.-1) cycle
-      ivertex = [( (iel-1) * inv_mesh%nvertices_per_elem + ivert, &
-                   ivert = 1, inv_mesh%nvertices_per_elem )]
-      wt%vertices(:, ivertex) = inv_mesh%get_element(ielement)
-      wt%connectivity(:, iel) = ivertex
+    ielement = elems_in_task(itask, iel)
+    if (ielement.eq.-1) cycle
+    ivertex = [( (iel-1) * inv_mesh%nvertices_per_elem + ivert, &
+                 ivert = 1, inv_mesh%nvertices_per_elem )]
+    wt%vertices(:, ivertex) = inv_mesh%get_element(ielement)
+    wt%connectivity(:, iel) = ivertex
   end do
   
   iclockold_mpi = tick(id=id_get_next_task, since=iclockold)
