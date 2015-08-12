@@ -293,7 +293,7 @@ end function generate_random_points_poly
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function determinant_4_dp(a)
+pure function determinant_4_dp(a)
 ! computes the determinant of a 4 by 4 matrix, uses qp internally.
   real(kind=dp), intent(in)  :: a(4,4)
   real(kind=qp)              :: a_qp(4,4)
@@ -324,7 +324,7 @@ end function determinant_4_dp
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function determinant_4_qp(a)
+pure function determinant_4_qp(a)
 ! computes the determinant of a 4 by 4 matrix with quadruple precision
   real(kind=qp), intent(in)  :: a(4,4)
   real(kind=qp)              :: a_qp(4,4)
@@ -468,7 +468,7 @@ end subroutine triangle_area_2d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function get_volume_tet(v)
+pure function get_volume_tet(v)
 ! computes the volume of a tetrahedron in 3D.
   real(kind=dp), intent(in)  ::  v(3,4) !< Vertices
   real(kind=dp)              ::  a(4,4)
@@ -484,7 +484,7 @@ end function get_volume_tet
 
 !-----------------------------------------------------------------------------------------
 !> Computes the centroid of a tetrahedron
-function get_center_tet(v)
+pure function get_center_tet(v)
 
   real(kind=dp), intent(in) :: v(3,4)
   real(kind=dp)             :: get_center_tet(3)
@@ -499,7 +499,7 @@ end function get_center_tet
 
 !-----------------------------------------------------------------------------------------
 !> Computes the centroid of a triangle
-function get_center_tri(v)
+pure function get_center_tri(v)
 
   real(kind=dp), intent(in) :: v(3,3)
   real(kind=dp)             :: get_center_tri(3)
@@ -513,7 +513,7 @@ end function get_center_tri
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function get_volume_poly(n, v) result(area)
+pure function get_volume_poly(n, v) result(area)
 !! get_volume_poly computes the area of a polygon in 3D.
 !
 !  Discussion:
@@ -556,7 +556,7 @@ end function get_volume_poly
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-function point_in_triangle(r, x)
+pure function point_in_triangle(r, x)
 ! Checks whether point x is in the triangle between r1, r2, r3
    real(kind=dp), intent(in)  :: r(2,3)
    real(kind=dp), intent(in)  :: x(:,:)
@@ -621,20 +621,6 @@ function point_in_triangle_3d(r, p, isinplane)
    b = norm2(cross( r(:,3) - p(:,ipoint), r(:,1) - p(:,ipoint) )) / (2*area)
    c = norm2(cross( r(:,1) - p(:,ipoint), r(:,2) - p(:,ipoint) )) / (2*area) !1 - a - b
 
-   !print *, 'a=', a, ', b=', b, ', c=', c, ', sum:', a+b+c
-   !if (.not.-1d-10 <= a)     then; print *, 'a<0'; cycle; endif 
-   !if (.not.a <= 1+1d-10)    then; print *, 'a>1'; cycle; endif 
-   !if (.not.-1d-10 <= b)     then; print *, 'b<0'; cycle; endif 
-   !if (.not.b <= 1+1d-10)    then; print *, 'b>1'; cycle; endif 
-   !if (.not.-1d-10 <= c)     then; print *, 'c<0'; cycle; endif 
-   !if (.not.c <= 1+1d-10)    then; print *, 'c>1'; cycle; endif 
-   !if (.not.a+b+c <= 1+1d-8) then; print *, 'sum>1'; cycle; endif
-
-
-   !if ((     (-1d-8 <= a).and.(a <= 1+1d-8))  &
-   !    .and.((-1d-8 <= b).and.(b <= 1+1d-8))  &
-   !    .and.((-1d-8 <= c).and.(c <= 1+1d-8))  &
-   !    .and.((a+b+c <= 1+1d-8) )) &
    if (any([a,b,c]<=-1d-8).or.any([a,b,c]>1+1d-8).or.(sum([a,b,c])>1+1d-8)) cycle
 
    point_in_triangle_3d(ipoint) = .true.
@@ -647,11 +633,10 @@ end function point_in_triangle_3d
 !------------------------------------------------------------------------------
 ! Tests whether a point is in a tetrahedron, by testing whether it is on the 
 ! same side of each plane, by testing whether all Di have the same sign.
-function point_in_tetrahedron(r, p) !, isonplane, isdegenerate)
+pure function point_in_tetrahedron(r, p) 
   integer, parameter             :: ndim = 3
   real(kind=dp), intent(in)      :: r(ndim,4)  !< Vertices of the tetrahedron
   real(kind=dp), intent(in)      :: p(:,:)     !< Set of points to check
-  !logical, optional, intent(out) :: isonplane(size(p,2)), isdegenerate
   logical                        :: point_in_tetrahedron(size(p,2))
 
   real(kind=qp), dimension(4,4)  :: M0, M1, M2, M3, M4
@@ -660,7 +645,6 @@ function point_in_tetrahedron(r, p) !, isonplane, isdegenerate)
 
 
   npoints = size(p,2)
-  !if (present(isonplane)) isonplane = .false.
   point_in_tetrahedron = .false.
 
   M0(1:ndim,:) = r
@@ -669,11 +653,8 @@ function point_in_tetrahedron(r, p) !, isonplane, isdegenerate)
 
   ! Check, whether the tetrahedron is degenerate, i.e. all points are in a plane
   if (abs(D0).lt.epsilon(D0)) then
-    !if (present(isdegenerate)) isdegenerate = .true.
     point_in_tetrahedron = .false.
     return
-  !else 
-    !if (present(isdegenerate)) isdegenerate = .false.
   end if
 
   do ipoint = 1, npoints
@@ -704,20 +685,7 @@ function point_in_tetrahedron(r, p) !, isonplane, isdegenerate)
 
     else
       point_in_tetrahedron(ipoint) = .true.
-     
-      !if (present(isonplane)) then
-      !  ! Test whether point is on any of the surfaces
-      !  if (any(abs([D1, D2, D3, D4]) < epsilon(D0))) then
-      !    point_in_tetrahedron(ipoint) = .true.
-      !    isonplane(ipoint) = .true.
-      !    print *, 'Point is on plane: ', (abs([D1, D2, D3, D4]) < epsilon(D0))
-      !  end if
-      !end if
-
     end if
-
-
-
   end do
 
 end function point_in_tetrahedron

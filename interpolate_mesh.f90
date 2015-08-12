@@ -71,23 +71,14 @@ end subroutine init
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function get(this, r) result(values)
-  class(parameter_interpolator)   :: this
-  real(kind=dp), intent(in)       :: r(:)
-  real(kind=dp), allocatable      :: values(:)
+pure function get(this, r) result(values)
+  class(parameter_interpolator), intent(in)   :: this
+  real(kind=dp), intent(in)                   :: r(:)
+  real(kind=dp), allocatable                  :: values(:)
 
-  integer                         :: idx(size(r))
+  integer                                     :: idx(size(r)), ipoint
 
-  idx = r/this%dr + 1
-
-  ! Some meshes have points outside of the earth
-  ! Set values to outermost layer in this case
-  where (idx.gt.this%ndepth) idx=this%ndepth
-
-  if (any(idx.le.0)) then
-    print *, 'Depth out of range!'
-    stop
-  end if
+  idx = min(max(int(r / this%dr + 1), 1), this%ndepth)
 
   values = this%values(idx)
 
