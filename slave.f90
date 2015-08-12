@@ -348,6 +348,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     iclockold = tick(id=id_init, since=iclockold)
 
     do ielement = 1, nelements 
+
+        write(lu_out, '(A,I10,A)') 'Element: ', ielement, ':'
         
         ! Set element-specific clock to zero and start it again
         call reset_clock(id_element)
@@ -360,7 +362,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
         !> Background Model Integration <
         !  Calculate integrated model parameters for this element
-        write(lu_out,'(A,I10)', advance='no') ' Integrate model parameters for element ', ielement
+        write(lu_out,'(A)', advance='no') ' Integrate model parameters...' 
         call flush(lu_out)
         iclockold = tick()
         istep_model = 0
@@ -385,13 +387,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
            if (istep_model.ge.9999) exit ! The model integration should not take forever
         end do
         iclockold = tick(id=id_int_model, since=iclockold)
-        write(lu_out, '(A,I4,A)') ' ...done after ', istep_model, ' steps.'
+        write(lu_out, '(A,I5,A)') ' done after ', istep_model, ' steps.'
         call flush(lu_out)
 
         !> Heterogeneity Model Integration <
         !  Calculate integrated heterogeneity structure for this element, optional
         if (parameters%int_over_hetero) then
-           write(lu_out,'(A,I10)', advance='no') ' Integrate heterogeneities for element ', ielement
+           write(lu_out,'(A)', advance='no') ' Integrate heterogeneities... '
            call flush(lu_out)
            iclockold = tick()
            istep_model = 0
@@ -415,7 +417,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
               if (istep_model.ge.9999) exit ! The model integration should not take forever
            end do
            iclockold = tick(id=id_int_hetero, since=iclockold)
-           write(lu_out, '(A,I4,A)') ' ...done after ', istep_model, ' steps.'
+           write(lu_out, '(A,I4,A)') ' done after ', istep_model, ' steps.'
            call flush(lu_out)
         end if
 
@@ -423,9 +425,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         if (inv_mesh%point_in_element(ielement, parameters%source%r) &
             .and.parameters%mask_src_rec ) then
 
-          fmtstring = "('Element', I6, ': Contains source, not calculating kernel')"
-          write(lu_out, fmtstring) ielement
-          print *, 'FOUND THE SOURCE! CHECKADECKADINGELING!'
+          write(lu_out, '(A)') ' Contains source, not calculating kernel' 
 
           slave_result%computation_time(ielement)    = 0.0
           slave_result%niterations(:,ielement)       = 0
@@ -640,11 +640,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           end do ! End of Monte Carlo loop
       
           if (any(niterations(:, ielement)==parameters%max_iter)) then
-             fmtstring = "('Element', I6, ': Max number of iterations reached. ', I5 , ' kernels were not converged.')"
-             write(lu_out, fmtstring) ielement, parameters%nkernel - int_kernel(1)%countconverged()
+             fmtstring = "(' Max number of iterations reached. ', I5 , ' kernels were not converged.')"
+             write(lu_out, fmtstring) parameters%nkernel - int_kernel(1)%countconverged()
           else
-             fmtstring = "('Element', I6, ': All kernels converged after', I5, ' iterations')"
-             write(lu_out, fmtstring) ielement, maxval(niterations(:, ielement))
+             fmtstring = "(' All kernels converged after', I5, ' iterations')"
+             write(lu_out, fmtstring) maxval(niterations(:, ielement))
           end if
 
           iclockold_element = tick(id=id_element, since = iclockold_element)
