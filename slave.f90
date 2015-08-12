@@ -269,26 +269,20 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     real(kind=dp),    allocatable       :: kernelvalue_basekers(:,:,:)
     real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:,:) 
     real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
-    integer,          allocatable       :: niterations(:,:)
-    real(kind=dp),    allocatable       :: model_random_points(:,:) 
-    real(kind=dp),    allocatable       :: model_random_points_hetero(:,:) 
+    integer,          allocatable       :: niterations(:)
 
+    real(kind=dp)                       :: time_in_element
     real(kind=dp)                       :: volume
 
     character(len=256)                  :: fmtstring
     integer                             :: ielement, irec, ikernel, ibasisfunc, ibasekernel
     integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
     integer                             :: nbasisfuncs_per_elem, nbasekernels
-    integer                             :: istep_model
     integer(kind=long)                  :: iclockold, iclockold_element
     integer                             :: ndim
     integer, parameter                  :: taper_length = 10      !< This is the bare minimum. It does 
                                                                   !! not produce artifacts yet, at least 
                                                                   !! no obvious ones
-    integer, parameter                  :: nptperstep_model = 100 !< Points per MC iteration for 
-                                                                  !! Integration of model parameters
-                                                                  !! Larger than for kernels, since
-                                                                  !! evaluation is very cheap
 
     iclockold = tick()
 
@@ -322,14 +316,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     allocate(kernelvalue_weighted(nptperstep, parameters%nkernel, nbasekernels))
     allocate(kernelvalue_physical(nptperstep, parameters%nkernel))
 
-    allocate(model_random_points(nptperstep_model, nmodel_parameters))
-    allocate(model_random_points_hetero(nptperstep_model, nmodel_parameters_hetero))
-
-
     volume = 0.0
 
-    allocate(niterations(parameters%nkernel, nelements))
-    niterations = 0
+    allocate(niterations(parameters%nkernel))
 
     if (.not.parameters%deconv_stf) then
       call timeshift_fwd%init_ts(fft_data%get_f(), sem_data%timeshift_fwd)
@@ -342,10 +331,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
     allocate(random_points(3, nptperstep))
     allocate(int_kernel(nbasisfuncs_per_elem))
-    allocate(int_model(nbasisfuncs_per_elem))
-    if (parameters%int_over_hetero) then
-       allocate(int_hetero(nbasisfuncs_per_elem))
-    end if
 
     iclockold = tick(id=id_init, since=iclockold)
 
@@ -363,64 +348,16 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         iclockold = tick(id=id_inv_mesh)
 
         !> Background Model Integration <
-        !  Calculate integrated model parameters for this element
-        write(lu_out,'(A)', advance='no') ' Integrate model parameters...' 
-        call flush(lu_out)
         iclockold = tick()
-        istep_model = 0
-        do ibasisfunc = 1, nbasisfuncs_per_elem
-           call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters,   & 
-                                                            volume = 1d0,                 & 
-                                                            allowed_error = 1d-2,         &
-                                                            allowed_relerror = 1d-2)
-        end do
-        do while (.not.allallconverged(int_model))
-           random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, &
-                                                            parameters%quasirandom)
-           do ibasisfunc = 1, nbasisfuncs_per_elem
-              coeffs_random_points = sem_data%load_model_coeffs(random_points)
-              model_random_points  = coeffs_random_points%weight(inv_mesh%weights(ielement,      &  
-                                                                                  ibasisfunc,    & 
-                                                                                  random_points) )
-
-              call int_model(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points))
-           end do
-           istep_model = istep_model + 1
-           if (istep_model.ge.9999) exit ! The model integration should not take forever
-        end do
+        int_model = integrate_1d_model(sem_data, inv_mesh, ielement)
         iclockold = tick(id=id_int_model, since=iclockold)
-        write(lu_out, '(A,I5,A)') ' done after ', istep_model, ' steps.'
-        call flush(lu_out)
 
         !> Heterogeneity Model Integration <
         !  Calculate integrated heterogeneity structure for this element, optional
         if (parameters%int_over_hetero) then
-           write(lu_out,'(A)', advance='no') ' Integrate heterogeneities... '
-           call flush(lu_out)
-           iclockold = tick()
-           istep_model = 0
-           do ibasisfunc = 1, nbasisfuncs_per_elem
-              call int_hetero(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters_hetero,   & 
-                                                                volume = 1d0,                 & 
-                                                                allowed_error = 1d-3,         &
-                                                                allowed_relerror = 1d-2)
-           end do
-           do while (.not.allallconverged(int_hetero))
-              random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, &
-                   parameters%quasirandom)
-              do ibasisfunc = 1, nbasisfuncs_per_elem
-                 ! load weighted random points from heterogeneity structure
-                 model_random_points_hetero = het_model%load_model_coeffs(random_points,inv_mesh%weights(ielement,      &  
-                                                                                                         ibasisfunc,    & 
-                                                                                                         random_points) )
-                 call int_hetero(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points_hetero))
-              end do
-              istep_model = istep_model + 1
-              if (istep_model.ge.9999) exit ! The model integration should not take forever
-           end do
-           iclockold = tick(id=id_int_hetero, since=iclockold)
-           write(lu_out, '(A,I4,A)') ' done after ', istep_model, ' steps.'
-           call flush(lu_out)
+          iclockold = tick()
+          int_hetero = integrate_3d_model(het_model, inv_mesh, ielement)
+          iclockold = tick(id=id_int_hetero, since=iclockold)
         end if
 
         ! Check, whether source is inside element. If so, do not do Monte Carlo integration
@@ -457,6 +394,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                                                parameters%int_over_volume) 
           end do
 
+          niterations = 0
+
           do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
 
              iclockold = tick(id=id_mc)
@@ -467,7 +406,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
              iclockold = tick(id=id_inv_mesh)
              
              ! Stop MC integration in this element after max_iter iterations
-             if (any(niterations(:, ielement)==parameters%max_iter)) exit 
+             if (any(niterations(:)==parameters%max_iter)) exit 
 
              ! Load forward field
              iclockold = tick()
@@ -499,7 +438,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                      kernelvalue_basekers(:,ikernel,:) = 0.d0
                      iclockold = tick(id=id_kernel, since=iclockold)
 
-                     niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                     niterations(ikernel) = niterations(ikernel) + 1
                   end do ! ikernel
 
 
@@ -577,7 +516,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                                                                             
                         iclockold = tick(id=id_kernel, since=iclockold)
 
-                        niterations(ikernel, ielement) = niterations(ikernel, ielement) + 1
+                        niterations(ikernel) = niterations(ikernel) + 1
                      end do ! ikernel
                      
                   end do ! ibasekernel 
@@ -641,20 +580,23 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
           end do ! End of Monte Carlo loop
       
-          if (any(niterations(:, ielement)==parameters%max_iter)) then
+          ! Print number of iterations
+          if (any(niterations(:)==parameters%max_iter)) then
              fmtstring = "(' Max number of iterations reached. ', I5 , ' kernels were not converged.')"
              write(lu_out, fmtstring) parameters%nkernel - int_kernel(1)%countconverged()
           else
              fmtstring = "(' All kernels converged after', I5, ' iterations')"
-             write(lu_out, fmtstring) maxval(niterations(:, ielement))
+             write(lu_out, fmtstring) maxval(niterations(:))
           end if
 
+          ! Get time spent in this element
           iclockold_element = tick(id=id_element, since = iclockold_element)
-          call get_clock(id = id_element, total_time = slave_result%computation_time(ielement) )
-          slave_result%niterations(:,ielement)       = niterations(:,ielement)
+          call get_clock(id = id_element, total_time = time_in_element) 
 
 
-          ! Pass over results to master
+          ! Fill slave_result object, which is later passed over to master
+          slave_result%computation_time(ielement)    = time_in_element 
+          slave_result%niterations(:,ielement)       = niterations(:)
           do ibasisfunc = 1, nbasisfuncs_per_elem          
              slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
              slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
@@ -673,6 +615,116 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     call timeshift_fwd%freeme()
     call timeshift_bwd%freeme()
 end function slave_work
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function integrate_1d_model(sem_data, inv_mesh, ielement) result(int_model)
+  use global_parameters,                     only: sp, dp
+  use readfields,                            only: semdata_type
+  use inversion_mesh,                        only: inversion_mesh_data_type
+  use backgroundmodel,                       only: backgroundmodel_type, nmodel_parameters
+  use montecarlo,                            only: integrated_type, allallconverged, allisconverged
+
+  type(semdata_type),   intent(in)              :: sem_data
+  type(inversion_mesh_data_type), intent(in)    :: inv_mesh
+  integer,              intent(in)              :: ielement
+  type(integrated_type), allocatable            :: int_model(:)
+
+  real(kind=dp),    allocatable                 :: random_points(:,:) 
+  real(kind=dp),    allocatable                 :: model_random_points(:,:) 
+  type(backgroundmodel_type)                    :: coeffs_random_points
+  integer                                       :: ibasisfunc, iclockold, istep_model
+  integer                                       :: nbasisfuncs_per_elem
+  integer, parameter                            :: nptperstep_model = 100 !< Points per MC iteration for 
+                                                                          !! Integration of model parameters
+                                                                          !! Larger than for kernels, since
+                                                                          !! evaluation is very cheap
+
+  nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
+  allocate(int_model(nbasisfuncs_per_elem))
+
+  !  Calculate integrated model parameters for this element
+  write(lu_out,'(A)', advance='no') ' Integrate model parameters...' 
+  call flush(lu_out)
+  istep_model = 0
+  do ibasisfunc = 1, nbasisfuncs_per_elem
+     call int_model(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters,   & 
+                                                      volume = 1d0,                 & 
+                                                      allowed_error = 1d-2,         &
+                                                      allowed_relerror = 1d-2)
+  end do
+  do while (.not.allallconverged(int_model))
+     random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, .true.)
+                                                      
+     do ibasisfunc = 1, nbasisfuncs_per_elem
+        coeffs_random_points = sem_data%load_model_coeffs(random_points)
+        model_random_points  = coeffs_random_points%weight(inv_mesh%weights(ielement,      &  
+                                                                            ibasisfunc,    & 
+                                                                            random_points) )
+
+        call int_model(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points))
+     end do
+     istep_model = istep_model + 1
+     if (istep_model.ge.9999) exit ! The model integration should not take forever
+  end do
+  write(lu_out, '(A,I5,A)') ' done after ', istep_model, ' steps.'
+  call flush(lu_out)
+
+end function integrate_1d_model
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
+  use global_parameters,                     only: sp, dp
+  use inversion_mesh,                        only: inversion_mesh_data_type
+  use heterogeneities,                       only: hetero_type, nmodel_parameters_hetero         
+  use montecarlo,                            only: integrated_type, allallconverged
+
+  type(hetero_type),    intent(in)              :: het_model
+  type(inversion_mesh_data_type), intent(in)    :: inv_mesh
+  integer,              intent(in)              :: ielement
+  type(integrated_type), allocatable            :: int_hetero(:)
+
+  real(kind=dp),    allocatable                 :: random_points(:,:) 
+  real(kind=dp),    allocatable                 :: hetero_random_points(:,:) 
+  integer                                       :: ibasisfunc, iclockold, istep_model
+  integer                                       :: nbasisfuncs_per_elem
+  integer, parameter                            :: nptperstep_model = 100 !< Points per MC iteration for 
+                                                                          !! Integration of model parameters
+                                                                          !! Larger than for kernels, since
+                                                                          !! evaluation is very cheap
+
+  nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
+  allocate(int_hetero(nbasisfuncs_per_elem))
+
+
+  write(lu_out,'(A)', advance='no') ' Integrate heterogeneities... '
+  call flush(lu_out)
+  istep_model = 0
+  do ibasisfunc = 1, nbasisfuncs_per_elem
+     call int_hetero(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters_hetero,   & 
+                                                       volume = 1d0,                 & 
+                                                       allowed_error = 1d-3,         &
+                                                       allowed_relerror = 1d-2)
+  end do
+  do while (.not.allallconverged(int_hetero))
+     random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, .true.)
+          
+     do ibasisfunc = 1, nbasisfuncs_per_elem
+        ! load weighted random points from heterogeneity structure
+        hetero_random_points= het_model%load_model_coeffs(random_points,                  &
+                                                          inv_mesh%weights(ielement,      &  
+                                                                           ibasisfunc,    & 
+                                                                           random_points) )
+        call int_hetero(ibasisfunc)%check_montecarlo_integral(transpose(hetero_random_points))
+     end do
+     istep_model = istep_model + 1
+     if (istep_model.ge.9999) exit ! The model integration should not take forever
+  end do
+  write(lu_out, '(A,I4,A)') ' done after ', istep_model, ' steps.'
+  call flush(lu_out)
+
+end function integrate_3d_model
 !-----------------------------------------------------------------------------------------
 
 end module
