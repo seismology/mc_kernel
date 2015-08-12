@@ -29,200 +29,202 @@ contains
 
 !-----------------------------------------------------------------------------------------
 subroutine do_slave() 
-    use global_parameters,           only: DIETAG, id_mpi, id_read_params, id_init_fft, id_int_hetero
-    use inversion_mesh,              only: inversion_mesh_data_type
-    use readfields,                  only: semdata_type
-    use heterogeneities,             only: hetero_type
-    use type_parameter,              only: parameter_type
-    use fft,                         only: rfft_type, taperandzeropad
-    use clocks_mod,                  only: tick
+  use global_parameters,           only: DIETAG, id_mpi, id_read_params, id_init_fft, id_int_hetero
+  use inversion_mesh,              only: inversion_mesh_data_type
+  use readfields,                  only: semdata_type
+  use heterogeneities,             only: hetero_type
+  use type_parameter,              only: parameter_type
+  use fft,                         only: rfft_type, taperandzeropad
+  use clocks_mod,                  only: tick
 
-    implicit none
-    type(parameter_type)                :: parameters
-    type(inversion_mesh_data_type)      :: inv_mesh
-    type(semdata_type)                  :: sem_data
-    type(rfft_type)                     :: fft_data
-    type(hetero_type)                   :: het_model
-    type(slave_result_type)             :: slave_result
+  implicit none
+  type(parameter_type)                :: parameters
+  type(inversion_mesh_data_type)      :: inv_mesh
+  type(semdata_type)                  :: sem_data
+  type(rfft_type)                     :: fft_data
+  type(hetero_type)                   :: het_model
+  type(slave_result_type)             :: slave_result
 
-    integer                             :: ndumps, ntimes, nomega
-    integer                             :: ikernel, ierror
-    integer(kind=long)                  :: iclockold
-    integer                             :: mpistatus(MPI_STATUS_SIZE)
-    real(kind=dp)                       :: df
-    integer                             :: itask
-    character(len=255)                  :: fmtstring
-    integer                             :: nptperstep
+  integer                             :: ndumps, ntimes, nomega
+  integer                             :: ikernel, ierror
+  integer(kind=long)                  :: iclockold
+  integer                             :: mpistatus(MPI_STATUS_SIZE)
+  real(kind=dp)                       :: df
+  integer                             :: itask
+  character(len=255)                  :: fmtstring
+  integer                             :: nptperstep
 
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  iclockold = tick()
+
+  call parameters%read_parameters()
+  call parameters%read_source()
+  call parameters%read_receiver()
+
+  nptperstep = parameters%npoints_per_step
+
+  ! Master and slave part ways here for some time. 
+  ! Master reads in the inversion mesh, slaves initialize the FFT
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Initialize and open AxiSEM wavefield files'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  call sem_data%set_params(parameters%fwd_dir,     &
+    parameters%bwd_dir,     &
+    parameters%strain_buffer_size, & 
+    parameters%displ_buffer_size, & 
+    parameters%strain_type_fwd,    &
+    parameters%source%depth)
+
+  call sem_data%open_files()
+  call sem_data%read_meshes()
+  !call sem_data%build_kdtree()
+
+  call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+
+  ndumps = sem_data%ndumps
+
+  iclockold = tick(id=id_read_params, since=iclockold)
+
+  if (parameters%int_over_hetero) then
     write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
+    write(lu_out,'(A)') ' Initialize heterogeneity structure'
     write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
+    call het_model%load_het_rtpv(parameters%hetero_file)
+    call het_model%build_hetero_kdtree()
+
+    iclockold = tick(id=id_int_hetero, since=iclockold)
+  end if
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Initialize FFT'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, &
+    fftw_plan=parameters%fftw_plan)
+
+  ntimes = fft_data%get_ntimes()
+  nomega = fft_data%get_nomega()
+  df     = fft_data%get_df()
+  fmtstring = '(A, I8, A, I8)'
+  write(lu_out,fmtstring) '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
+  fmtstring = '(A, F8.3, A, F8.3, A)'
+  write(lu_out,fmtstring) '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
+
+  iclockold = tick(id=id_init_fft, since=iclockold)
+
+  ! Master and slave synchronize again
+
+  iclockold = tick()
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Define filters'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  call parameters%read_filter(nomega, df)
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Define kernels'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  call parameters%read_kernel(sem_data, parameters%filter)
+
+  iclockold = tick(id=id_read_params, since=iclockold)
+
+  itask = 0
+
+  ! Receive new tasks from master until the DIETAG is received and then exit the loop
+  do 
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Waiting for tasks from master rank'
+    write(lu_out,'(A)') '***************************************************************'
+    call flush(lu_out)
+
+
+    ! Receive a message from the master
     iclockold = tick()
+    call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
 
-    call parameters%read_parameters()
-    call parameters%read_source()
-    call parameters%read_receiver()
+    ! Check the tag of the received message. If no more work to do, exit loop
+    ! and return to main program
+    if (mpistatus(MPI_TAG) == DIETAG) exit
+    iclockold = tick(id=id_mpi, since=iclockold)
 
-    nptperstep = parameters%npoints_per_step
-
-    ! Master and slave part ways here for some time. 
-    ! Master reads in the inversion mesh, slaves initialize the FFT
-
+    itask = itask + 1
     write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Initialize and open AxiSEM wavefield files'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
-
-    call sem_data%set_params(parameters%fwd_dir,     &
-                             parameters%bwd_dir,     &
-                             parameters%strain_buffer_size, & 
-                             parameters%displ_buffer_size, & 
-                             parameters%strain_type_fwd,    &
-                             parameters%source%depth)
-
-    call sem_data%open_files()
-    call sem_data%read_meshes()
-    !call sem_data%build_kdtree()
-
-    call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
-
-    ndumps = sem_data%ndumps
-
-    iclockold = tick(id=id_read_params, since=iclockold)
-
-    if (parameters%int_over_hetero) then
-      write(lu_out,'(A)') '***************************************************************'
-      write(lu_out,'(A)') ' Initialize heterogeneity structure'
-      write(lu_out,'(A)') '***************************************************************'
-      call flush(lu_out)
-
-      call het_model%load_het_rtpv(parameters%hetero_file)
-      call het_model%build_hetero_kdtree()
-
-      iclockold = tick(id=id_int_hetero, since=iclockold)
-    end if
-
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Initialize FFT'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
-
-    call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, &
-                       fftw_plan=parameters%fftw_plan)
-
-    ntimes = fft_data%get_ntimes()
-    nomega = fft_data%get_nomega()
-    df     = fft_data%get_df()
-    fmtstring = '(A, I8, A, I8)'
-    write(lu_out,fmtstring) '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
-    fmtstring = '(A, F8.3, A, F8.3, A)'
-    write(lu_out,fmtstring) '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
-
-    iclockold = tick(id=id_init_fft, since=iclockold)
-
-    ! Master and slave synchronize again
-
-    iclockold = tick()
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Define filters'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
-
-    call parameters%read_filter(nomega, df)
-
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Define kernels'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
-
-    call parameters%read_kernel(sem_data, parameters%filter)
-    
-    iclockold = tick(id=id_read_params, since=iclockold)
-
-    itask = 0
-    do 
-       write(lu_out,'(A)') '***************************************************************'
-       write(lu_out,'(A)') ' Waiting for tasks from master rank'
-       write(lu_out,'(A)') '***************************************************************'
-       call flush(lu_out)
-
-
-       ! Receive a message from the master
-       iclockold = tick()
-       call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
-
-       ! Check the tag of the received message. If no more work to do, exit loop
-       ! and return to main program
-       if (mpistatus(MPI_TAG) == DIETAG) exit
-       iclockold = tick(id=id_mpi, since=iclockold)
-
-       itask = itask + 1
-       write(lu_out,'(A)') '***************************************************************'
-       write(lu_out,'(A, I3, A)') ' Received task # ', itask, ', going to work'
-       write(lu_out,'(A)') '***************************************************************'
-       call flush(lu_out)
-
-
-       call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, &
-                                     wt%connectivity, wt%nbasisfuncs_per_elem)
-
-
-       slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data, het_model)
-
-       wt%kernel_values    = slave_result%kernel_values
-       wt%kernel_variance  = slave_result%kernel_variance
-       wt%niterations      = slave_result%niterations
-       wt%computation_time = slave_result%computation_time
-       wt%model            = slave_result%model
-       wt%hetero_model     = slave_result%hetero_model
-
-       ! Finished writing my part of the mesh
-       call inv_mesh%freeme
-
-       ! Send the result back
-       iclockold = tick()
-       call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
-       iclockold = tick(id=id_mpi, since=iclockold)
-          
-    end do
-
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A, I3, A)') ' All work done. Did ', itask, ' tasks in total'
+    write(lu_out,'(A, I3, A)') ' Received task # ', itask, ', going to work'
     write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
 
-    write(lu_out,'(A)')
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Free memory of Kernelspecs'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
-    do ikernel = 1, parameters%nkernel
-       call parameters%kernel(ikernel)%freeme() 
-    end do
-   
-    write(lu_out,'(A)')
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Free memory of inversion mesh datatype'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
+    call inv_mesh%initialize_mesh(wt%ielement_type, wt%vertices, &
+                                  wt%connectivity, wt%nbasisfuncs_per_elem)
+
+
+    slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data, het_model)
+
+    wt%kernel_values    = slave_result%kernel_values
+    wt%kernel_variance  = slave_result%kernel_variance
+    wt%niterations      = slave_result%niterations
+    wt%computation_time = slave_result%computation_time
+    wt%model            = slave_result%model
+    wt%hetero_model     = slave_result%hetero_model
+
+    ! Finished writing my part of the mesh
     call inv_mesh%freeme
 
-    write(lu_out,'(A)')
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Close AxiSEM wavefield files'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
-    call sem_data%close_files()
+    ! Send the result back
+    iclockold = tick()
+    call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
+    iclockold = tick(id=id_mpi, since=iclockold)
 
-    write(lu_out,'(A)')
-    write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A)') ' Free memory of FFT datatype'
-    write(lu_out,'(A)') '***************************************************************'
-    call flush(lu_out)
-    call fft_data%freeme()
+  end do
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A, I3, A)') ' All work done. Did ', itask, ' tasks in total'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+
+  write(lu_out,'(A)')
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Free memory of Kernelspecs'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+  do ikernel = 1, parameters%nkernel
+    call parameters%kernel(ikernel)%freeme() 
+  end do
+
+  write(lu_out,'(A)')
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Free memory of inversion mesh datatype'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+  call inv_mesh%freeme
+
+  write(lu_out,'(A)')
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Close AxiSEM wavefield files'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+  call sem_data%close_files()
+
+  write(lu_out,'(A)')
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Free memory of FFT datatype'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+  call fft_data%freeme()
 
 end subroutine do_slave
 !-----------------------------------------------------------------------------------------
