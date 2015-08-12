@@ -195,9 +195,9 @@ end function lagrange_interpol_2D_td
 !! same N+1 GLL points. 
 pure subroutine hn_jprime(xi,j,N,dhj)
  
+  integer,intent(in)    :: N
   real(dp), intent(in)  :: xi(0:N)
   integer,intent(in)    :: j
-  integer,intent(in)    :: N
   integer               :: i
   real(dp), intent(out) :: dhj(0:N)
   real(kind=dp)          :: DX,D2X

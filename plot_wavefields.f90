@@ -36,12 +36,10 @@ subroutine plot_wavefields()
     real(kind=dp),    allocatable       :: fw_field_td(:,:,:)
     real(kind=sp),    allocatable       :: fw_field_td_tot(:,:,:)
     real(kind=dp),    allocatable       :: bw_field(:,:,:)
-    complex(kind=dp), allocatable       :: fw_field_fd_tot(:,:,:)
     complex(kind=dp), allocatable       :: fw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: bw_field_fd(:,:,:)
     complex(kind=dp), allocatable       :: conv_field_fd(:,:)
     real(kind=dp),    allocatable       :: conv_field(:,:)
-    real(kind=dp),    allocatable       :: modelcoeffs(:,:)
     real(kind=dp)                       :: df
     character(len=64)                   :: fmtstring
     character(len=64)                   :: cname
@@ -276,7 +274,6 @@ subroutine plot_wavefields()
 
       allocate(co_points(3, nptperstep))
 
-      !allocate(fw_field_fd_tot(nomega, ndim, nelems))
       allocate(fw_field_fd(nomega, ndim, 1))
       allocate(fw_field(ndumps, ndim, 1))
       allocate(fw_field_td(ntimes, ndim, 1))

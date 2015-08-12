@@ -54,10 +54,10 @@ end function lanczos_resample
 !-----------------------------------------------------------------------------------------
 pure subroutine lanczos_resamp_core(si, n_in, so, n_out, dt, a) bind(c, name="lanczos_resamp")
   ! lanczos resampling, see http://en.wikipedia.org/wiki/Lanczos_resampling
-  real(c_double), intent(in)        :: si(1:n_in)
   integer(c_int), intent(in), value :: n_in
-  real(c_double), intent(out)       :: so(1:n_out)
   integer(c_int), intent(in), value :: n_out
+  real(c_double), intent(in)        :: si(1:n_in)
+  real(c_double), intent(out)       :: so(1:n_out)
   real(c_double), intent(in), value :: dt
   integer(c_int), intent(in), value :: a
   integer(c_int)                    :: i, l, m

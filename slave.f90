@@ -258,7 +258,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
   type(timeshift_type)                :: timeshift_fwd, timeshift_bwd
   type(integrated_type), allocatable  :: int_kernel(:), int_model(:), int_hetero(:)
-  type(backgroundmodel_type)          :: bg_model, coeffs_random_points
+  type(backgroundmodel_type)          :: bg_model
 
   real(kind=dp),    allocatable       :: fw_field(:,:,:)
   real(kind=dp),    allocatable       :: bw_field(:,:,:)
@@ -622,7 +622,7 @@ function integrate_1d_model(sem_data, inv_mesh, ielement) result(int_model)
   real(kind=dp),    allocatable                 :: random_points(:,:) 
   real(kind=dp),    allocatable                 :: model_random_points(:,:) 
   type(backgroundmodel_type)                    :: coeffs_random_points
-  integer                                       :: ibasisfunc, iclockold, istep_model
+  integer                                       :: ibasisfunc, istep_model
   integer                                       :: nbasisfuncs_per_elem
   integer, parameter                            :: nptperstep_model = 100 !< Points per MC iteration for 
                                                                           !! Integration of model parameters
@@ -676,7 +676,7 @@ function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
 
   real(kind=dp),    allocatable                 :: random_points(:,:) 
   real(kind=dp),    allocatable                 :: hetero_random_points(:,:) 
-  integer                                       :: ibasisfunc, iclockold, istep_model
+  integer                                       :: ibasisfunc, istep_model
   integer                                       :: nbasisfuncs_per_elem
   integer, parameter                            :: nptperstep_model = 100 !< Points per MC iteration for 
                                                                           !! Integration of model parameters

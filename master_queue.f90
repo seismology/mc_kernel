@@ -41,12 +41,11 @@ subroutine init_queue(ntasks, inparam_file)
   use work_type_mod, only                   : wt
   integer, intent(out)                     :: ntasks
   character(len=*), intent(in), optional   :: inparam_file
-  integer                                  :: itask, nelems, iel, iel_in_task, ncompleted
+  integer                                  :: nelems
   integer(kind=long)                       :: iclockold
-  character(len=64)                        :: fmtstring, filename
+  character(len=64)                        :: filename
   logical                                  :: intermediate_results_exist
   logical, allocatable                     :: completed(:)
-  real(kind=sp), allocatable               :: real_temp(:,:)
   
   iclockold = tick()
 

@@ -12,7 +12,6 @@ contains
 subroutine test_background_models_combine
   type(backgroundmodel_type) :: bm
   real(kind=sp), allocatable :: coeffs(:,:)
-  real(kind=dp), allocatable :: params(:,:)
   real(kind=sp)              :: ref_vs (1)
   real(kind=sp)              :: ref_vp (1)
   real(kind=sp)              :: ref_rho(1)

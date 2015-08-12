@@ -149,7 +149,7 @@ subroutine nc_open_for_write(filename, ncid, cache_size)
    integer, intent(out)          :: ncid
    integer, intent(in), optional :: cache_size
    character(len=512)            :: fmtstring
-   integer                       :: status, mode
+   integer                       :: status
    integer                       :: cache_size_local = 512*2**20 !512 MB default value
 
    if (present(cache_size)) cache_size_local = cache_size

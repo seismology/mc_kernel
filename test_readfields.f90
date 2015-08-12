@@ -224,7 +224,7 @@ subroutine test_load_seismograms_rdbm
    type(semdata_type)      :: sem_data
    type(rfft_type)         :: fft_data
    integer                 :: nomega, ntimes, ntimes_reference, isample, lu_seis
-   real(kind=dp)           :: df, dt, t
+   real(kind=dp)           :: df, t
    real(kind=dp), allocatable :: seis(:), seis_ref(:)
    
    call parameters%read_parameters('unit_tests/inparam_load_seismogram')
@@ -300,12 +300,10 @@ subroutine test_readfields_load_model_coeffs
    use global_parameters, only : pi, sp, dp
    type(parameter_type)       :: parameters
    type(semdata_type)         :: sem_data
-   type(meshtype)             :: testmesh_fwd, testmesh_bwd
    type(backgroundmodel_type) :: model, model_ref
    integer, parameter         :: npoints = 1, nradius = 11
    real(kind=dp)              :: coordinates(3,npoints), phi(npoints), theta(npoints), r(nradius)
    integer                    :: ipoint, iradius
-   real(kind=sp)              :: s(npoints), z(npoints)
 
    ! Test in all 11 domains of PREM
    r = [6370d3, & ! within upper crust
@@ -330,22 +328,12 @@ subroutine test_readfields_load_model_coeffs
 
    call sem_data%read_meshes()
    
-   !call sem_data%build_kdtree()
-
-   !do iradius = 600, 637
-   !  coordinates(:,1) = [0.d0, 0.d0, iradius * 1.d4]
-   !  model = sem_data%load_model_coeffs(coordinates, s, z)
-   !  print *, iradius, ', Vp: ', model%c_vp(1), ', Vs: ', model%c_vs(1), ', Rho: ', model%c_rho(1)
-   !end do
-
    do iradius = 1, nradius
 
      call random_number(phi)
      call random_number(theta)
      phi = phi * 2.d0 * pi
      theta = (theta - 0.5) * pi
-
-     !print *, 'Radius :', iradius, '(', r(iradius), ')'
 
      do ipoint = 1, npoints
         coordinates(:, ipoint) = [cos(phi(ipoint)) * sin(theta(ipoint)), &
@@ -392,7 +380,7 @@ subroutine test_dampen_field
   integer, parameter :: npoints = 1000
   real(kind=dp)      :: field(npoints,2,6), field_ref(npoints,2,6)
   real(kind=dp)      :: r_points(3,npoints), r_src(3), r_max, pre_fac
-  integer            :: iz, ipoint
+  integer            :: ipoint
 
   call random_number(field)
   field_ref = field

@@ -239,7 +239,6 @@ subroutine pabort(do_traceback)
   logical, intent(in), optional :: do_traceback
   integer                       :: ierror
   logical                       :: isinitialized, do_traceback_loc
-  character(len=80)             :: msg
 
   call flush(6)
   print *, 'Processor ', myrank, ' has found an error and aborts computation'

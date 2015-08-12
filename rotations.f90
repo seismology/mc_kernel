@@ -294,9 +294,9 @@ function rotate_symm_tensor_voigt_src_to_xyz_2d(tensor_voigt, phi, npoint) resul
     ! compute and ouput in voigt notation:
     ! Rt.A.R
     !
+    integer, intent(in)          :: npoint
     real(kind=dp), intent(in)    :: tensor_voigt(npoint,6)
     real(kind=dp), intent(in)    :: phi
-    integer, intent(in)          :: npoint
     real(kind=dp)                :: tensor_return(npoint,6)
     real(kind=dp)                :: sp, cp
 
@@ -366,9 +366,9 @@ function rotate_symm_tensor_voigt_xyz_to_src_2d(tensor_voigt, phi, npoint) resul
     ! compute and ouput in voigt notation:
     ! R.A.Rt
     !
+    integer, intent(in)          :: npoint
     real(kind=dp), intent(in)    :: tensor_voigt(npoint,6)
     real(kind=dp), intent(in)    :: phi
-    integer, intent(in)          :: npoint
     real(kind=dp)                :: tensor_return(npoint,6)
     real(kind=dp)                :: sp, cp
 
@@ -461,9 +461,9 @@ function rotate_symm_tensor_voigt_xyz_src_to_xyz_earth_2d(tensor_voigt, phi, the
     ! compute and ouput in voigt notation:
     ! Rt.A.R
     !
+    integer, intent(in)          :: npoint
     real(kind=dp), intent(in)    :: tensor_voigt(npoint,6)
     real(kind=dp), intent(in)    :: phi, theta
-    integer, intent(in)          :: npoint
     real(kind=dp)                :: tensor_return(npoint,6)
     real(kind=dp)                :: sp, cp, st, ct
 
@@ -582,9 +582,9 @@ function rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d(tensor_voigt, phi, the
     ! compute and ouput in voigt notation:
     ! R.A.Rt
     !
+    integer, intent(in)          :: npoint
     real(kind=dp), intent(in)    :: tensor_voigt(npoint,6)
     real(kind=dp), intent(in)    :: phi, theta
-    integer, intent(in)          :: npoint
     real(kind=dp)                :: tensor_return(npoint,6)
     real(kind=dp)                :: sp, cp, st, ct
 

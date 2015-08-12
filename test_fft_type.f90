@@ -361,7 +361,6 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine test_fft_parseval
     integer     :: nomega, ntimes, ntraces
-    integer     :: i
 
     type(rfft_type) :: fftt
 

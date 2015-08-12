@@ -77,7 +77,6 @@ contains
 subroutine read_parameters(this, input_file_in)
    use backgroundmodel, only        : backgroundmodel_type
    class(parameter_type)           :: this
-   type(backgroundmodel_type)      :: bg_model
    character(len=*), intent(in), optional :: input_file_in
    character(len=256)              :: input_file
    integer                         :: lu_inparam_basic, ioerr, narg
@@ -432,8 +431,8 @@ subroutine read_receiver(this)
        fmtstring = '("  Receiver ''", A8, "'', lat:  ", F8.3, ", lon: ", F8.3)'
        write(lu_out, fmtstring) trim(recname), reclatd, reclond
        fmtstring = '("                       dist: ", F8.3, ", azi: ", F8.3)'
-       write(lu_out, fmtstring), this%receiver(irec)%theta / deg2rad, &
-                                 this%receiver(irec)%phi / deg2rad
+       write(lu_out, fmtstring) this%receiver(irec)%theta / deg2rad, &
+                                this%receiver(irec)%phi / deg2rad
 
    end do
 

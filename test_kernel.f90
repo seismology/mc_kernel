@@ -135,7 +135,7 @@ subroutine test_integrate_parseval
    type(filter_type), target   :: gabor
 
    character(len=32)           :: filtername, filterclass
-   real(kind=dp)               :: veloseis(256), integral_parseval, integral_trapezoidal
+   real(kind=dp)               :: veloseis(256), integral_parseval
    real(kind=dp), allocatable  :: func_to_int1(:), func_to_int2(:)
 
    ! Just create some kernel with a length of 256 samples

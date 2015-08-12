@@ -393,7 +393,6 @@ subroutine test_generate_random_point_tet_quasi
   integer, parameter                    :: npoints = 10000
   real(kind=dp), dimension(3,npoints)   :: points
   real(kind=dp), dimension(3,4)         :: vertices
-  logical                               :: isonplane(npoints), isdegenerate
 
 
   call free_halton()

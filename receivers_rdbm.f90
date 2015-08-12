@@ -26,10 +26,7 @@ subroutine create_reci_sources(this, rec_in)
   class(receivers_rdbm_type)       :: this
   type(rec_param_type), intent(in) :: rec_in(:)
 
-  integer                          :: ierror
-  character(len=512)               :: receivers_file
   integer                          :: i,nrec
-  real(kind=dp)                    :: reccolat, reclon
 
   nrec = size(rec_in)
 

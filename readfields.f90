@@ -1101,7 +1101,7 @@ function load_fw_points(this, coordinates, source_params, model)
     integer                           :: pointid
     integer                           :: ipoint, inext_point, isim, icp
     integer(kind=long)                :: iclockold
-    integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
+    integer                           :: corner_point_ids(4), eltype(1)
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
     integer                           :: id_elem
@@ -1601,7 +1601,7 @@ function load_bw_points(this, coordinates, receiver)
     integer                           :: pointid(size(coordinates,2))
     integer                           :: ipoint, inext_point, icp
     integer(kind=long)                :: iclockold
-    integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
+    integer                           :: corner_point_ids(4), eltype(1)
     integer                           :: nan_loc(2)
     logical                           :: isnan
     logical                           :: axis
@@ -1868,21 +1868,20 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     integer                           :: npoints, nnext_points, id_elem
     integer                           :: pointid(size(source_params))
     integer                           :: ipoint, inext_point, isim, i, icp
-    integer                           :: corner_point_ids(4), eltype(1), axis_int(1)
+    integer                           :: corner_point_ids(4), eltype(1)
     logical                           :: axis
     integer, allocatable              :: gll_point_ids(:,:)
     real(kind=dp)                     :: corner_points(4,2)
-    real(kind=dp)                     :: cps(1), cpz(1)
     real(kind=dp)                     :: rotmesh_s(size(source_params))
     real(kind=dp)                     :: rotmesh_phi(size(source_params))
     real(kind=dp)                     :: rotmesh_z(size(source_params))
     real(kind=dp)                     :: utemp(this%ndumps, 6)
     real(kind=dp)                     :: coordinates(3,size(source_params))
-    real(kind=dp)                     :: mij_buff(6), mu_buff(1)
+    real(kind=dp)                     :: mij_buff(6)
     real(kind=dp)                     :: xi, eta
 
     character(len=256) :: fname
-    integer :: lu_seis,ii
+    integer :: ii
     
     if (.not.this%kdtree_built) then
        print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
@@ -2375,11 +2374,9 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
     logical,           intent(in)   :: axis         !< Axis element or not 
     real(kind=dp)                   :: load_strain_point_interp_seismogram(sem_obj%ndumps,6)
 
-    logical                         :: use_strainbuffer
-    integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: status, idisplvar
+    integer                         :: start_chunk, gll_to_read
+    integer                         :: idisplvar
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
-    real(kind=sp), allocatable      :: ubuff(:,:)
     real(kind=dp)                   :: utemp(1:sem_obj%ndumps, &
                                              0:sem_obj%npol,   &
                                              0:sem_obj%npol,   &
@@ -2388,9 +2385,6 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
                                               0:sem_obj%npol,   &
                                               0:sem_obj%npol,   &
                                               6)
-    !real(kind=sp)                   :: straintrace(1:sem_obj%ndumps, &
-    !                                               0:sem_obj%npol,   &
-    !                                               0:sem_obj%npol)
     real(kind=dp), allocatable      :: G(:,:), GT(:,:)
     real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
     integer                         :: ipol, jpol, i
@@ -2398,8 +2392,6 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
     logical                         :: strain_nan
 
     iclockold_total = tick()
-
-    !use_strainbuffer = present(id_elem)
 
     if (trim(sem_obj%dump_type) /= 'displ_only') then
         write(6,*) 'ERROR: trying to read interpolated strain from a file that was not'
@@ -2421,18 +2413,10 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
 
 
       allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
-!      utemp_chunk = 0
-!      allocate(ubuff(sem_obj%ndumps, 3))
-!      ubuff = 0
 
       ! load displacements from all GLL points
       do ipol = 0, sem_obj%npol
          do jpol = 0, sem_obj%npol
-
-!            iclockold = tick()
-!            status = sem_obj%buffer_disp%get(pointids(ipol,jpol), ubuff(:,:))
-!            iclockold = tick(id=id_buffer, since=iclockold)
-            !if (status.ne.0) then
 
                call get_chunk_bounds(pointid     = pointids(ipol, jpol), &
                                      chunksize   = sem_obj%chunk_gll,    &
@@ -2569,7 +2553,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
 
     logical                         :: use_strainbuffer
     integer                         :: start_chunk, iread, gll_to_read
-    integer                         :: status, idisplvar
+    integer                         :: idisplvar
     real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
     real(kind=sp), allocatable      :: ubuff(:,:)
     real(kind=dp)                   :: utemp(1:sem_obj%ndumps, &
@@ -2585,7 +2569,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
                                                    0:sem_obj%npol)
     real(kind=dp), allocatable      :: G(:,:), GT(:,:)
     real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
-    integer                         :: ipol, jpol, i
+    integer                         :: ipol, jpol, i, status
     integer(kind=long)              :: iclockold, iclockold_total
     logical                         :: strain_nan
 

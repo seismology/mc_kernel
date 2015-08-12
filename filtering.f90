@@ -59,7 +59,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     character(len=32), intent(in)   :: name
     character(len=32), intent(in)   :: filterclass
 
-    character(len=32)               :: fmtstring
+    character(len=64)               :: fmtstring
     character(len=64)               :: fnam
 
     fmtstring = '("Class: ", A, ", freq: ", 4(F8.4))'
@@ -175,8 +175,8 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, nfreq
-          write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
-                                      imag(this%transferfunction(ifreq))
+          write(10,*) this%f(ifreq), real(this%transferfunction(ifreq)), &
+                                     imag(this%transferfunction(ifreq))
        end do
        close(10)
     end if   
@@ -215,7 +215,6 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     type(rfft_type)                 :: fft_stf
     character(len=64)               :: fnam
     integer                         :: ifreq
-    real(kind=dp)                   :: waterlevel
 
     if (.not.this%initialized) then
        write(*,*) 'ERROR: Filter is not initialized yet'
@@ -256,7 +255,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, size(stf_source)
-         write(10,17), stf_dt*(ifreq-1), stf_source(ifreq)
+         write(10,17) stf_dt*(ifreq-1), stf_source(ifreq)
        end do
        close(10)
     end if
@@ -274,17 +273,17 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
-           write(10,19), this%f(ifreq), real(stf_sem_fd(ifreq,1)),    &
-                                        imag(stf_sem_fd(ifreq,1)),    &
-                                        real(stf_src_fd(ifreq,1)), &
-                                        imag(stf_src_fd(ifreq,1))
+           write(10,19) this%f(ifreq), real(stf_sem_fd(ifreq,1)),    &
+                                       imag(stf_sem_fd(ifreq,1)),    &
+                                       real(stf_src_fd(ifreq,1)), &
+                                       imag(stf_src_fd(ifreq,1))
        end do
        close(10)
     end if
 
     ! Calculate first derivatice of the STF
-    stf_sem_fd(:,1) = stf_sem_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0))
-    stf_src_fd(:,1) = stf_src_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0))
+    stf_sem_fd(:,1) = stf_sem_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
+    stf_src_fd(:,1) = stf_src_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
 
 
     ! Divide filter by spectrum of forward STF. It is established at initialization
@@ -305,11 +304,11 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! Replace NaNs with zero
     where(abs(this%transferfunction_fwd).ne.abs(this%transferfunction_fwd)) 
-      this%transferfunction_fwd = cmplx(0d0, 0d0)
+      this%transferfunction_fwd = 0
     end where
 
     where(abs(this%transferfunction_bwd).ne.abs(this%transferfunction_bwd)) 
-      this%transferfunction_bwd = cmplx(0d0, 0d0)
+      this%transferfunction_bwd = 0
     end where
 
     call fft_stf%irfft(stf_sem_fd, stf_sem_td)
@@ -321,7 +320,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
-          write(10,*), this%f(ifreq), real(this%transferfunction(ifreq)), &
+          write(10,*) this%f(ifreq),  real(this%transferfunction(ifreq)), &
                                       imag(this%transferfunction(ifreq)), &
                                       real(this%transferfunction_fwd(ifreq)), &
                                       imag(this%transferfunction_fwd(ifreq)), &
@@ -336,7 +335,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
-           write(10,22), this%f(ifreq), real(stf_sem_fd(ifreq,1)), &
+           write(10,22) this%f(ifreq), real(stf_sem_fd(ifreq,1)), &
                                         imag(stf_sem_fd(ifreq,1)), &
                                         real(stf_src_fd(ifreq,1)), &
                                         imag(stf_src_fd(ifreq,1))
@@ -349,7 +348,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, size(stf_sem_fwd)
-         write(10,24), t(ifreq), stf_sem_fwd(ifreq), stf_src(ifreq,1)
+         write(10,24) t(ifreq), stf_sem_fwd(ifreq), stf_src(ifreq,1)
        end do
        close(10)
        
@@ -359,7 +358,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, size(stf_sem_fwd)
-         write(10,26), t(ifreq), stf_sem_td(ifreq,1), stf_src_td(ifreq,1)
+         write(10,26) t(ifreq), stf_sem_td(ifreq,1), stf_src_td(ifreq,1)
        end do
        close(10)
     end if   
@@ -600,8 +599,7 @@ function ident(f)                        !< identical filter, returns a vector o
                                          !! length of f. Exists just for testing reasons.
 
     real(kind=dp), intent(in)   :: f(:)  !< Frequency array
-
-    real(kind=dp)               :: ident(size(f))
+    complex(kind=dp)            :: ident(size(f))
 
     ident(:) = complex(1.0, 0.0)
 
@@ -621,7 +619,7 @@ function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by 
                                          !! narrower bandwidth sigmaIfc = .5 means the
                                          !! one-sigma interval i equals one octave
 
-    real(kind=dp)               :: loggabor(size(f))
+    complex(kind=dp)            :: loggabor(size(f))
     real(kind=dp)               :: f_c
 
     f_c = 1 / p_c

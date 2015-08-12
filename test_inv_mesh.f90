@@ -217,8 +217,7 @@ end subroutine test_append_variable
 subroutine test_init_node_data
   use netcdf
   type(inversion_mesh_data_type)    :: inv_mesh
-  integer                           :: nf_status, ncid, grp_ncid, dim_len, dimid
-  character(len=nf90_max_name)      :: dim_name
+  integer                           :: nf_status, ncid, grp_ncid
 
 
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
@@ -244,8 +243,7 @@ end subroutine test_init_node_data
 subroutine test_init_mixed_data
   use netcdf
   type(inversion_mesh_data_type)    :: inv_mesh
-  integer                           :: nf_status, ncid, grp_ncid, dim_len, dimid
-  character(len=nf90_max_name)      :: dim_name
+  integer                           :: nf_status, ncid, grp_ncid
 
 
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
@@ -282,8 +280,7 @@ end subroutine test_init_mixed_data
 subroutine test_init_cell_data
   use netcdf
   type(inversion_mesh_data_type)    :: inv_mesh
-  integer                           :: nf_status, ncid, grp_ncid, dim_len, dimid
-  character(len=nf90_max_name)      :: dim_name
+  integer                           :: nf_status, ncid, grp_ncid
 
 
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
@@ -315,12 +312,10 @@ subroutine test_set_mixed_data
   character(len=nf90_max_name)      :: variable_names(3)
   integer                           :: variable_length(3)
 
-  integer                           :: nf_status, ncid, id, jd, grp_ncid
   real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), &
                                        testvar3_ref(:,:), testvar4_ref(:,:)
   real(kind=sp), allocatable        :: testvar1_ref_node(:,:), testvar2_ref_node(:,:), &
                                        testvar3_ref_node(:,:), testvar4_ref_node(:,:)
-  character(len=nf90_max_name)      :: dim_name
   character(len=16), dimension(:), allocatable  :: entry_names_cell_1, entry_names_cell_2, &
                                                    entry_names_cell_3, entry_names_cell_4
   character(len=16), dimension(:), allocatable  :: entry_names_node_1, entry_names_node_2, &
@@ -517,10 +512,9 @@ subroutine test_set_node_data_and_dump()
   character(len=nf90_max_name)      :: variable_names(3)
   integer                           :: variable_length(3)
 
-  integer                           :: nf_status, ncid, id, jd, grp_ncid
+  integer                           :: nf_status, ncid, id, grp_ncid
   real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
   real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
-  character(len=nf90_max_name)      :: dim_name
 
 
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
@@ -623,10 +617,9 @@ subroutine test_set_cell_data_and_dump()
   character(len=nf90_max_name)      :: variable_names(3)
   integer                           :: variable_length(3)
 
-  integer                           :: nf_status, ncid, id, jd, grp_ncid
+  integer                           :: nf_status, ncid, id, grp_ncid
   real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
   real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
-  character(len=nf90_max_name)      :: dim_name
 
 
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
@@ -724,12 +717,11 @@ subroutine test_set_mixed_data_and_dump()
   character(len=nf90_max_name)      :: variable_names(3)
   integer                           :: variable_length(3)
 
-  integer                           :: nf_status, ncid, id, jd, grp_ncid
+  integer                           :: nf_status, ncid, id, grp_ncid
   real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
   real(kind=sp), allocatable        :: testvar1_ref_node(:,:), testvar2_ref_node(:,:), testvar3_ref_node(:,:)
   real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
   real(kind=sp), allocatable        :: testvar1_res_node(:,:), testvar2_res_node(:,:), testvar3_res_node(:,:)
-  character(len=nf90_max_name)      :: dim_name
 
 
   call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
@@ -963,7 +955,7 @@ end subroutine test_get_connected_elements
 subroutine test_point_in_element_triangle_mesh
   type(inversion_mesh_type)  :: inv_mesh
   integer, parameter         :: ndim = 3, nvertices = 3, nstep = 10
-  real(kind=dp)              :: vertices(ndim, 0:nvertices-1), offset(ndim)
+  real(kind=dp)              :: vertices(ndim, 0:nvertices-1)
   integer                    :: connectivity(3, 1), itest
   integer, parameter         :: ntest = (nstep+3)**2, nbasisfuncs_per_elem = 1
   real(kind=dp)              :: testpoint_in(ndim, ntest)
@@ -1072,7 +1064,7 @@ end subroutine test_point_in_element_triangle_mesh
 subroutine test_point_in_element_tetrahedral_mesh
   type(inversion_mesh_type)  :: inv_mesh
   integer, parameter         :: ndim = 3, nvertices = 4
-  real(kind=dp)              :: vertices(ndim, 0:nvertices-1), offset(ndim)
+  real(kind=dp)              :: vertices(ndim, 0:nvertices-1)
   integer                    :: connectivity(4, 1), itest
   integer, parameter         :: nbasisfuncs_per_elem = 1, nstep = 10
   integer, parameter         :: ntest = (nstep+3)**3 / 3
@@ -1267,7 +1259,7 @@ subroutine test_weight
   integer, parameter                :: nrandom = 10
   real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
   real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
-  integer                           :: ielement, ivertex, ivertex_test
+  integer                           :: ielement, ivertex
  
 
 
@@ -1381,7 +1373,7 @@ subroutine test_weight_large
   integer, parameter                :: nrandom = 1000
   real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
   real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
-  integer                           :: ielement, ivertex, ivertex_test
+  integer                           :: ielement, ivertex
  
 
 

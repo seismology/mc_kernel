@@ -76,11 +76,8 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    logical, intent(in), optional           :: deconv_stf
    logical, intent(in), optional           :: write_smgr
    
-   character(len=32)                       :: fmtstring
    logical                                 :: deconv_stf_loc, write_smgr_loc
    real(kind=dp)                           :: timeshift_fwd_loc
-
-   integer                                 :: ntimes, isample, iparam
 
    if(this%initialized) then
       write(*,*) 'This kernel is already initialized'
@@ -162,7 +159,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    type(rfft_type)                         :: fft_data
    type(timeshift_type)                    :: timeshift
    complex(kind=dp), allocatable           :: seis_fd(:,:)
-   real(kind=dp),    allocatable           :: seis_td(:,:), t_cut(:)
+   real(kind=dp),    allocatable           :: seis_td(:,:)
    real(kind=dp),    allocatable           :: seis_filtered(:,:), f(:)
    real(kind=dp)                           :: normalization_term
    integer                                 :: ntimes, ntimes_ft, nomega, isample, nan_loc(2)
@@ -179,11 +176,6 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    call fft_data%init(ntimes, 1, 1, this%dt)
    ntimes_ft = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
-
-   !if (verbose>0) then
-   !   fmtstring = '(A, I8, A, I8)'
-   !   write(lu_out,fmtstring) '   ntimes: ',  ntimes,     '  , nfreq: ', this%nomega
-   !end if
 
    allocate(seis_fd(nomega, 1))
    allocate(seis_filtered(ntimes_ft, 1))

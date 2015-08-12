@@ -32,7 +32,7 @@ function create_interpolator(param_tmp, tree, radius) result(interpolator)
   type(kdtree2_result), allocatable :: nextpoint(:)
   integer, parameter                :: nnext_points = 1
 
-  ndepth = radius / dz + 1
+  ndepth = int(radius / dz) + 1
   allocate(values(ndepth))
 
   ! nextpoint has to be allocatable in kdtree module
@@ -76,7 +76,7 @@ pure function get(this, r) result(values)
   real(kind=dp), intent(in)                   :: r(:)
   real(kind=dp), allocatable                  :: values(:)
 
-  integer                                     :: idx(size(r)), ipoint
+  integer                                     :: idx(size(r))
 
   idx = min(max(int(r / this%dr + 1), 1), this%ndepth)
 
