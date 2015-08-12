@@ -247,6 +247,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   use backgroundmodel,             only: backgroundmodel_type, nmodel_parameters
   use heterogeneities,             only: hetero_type, nmodel_parameters_hetero         
   use clocks_mod,                  only: tick, get_clock, reset_clock
+  use simple_routines,             only: mult3d_1d
 
   type(inversion_mesh_data_type), intent(in)    :: inv_mesh
   type(parameter_type),           intent(in)    :: parameters
@@ -266,6 +267,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   complex(kind=dp), allocatable       :: conv_field_fd(:,:), conv_field_fd_filt(:,:)
   real(kind=dp),    allocatable       :: conv_field(:,:)
   real(kind=dp),    allocatable       :: random_points(:,:) 
+  real(kind=dp),    allocatable       :: weights(:)
   real(kind=dp),    allocatable       :: kernelvalue_basekers(:,:,:)
   real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:,:) 
   real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
@@ -534,18 +536,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         do ibasisfunc = 1, nbasisfuncs_per_elem
           iclockold = tick()
 
+          weights = inv_mesh%weights(ielement, ibasisfunc, random_points)                 
+          kernelvalue_weighted = mult3d_1d(kernelvalue_basekers, weights)
+
           ! Compute weighted base kernels
           do ikernel = 1, parameters%nkernel
-
-            do ibasekernel = 1, nbasekernels
-              ! Check whether kernel (ikernel) actually needs the base kernel 
-              ! (ibasekernel), otherwise cycle
-              if (parameters%kernel(ikernel)%needs_basekernel(ibasekernel)) then
-                kernelvalue_weighted(:, ikernel, ibasekernel) =    &
-                  kernelvalue_basekers(:, ikernel, ibasekernel) &
-                  * inv_mesh%weights(ielement, ibasisfunc, random_points)                 
-              end if
-            end do
 
             ! Compute the kernels for the actual physical parameters of interest
             kernelvalue_physical(:, ikernel) = calc_physical_kernels(        &
