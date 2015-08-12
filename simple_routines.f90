@@ -47,7 +47,7 @@ module simple_routines
    contains
 
 !------------------------------------------------------------------------------
-function mult2d_1d_dble(A, B) result(C)
+pure function mult2d_1d_dble(A, B) result(C)
 ! Multiply 1D array B along first dimension of 3D array A
    real(kind=dp), intent(in) :: A(:,:), B(:)
    real(kind=dp)             :: C(size(A,1), size(A,2))
@@ -57,7 +57,7 @@ end function mult2d_1d_dble
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-function mult2d_1d_cmplx(A, B) result(C)
+pure function mult2d_1d_cmplx(A, B) result(C)
 ! Multiply 1D array B along first dimension of 3D array A
    complex(kind=dp), intent(in) :: A(:,:), B(:)
    complex(kind=dp)             :: C(size(A,1), size(A,2))
@@ -68,7 +68,7 @@ end function mult2d_1d_cmplx
 
 
 !------------------------------------------------------------------------------
-function mult3d_1d_dble(A, B) result(C)
+pure function mult3d_1d_dble(A, B) result(C)
 ! Multiply 1D array B along first dimension of 3D array A
    real(kind=dp), intent(in) :: A(:,:,:), B(:)
    real(kind=dp)             :: C(size(A,1), size(A,2), size(A,3))
@@ -78,7 +78,7 @@ end function mult3d_1d_dble
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-function mult3d_1d_cmplx(A, B) result(C)
+pure function mult3d_1d_cmplx(A, B) result(C)
 ! Multiply 1D array B along first dimension of 3D array A
    complex(kind=dp), intent(in) :: A(:,:,:), B(:)
    complex(kind=dp)             :: C(size(A,1), size(A,2), size(A,3))
@@ -88,7 +88,7 @@ end function mult3d_1d_cmplx
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-function to_lower(strIn) result(strOut)
+pure function to_lower(strIn) result(strOut)
 !< Converts string to lowercase, adapted from http://www.star.le.ac.uk/~cgp/fortran.html
     implicit none
 
@@ -109,7 +109,7 @@ end function to_lower
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-function lowtrim(strIn) result(strOut)
+pure function lowtrim(strIn) result(strOut)
 !< Converts string to lowercase and trims it
     implicit none
 
@@ -122,7 +122,7 @@ end function lowtrim
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-function firstderiv(timeseries) 
+pure function firstderiv(timeseries) 
 !< Calculates the first derivative of timeseries, using a compact stencil
 real(kind=dp), intent(in) :: timeseries(:)
 real(kind=dp)             :: firstderiv(size(timeseries,1))
