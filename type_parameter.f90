@@ -60,6 +60,7 @@ module type_parameter
         logical                              :: quasirandom          = .true.
         logical                              :: relative_kernel      = .true.
         logical                              :: int_over_volume      = .true.
+        logical                              :: int_over_background  = .false.
         logical                              :: int_over_hetero      = .false.
         logical                              :: sort_mesh_elements   = .false.
         logical                              :: mask_src_rec         = .false.
@@ -188,6 +189,9 @@ subroutine read_parameters(this, input_file_in)
 
         case('INTEGRATE_OVER_VOLUME')
            read(keyvalue, *) this%int_over_volume
+
+        case('INTEGRATE_OVER_BACKGROUND_MODEL')
+           read(keyvalue, *) this%int_over_background
 
         case('INTEGRATE_OVER_3D_HETEROGENEITIES')
            read(keyvalue, *) this%int_over_hetero

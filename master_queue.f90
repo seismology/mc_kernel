@@ -106,13 +106,13 @@ subroutine init_queue(ntasks, inparam_file)
   write(lu_out,'(A)') ' Allocate variables to store result'
   write(lu_out,'(A)') '***************************************************************'
   allocate(K_x(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
-  K_x(:,:) = 0.0
   allocate(Var(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
-  Var(:,:) = 0.0
   allocate(Bg_Model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
                     nmodel_parameters))
   allocate(Het_Model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
                      nmodel_parameters_hetero))
+  K_x(:,:) = 0.0
+  Var(:,:) = 0.0
   Bg_Model(:,:) = 0.0
   Het_Model(:,:) = 0.0
 
@@ -212,20 +212,18 @@ subroutine extract_receive_buffer(itask, irank)
       select case(trim(parameters%int_type))
       case('onvertices')         
         ipoint = connectivity(ibasisfunc, ielement)
-        K_x(ipoint, :)       = K_x(ipoint,:)       + wt%kernel_values(:, ibasisfunc, iel)
-        Var(ipoint, :)       = Var(ipoint,:)       + wt%kernel_variance(:, ibasisfunc, iel) 
-        Bg_Model(ipoint, :)  = Bg_Model(ipoint,:)  + wt%model(:, ibasisfunc, iel)
-        Het_Model(ipoint, :) = Het_Model(ipoint,:) + wt%hetero_model(:, ibasisfunc, iel) 
       case('volumetric')
-        K_x(ielement,:)      = K_x(ielement,:) &
-                               + wt%kernel_values(:, ibasisfunc, iel) 
-        Var(ielement,:)      = Var(ielement,:) &
-                               + wt%kernel_variance(:, ibasisfunc, iel)   
-        Bg_Model(ielement,:) = Bg_Model(ielement,:) &
-                               + wt%model(:, ibasisfunc, iel)   
-        Het_Model(ielement, :) = Het_Model(ielement,:)  &
-                               + wt%hetero_model(:, ibasisfunc, iel) 
+        ipoint = ielement
       end select
+
+      K_x(ipoint, :)       = K_x(ipoint,:)       + wt%kernel_values(:, ibasisfunc, iel)
+      Var(ipoint, :)       = Var(ipoint,:)       + wt%kernel_variance(:, ibasisfunc, iel) 
+      if (parameters%int_over_background) then
+        Bg_Model(ipoint, :)  = Bg_Model(ipoint,:)  + wt%model(:, ibasisfunc, iel)
+      end if
+      if (parameters%int_over_hetero) then
+        Het_Model(ipoint, :) = Het_Model(ipoint,:) + wt%hetero_model(:, ibasisfunc, iel) 
+      end if
 
     end do
     niterations(ielement,:)     = wt%niterations(:,iel)
@@ -263,16 +261,6 @@ subroutine finalize()
 
   ! Save kernels in xdmf format
   case ('xdmf')
-
-    do imodel = 1, nmodel_parameters
-      print *, imodel, parameter_name(imodel), minval(Bg_Model(:,imodel)), maxval(Bg_Model(:,imodel))
-    end do
-
-    if (parameters%int_over_hetero) then
-      do imodel = 1, nmodel_parameters_hetero
-        print *, imodel, parameter_name_het(imodel), minval(Het_Model(:,imodel)), maxval(Het_Model(:,imodel))
-      end do
-    end if
                                       
     ! Distiguish between volumetric and node-based mode
     select case(trim(parameters%int_type))
@@ -302,11 +290,15 @@ subroutine finalize()
                                    values   = real(K_x, kind=sp) )
        call inv_mesh%add_node_data(var_name = 'error',                       &
                                    values   = real(sqrt(Var/K_x), kind=sp) )
-       call inv_mesh%add_node_data(var_name = 'model',                       &
-                                   values   = real(Bg_Model, kind=sp) )
-       call inv_mesh%add_node_data(var_name = 'hetero',                       &
-                                   values   = real(Het_Model, kind=sp) )
 
+       if (parameters%int_over_background) then
+         call inv_mesh%add_node_data(var_name = 'model',                       &
+                                     values   = real(Bg_Model, kind=sp) )
+       end if
+       if (parameters%int_over_hetero) then
+         call inv_mesh%add_node_data(var_name = 'hetero',                       &
+                                     values   = real(Het_Model, kind=sp) )
+       end if
                                      
     case ('volumetric')
        call inv_mesh%init_cell_data()
@@ -334,11 +326,15 @@ subroutine finalize()
                                    values   = real(K_x, kind=sp) )
        call inv_mesh%add_cell_data(var_name = 'error',                       &
                                    values   = real(sqrt(Var/K_x), kind=sp) )
-       call inv_mesh%add_cell_data(var_name = 'model',                       &
-                                   values   = real(Bg_Model, kind=sp) )
-       call inv_mesh%add_cell_data(var_name = 'hetero',                       &
-                                   values   = real(Het_Model, kind=sp) )
 
+       if (parameters%int_over_background) then
+         call inv_mesh%add_cell_data(var_name = 'model',                       &
+                                     values   = real(Bg_Model, kind=sp) )
+       end if
+       if (parameters%int_over_hetero) then
+         call inv_mesh%add_cell_data(var_name = 'hetero',                       &
+                                     values   = real(Het_Model, kind=sp) )
+       end if
 
     end select
   
@@ -415,14 +411,41 @@ subroutine finalize()
   call inv_mesh%free_node_and_cell_data()
   call inv_mesh%freeme()
 
+
+  if (parameters%int_over_background) then
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') 'Minimum and maximum values of background model parameters'
+    write(lu_out,'(A)') '***************************************************************'
+    do imodel = 1, nmodel_parameters
+      print *, imodel, parameter_name(imodel), minval(Bg_Model(:,imodel)), maxval(Bg_Model(:,imodel))
+    end do
+  end if
+
+  if (parameters%int_over_hetero) then
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') 'Minimum and maximum values of 3D model parameters'
+    write(lu_out,'(A)') '***************************************************************'
+    do imodel = 1, nmodel_parameters_hetero
+      print *, imodel, parameter_name_het(imodel), minval(Het_Model(:,imodel)), maxval(Het_Model(:,imodel))
+    end do
+  end if
+
   ! Multiply kernels with model to get absolute traveltime of "phase"
-  do ikernel = 1, parameters%nkernel
-    total_time = sum(K_x(:, ikernel) * Bg_Model(:, parameters%kernel(ikernel)%model_parameter_index))
-    print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, total_time
-  end do
+  if (parameters%int_over_background) then
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') 'Kernels times background model'
+    write(lu_out,'(A)') '***************************************************************'
+    do ikernel = 1, parameters%nkernel
+      total_time = sum(K_x(:, ikernel) * Bg_Model(:, parameters%kernel(ikernel)%model_parameter_index))
+      print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, total_time
+    end do
+  end if
 
   ! Multiply relative kernels with heterogeneities to get traveltime shift
   if (parameters%int_over_hetero) then     
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') 'Kernels times 3D model'
+    write(lu_out,'(A)') '***************************************************************'
      do ikernel = 1, parameters%nkernel
         delay_time = sum(K_x(:, ikernel) * Het_Model(:, parameters%kernel(ikernel)%hetero_parameter_index))/100.d0
         print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, delay_time

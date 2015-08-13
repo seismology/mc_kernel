@@ -76,15 +76,14 @@ subroutine do_slave()
   call flush(lu_out)
 
   call sem_data%set_params(parameters%fwd_dir,     &
-    parameters%bwd_dir,     &
-    parameters%strain_buffer_size, & 
-    parameters%displ_buffer_size, & 
-    parameters%strain_type_fwd,    &
-    parameters%source%depth)
+                           parameters%bwd_dir,     &
+                           parameters%strain_buffer_size, & 
+                           parameters%displ_buffer_size, & 
+                           parameters%strain_type_fwd,    &
+                           parameters%source%depth)
 
   call sem_data%open_files()
   call sem_data%read_meshes()
-  !call sem_data%build_kdtree()
 
   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
 
@@ -110,7 +109,7 @@ subroutine do_slave()
   call flush(lu_out)
 
   call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, &
-    fftw_plan=parameters%fftw_plan)
+                     fftw_plan=parameters%fftw_plan)
 
   ntimes = fft_data%get_ntimes()
   nomega = fft_data%get_nomega()
@@ -350,9 +349,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     iclockold = tick(id=id_inv_mesh)
 
     ! Background Model Integration 
-    iclockold = tick()
-    int_model = integrate_1d_model(sem_data, inv_mesh, ielement)
-    iclockold = tick(id=id_int_model, since=iclockold)
+    if (parameters%int_over_background) then
+      iclockold = tick()
+      int_model = integrate_1d_model(sem_data, inv_mesh, ielement)
+      iclockold = tick(id=id_int_model, since=iclockold)
+    end if
 
     ! Heterogeneity Model Integration 
     ! Calculate integrated heterogeneity structure for this element, optional
@@ -375,8 +376,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         slave_result%kernel_variance(:, :, ielement) = 0.0
 
         do ibasisfunc = 1, nbasisfuncs_per_elem          
-          slave_result%model(:, ibasisfunc, ielement) = int_model(ibasisfunc)%getintegral()
-          call int_model(ibasisfunc)%freeme()
+          ! Model should be communicated even for the masked elements
+          if (parameters%int_over_background) then
+            slave_result%model(:, ibasisfunc, ielement) = int_model(ibasisfunc)%getintegral()
+            call int_model(ibasisfunc)%freeme()
+          end if
           if (parameters%int_over_hetero) then
             slave_result%hetero_model(:, ibasisfunc, ielement) = int_hetero(ibasisfunc)%getintegral()
             call int_hetero(ibasisfunc)%freeme()              
@@ -589,13 +593,16 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
       do ibasisfunc = 1, nbasisfuncs_per_elem          
         slave_result%kernel_values(:, ibasisfunc, ielement)   = int_kernel(ibasisfunc)%getintegral()
         slave_result%kernel_variance(:, ibasisfunc, ielement) = int_kernel(ibasisfunc)%getvariance()
-        slave_result%model(:, ibasisfunc, ielement)           = int_model(ibasisfunc)%getintegral()
+
+        if (parameters%int_over_background) then
+          slave_result%model(:, ibasisfunc, ielement)         = int_model(ibasisfunc)%getintegral()
+          call int_model(ibasisfunc)%freeme()
+        end if
         if (parameters%int_over_hetero) then
           slave_result%hetero_model(:, ibasisfunc, ielement)  = int_hetero(ibasisfunc)%getintegral()
           call int_hetero(ibasisfunc)%freeme()              
         end if
         call int_kernel(ibasisfunc)%freeme()
-        call int_model(ibasisfunc)%freeme()
       end do
     end if 
 
@@ -628,6 +635,8 @@ function integrate_1d_model(sem_data, inv_mesh, ielement) result(int_model)
                                                                           !! Integration of model parameters
                                                                           !! Larger than for kernels, since
                                                                           !! evaluation is very cheap
+  integer, parameter                            :: max_iterations = 9999  !< The model integration should 
+                                                                          !! not take forever
 
   nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
   allocate(int_model(nbasisfuncs_per_elem))
@@ -654,7 +663,7 @@ function integrate_1d_model(sem_data, inv_mesh, ielement) result(int_model)
         call int_model(ibasisfunc)%check_montecarlo_integral(transpose(model_random_points))
      end do
      istep_model = istep_model + 1
-     if (istep_model.ge.9999) exit ! The model integration should not take forever
+     if (istep_model.ge.max_iterations) exit 
   end do
   write(lu_out, '(A,I5,A)') ' done after ', istep_model, ' steps.'
   call flush(lu_out)

@@ -34,6 +34,13 @@ KERNEL_FOR_RELATIVE_PERTURBATIONS  true
 # Resulting kernels bear the unit [s/m^3]
 INTEGRATE_OVER_VOLUME false
 
+# Integrate the kernel over the background model. Classically, this was assumed
+# to result in the travel time of a phase. This assumption is highly dubious for
+# wavefield-derived kernels. For legacy reasons, we can still leave it in. 
+# Adds a version of the background model interpolated on the inversion mesh to 
+# the output file.
+INTEGRATE_OVER_BACKGROUND_MODEL false
+
 # This activates the optional (linearity test) to integrate relative kernels over
 # model perturbations in percent, to assess how well our kernels predict measured
 # traveltime perturbations for the same model. This only makes sense when the flag
