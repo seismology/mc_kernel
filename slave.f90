@@ -157,8 +157,8 @@ subroutine do_slave()
 
     ! Check the tag of the received message. If no more work to do, exit loop
     ! and return to main program
-    if (mpistatus(MPI_TAG) == DIETAG) exit
     iclockold = tick(id=id_mpi, since=iclockold)
+    if (mpistatus(MPI_TAG) == DIETAG) exit
 
     itask = itask + 1
     write(lu_out,'(A)') '***************************************************************'

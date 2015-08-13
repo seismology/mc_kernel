@@ -140,6 +140,16 @@ subroutine do_master()
                   ierror)
     
     call extract_receive_buffer(wt%itask, mpistatus(MPI_SOURCE))
+
+    ! Send this processor the die tag
+    call MPI_Send(0,               & !
+                  0,               & ! empty message
+                  MPI_INTEGER,     & !
+                  mpistatus(MPI_SOURCE), & ! to who we just received from
+                  DIETAG,          & ! the tag conatains the actual information
+                  MPI_COMM_WORLD,  & ! default communicator
+                  sendrequest(mpistatus(MPI_SOURCE)), &
+                  ierror)
     
     ! Plot status of slaves
     work_done(mpistatus(MPI_SOURCE)) = work_done(mpistatus(MPI_SOURCE)) + 1          
@@ -153,17 +163,17 @@ subroutine do_master()
   enddo
 
 
-  ! Tell all the slaves to exit by sending an empty message with the DIETAG.
-  do rank=1, nslaves
-    call MPI_Send(0,               & !
-                  0,               & ! empty message
-                  MPI_INTEGER,     & !
-                  rank,            & ! destination
-                  DIETAG,          & ! the tag conatains the actual information
-                  MPI_COMM_WORLD,  & ! default communicator
-                  sendrequest(rank), &
-                  ierror)
-  enddo
+  !! Tell all the slaves to exit by sending an empty message with the DIETAG.
+  !do rank=1, nslaves
+  !  call MPI_Send(0,               & !
+  !                0,               & ! empty message
+  !                MPI_INTEGER,     & !
+  !                rank,            & ! destination
+  !                DIETAG,          & ! the tag conatains the actual information
+  !                MPI_COMM_WORLD,  & ! default communicator
+  !                sendrequest(rank), &
+  !                ierror)
+  !enddo
 
   call finalize()
 

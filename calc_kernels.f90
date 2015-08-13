@@ -3,7 +3,7 @@ program kerner_code
 #ifndef include_mpi
     use mpi
 #endif
-    use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort
+    use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
                                            master, lu_out, myrank
     use simple_routines,             only: lowtrim
@@ -114,9 +114,12 @@ program kerner_code
         else
            call do_slave()
         endif
- 
-        call ppend()
+
         call end_clock()   
+ 
+        ! Wait for all other threads to arrive here before finalizing
+        call pbarrier()
+        call ppend()
   
     case('plot_wavefield')
         if (master) then
