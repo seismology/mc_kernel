@@ -264,19 +264,19 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
 
    ! Write seismogram to disk (raw, filtered and cut to time window)
    if ((firstslave.and.write_smgr).or.testing) then
-      open(unit=100,file='seismogram_raw_'//trim(this%name), action='write')
+      open(unit=100,file='./Seismograms/seismogram_raw_'//trim(this%name), action='write')
       do isample = 1, size(seis,1)
          write(100,*) this%t(isample), seis(isample)
       end do
       close(100)
 
-      open(unit=100,file='seismogram_'//trim(this%name), action='write')
+      open(unit=100,file='./Seismograms/seismogram_'//trim(this%name), action='write')
       do isample = 1, size(seis_filtered,1)
          write(100,*) this%t(isample), seis_filtered(isample,1)
       end do
       close(100)
 
-      open(unit=100,file='seismogram_cut_'//trim(this%name), action='write')
+      open(unit=100,file='./Seismograms/seismogram_cut_'//trim(this%name), action='write')
       do isample = 1, size(this%seis_cut,1)
          write(100,*) this%t_cut(isample), this%seis_cut(isample)
       end do
