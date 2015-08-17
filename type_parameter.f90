@@ -83,6 +83,7 @@ subroutine read_parameters(this, input_file_in)
    integer                         :: lu_inparam_basic, ioerr, narg
    character(len=256)              :: line
    character(len=256)              :: keyword, keyvalue
+   logical                         :: temp_logical
 
    call pbarrier
 
@@ -127,16 +128,16 @@ subroutine read_parameters(this, input_file_in)
         case('BWD_DIR')
            this%bwd_dir = keyvalue
 
-        case('SOURCE_FILE')
+        case('SRC_FILE')
            this%source_file = keyvalue
 
         case('STF_FILE')
            this%stf_file = keyvalue
 
-        case('RECEIVER_FILE')
+        case('REC_FILE')
            this%receiver_file = keyvalue
 
-        case('FILTER_FILE')
+        case('FILT_FILE')
            this%filter_file = keyvalue
 
         case('MESH_FILE_TYPE')
@@ -151,16 +152,17 @@ subroutine read_parameters(this, input_file_in)
         case('MESH_FILE_FACETS')
            this%mesh_file_face = keyvalue
 
-        case('SORT_MESH_ELEMENTS')
-           read(keyvalue, *) this%sort_mesh_elements 
+        case('NO_SORT_MESH_ELEMENTS')
+           read(keyvalue, *) temp_logical
+           this%sort_mesh_elements = .not. temp_logical
 
-        case('OUTPUT_FILE')
+        case('OUT_PREFIX')
            this%output_file = keyvalue
 
         case('DUMP_TYPE')
            this%dump_type = keyvalue
 
-        case('HETEROGENEITY_FILE')
+        case('HET_FILE')
            this%hetero_file = keyvalue
 
         case('STRAIN_BUFFER_SIZE')
@@ -181,23 +183,26 @@ subroutine read_parameters(this, input_file_in)
         case('WRITE_DETAILED_CONVERGENCE')
            read(keyvalue, *) this%detailed_convergence
 
-        case('USE_QUASIRANDOM_NUMBERS')
-           read(keyvalue, *) this%quasirandom
+        case('USE_PSEUDORANDOM_NUMBERS')
+           read(keyvalue, *) temp_logical
+           this%quasirandom = .not. temp_logical
 
-        case('KERNEL_FOR_RELATIVE_PERTURBATIONS')
-           read(keyvalue, *) this%relative_kernel
+        case('KERNEL_FOR_ABSOLUTE_PERTURBATIONS')
+           read(keyvalue, *) temp_logical
+           this%relative_kernel = .not. temp_logical
 
-        case('INTEGRATE_OVER_VOLUME')
+        case('NO_INT_OVER_VOLUME')
            read(keyvalue, *) this%int_over_volume
 
-        case('INTEGRATE_OVER_BACKGROUND_MODEL')
+        case('INT_OVER_BACKGROUND_MODEL')
            read(keyvalue, *) this%int_over_background
 
-        case('INTEGRATE_OVER_3D_HETEROGENEITIES')
+        case('INT_OVER_3D_HETEROGENEITIES')
            read(keyvalue, *) this%int_over_hetero
 
-        case('DECONVOLVE_STF')
-           read(keyvalue, *) this%deconv_stf
+        case('NO_DECONVOLVE_STF')
+           read(keyvalue, *) temp_logical
+           this%deconv_stf = .not. temp_logical
 
         case('FFTW_PLAN')
            read(keyvalue, *) this%fftw_plan
@@ -219,6 +224,11 @@ subroutine read_parameters(this, input_file_in)
 
         case('DAMP_RADIUS_SOURCE_RECEIVER')
            read(keyvalue, *) this%damp_radius
+
+        case default
+           print *, 'Unknown parameter', trim(keyword)
+           stop
+
 
         end select parameter_to_read
         if (verbose>0) write(lu_out, "('  ', A32,' ',A)")  keyword, trim(keyvalue)
