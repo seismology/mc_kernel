@@ -2,6 +2,7 @@ import argparse
 import os
 import shutil
 import glob
+import datetime
 
 parser = argparse.ArgumentParser(description='Create Kerner input file and submit job.',
                                  formatter_class=argparse.RawTextHelpFormatter)
@@ -15,6 +16,10 @@ parser.add_argument('-i', '--input_file', help=helptext)
 parser.add_argument('-n', '--nslaves', type=int, default=2,
                     metavar='N', 
                     help='Number of slaves to use')
+
+parser.add_argument('-m', '--message', 
+                    help="Description of run, which is saved in jobname/README.run\n"+
+                         "If omitted, an editor window opens to collect description.")
 
 parser.add_argument('--what_to_do', choices=['integrate_kernel', 'plot_wavefield'], 
                     default='integratekernel',
@@ -178,7 +183,7 @@ csr and ascii storage"""
 output_options.add_argument('--dump_type', choices=['xdmf', 'ascii', 'csr'], default='xdmf',
                     help=helptext)
 helptext = """Write out Seismograms (raw full trace, filtered full trace 
-and cut trace) into RUNDIR/SEISMOGRAMS. Produces three files per kernel. 
+and cut trace) into run_dir/SEISMOGRAMS. Produces three files per kernel. 
 Disable to avoid congesting your file system."""
 output_options.add_argument('--write_seismograms', default=False,
                             help=helptext)
@@ -235,8 +240,6 @@ performance_options.add_argument('--fftw_plan', default='MEASURE',
 
 args = parser.parse_args()
 
-
-
 # Parse input file, if one was given
 if args.input_file: 
   with open(args.input_file) as f:
@@ -247,14 +250,7 @@ if args.input_file:
         (key, val) = line.split()
         args_input_file[key] = val
 
-
-# Create rundir
-rundir = args.jobname
-os.mkdir(rundir)
-
-os.mkdir(os.path.join(rundir, 'Seismograms'))
 # Sanitize input variables
-
 params = {}
 # Loop over all possible arguments
 for key, value in vars(args).iteritems():
@@ -277,39 +273,44 @@ for key, value in vars(args).iteritems():
 
 params_out = {}
 
+# Create run_dir
+run_dir = args.jobname
+os.mkdir(run_dir)
+
+# Copy necessary files to rundir
 for key, value in params.iteritems():
 
   if key in ('NSLAVES', 'JOBNAME', 'MESH_FILE_ABAQUS', 'MESH_FILE_VERTICES', 'MESH_FILE_FACETS', 
-             'HET_FILE', 'INPUT_FILE'): 
+             'HET_FILE', 'INPUT_FILE', 'MESSAGE'): 
     # Effectively nothing to do
     print ''
   elif key=='SRC_FILE':
-    shutil.copy(value, os.path.join(rundir, 'CMTSOLUTION'))
+    shutil.copy(value, os.path.join(run_dir, 'CMTSOLUTION'))
     params_out[key] = 'CMTSOLUTION'
   elif key=='REC_FILE':
-    shutil.copy(value, os.path.join(rundir, 'receiver.dat'))
+    shutil.copy(value, os.path.join(run_dir, 'receiver.dat'))
     params_out[key] = 'receiver.dat'
   elif key=='FILT_FILE':
-    shutil.copy(value, os.path.join(rundir, 'filters.dat'))
+    shutil.copy(value, os.path.join(run_dir, 'filters.dat'))
     params_out[key] = 'filters.dat'
   elif key=='STF_FILE':
-    shutil.copy(value, os.path.join(rundir, 'stf.dat'))
+    shutil.copy(value, os.path.join(run_dir, 'stf.dat'))
     params_out[key] = 'stf.dat'
 
   elif key=='MESH_FILE_TYPE':
     params_out[key] = value
     if args.mesh_file_type=='abaqus':
-      shutil.copy(params['MESH_FILE_ABAQUS'], os.path.join(rundir, 'mesh.inp'))
+      shutil.copy(params['MESH_FILE_ABAQUS'], os.path.join(run_dir, 'mesh.inp'))
       params_out['MESH_FILE_ABAQUS'] = 'mesh.inp'
     else:
-      shutil.copy(params['MESH_FILE_VERTICES'], os.path.join(rundir, 'mesh.VERTICES'))
-      shutil.copy(params['MESH_FILE_FACETS'], os.path.join(rundir, 'mesh.FACETS'))
+      shutil.copy(params['MESH_FILE_VERTICES'], os.path.join(run_dir, 'mesh.VERTICES'))
+      shutil.copy(params['MESH_FILE_FACETS'], os.path.join(run_dir, 'mesh.FACETS'))
       params_out['MESH_FILE_VERTICES'] = 'mesh.VERTICES'
       params_out['MESH_FILE_FACETS'] = 'mesh.FACETS'
 
   elif key=='INT_OVER_3D_HETEROGENEITIES':
     params_out[key] = value
-    shutil.copy(args.het_file, os.path.join(rundir, 'heterogeneities.dat'))
+    shutil.copy(args.het_file, os.path.join(run_dir, 'heterogeneities.dat'))
     params_out['HET_FILE'] = 'heterogeneities.dat'
   elif key in ('FWD_DIR', 'BWD_DIR'):
     # Set mesh dir to absolute path
@@ -318,9 +319,29 @@ for key, value in params.iteritems():
   else:
     params_out[key] = value
 
+# Open editor window to write run descriptor
+out_readme = 'readme_temp.txt' 
+f_readme = open(out_readme, 'w')
+f_readme.write('MC KERNEL run for %d CPUs, started on %s\n'%(args.nslaves, 
+                                                           str(datetime.datetime.now())))
+f_readme.write('  by user ''%s'' on ''%s''\n'%(os.environ.get('USER'), 
+                                               os.environ.get('HOSTNAME')))
+if args.message:
+  f_readme.write(args.message)
+  f_readme.close()
+else:
+  f_readme.close()
+  editor = os.environ.get('EDITOR')
+  os.system('%s %s'%(editor, out_readme))
+
+# Move README file to rundir
+shutil.move(out_readme, os.path.join(run_dir, 'README.run'))
+
+# Create directory for seismogram output
+os.mkdir(os.path.join(run_dir, 'Seismograms'))
 
 # Create input file for run
-out_input_file = os.path.join(rundir, 'inparam')
+out_input_file = os.path.join(run_dir, 'inparam')
 with open(out_input_file, 'w') as f_out:
   for key, value in params_out.iteritems():
     if value.find('/')==-1:
@@ -336,12 +357,13 @@ with open('make_kerner.macros') as f:
       if key=='MPIRUN':
         mpirun_cmd = line.split()[2]
 
+# Make kerner code 
 os.system('make -sj')
 
-# Copy code files into rundir, tar it and delete it.
+# Copy code files into run_dir, tar it and delete it.
 # A bit clumsy, but ensures that the internal path is Code/*.f90 etc.
-code_dir = os.path.join(rundir, 'Code')
-archive_name = os.path.join(rundir, 'Code')
+code_dir = os.path.join(run_dir, 'Code')
+archive_name = os.path.join(run_dir, 'Code')
 os.mkdir(code_dir)
 for f90_file in glob.glob('*.f90'):
   shutil.copy(f90_file, code_dir)
@@ -352,6 +374,6 @@ shutil.rmtree(code_dir)
 
 
 # Change dir and submit
-os.chdir(rundir)
+os.chdir(run_dir)
 
 os.system('%s -n %d ../kerner inparam'%(mpirun_cmd, args.nslaves))
