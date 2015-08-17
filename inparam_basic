@@ -3,9 +3,9 @@ FWD_DIR              './wavefield/fwd/'
 BWD_DIR              './wavefield/bwd/'
 
 # Paths of parameter files 
-SOURCE_FILE          'CMTSOLUTION'
-RECEIVER_FILE        'receiver.dat'
-FILTER_FILE          'filters.dat'
+SRC_FILE          'CMTSOLUTION'
+REC_FILE        'receiver.dat'
+FILT_FILE          'filters.dat'
 STF_FILE             'stf_20s.dat'
 
 # Select the mesh file type. Allowed values are
@@ -28,30 +28,30 @@ MESH_FILE_ABAQUS     'Meshes/flat_triangles.inp'
 # Calculate kernels for relative perturbations dVp with respect to the background 
 # model (true, default)
 # or for absolute values of the model parameters like Vp (false)
-KERNEL_FOR_RELATIVE_PERTURBATIONS  true
+KERNEL_FOR_ABSOLUTE_PERTURBATIONS false
 
 # For plotting reasons one may wish to skip the integration over cell-volume.
 # Resulting kernels bear the unit [s/m^3]
-INTEGRATE_OVER_VOLUME false
+NO_INT_OVER_VOLUME false
 
 # Integrate the kernel over the background model. Classically, this was assumed
 # to result in the travel time of a phase. This assumption is highly dubious for
 # wavefield-derived kernels. For legacy reasons, we can still leave it in. 
 # Adds a version of the background model interpolated on the inversion mesh to 
 # the output file.
-INTEGRATE_OVER_BACKGROUND_MODEL false
+INT_OVER_BACKGROUND_MODEL false
 
 # This activates the optional (linearity test) to integrate relative kernels over
 # model perturbations in percent, to assess how well our kernels predict measured
 # traveltime perturbations for the same model. This only makes sense when the flag
 # to compute relative perturbation kernels is set to true
-INTEGRATE_OVER_3D_HETEROGENEITIES false
-HETEROGENEITY_FILE 'unit_tests/savani.rtpv'
+INT_OVER_3D_HETEROGENEITIES false
+HET_FILE 'unit_tests/savani.rtpv'
 
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
-OUTPUT_FILE          'kerner'
+OUT_PREFIX          'kerner'
 
 # Output format when dumping kernels and wavefields. 
 # Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
@@ -80,6 +80,7 @@ POINTS_PER_MC_STEP   20
 
 # Maximum number of iterations after which to cancel Monte Carlo integration 
 # in one cell, regardless of error.
+
 MAXIMUM_ITERATIONS   100
 
 # Write detailed convergence of elements (default: false)
@@ -102,10 +103,10 @@ ELEMENTS_PER_TASK    100
 
 # Sort mesh by element midpoint coordinates. This should allow to use the buffer more 
 # efficiently. Testing
-SORT_MESH_ELEMENTS true
+NO_SORT_MESH_ELEMENTS false
 
 # Use quasirandom numbers instead of pseudorandom ones
-USE_QUASIRANDOM_NUMBERS true
+USE_PSEUDORANDOM_NUMBERS false
 
 # Mask Source and receiver
 # If true, the kernel value is set to zero inside the element that contains the source
@@ -124,7 +125,7 @@ DAMP_RADIUS_SOURCE_RECEIVER  100.d3
 # This is the correct way to do it, but it is not 100% stable yet. Leave it off for a while-
 # If set to false, than the wavefield is just time-shifted to account for the STF not centered 
 # at zero time.:
-DECONVOLVE_STF false
+NO_DECONVOLVE_STF false
 
 # Integration scheme
 # Options:
