@@ -344,9 +344,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     iclockold_element = tick(id=id_element)
 
     ! Get volume of current element
-    iclockold = tick()
-    volume = inv_mesh%get_volume(ielement)
-    iclockold = tick(id=id_inv_mesh)
+    if (parameters%int_over_volume) then
+      iclockold = tick()
+      volume = inv_mesh%get_volume(ielement)
+      iclockold = tick(id=id_inv_mesh)
+    else
+      volume = 1.d0
+    end if
 
     ! Background Model Integration 
     if (parameters%int_over_background) then
@@ -393,11 +397,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         !  Initialize basis kernel Monte Carlo integrals for current element
         iclockold = tick()
         do ibasisfunc = 1, nbasisfuncs_per_elem
+          ! Allowed absolute error is multiplied by volume to ensure that convergence
+          ! is not affected by element size. It should just be a function of the kernel value
           call int_kernel(ibasisfunc)%initialize_montecarlo(parameters%nkernel,               &
                                                             volume,                           &
-                                                            parameters%allowed_error,         &
-                                                            parameters%allowed_relative_error,&
-                                                            parameters%int_over_volume) 
+                                                            parameters%allowed_error          &
+                                                             * volume,                        &
+                                                            parameters%allowed_relative_error)
         end do
 
         niterations = 0
@@ -565,7 +571,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         if (parameters%detailed_convergence) then
           write(fmtstring,"('(I6, I6, ES10.3, A, I0.5, A, I0.5, ', I4, '(ES11.3), A, ', I4, '(ES10.3))')") &
             parameters%nkernel, parameters%nkernel 
-          write(lu_out,fmtstring) myrank, ielement, volume, ' Converged? ',                            &
+          write(lu_out,fmtstring) myrank, ielement, inv_mesh%get_volume(ielement), ' Converged? ', &
                                   int_kernel(1)%countconverged(), '/', parameters%nkernel,             &
                                   int_kernel(1)%getintegral(), ' +- ', sqrt(int_kernel(1)%getvariance())
           call flush(lu_out)

@@ -141,14 +141,6 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_re
        this%allowed_relerror = 1d-100
     end if
 
-    ! for plotting one may wish to skip volume integration
-    if(present(int_over_volume)) then
-       if (.not.int_over_volume) then
-          this%volume = 1.d0
-       end if
-    end if
-
-
     this%isinitialized    = .true.
 
 end subroutine initialize_montecarlo
