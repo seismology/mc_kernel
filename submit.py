@@ -3,6 +3,7 @@ import os
 import shutil
 import glob
 import datetime
+import subprocess
 
 parser = argparse.ArgumentParser(description='Create Kerner input file and submit job.',
                                  formatter_class=argparse.RawTextHelpFormatter)
@@ -332,7 +333,7 @@ if args.message:
 else:
   f_readme.close()
   editor = os.environ.get('EDITOR')
-  os.system('%s %s'%(editor, out_readme))
+  subprocess.check_call('%s %s'%(editor, out_readme), shell=True)
 
 # Move README file to rundir
 shutil.move(out_readme, os.path.join(run_dir, 'README.run'))
@@ -358,7 +359,7 @@ with open('make_kerner.macros') as f:
         mpirun_cmd = line.split()[2]
 
 # Make kerner code 
-os.system('make -sj')
+subprocess.check_call('make -sj', shell=True)
 
 # Copy code files into run_dir, tar it and delete it.
 # A bit clumsy, but ensures that the internal path is Code/*.f90 etc.
@@ -376,4 +377,7 @@ shutil.rmtree(code_dir)
 # Change dir and submit
 os.chdir(run_dir)
 
-os.system('%s -n %d ../kerner inparam'%(mpirun_cmd, args.nslaves))
+#run_cmd = mpirun_cmd, ' ../kerner', ' -n %d'%args.nslaves, ' inparam']
+run_cmd = '%s -n %d ../kerner inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves)
+print run_cmd
+subprocess.call(run_cmd, shell=True)
