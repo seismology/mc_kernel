@@ -4,6 +4,53 @@ import shutil
 import glob
 import datetime
 import subprocess
+from netCDF4 import Dataset 
+
+"""
+Find 2^n that is equal to or greater than.
+"""
+def nextpow2(i):
+  n = 1
+  while n < i: n *= 2
+  return n
+
+def estimate_memory():
+  # Estimate memory usage which cannot be controlled by input parameters
+
+  memory_buffers_strain = 25 * 4 * ndumps_fwd * 6 * float(params['STRAIN_BUFFER_SIZE']) 
+  print 'Strain buffer size: %f MB'%(memory_buffers_strain/(2**20))
+  memory_buffers_disp = 3 * 4 * ndumps_fwd * 6 * float(params['DISPL_BUFFER_SIZE'])
+  print 'Displ. buffer size: %f MB'%(memory_buffers_disp/(2**20))
+
+  memory_mesh = 4 * ( 2*npoints_fwd + 4*nelems_fwd + 4*nelems_fwd + 25*nelems_fwd) * 2
+  print 'Mesh size in memory: %f MB'%(memory_mesh/(2**20))
+
+  nomega = nextpow2(ndumps_fwd)
+  ndim = 1
+  memory_fft = 8 * (nomega + ndumps_fwd) * float(params['ELEMENTS_PER_TASK']) * ndim
+  print 'Memory for FFT types: %f MB'%(memory_fft/(2**20))
+
+  memory_fields = 8 * float(params['ELEMENTS_PER_TASK']) * ndim * (5*nomega + 2*ndumps_fwd)
+  print 'Memory for Wavefields: %f MB'%(memory_fields/(2**20))
+
+  # Memory usage of HDF5 library seems to be pretty constant around 120 MB.
+  memory_hdf5 = 150 * 2**20 
+
+  # Memory usage of KD-Trees is roughly 80 Byte per mesh point
+  memory_kdtree = 80 * npoints_fwd  
+
+  return memory_mesh + memory_fft + memory_hdf5 + memory_kdtree + memory_fields
+
+def auto_buffer_size(memory_available):
+  memory_for_buffers = memory_available - estimate_memory()
+
+  # Rule: Strain buffer gets 90% of the available memory, displ. buffer 10%
+  size_strain_buffer = int(memory_for_buffers * 0.9 / (25 * 4 * ndumps_fwd * 6))
+  size_disp_buffer   = int(memory_for_buffers * 0.1 / (3 * 4 * ndumps_fwd * 6 ))
+  
+  return str(size_strain_buffer), str(size_disp_buffer)
+
+
 
 parser = argparse.ArgumentParser(description='Create Kerner input file and submit job.',
                                  formatter_class=argparse.RawTextHelpFormatter)
@@ -25,6 +72,9 @@ parser.add_argument('-m', '--message',
 parser.add_argument('--what_to_do', choices=['integrate_kernel', 'plot_wavefield'], 
                     default='integratekernel',
                     help='Calculate kernels or just plot wavefields')
+
+parser.add_argument('-a', '--available_memory', type=int,
+                    help='Amount of memory available in MB')
 
 
 ###############################################################################
@@ -251,7 +301,7 @@ if args.input_file:
         (key, val) = line.split()
         args_input_file[key] = val
 
-# Sanitize input variables
+# Merge input variables from input_file, arguments and default values
 params = {}
 # Loop over all possible arguments
 for key, value in vars(args).iteritems():
@@ -272,6 +322,44 @@ for key, value in vars(args).iteritems():
 
   params[key_out] = value_out
 
+
+# Check for AxiSEM wavefield files to get mesh size
+fwd_path = os.path.join(os.path.realpath(args.fwd_dir), 'MZZ', 'Data', 'ordered_output.nc4')
+bwd_path = os.path.join(os.path.realpath(args.bwd_dir), 'PZ', 'Data', 'ordered_output.nc4')
+print fwd_path
+if os.path.exists(fwd_path):
+  nc_fwd = Dataset(fwd_path)
+  npoints_fwd = getattr(nc_fwd, "npoints")
+  nelems_fwd  = getattr(nc_fwd, "nelem_kwf_global")
+  ndumps_fwd  = getattr(nc_fwd, "number of strain dumps")
+  nc_fwd.close()
+else: 
+  errmsg = 'Could not find a wavefield file in the fwd_dir %s'%args.fwd_dir
+  raise IOError(errmsg)
+  
+if os.path.exists(bwd_path):
+  nc_bwd = Dataset(bwd_path)
+  npoints_bwd = getattr(nc_bwd, "npoints")
+  nelems_bwd  = getattr(nc_bwd, "nelem_kwf_global")
+  ndumps_bwd  = getattr(nc_bwd, "number of strain dumps")
+  nc_bwd.close()
+else: 
+  errmsg = 'Could not find a wavefield file in the bwd_dir %s'%args.bwd_dir
+  raise IOError(errmsg)
+
+
+# Define buffer sizes based on available memory
+if args.available_memory:
+  params['STRAIN_BUFFER_SIZE'], params['DISPL_BUFFER_SIZE'] = auto_buffer_size(args.available_memory*2**20)
+  print params['STRAIN_BUFFER_SIZE'], params['DISPL_BUFFER_SIZE'] 
+  
+
+# Sanity check, whether fwd and bwd mesh have the same sizes and the same number 
+# of wavefield time steps.
+if npoints_fwd!=npoints_bwd or nelems_fwd!=nelems_bwd or ndumps_fwd!=ndumps_bwd:
+  raise RuntimeError('Forward and backward run did not use the same parameters')
+
+
 params_out = {}
 
 # Create run_dir
@@ -282,7 +370,7 @@ os.mkdir(run_dir)
 for key, value in params.iteritems():
 
   if key in ('NSLAVES', 'JOBNAME', 'MESH_FILE_ABAQUS', 'MESH_FILE_VERTICES', 'MESH_FILE_FACETS', 
-             'HET_FILE', 'INPUT_FILE', 'MESSAGE'): 
+             'HET_FILE', 'INPUT_FILE', 'MESSAGE', 'AVAILABLE_MEMORY'): 
     # Effectively nothing to do
     print ''
   elif key=='SRC_FILE':
@@ -378,6 +466,6 @@ shutil.rmtree(code_dir)
 os.chdir(run_dir)
 
 #run_cmd = mpirun_cmd, ' ../kerner', ' -n %d'%args.nslaves, ' inparam']
-run_cmd = '%s -n %d ../kerner inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves)
+run_cmd = '%s -n %d ../kerner inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves + 1)
 print run_cmd
 subprocess.call(run_cmd, shell=True)
