@@ -42,7 +42,7 @@ def estimate_memory():
   return memory_mesh + memory_fft + memory_hdf5 + memory_kdtree + memory_fields
 
 def auto_buffer_size(memory_available):
-  memory_for_buffers = memory_available - estimate_memory()
+  memory_for_buffers = (memory_available - estimate_memory())*0.9
 
   # Rule: Strain buffer gets 90% of the available memory, displ. buffer 10%
   size_strain_buffer = int(memory_for_buffers * 0.9 / (25 * 4 * ndumps_fwd * 6))
