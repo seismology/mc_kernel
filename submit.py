@@ -599,9 +599,8 @@ mpiexec -n %d ./kerner inparam_basic > OUTPUT_0000\n"""%int(args.nslaves + 1)
 
 elif args.queue == 'monch':
     with open(os.path.join(run_dir, 'sbatch.sh'), 'w') as f:
-        f.write("#!/bin/bash -l")
-        print args.nslaves
-        text_out  = "#SBATCH --ntasks=%d\n" % (args.nslaves + 1) 
+        text_out ="#!/bin/bash -l\n"
+        text_out += "#SBATCH --ntasks=%d\n" % (args.nslaves + 1) 
         text_out += "#SBATCH --ntasks-per-node=%d\n" % int(args.nslaves/20.)
         text_out += "#SBATCH --nodes=%d\n" % int((args.nslaves+1)/int(args.nslaves/20.))
         text_out += "#SBATCH --mem-per-cpu=%d\n" % int(args.available_memory)
