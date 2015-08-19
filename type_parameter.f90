@@ -424,10 +424,14 @@ subroutine read_receiver(this)
       if (master) then
           do ikernel = 1, recnkernel
              ! Just get the model parameter
+             ! If just one kernel needs the full strain tensor, it has to 
+             ! be read all the file. Otherwise, we would have to create separate
+             ! buffers and what else. 
+             ! TODO: Improve this
              read(lu_receiver, *) trash(1:5), model_parameter
              select case(model_parameter)
              case('lam', 'vp ', 'vph', 'vpv')
-               this%strain_type_fwd = 'straintensor_trace'
+
              case('vs ', 'rho', 'vsh', 'vsv', 'eta', 'phi', 'xi ', 'mu ')
                this%strain_type_fwd = 'straintensor_full'
              case default
