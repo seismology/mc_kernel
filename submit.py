@@ -131,6 +131,19 @@ def define_arguments():
   parser.add_argument('-a', '--available_memory', type=int,
                       help='Amount of memory available in MB')
 
+  parser.add_argument('-q', '--queue', choices=['SuperMUC', 'local'],
+                      default='local',
+                      help='Queue to use. Default is local, which starts a job with MPIRUN')
+
+  ###############################################################################
+  # Queue options
+  ###############################################################################
+  hpc_queue = parser.add_argument_group('Options specific to HPC queues')
+  hpc_queue.add_argument('--wall_time', type=int, metavar='WALLTIME_IN_H',
+                         default=10,
+                         help='Walltime in hours')
+  hpc_queue.add_argument('--mail_address', help='Mail address for HPC notifications')
+
 
   ###############################################################################
   # AxiSEM wavefield directories
@@ -358,17 +371,22 @@ if args.input_file:
       if line[0]!='#' and line.strip()!='':
         (key, val) = line.split()
         args_input_file[key] = val
+        print key, val
 
 # Merge input variables from input_file, arguments and default values
 params = {}
 # Loop over all possible arguments
 for key, value in vars(args).iteritems():
-  if not key in ('nslaves', 'jobname'): 
+  if not key in ('nslaves', 'jobname', 'queue', 'available_memory'): 
     # If an input file is selected, get values from there by default
     if args.input_file:
       if value == parser.get_default(key):
         key_out   = key.upper()
-        value_out = str(args_input_file[key.upper()])
+        try:
+          value_out = str(args_input_file[key.upper()])
+        except KeyError:
+          # If value is not set in input file
+          value_out = str(value)
       else:
         # Unless values were explicitly given
         key_out = key.upper()
@@ -377,6 +395,7 @@ for key, value in vars(args).iteritems():
       # In all other cases, take default values
       key_out = key.upper()
       value_out = str(value)
+  print key_out, value_out
 
   params[key_out] = value_out
 
@@ -385,8 +404,8 @@ for key, value in vars(args).iteritems():
 nrec, nkernel, full_strain = read_receiver_dat(args.rec_file)
 
 # Check for AxiSEM wavefield files to get mesh size
-fwd_path = os.path.join(os.path.realpath(args.fwd_dir), 'MZZ', 'Data', 'ordered_output.nc4')
-bwd_path = os.path.join(os.path.realpath(args.bwd_dir), 'PZ', 'Data', 'ordered_output.nc4')
+fwd_path = os.path.join(os.path.realpath(params['FWD_DIR']), 'MZZ', 'Data', 'ordered_output.nc4')
+bwd_path = os.path.join(os.path.realpath(params['BWD_DIR']), 'PZ', 'Data', 'ordered_output.nc4')
 print fwd_path
 if os.path.exists(fwd_path):
   nc_fwd = Dataset(fwd_path)
@@ -395,7 +414,7 @@ if os.path.exists(fwd_path):
   ndumps_fwd  = getattr(nc_fwd, "number of strain dumps")
   nc_fwd.close()
 else: 
-  errmsg = 'Could not find a wavefield file in the fwd_dir %s'%args.fwd_dir
+  errmsg = 'Could not find a wavefield file in the fwd_dir %s'%params['FWD_DIR']
   raise IOError(errmsg)
   
 if os.path.exists(bwd_path):
@@ -405,7 +424,7 @@ if os.path.exists(bwd_path):
   ndumps_bwd  = getattr(nc_bwd, "number of strain dumps")
   nc_bwd.close()
 else: 
-  errmsg = 'Could not find a wavefield file in the bwd_dir %s'%args.bwd_dir
+  errmsg = 'Could not find a wavefield file in the bwd_dir %s'%params['FWD_DIR']
   raise IOError(errmsg)
 
 
@@ -522,11 +541,52 @@ shutil.copy('make_kerner.macros', code_dir)
 shutil.make_archive(archive_name, 'gztar', code_dir)
 shutil.rmtree(code_dir)
 
+shutil.copy('./kerner', run_dir)
 
-# Change dir and submit
-os.chdir(run_dir)
+if args.queue == 'local':
+  # Change dir and submit
+  os.chdir(run_dir)
 
-#run_cmd = mpirun_cmd, ' ../kerner', ' -n %d'%args.nslaves, ' inparam']
-run_cmd = '%s -n %d ../kerner inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves + 1)
-print run_cmd
-subprocess.call(run_cmd, shell=True)
+  #run_cmd = mpirun_cmd, ' ../kerner', ' -n %d'%args.nslaves, ' inparam']
+  run_cmd = '%s -n %d ./kerner inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves + 1)
+  print run_cmd
+  subprocess.call(run_cmd, shell=True)
+
+elif args.queue == 'SuperMUC':
+  with open(os.path.join(run_dir, 'job.cmd'), 'w') as f:
+    text_out = """
+# Job file automatically created by submit.py on %s
+#@ output = job_$(jobid).out 
+#@ error = job_$(jobid).err 
+#@ job_type = MPICH
+#@ network.MPI = sn_all,not_shared,us 
+#@ notification=always
+#@ notify_user = staehler@geophysik.uni-muenchen.de
+#@ energy_policy_tag = Kerner_intel_mpi
+#@ minimize_time_to_solution = yes    
+#@ class = fat"""%str(datetime.datetime.now())
+    f.write(text_out)
+    text_out = "#@ total_tasks=%d\n"%args.nslaves + 1
+    f.write(text_out)
+    text_out = "#@ node = %d\n"%int(args.nslaves/40)
+    f.write(text_out)
+    text_out = "#@ wall_clock_limit = %d:00:00"%args.wall_time
+    f.write(text_out)
+    text_out = "#@ job_name = %s"%args.job_name
+    f.write(text_out)
+    text_out = "#@ initialdir = %s"%os.path.realpath(run_dir)
+    f.write(text_out)
+    text_out = """
+#@ queue
+. /etc/profile
+. /etc/profile.d/modules.sh
+module unload mpi.ibm
+module load mpi.intel
+module load fortran/intel
+module load netcdf
+module load fftw
+module load mkl
+mpiexec -n %d ./kerner inparam_basic > OUTPUT_0000"""%args.nslaves + 1
+
+
+
