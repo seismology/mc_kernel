@@ -606,7 +606,7 @@ elif args.queue == 'monch':
         text_out += "#SBATCH --nodes=%d\n" % int((args.nslaves+1)/int(args.nslaves/20.))
         text_out += "#SBATCH --mem-per-cpu=%d\n" % int(args.available_memory)
         text_out += "#SBATCH --time=%d:00:00\n" % args.wall_time
-        text_out += "#SBATCH --partition=fichtner_compute\n"
+        text_out += "#SBATCH --partition=_compute\n"
         text_out += "#SBATCH --job-name=%s\n" % args.job_name
         text_out += "#SBATCH --output=kerner_out.o\n"
         text_out += "#SBATCH --error=kerner_err.o\n"
