@@ -70,7 +70,7 @@ def auto_buffer_size(memory_available):
 def read_receiver_dat(rec_file):
   with open(rec_file) as f:
 
-    nkernel = 0
+    nkernel_total = 0
     fullstrain_kernel = False
     # Read number of receivers
     str_line = f.readline()
@@ -87,12 +87,13 @@ def read_receiver_dat(rec_file):
         rec_name = str_line.split()[0]
         rec_lat  = float(str_line.split()[1])
         rec_lon  = float(str_line.split()[2])
-        nkernel  += int(str_line.split()[3])
+        nkernel  = int(str_line.split()[3])
         
         print 'Receiver: %s, coordinates: (%f, %f), %d kernels'%(rec_name, rec_lat, rec_lon, nkernel)
         
         for ikernel in range(0, nkernel):
             str_line = f.readline()
+            print str_line
             kernel_name = str_line.split()[0]
             filter_name = str_line.split()[1]
             misfit_name = str_line.split()[2]
@@ -103,8 +104,10 @@ def read_receiver_dat(rec_file):
               fullstrain_kernel = True
             elif model_param not in ('lam', 'vp', 'vph', 'vpv'):
               raise RuntimeError('Unknown model parameter %s in %s'%(model_param, rec_file))
+
+        nkernel_total += nkernel
             
-  return nkernel, nrec, fullstrain_kernel
+  return nkernel_total, nrec, fullstrain_kernel
 
 def define_arguments():
   parser = argparse.ArgumentParser(description='Create Kerner input file and submit job.',
