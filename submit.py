@@ -596,5 +596,26 @@ mpiexec -n %d ./kerner inparam_basic > OUTPUT_0000\n"""%int(args.nslaves + 1)
   print 'Submitting to SuperMUC loadleveler queue'
   #subprocess.call(['llsubmit', job_script])
 
+elif args.queue == 'MONCH':
+    with open(os.path.join(run_dir, 'sbatch.sh'), 'w') as f:
+        f.write("#!/bin/bash -l")
+        f.write("#SBATCH --ntasks=%d" % args.nslaves + 1)
+        f.write("#SBATCH --ntasks-per-node=%d" % int(args.nslaves/20.))
+        f.write("#SBATCH --nodes=%d" % int((args.nslaves+1)/int(args.nslaves/20.)))
+        f.write("#SBATCH --mem-per-cpu=%d" % int(args.available_memory))
+        f.write("#SBATCH --time=%d:00:00" % args.wall_time)
+        f.write("#SBATCH --partition=fichtner_compute")
+        f.write("#SBATCH --job-name=%s" % args.job_name)
+        f.write("#SBATCH --output=kerner_out.o")
+        f.write("#SBATCH --error=kerner_err.o")
+        f.write("echo The current job ID is $SLURM_JOB_ID")
+        f.write("echo Running on $SLURM_JOB_NUM_NODES nodes")
+        f.write("echo Using $SLURM_NTASKS_PER_NODE tasks per node")
+        f.write("echo A total of $SLURM_NTASKS tasks is used")
+        f.write("mpirun -n %d ./kerner inparam_basic &> OUTPUT_0000" % args.nslaves + 1)
+    os.chdir(run_dir)
+    run_cmd = 'sbatch sbatch.sh'
+    print run_cmd
+    subprocess.call(run_cmd, shell=True)
 
 
