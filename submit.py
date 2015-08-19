@@ -136,7 +136,7 @@ def define_arguments():
   parser.add_argument('-a', '--available_memory', type=int,
                       help='Amount of memory available in MB')
 
-  parser.add_argument('-q', '--queue', choices=['SuperMUC', 'local'],
+  parser.add_argument('-q', '--queue', choices=['SuperMUC', 'local', 'monch'],
                       default='local',
                       help='Queue to use. Default is local, which starts a job with MPIRUN')
 
@@ -597,23 +597,25 @@ mpiexec -n %d ./kerner inparam_basic > OUTPUT_0000\n"""%int(args.nslaves + 1)
   print 'Submitting to SuperMUC loadleveler queue'
   #subprocess.call(['llsubmit', job_script])
 
-elif args.queue == 'MONCH':
+elif args.queue == 'monch':
     with open(os.path.join(run_dir, 'sbatch.sh'), 'w') as f:
         f.write("#!/bin/bash -l")
-        f.write("#SBATCH --ntasks=%d" % args.nslaves + 1)
-        f.write("#SBATCH --ntasks-per-node=%d" % int(args.nslaves/20.))
-        f.write("#SBATCH --nodes=%d" % int((args.nslaves+1)/int(args.nslaves/20.)))
-        f.write("#SBATCH --mem-per-cpu=%d" % int(args.available_memory))
-        f.write("#SBATCH --time=%d:00:00" % args.wall_time)
-        f.write("#SBATCH --partition=fichtner_compute")
-        f.write("#SBATCH --job-name=%s" % args.job_name)
-        f.write("#SBATCH --output=kerner_out.o")
-        f.write("#SBATCH --error=kerner_err.o")
-        f.write("echo The current job ID is $SLURM_JOB_ID")
-        f.write("echo Running on $SLURM_JOB_NUM_NODES nodes")
-        f.write("echo Using $SLURM_NTASKS_PER_NODE tasks per node")
-        f.write("echo A total of $SLURM_NTASKS tasks is used")
-        f.write("mpirun -n %d ./kerner inparam_basic &> OUTPUT_0000" % args.nslaves + 1)
+        print args.nslaves
+        text_out  = "#SBATCH --ntasks=%d\n" % (args.nslaves + 1) 
+        text_out += "#SBATCH --ntasks-per-node=%d\n" % int(args.nslaves/20.)
+        text_out += "#SBATCH --nodes=%d\n" % int((args.nslaves+1)/int(args.nslaves/20.))
+        text_out += "#SBATCH --mem-per-cpu=%d\n" % int(args.available_memory)
+        text_out += "#SBATCH --time=%d:00:00\n" % args.wall_time
+        text_out += "#SBATCH --partition=fichtner_compute\n"
+        text_out += "#SBATCH --job-name=%s\n" % args.job_name
+        text_out += "#SBATCH --output=kerner_out.o\n"
+        text_out += "#SBATCH --error=kerner_err.o\n"
+        text_out += "echo The current job ID is $SLURM_JOB_ID\n"
+        text_out += "echo Running on $SLURM_JOB_NUM_NODES nodes\n"
+        text_out += "echo Using $SLURM_NTASKS_PER_NODE tasks per node\n"
+        text_out += "echo A total of $SLURM_NTASKS tasks is used\n"
+        text_out += "mpirun -n %d ./kerner inparam_basic &> OUTPUT_0000\n" % (args.nslaves + 1)
+        f.write(text_out)
     os.chdir(run_dir)
     run_cmd = 'sbatch sbatch.sh'
     print run_cmd
