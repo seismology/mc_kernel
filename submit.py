@@ -17,277 +17,335 @@ def nextpow2(i):
 def estimate_memory():
   # Estimate memory usage which cannot be controlled by input parameters
 
-  memory_buffers_strain = 25 * 4 * ndumps_fwd * 6 * float(params['STRAIN_BUFFER_SIZE']) 
-  print 'Strain buffer size: %f MB'%(memory_buffers_strain/(2**20))
-  memory_buffers_disp = 3 * 4 * ndumps_fwd * 6 * float(params['DISPL_BUFFER_SIZE'])
-  print 'Displ. buffer size: %f MB'%(memory_buffers_disp/(2**20))
-
   memory_mesh = 4 * ( 2*npoints_fwd + 4*nelems_fwd + 4*nelems_fwd + 25*nelems_fwd) * 2
   print 'Mesh size in memory: %f MB'%(memory_mesh/(2**20))
 
   nomega = nextpow2(ndumps_fwd)
-  ndim = 1
+  if full_strain:
+    ndim = 6
+  else:
+    ndim = 1
+
   memory_fft = 8 * (nomega + ndumps_fwd) * float(params['ELEMENTS_PER_TASK']) * ndim
   print 'Memory for FFT types: %f MB'%(memory_fft/(2**20))
 
   memory_fields = 8 * float(params['ELEMENTS_PER_TASK']) * ndim * (5*nomega + 2*ndumps_fwd)
   print 'Memory for Wavefields: %f MB'%(memory_fields/(2**20))
 
+  # The following memory requirements were determined using the Massif heap profiler
+  # from the Valgrind package on two Ubuntu 14.04 machines. It might be that the
+  # memory requirements of the HDF5 library are different on other architectures
   # Memory usage of HDF5 library seems to be pretty constant around 120 MB.
   memory_hdf5 = 150 * 2**20 
+  print 'Memory for HDF5/NetCDF4 library: %f MB'%(memory_hdf5/(2**20))
 
   # Memory usage of KD-Trees is roughly 80 Byte per mesh point
   memory_kdtree = 80 * npoints_fwd  
+  print 'Memory for KD-Trees: %f MB'%(memory_kdtree/(2**20))
 
   return memory_mesh + memory_fft + memory_hdf5 + memory_kdtree + memory_fields
 
+
+
 def auto_buffer_size(memory_available):
+  if full_strain:
+    ndim = 6
+  else:
+    ndim = 1
+
   memory_for_buffers = (memory_available - estimate_memory())*0.9
 
   # Rule: Strain buffer gets 90% of the available memory, displ. buffer 10%
-  size_strain_buffer = int(memory_for_buffers * 0.9 / (25 * 4 * ndumps_fwd * 6))
+  size_strain_buffer = int(memory_for_buffers * 0.9 / (25 * 4 * ndumps_fwd * 6 * ndim))
   size_disp_buffer   = int(memory_for_buffers * 0.1 / (3 * 4 * ndumps_fwd * 6 ))
+
+  memory_buffers_strain = 25 * 4 * ndumps_fwd * 6 * size_strain_buffer * ndim
+  print 'Strain buffer size: %f MB'%(memory_buffers_strain/(2**20))
+  memory_buffers_disp = 3 * 4 * ndumps_fwd * 6 * size_disp_buffer
+  print 'Displ. buffer size: %f MB'%(memory_buffers_disp/(2**20))
+
   
   return str(size_strain_buffer), str(size_disp_buffer)
 
+def read_receiver_dat(rec_file):
+  with open(rec_file) as f:
+
+    nkernel = 0
+    fullstrain_kernel = False
+    # Read number of receivers
+    str_line = f.readline()
+    nrec = int(str_line.split()[0])
+    print 'Number of receivers: %d'%nrec
+
+    # Read seismogram component
+    str_line = f.readline()
+    seis_cmp = str_line.split()[0]
+    print 'Seismogram component: %s'%seis_cmp
+
+    for irec in range(0, nrec):
+        str_line = f.readline()
+        rec_name = str_line.split()[0]
+        rec_lat  = float(str_line.split()[1])
+        rec_lon  = float(str_line.split()[2])
+        nkernel  += int(str_line.split()[3])
+        
+        print 'Receiver: %s, coordinates: (%f, %f), %d kernels'%(rec_name, rec_lat, rec_lon, nkernel)
+        
+        for ikernel in range(0, nkernel):
+            str_line = f.readline()
+            kernel_name = str_line.split()[0]
+            filter_name = str_line.split()[1]
+            misfit_name = str_line.split()[2]
+            time_window_start = float(str_line.split()[3])
+            time_window_stop  = float(str_line.split()[4])
+            model_param = str_line.split()[5]
+            if model_param in ('vs', 'rho', 'vsh', 'vsv', 'eta', 'phi', 'xi', 'mu '):
+              fullstrain_kernel = True
+            elif model_param not in ('lam', 'vp', 'vph', 'vpv'):
+              raise RuntimeError('Unknown model parameter %s in %s'%(model_param, rec_file))
+            
+  return nkernel, nrec, fullstrain_kernel
+
+def define_arguments():
+  parser = argparse.ArgumentParser(description='Create Kerner input file and submit job.',
+                                   formatter_class=argparse.RawTextHelpFormatter)
+
+  parser.add_argument('jobname', help='Job directory name')
+
+  helptext = """Input file to use. It will overwrite default values, 
+  but will be overwritten by any argument to this function."""
+  parser.add_argument('-i', '--input_file', help=helptext)
+
+  parser.add_argument('-n', '--nslaves', type=int, default=2,
+                      metavar='N', 
+                      help='Number of slaves to use')
+
+  parser.add_argument('-m', '--message', metavar='JOB_DESCRIPTION_MESSAGE',
+                      help="Description of run, which is saved in jobname/README.run\n"+
+                           "If omitted, an editor window opens to collect description.")
+
+  parser.add_argument('--what_to_do', choices=['integrate_kernel', 'plot_wavefield'], 
+                      default='integratekernel',
+                      help='Calculate kernels or just plot wavefields')
+
+  parser.add_argument('-a', '--available_memory', type=int,
+                      help='Amount of memory available in MB')
 
 
-parser = argparse.ArgumentParser(description='Create Kerner input file and submit job.',
-                                 formatter_class=argparse.RawTextHelpFormatter)
+  ###############################################################################
+  # AxiSEM wavefield directories
+  ###############################################################################
 
-parser.add_argument('jobname', help='Job directory name')
+  axisem_dirs = parser.add_argument_group('AxiSEM run directories')
+  axisem_dirs.add_argument('--fwd_dir', default='./wavefield/fwd/',
+                      help='Path to AxiSEM forward run')
+  axisem_dirs.add_argument('--bwd_dir', default='./wavefield/bwd/',
+                      help='Path to AxiSEM backward run')
 
-helptext = """Input file to use. It will overwrite default values, 
-but will be overwritten by any argument to this function."""
-parser.add_argument('-i', '--input_file', help=helptext)
+  ###############################################################################
+  # input files
+  ###############################################################################
 
-parser.add_argument('-n', '--nslaves', type=int, default=2,
-                    metavar='N', 
-                    help='Number of slaves to use')
+  input_files = parser.add_argument_group('Required input files')
+  input_files.add_argument('--src_file', default='CMTSOLUTION',
+                      help='Path to source solution file in CMTSOLUTION format')
+  input_files.add_argument('--rec_file', default='receiver.dat',
+                      help='Path to receiver and kernel file')
+  input_files.add_argument('--filt_file', default='filters.dat',
+                      help='Path to filter file')
+  input_files.add_argument('--stf_file', default='stf_20s.dat',
+                      help='Path to Source Time Function file')
 
-parser.add_argument('-m', '--message', 
-                    help="Description of run, which is saved in jobname/README.run\n"+
-                         "If omitted, an editor window opens to collect description.")
+  ###############################################################################
+  # Mesh file-related options
+  ###############################################################################
 
-parser.add_argument('--what_to_do', choices=['integrate_kernel', 'plot_wavefield'], 
-                    default='integratekernel',
-                    help='Calculate kernels or just plot wavefields')
+  mesh_files = parser.add_argument_group('Inversion mesh')
+  mesh_helptext = """
+  Select the mesh file type. Allowed values are 
+  abaqus      : .inp file, can be generated with Qubit or other codes. Can
+                contain various geometries and multiple sub-objects
+                Supported geometries: tetrahedra, triangles, quadrilaterals
+                Set file name in MESH_FILE_ABAQUS 
 
-parser.add_argument('-a', '--available_memory', type=int,
-                    help='Amount of memory available in MB')
+  tetrahedral : tetrahedral mesh in two separate files with 
+                1. coordinates of the vertices (MESH_FILE_VERTICES)
+                2. the connectivity of the facets of the tetrahedrons
+                   (MESH_FILE_FACETS)"""
+  mesh_files.add_argument('--mesh_file_type', default='abaqus',
+                          choices=['abaqus', 'tetrahedral'], help=mesh_helptext)
+  mesh_files.add_argument('--mesh_file_abaqus', default='Meshes/flat_triangles.inp',
+                      help='Path to Abaqus mesh file')
+  mesh_files.add_argument('--mesh_file_vertices', default='unit_tests/vertices.TEST',
+                      help='Path to Vertices file (only if --mesh_file_type=tetrahedral)')
+  mesh_files.add_argument('--mesh_file_facets', default='unit_tests/facets.TEST', 
+                      help='Path to Facets file (only if --mesh_file_type=tetrahedral)')
 
+  ###############################################################################
+  # Kernel-related options
+  ###############################################################################
 
-###############################################################################
-# AxiSEM wavefield directories
-###############################################################################
+  kernel_options = parser.add_argument_group('Kernel calculation options')
+  helptext = """
+  Calculate kernels for absolute values Vp instead of relative perturbations dVp 
+  with respect to the background model""" 
 
-axisem_dirs = parser.add_argument_group('AxiSEM run directories')
-axisem_dirs.add_argument('--fwd_dir', default='./wavefield/fwd/',
-                    help='Path to AxiSEM forward run')
-axisem_dirs.add_argument('--bwd_dir', default='./wavefield/bwd/',
-                    help='Path to AxiSEM backward run')
+  kernel_options.add_argument('--kernel_for_absolute_perturbations', action="store_true", default=False,
+                              help=helptext)
 
-###############################################################################
-# input files
-###############################################################################
-
-input_files = parser.add_argument_group('Required input files')
-input_files.add_argument('--src_file', default='CMTSOLUTION',
-                    help='Path to source solution file in CMTSOLUTION format')
-input_files.add_argument('--rec_file', default='receiver.dat',
-                    help='Path to receiver and kernel file')
-input_files.add_argument('--filt_file', default='filters.dat',
-                    help='Path to filter file')
-input_files.add_argument('--stf_file', default='stf_20s.dat',
-                    help='Path to Source Time Function file')
-
-###############################################################################
-# Mesh file-related options
-###############################################################################
-
-mesh_files = parser.add_argument_group('Inversion mesh')
-mesh_helptext = """
-Select the mesh file type. Allowed values are 
-abaqus      : .inp file, can be generated with Qubit or other codes. Can
-              contain various geometries and multiple sub-objects
-              Supported geometries: tetrahedra, triangles, quadrilaterals
-              Set file name in MESH_FILE_ABAQUS 
-
-tetrahedral : tetrahedral mesh in two separate files with 
-              1. coordinates of the vertices (MESH_FILE_VERTICES)
-              2. the connectivity of the facets of the tetrahedrons
-                 (MESH_FILE_FACETS)"""
-mesh_files.add_argument('--mesh_file_type', default='abaqus',
-                        choices=['abaqus', 'tetrahedral'], help=mesh_helptext)
-mesh_files.add_argument('--mesh_file_abaqus', default='Meshes/flat_triangles.inp',
-                    help='Path to Abaqus mesh file')
-mesh_files.add_argument('--mesh_file_vertices', default='unit_tests/vertices.TEST',
-                    help='Path to Vertices file (only if --mesh_file_type=tetrahedral)')
-mesh_files.add_argument('--mesh_file_facets', default='unit_tests/facets.TEST', 
-                    help='Path to Facets file (only if --mesh_file_type=tetrahedral)')
-
-###############################################################################
-# Kernel-related options
-###############################################################################
-
-kernel_options = parser.add_argument_group('Kernel calculation options')
-helptext = """
-Calculate kernels for absolute values Vp instead of relative perturbations dVp 
-with respect to the background model""" 
-
-kernel_options.add_argument('--kernel_for_absolute_perturbations', action="store_true", default=False,
-                            help=helptext)
-
-helptext = """On which base functions are the kernels defined?
-volumetric (default): Each voxel is a base function (Boschi & Auer)
-onvertices:           Each vertex has a set of non-orthogonal base functions
-                      defined on it (Nolet & Sigloch)"""
-kernel_options.add_argument('--int_type', choices=['volumetric', 'onvertices'], 
-                            default='volumetric', help=helptext)
-helptext = """
-For plotting reasons one may wish to skip the integration over cell-volume.
-Resulting kernels bear the unit [s/m^3]"""
-kernel_options.add_argument('--no_int_over_volume', action="store_true", default=False,
-                            help=helptext)
+  helptext = """On which base functions are the kernels defined?
+  volumetric (default): Each voxel is a base function (Boschi & Auer)
+  onvertices:           Each vertex has a set of non-orthogonal base functions
+                        defined on it (Nolet & Sigloch)"""
+  kernel_options.add_argument('--int_type', choices=['volumetric', 'onvertices'], 
+                              default='volumetric', help=helptext)
+  helptext = """
+  For plotting reasons one may wish to skip the integration over cell-volume.
+  Resulting kernels bear the unit [s/m^3]"""
+  kernel_options.add_argument('--no_int_over_volume', action="store_true", default=False,
+                              help=helptext)
 
 
-###############################################################################
-# Monte Carlo-related options
-###############################################################################
+  ###############################################################################
+  # Monte Carlo-related options
+  ###############################################################################
 
-mc_options = parser.add_argument_group('Monte Carlo options')
-helptext = """
-Number of points on which the kernel is evaluated per 
-Monte Carlo step. Default value is 4."""
-mc_options.add_argument('--points_per_mc_step', type=int, default=4,
-                        help=helptext)
-helptext = """Maximum number of Monte Carlo iterations. Allows to skip 
-evaluation of single problematic cells. Default value is 1E6"""
-mc_options.add_argument('--maximum_iterations', type=int, default=1000000,
-                        help=helptext)
-helptext = """Allowed absolute error before Monte Carlo integration is considered
-to be converged. When calculating this value, the volume is not considered,
-no matter whether --no_int_over_volume is set or not."""
-mc_options.add_argument('--allowed_error', type=float, default=1e-4,
-                        help=helptext)
-helptext = """Allowed relative error before Monte Carlo integration in one cell
-is considered to be converged. Default value is 1e-2"""
-mc_options.add_argument('--allowed_relative_error', type=float, default=1e-2,
-                        help=helptext)
-helptext = """Use pseudorandom numbers instead of quasirandom"""
-mc_options.add_argument('--use_pseudorandom_numbers', action="store_true", default=False,
-                        help=helptext)
+  mc_options = parser.add_argument_group('Monte Carlo options')
+  helptext = """
+  Number of points on which the kernel is evaluated per 
+  Monte Carlo step. Default value is 4."""
+  mc_options.add_argument('--points_per_mc_step', type=int, default=4,
+                          help=helptext)
+  helptext = """Maximum number of Monte Carlo iterations. Allows to skip 
+  evaluation of single problematic cells. Default value is 1E6"""
+  mc_options.add_argument('--maximum_iterations', type=int, default=1000000,
+                          help=helptext)
+  helptext = """Allowed absolute error before Monte Carlo integration is considered
+  to be converged. When calculating this value, the volume is not considered,
+  no matter whether --no_int_over_volume is set or not."""
+  mc_options.add_argument('--allowed_error', type=float, default=1e-4,
+                          help=helptext)
+  helptext = """Allowed relative error before Monte Carlo integration in one cell
+  is considered to be converged. Default value is 1e-2"""
+  mc_options.add_argument('--allowed_relative_error', type=float, default=1e-2,
+                          help=helptext)
+  helptext = """Use pseudorandom numbers instead of quasirandom"""
+  mc_options.add_argument('--use_pseudorandom_numbers', action="store_true", default=False,
+                          help=helptext)
 
-###############################################################################
-# Debugging-related options
-###############################################################################
+  ###############################################################################
+  # Debugging-related options
+  ###############################################################################
 
-debug_options = parser.add_argument_group('Debugging options')
-helptext = """
-This activates the optional (linearity test) to integrate relative kernels over
-model perturbations in percent, to assess how well our kernels predict measured
-traveltime perturbations for the same model. This only makes sense when not 
-calculating absolute kernels. """
-debug_options.add_argument('--int_over_3d_heterogeneities', action="store_true", default=False,
-                    help=helptext)
-helptext = """Path to heterogeneity file"""
-debug_options.add_argument('--het_file', default='unit_tests/savani.rtpv',
-                    help=helptext)
+  debug_options = parser.add_argument_group('Debugging options')
+  helptext = """
+  This activates the optional (linearity test) to integrate relative kernels over
+  model perturbations in percent, to assess how well our kernels predict measured
+  traveltime perturbations for the same model. This only makes sense when not 
+  calculating absolute kernels. """
+  debug_options.add_argument('--int_over_3d_heterogeneities', action="store_true", default=False,
+                      help=helptext)
+  helptext = """Path to heterogeneity file"""
+  debug_options.add_argument('--het_file', default='unit_tests/savani.rtpv',
+                      help=helptext)
 
-helptext = """
-Integrate the kernel over the background model. Classically, this was assumed
-to result in the travel time of a phase. This assumption is highly dubious for
-wavefield-derived kernels. For legacy reasons, we can still leave it in. 
-Adds a version of the background model interpolated on the inversion mesh to 
-the output file."""
-debug_options.add_argument('--int_over_background_model', action="store_true", default=False,
-                    help=helptext)
+  helptext = """
+  Integrate the kernel over the background model. Classically, this was assumed
+  to result in the travel time of a phase. This assumption is highly dubious for
+  wavefield-derived kernels. For legacy reasons, we can still leave it in. 
+  Adds a version of the background model interpolated on the inversion mesh to 
+  the output file."""
+  debug_options.add_argument('--int_over_background_model', action="store_true", default=False,
+                      help=helptext)
 
-helptext = """ Every slave writes out the values of all the kernels and their respective 
-estimated errors into his OUTPUT_??? file after each MC step. This can lead 
-to huge ASCII files (>1GB) with inane line lengths (approx. 20 x nkernel).
-However, it might be interesting to study the convergence behaviour. """
-debug_options.add_argument('--write_detailed_convergence', action="store_true", default=False,
-                           help=helptext)
+  helptext = """ Every slave writes out the values of all the kernels and their respective 
+  estimated errors into his OUTPUT_??? file after each MC step. This can lead 
+  to huge ASCII files (>1GB) with inane line lengths (approx. 20 x nkernel).
+  However, it might be interesting to study the convergence behaviour. """
+  debug_options.add_argument('--write_detailed_convergence', action="store_true", default=False,
+                             help=helptext)
 
-helptext = """Do not deconvolve the Source Time Function and reconvolve with 
-the one set in --stf_file, but just timeshift the wavefields."""
-debug_options.add_argument('--no_deconvolve_stf', action="store_true", default=False,
-                           help=helptext)
+  helptext = """Do not deconvolve the Source Time Function and reconvolve with 
+  the one set in --stf_file, but just timeshift the wavefields."""
+  debug_options.add_argument('--no_deconvolve_stf', action="store_true", default=False,
+                             help=helptext)
 
-helptext = """Integration scheme to calculate scalar kernels from seismograms and waveforms. 
-parseval (default):  Integration in frequency domain, using the Parseval theorem.
-trapezoidal:         Integration in time domain using the trapezoidal rule."""
-debug_options.add_argument('--integration_scheme', choices=['parseval', 'trapezoidal'], 
-                           default='parseval', help=helptext)
+  helptext = """Integration scheme to calculate scalar kernels from seismograms and waveforms. 
+  parseval (default):  Integration in frequency domain, using the Parseval theorem.
+  trapezoidal:         Integration in time domain using the trapezoidal rule."""
+  debug_options.add_argument('--integration_scheme', choices=['parseval', 'trapezoidal'], 
+                             default='parseval', help=helptext)
 
 
-###############################################################################
-# Output-related options
-###############################################################################
+  ###############################################################################
+  # Output-related options
+  ###############################################################################
 
-output_options = parser.add_argument_group('Output options')
-helptext = """Output format when dumping kernels and wavefields. 
-Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
-ascii. Yet, the allowed error below is assumed as the truncation threshold in 
-csr and ascii storage"""
-output_options.add_argument('--dump_type', choices=['xdmf', 'ascii', 'csr'], default='xdmf',
-                    help=helptext)
-helptext = """Write out Seismograms (raw full trace, filtered full trace 
-and cut trace) into run_dir/SEISMOGRAMS. Produces three files per kernel. 
-Disable to avoid congesting your file system."""
-output_options.add_argument('--write_seismograms', default=False,
-                            help=helptext)
-helptext = """Prefix of output file names.
-Kernel files are called $OUTPUT_FILE_kernel.xdmf
-Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf"""
-output_options.add_argument('--out_prefix', default='kerner',
-                            help=helptext)
+  output_options = parser.add_argument_group('Output options')
+  helptext = """Output format when dumping kernels and wavefields. 
+  Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
+  ascii. Yet, the allowed error below is assumed as the truncation threshold in 
+  csr and ascii storage"""
+  output_options.add_argument('--dump_type', choices=['xdmf', 'ascii', 'csr'], default='xdmf',
+                      help=helptext)
+  helptext = """Write out Seismograms (raw full trace, filtered full trace 
+  and cut trace) into run_dir/SEISMOGRAMS. Produces three files per kernel. 
+  Disable to avoid congesting your file system."""
+  output_options.add_argument('--write_seismograms', default=False,
+                              help=helptext)
+  helptext = """Prefix of output file names.
+  Kernel files are called $OUTPUT_FILE_kernel.xdmf
+  Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf"""
+  output_options.add_argument('--out_prefix', default='kerner',
+                              help=helptext)
 
-###############################################################################
-# Performance-related options
-###############################################################################
+  ###############################################################################
+  # Performance-related options
+  ###############################################################################
 
-performance_options = parser.add_argument_group('Performance-related options')
-helptext = """Size of buffer for strain values. Since the strain has to be 
-calculated from the displacement stored in the AxiSEM files,
-increasing this buffer size saves IO access and CPU time."""
-performance_options.add_argument('--strain_buffer_size', type=int, default=1000,
-                            help=helptext)
+  performance_options = parser.add_argument_group('Performance-related options')
+  helptext = """Size of buffer for strain values. Since the strain has to be 
+  calculated from the displacement stored in the AxiSEM files,
+  increasing this buffer size saves IO access and CPU time."""
+  performance_options.add_argument('--strain_buffer_size', type=int, default=1000,
+                              help=helptext)
 
-helptext = """Size of buffer for displacement values. Displacement values are
-use to calculate strain later. Having a separate buffer here allows to save 
-some IO accesses."""
-performance_options.add_argument('--displ_buffer_size', type=int, default=100,
-                            help=helptext)
-helptext = """Number of elements per Slave task. A larger value allows to the
-Slave to have more contiguous parts of the earth to work on, smaller values
-improve load balancing. It should be chosen such that each slave gets at least
-50-100 tasks to work on."""
-performance_options.add_argument('--elements_per_task', type=int, default=100,
-                            help=helptext)
-helptext = """Do not sort the mesh elements. Just for debugging."""
-performance_options.add_argument('--no_sort_mesh_elements', action="store_true", default=False,
-                            help=helptext)
-helptext = """Mask the source and the receiver element and set the kernel to 
-zero in each. A rough way to avoid spending hours until convergence in these 
-two elements in reached."""
-performance_options.add_argument('--mask_source_receiver', action="store_true", default=False,
-                            help=helptext)
-helptext = """Dampen the kernel in a radius around source and receiver. 
-If a negative value is chosen, damping is switched off (default)."""
-performance_options.add_argument('--damp_radius_source_receiver', type=float, default=-100.E3,
-                                 help=helptext)
-helptext = """FFTW Planning to use 
-Options: 
-ESTIMATE:   Use heuristic to find best FFT plan
-MEASURE:    Compute several test FFTs to find best plan (default)
-PATIENT:    Compute a lot of test FFTs to find best plan
-EXHAUSTIVE: Compute an awful amount of test FFTs to find best plan
-This option did not prove to be very useful on most systems."""
-performance_options.add_argument('--fftw_plan', default='MEASURE',
-                    choices=['ESTIMATE', 'MEASURE', 'PATIENT', 'EXHAUSTIVE'],
-                    help=helptext)
+  helptext = """Size of buffer for displacement values. Displacement values are
+  use to calculate strain later. Having a separate buffer here allows to save 
+  some IO accesses."""
+  performance_options.add_argument('--displ_buffer_size', type=int, default=100,
+                              help=helptext)
+  helptext = """Number of elements per Slave task. A larger value allows to the
+  Slave to have more contiguous parts of the earth to work on, smaller values
+  improve load balancing. It should be chosen such that each slave gets at least
+  50-100 tasks to work on."""
+  performance_options.add_argument('--elements_per_task', type=int, default=100,
+                              help=helptext)
+  helptext = """Do not sort the mesh elements. Just for debugging."""
+  performance_options.add_argument('--no_sort_mesh_elements', action="store_true", default=False,
+                              help=helptext)
+  helptext = """Mask the source and the receiver element and set the kernel to 
+  zero in each. A rough way to avoid spending hours until convergence in these 
+  two elements in reached."""
+  performance_options.add_argument('--mask_source_receiver', action="store_true", default=False,
+                              help=helptext)
+  helptext = """Dampen the kernel in a radius around source and receiver. 
+  If a negative value is chosen, damping is switched off (default)."""
+  performance_options.add_argument('--damp_radius_source_receiver', type=float, default=-100.E3,
+                                   help=helptext)
+  helptext = """FFTW Planning to use 
+  Options: 
+  ESTIMATE:   Use heuristic to find best FFT plan
+  MEASURE:    Compute several test FFTs to find best plan (default)
+  PATIENT:    Compute a lot of test FFTs to find best plan
+  EXHAUSTIVE: Compute an awful amount of test FFTs to find best plan
+  This option did not prove to be very useful on most systems."""
+  performance_options.add_argument('--fftw_plan', default='MEASURE',
+                      choices=['ESTIMATE', 'MEASURE', 'PATIENT', 'EXHAUSTIVE'],
+                      help=helptext)
+  return parser
+
+parser = define_arguments()
 
 args = parser.parse_args()
 
@@ -322,6 +380,9 @@ for key, value in vars(args).iteritems():
 
   params[key_out] = value_out
 
+# Read receiver file and get number of receivers, kernels and whether the full strain
+# has to be read for any kernel (increases the memory footprint of the buffers by factor of 6)
+nrec, nkernel, full_strain = read_receiver_dat(args.rec_file)
 
 # Check for AxiSEM wavefield files to get mesh size
 fwd_path = os.path.join(os.path.realpath(args.fwd_dir), 'MZZ', 'Data', 'ordered_output.nc4')
