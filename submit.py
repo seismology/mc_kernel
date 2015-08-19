@@ -110,7 +110,7 @@ def define_arguments():
   parser = argparse.ArgumentParser(description='Create Kerner input file and submit job.',
                                    formatter_class=argparse.RawTextHelpFormatter)
 
-  parser.add_argument('jobname', help='Job directory name')
+  parser.add_argument('job_name', help='Job directory name')
 
   helptext = """Input file to use. It will overwrite default values, 
   but will be overwritten by any argument to this function."""
@@ -121,7 +121,7 @@ def define_arguments():
                       help='Number of slaves to use')
 
   parser.add_argument('-m', '--message', metavar='JOB_DESCRIPTION_MESSAGE',
-                      help="Description of run, which is saved in jobname/README.run\n"+
+                      help="Description of run, which is saved in job_name/README.run\n"+
                            "If omitted, an editor window opens to collect description.")
 
   parser.add_argument('--what_to_do', choices=['integrate_kernel', 'plot_wavefield'], 
@@ -377,7 +377,7 @@ if args.input_file:
 params = {}
 # Loop over all possible arguments
 for key, value in vars(args).iteritems():
-  if not key in ('nslaves', 'jobname', 'queue', 'available_memory'): 
+  if not key in ('nslaves', 'job_name', 'queue', 'available_memory'): 
     # If an input file is selected, get values from there by default
     if args.input_file:
       if value == parser.get_default(key):
@@ -443,13 +443,13 @@ if npoints_fwd!=npoints_bwd or nelems_fwd!=nelems_bwd or ndumps_fwd!=ndumps_bwd:
 params_out = {}
 
 # Create run_dir
-run_dir = args.jobname
+run_dir = args.job_name
 os.mkdir(run_dir)
 
 # Copy necessary files to rundir
 for key, value in params.iteritems():
 
-  if key in ('NSLAVES', 'JOBNAME', 'MESH_FILE_ABAQUS', 'MESH_FILE_VERTICES', 'MESH_FILE_FACETS', 
+  if key in ('NSLAVES', 'JOB_NAME', 'MESH_FILE_ABAQUS', 'MESH_FILE_VERTICES', 'MESH_FILE_FACETS', 
              'HET_FILE', 'INPUT_FILE', 'MESSAGE', 'AVAILABLE_MEMORY'): 
     # Effectively nothing to do
     print ''
@@ -553,7 +553,9 @@ if args.queue == 'local':
   subprocess.call(run_cmd, shell=True)
 
 elif args.queue == 'SuperMUC':
-  with open(os.path.join(run_dir, 'job.cmd'), 'w') as f:
+  # Create a LoadLeveler job script for SuperMUC
+  job_script = os.path.join(run_dir, 'job.cmd')
+  with open(job_script, 'w') as f:
     text_out = """
 # Job file automatically created by submit.py on %s
 #@ output = job_$(jobid).out 
@@ -566,15 +568,15 @@ elif args.queue == 'SuperMUC':
 #@ minimize_time_to_solution = yes    
 #@ class = fat"""%str(datetime.datetime.now())
     f.write(text_out)
-    text_out = "#@ total_tasks=%d\n"%args.nslaves + 1
+    text_out = "#@ total_tasks=%d\n"%int(args.nslaves + 1)
     f.write(text_out)
     text_out = "#@ node = %d\n"%int(args.nslaves/40)
     f.write(text_out)
-    text_out = "#@ wall_clock_limit = %d:00:00"%args.wall_time
+    text_out = "#@ wall_clock_limit = %d:00:00\n"%args.wall_time
     f.write(text_out)
-    text_out = "#@ job_name = %s"%args.job_name
+    text_out = "#@ job_name = %s\n"%args.job_name
     f.write(text_out)
-    text_out = "#@ initialdir = %s"%os.path.realpath(run_dir)
+    text_out = "#@ initialdir = %s\n"%os.path.realpath(run_dir)
     f.write(text_out)
     text_out = """
 #@ queue
@@ -586,7 +588,10 @@ module load fortran/intel
 module load netcdf
 module load fftw
 module load mkl
-mpiexec -n %d ./kerner inparam_basic > OUTPUT_0000"""%args.nslaves + 1
+mpiexec -n %d ./kerner inparam_basic > OUTPUT_0000\n"""%int(args.nslaves + 1)
+    f.write(text_out)
+  print 'Submitting to SuperMUC loadleveler queue'
+  #subprocess.call(['llsubmit', job_script])
 
 
 
