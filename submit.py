@@ -80,7 +80,7 @@ def read_receiver_dat(rec_file):
     # Read seismogram component
     str_line = f.readline()
     seis_cmp = str_line.split()[0]
-    print 'Seismogram component: %s'%seis_cmp
+    #print 'Seismogram component: %s'%seis_cmp
 
     for irec in range(0, nrec):
         str_line = f.readline()
@@ -89,11 +89,11 @@ def read_receiver_dat(rec_file):
         rec_lon  = float(str_line.split()[2])
         nkernel  = int(str_line.split()[3])
         
-        print 'Receiver: %s, coordinates: (%f, %f), %d kernels'%(rec_name, rec_lat, rec_lon, nkernel)
+        #print 'Receiver: %s, coordinates: (%f, %f), %d kernels'%(rec_name, rec_lat, rec_lon, nkernel)
         
         for ikernel in range(0, nkernel):
             str_line = f.readline()
-            print str_line
+            #print str_line
             kernel_name = str_line.split()[0]
             filter_name = str_line.split()[1]
             misfit_name = str_line.split()[2]
@@ -106,7 +106,9 @@ def read_receiver_dat(rec_file):
               raise RuntimeError('Unknown model parameter %s in %s'%(model_param, rec_file))
 
         nkernel_total += nkernel
-            
+    
+    print 'Number of kernels: %d'%nkernel_total
+
   return nkernel_total, nrec, fullstrain_kernel
 
 def define_arguments():
@@ -374,7 +376,6 @@ if args.input_file:
       if line[0]!='#' and line.strip()!='':
         (key, val) = line.split()
         args_input_file[key] = val
-        print key, val
 
 # Merge input variables from input_file, arguments and default values
 params = {}
@@ -386,7 +387,7 @@ for key, value in vars(args).iteritems():
       if value == parser.get_default(key):
         key_out   = key.upper()
         try:
-          value_out = str(args_input_file[key.upper()])
+          value_out = str(args_input_file[key.upper()]).strip("'")
         except KeyError:
           # If value is not set in input file
           value_out = str(value)
@@ -398,7 +399,6 @@ for key, value in vars(args).iteritems():
       # In all other cases, take default values
       key_out = key.upper()
       value_out = str(value)
-  print key_out, value_out
 
   params[key_out] = value_out
 
@@ -409,7 +409,6 @@ nrec, nkernel, full_strain = read_receiver_dat(args.rec_file)
 # Check for AxiSEM wavefield files to get mesh size
 fwd_path = os.path.join(os.path.realpath(params['FWD_DIR']), 'MZZ', 'Data', 'ordered_output.nc4')
 bwd_path = os.path.join(os.path.realpath(params['BWD_DIR']), 'PZ', 'Data', 'ordered_output.nc4')
-print fwd_path
 if os.path.exists(fwd_path):
   nc_fwd = Dataset(fwd_path)
   npoints_fwd = getattr(nc_fwd, "npoints")
@@ -417,7 +416,7 @@ if os.path.exists(fwd_path):
   ndumps_fwd  = getattr(nc_fwd, "number of strain dumps")
   nc_fwd.close()
 else: 
-  errmsg = 'Could not find a wavefield file in the fwd_dir %s'%params['FWD_DIR']
+  errmsg = 'Could not find a wavefield file in the fwd_dir %s\n%s'%(params['FWD_DIR'], fwd_path)
   raise IOError(errmsg)
   
 if os.path.exists(bwd_path):
@@ -471,18 +470,20 @@ for key, value in params.iteritems():
 
   elif key=='MESH_FILE_TYPE':
     params_out[key] = value
-    if args.mesh_file_type=='abaqus':
+    if value=='abaqus':
       shutil.copy(params['MESH_FILE_ABAQUS'], os.path.join(run_dir, 'mesh.inp'))
       params_out['MESH_FILE_ABAQUS'] = 'mesh.inp'
-    else:
+    elif value=='tetrahedral':
       shutil.copy(params['MESH_FILE_VERTICES'], os.path.join(run_dir, 'mesh.VERTICES'))
       shutil.copy(params['MESH_FILE_FACETS'], os.path.join(run_dir, 'mesh.FACETS'))
       params_out['MESH_FILE_VERTICES'] = 'mesh.VERTICES'
       params_out['MESH_FILE_FACETS'] = 'mesh.FACETS'
+    else:
+      raise KeyError('Unknown mesh file type: %s'%args.mesh_file_type)
 
   elif key=='INT_OVER_3D_HETEROGENEITIES':
     params_out[key] = value
-    shutil.copy(args.het_file, os.path.join(run_dir, 'heterogeneities.dat'))
+    shutil.copy(params['HET_FILE'], os.path.join(run_dir, 'heterogeneities.dat'))
     params_out['HET_FILE'] = 'heterogeneities.dat'
   elif key in ('FWD_DIR', 'BWD_DIR'):
     # Set mesh dir to absolute path
