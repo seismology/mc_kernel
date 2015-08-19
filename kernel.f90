@@ -332,11 +332,11 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
 
          select case(lowtrim(int_scheme))
          case('trapezoidal')
-           calc_misfit_kernel(itrace) = - integrate_trapezoidal( timeseries_cut * this%seis_cut, &
+           calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_cut, &
                                                                  this%dt ) &
                                         * this%normalization
          case('parseval')
-           calc_misfit_kernel(itrace) = - this%integrate_parseval( timeseries_cut, this%seis_cut_fd) &
+           calc_misfit_kernel(itrace) = this%integrate_parseval( timeseries_cut, this%seis_cut_fd) &
                                         * this%normalization
          end select
       end do
