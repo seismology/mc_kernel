@@ -601,7 +601,7 @@ function ident(f)                        !< identical filter, returns a vector o
     real(kind=dp), intent(in)   :: f(:)  !< Frequency array
     complex(kind=dp)            :: ident(size(f))
 
-    ident(:) = complex(1.0, 0.0)
+    ident(:) = cmplx(1.0, 0.0, kind=dp)
 
 end function ident
 !-----------------------------------------------------------------------------------------
