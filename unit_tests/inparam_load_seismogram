@@ -1,19 +1,18 @@
 FWD_DIR         'wavefield/fwd/'
 BWD_DIR         'wavefield/bwd/'
 ALLOWED_ERROR   1e-1
-SOURCE_FILE     'unit_tests/CMTSOLUTION_load_seismogram'
-RECEIVER_FILE   'unit_tests/receiver_load_seismogram.dat'
-FILTER_FILE     'unit_tests/filters_load_seismogram.dat'
+SRC_FILE     'unit_tests/CMTSOLUTION_load_seismogram'
+REC_FILE   'unit_tests/receiver_load_seismogram.dat'
+FILT_FILE     'unit_tests/filters_load_seismogram.dat'
 STF_FILE     'stf_test.txt
 MESH_FILE_TYPE       'abaqus'
 MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
 
-DECONVOLVE_STF  true
 
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
-OUTPUT_FILE          'unit_tests/test_master_queue'
+OUT_PREFIX           'unit_tests/test_master_queue'
 
 # Output format when dumping kernels and wavefields. 
 # Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
@@ -62,8 +61,31 @@ DISPL_BUFFER_SIZE    100
 # Number of elements in each MPI task. 
 ELEMENTS_PER_TASK    100 
 
+# Sort mesh by element midpoint coordinates. This should allow to use the buffer more 
+# efficiently. Testing
+NO_SORT_MESH_ELEMENTS false
+
 # Use quasirandom numbers instead of pseudorandom ones
-USE_QUASIRANDOM_NUMBERS true
+USE_PSEUDORANDOM_NUMBERS false
+
+# Mask Source and receiver
+# If true, the kernel value is set to zero inside the element that contains the source
+# and the one that contains the receiver. This is a crude way to mask the source, but 
+# it allows to reduce the time spent in the source region
+MASK_SOURCE_RECEIVER  false
+
+# Damping radius around source and receiver in meter
+# Inside this radius, the kernel values are damped by 
+# K = K_0 * R / DAMP_RADIUS_SOURCE_RECEIVER
+# where R is the distance of the point to source or receiver
+# If value is <=0, damping is switched off
+DAMP_RADIUS_SOURCE_RECEIVER  100.d3
+
+# Deconvolve the AxiSEM Source Time Function from the wavefield.
+# This is the correct way to do it, but it is not 100% stable yet. Leave it off for a while-
+# If set to false, than the wavefield is just time-shifted to account for the STF not centered 
+# at zero time.:
+NO_DECONVOLVE_STF false
 
 # Integration scheme
 # Options:
@@ -91,4 +113,3 @@ WHAT_TO_DO           'integratekernel'
 # Do you want your kernels to be given on the vertices ('onvertices') or
 # inside ('volumetric') each elements?
 INT_TYPE             'volumetric'
-
