@@ -4,6 +4,7 @@ import shutil
 import glob
 import datetime
 import subprocess
+import math
 from netCDF4 import Dataset 
 
 """
@@ -64,6 +65,9 @@ def auto_buffer_size(memory_available):
   memory_buffers_disp = 3 * 4 * ndumps_fwd * 6 * size_disp_buffer
   print 'Displ. buffer size: %f MB'%(memory_buffers_disp/(2**20))
 
+  if memory_for_buffers<0:
+    raise ValueError('Not enough memory for buffers')
+
   
   return str(size_strain_buffer), str(size_disp_buffer)
 
@@ -123,7 +127,8 @@ def define_arguments():
 
   parser.add_argument('-n', '--nslaves', type=int, default=2,
                       metavar='N', 
-                      help='Number of slaves to use')
+                      help='Number of slaves to use. If --queue==SuperMUC, it will be rounded \n'+
+                           'up to a multiple of 16 (thin island) or 40 (fat island)')
 
   parser.add_argument('-m', '--message', metavar='JOB_DESCRIPTION_MESSAGE',
                       help="Description of run, which is saved in job_name/README.run\n"+
@@ -148,6 +153,10 @@ def define_arguments():
                          default=10,
                          help='Walltime in hours')
   hpc_queue.add_argument('--mail_address', help='Mail address for HPC notifications')
+  hpc_queue.add_argument('--job_class', choices=['fat', 'thin'], default='fat',
+                         help='Job class on SuperMUC')
+  hpc_queue.add_argument('--tasks_per_node', type=int,
+                         help='Tasks per node on SuperMUC')
 
 
   ###############################################################################
@@ -452,7 +461,8 @@ os.mkdir(run_dir)
 for key, value in params.iteritems():
 
   if key in ('NSLAVES', 'JOB_NAME', 'MESH_FILE_ABAQUS', 'MESH_FILE_VERTICES', 'MESH_FILE_FACETS', 
-             'HET_FILE', 'INPUT_FILE', 'MESSAGE', 'AVAILABLE_MEMORY', 'WALL_TIME', 'MAIL_ADDRESS'): 
+             'HET_FILE', 'INPUT_FILE', 'MESSAGE', 'AVAILABLE_MEMORY', 'WALL_TIME', 'MAIL_ADDRESS', 
+             'JOB_CLASS'): 
     # Effectively nothing to do
     print ''
   elif key=='SRC_FILE':
@@ -504,7 +514,9 @@ if args.message:
   f_readme.close()
 else:
   f_readme.close()
-  editor = os.environ.get('EDITOR')
+  editor = os.environ.get('EDITOR', '-1')
+  if editor=='-1':
+    editor = 'vim'
   subprocess.check_call('%s %s'%(editor, out_readme), shell=True)
 
 # Move README file to rundir
@@ -558,44 +570,69 @@ if args.queue == 'local':
 
 elif args.queue == 'SuperMUC':
   # Create a LoadLeveler job script for SuperMUC
+
+  # Master gets his own node, since his memory requirements can become quite huge
+  # for big meshes and a large number of kernels and cannot be changed.
   job_script = os.path.join(run_dir, 'job.cmd')
+  if args.job_class=='fat':
+    if not args.tasks_per_node:
+      tasks_per_node = 40
+    else: 
+      tasks_per_node = args.tasks_per_node
+
+    nodes = math.ceil((args.nslaves)/tasks_per_node) + 1
+
+    job_class = 'fat'
+
+    if args.available_memory > 6000.*(40./tasks_per_node):
+      raise IOError('Fat island has only 6GB RAM per node')
+
+  elif args.job_class=='thin':
+    if not args.tasks_per_node:
+      tasks_per_node = 16
+    else: 
+      tasks_per_node = args.tasks_per_node
+
+    nodes = math.ceil((args.nslaves)/tasks_per_node) + 1
+
+    if nodes > 32:
+      job_class = 'general'
+    else:
+      job_class = 'micro'
+
+    if args.available_memory > 1500.*(16./tasks_per_node):
+      raise IOError('Thin island has only 1.5GB RAM per node')
+
   with open(job_script, 'w') as f:
-    text_out = """
-# Job file automatically created by submit.py on %s
-#@ output = job_$(jobid).out 
-#@ error = job_$(jobid).err 
-#@ job_type = MPICH
-#@ network.MPI = sn_all,not_shared,us 
-#@ notification=always
-#@ notify_user = staehler@geophysik.uni-muenchen.de
-#@ energy_policy_tag = Kerner_intel_mpi
-#@ minimize_time_to_solution = yes    
-#@ class = fat"""%str(datetime.datetime.now())
-    f.write(text_out)
-    text_out = "#@ total_tasks=%d\n"%int(args.nslaves + 1)
-    f.write(text_out)
-    text_out = "#@ node = %d\n"%int(args.nslaves/40)
-    f.write(text_out)
-    text_out = "#@ wall_clock_limit = %d:00:00\n"%args.wall_time
-    f.write(text_out)
-    text_out = "#@ job_name = %s\n"%args.job_name
-    f.write(text_out)
-    text_out = "#@ initialdir = %s\n"%os.path.realpath(run_dir)
-    f.write(text_out)
-    text_out = """
-#@ queue
-. /etc/profile
-. /etc/profile.d/modules.sh
-module unload mpi.ibm
-module load mpi.intel
-module load fortran/intel
-module load netcdf
-module load fftw
-module load mkl
-mpiexec -n %d ./kerner inparam_basic > OUTPUT_0000\n"""%int(args.nslaves + 1)
+    text_out = "# Job file automatically created by submit.py on %s\n"%str(datetime.datetime.now()) 
+    text_out += "#@ output = job_$(jobid).out \n"
+    text_out += "#@ error = job_$(jobid).err\n" 
+    text_out += "#@ job_type = MPICH \n"
+    text_out += "#@ network.MPI = sn_all,not_shared,us \n"
+    text_out += "#@ notification=always \n"
+    text_out += "#@ notify_user = staehler@geophysik.uni-muenchen.de \n"
+    text_out += "#@ energy_policy_tag = Kerner_intel_mpi \n"
+    text_out += "#@ minimize_time_to_solution = yes     \n"
+    text_out += "#@ class = %s\n"%job_class
+    text_out += "#@ tasks_per_node = %d\n"%nodes
+    text_out += "#@ first_node_tasks=1\n"
+    text_out += "#@ node = %d\n"%nodes
+    text_out += "#@ wall_clock_limit = %d:00:00\n"%args.wall_time
+    text_out += "#@ job_name = %s\n"%args.job_name
+    text_out += "#@ initialdir = %s\n"%os.path.realpath(run_dir)
+    text_out += "#@ queue \n"
+    text_out += ". /etc/profile \n"
+    text_out += ". /etc/profile.d/modules.sh \n"
+    text_out += "module unload mpi.ibm \n"
+    text_out += "module load mpi.intel \n"
+    text_out += "module load fortran/intel \n"
+    text_out += "module load netcdf \n"
+    text_out += "module load fftw \n"
+    text_out += "module load mkl \n"
+    text_out += "mpiexec -n %d ./kerner inparam 2>&1  > OUTPUT_0000\n"%int(args.nslaves + 1)
     f.write(text_out)
   print 'Submitting to SuperMUC loadleveler queue'
-  #subprocess.call(['llsubmit', job_script])
+  subprocess.call(['llsubmit', job_script])
 
 elif args.queue == 'monch':
     with open(os.path.join(run_dir, 'sbatch.sh'), 'w') as f:
