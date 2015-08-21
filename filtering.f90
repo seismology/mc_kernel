@@ -15,6 +15,7 @@ module filtering
        character(len=32), public       :: name
        complex(kind=dp), allocatable   :: transferfunction(:)
        complex(kind=dp), allocatable   :: transferfunction_fwd(:)
+       complex(kind=dp), allocatable   :: transferfunction_fwd_deriv(:)
        complex(kind=dp), allocatable   :: transferfunction_bwd(:)
        integer                         :: nfreq                !< Number of frequencies
        real(kind=dp), allocatable      :: f(:)
@@ -168,6 +169,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     ! STF of fwd and bwd earthquake may be added later
     this%transferfunction_fwd = this%transferfunction
     this%transferfunction_bwd = this%transferfunction
+    this%transferfunction_fwd_deriv = this%transferfunction
 
     if (firstslave) then
 20     format('filterresponse_', A, 2('_', F0.6))
@@ -283,7 +285,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! Calculate first derivatice of the STF
     stf_sem_fd(:,1) = stf_sem_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
-    stf_src_fd(:,1) = stf_src_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
+    stf_src_fd(:,1) = stf_src_fd(:,1) 
 
 
     ! Divide filter by spectrum of forward STF. It is established at initialization
@@ -294,6 +296,11 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! Apply Earthquake STF, but only to forward transfer function
     this%transferfunction_fwd = this%transferfunction_fwd * stf_src_fd(:,1)
+
+    ! Add filter with derivative for velocity seismograms
+    this%transferfunction_fwd_deriv = this%transferfunction_fwd  &
+                                      * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
+
 
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
     lowpass = butterworth_lowpass(this%f, this%f(this%nfreq/4), 16)
@@ -402,7 +409,7 @@ function apply_1d(this, freq_series, kind)
 
    class(filter_type)               :: this
    complex(kind=dp), intent(in)     :: freq_series(:)
-   character(len=3), intent(in)     :: kind
+   character(len=*), intent(in)     :: kind
    complex(kind=dp)                 :: apply_1d(size(freq_series))
 
    if (.not.this%initialized) then
@@ -419,10 +426,12 @@ function apply_1d(this, freq_series, kind)
    select case(kind)
    case('fwd')
      apply_1d = freq_series * this%transferfunction_fwd
+   case('fwd_d')
+     apply_1d = freq_series * this%transferfunction_fwd_deriv
    case('bwd')
      apply_1d = freq_series * this%transferfunction_bwd
    case default
-   apply_1d = freq_series * this%transferfunction
+     apply_1d = freq_series * this%transferfunction
    end select
 end function apply_1d 
 !-----------------------------------------------------------------------------------------
@@ -433,7 +442,7 @@ function apply_2d(this, freq_series, kind)
 
    class(filter_type)               :: this
    complex(kind=dp), intent(in)     :: freq_series(:,:)
-   character(len=3), intent(in)     :: kind
+   character(len=*), intent(in)     :: kind
    complex(kind=dp)                 :: apply_2d(size(freq_series,1), size(freq_series,2))
    integer                          :: itrace
 
@@ -448,19 +457,23 @@ function apply_2d(this, freq_series, kind)
       call pabort(do_traceback=.false.)
    end if
    
-   select case(kind)
+   select case(trim(kind))
    case('fwd')
      do itrace = 1, (size(freq_series, 2))
         apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_fwd(:)
+     end do
+   case('fwd_d')
+     do itrace = 1, (size(freq_series, 2))
+        apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_fwd_deriv(:)
      end do
    case('bwd')
      do itrace = 1, (size(freq_series, 2))
         apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_bwd(:)
      end do
    case default
-   do itrace = 1, (size(freq_series, 2))
-      apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction(:)
-   end do
+     do itrace = 1, (size(freq_series, 2))
+        apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction(:)
+     end do
    end select
 
 end function apply_2d
@@ -474,7 +487,7 @@ function apply_3d(this, freq_series, kind)
    
    class(filter_type)              :: this
    complex(kind=dp), intent(in)    :: freq_series(:,:,:)
-   character(len=3), intent(in)    :: kind
+   character(len=*), intent(in)    :: kind
    complex(kind=dp)                :: apply_3d(size(freq_series,1), size(freq_series,2), &
                                                size(freq_series,3))
 
@@ -492,10 +505,12 @@ function apply_3d(this, freq_series, kind)
    select case(kind)
    case('fwd')
      apply_3d = mult3d_1d(freq_series, this%transferfunction_fwd)
+   case('fwd_d')
+     apply_3d = mult3d_1d(freq_series, this%transferfunction_fwd_deriv)
    case('bwd')
      apply_3d = mult3d_1d(freq_series, this%transferfunction_bwd)
    case default
-   apply_3d = mult3d_1d(freq_series, this%transferfunction)
+     apply_3d = mult3d_1d(freq_series, this%transferfunction)
    end select
 
 end function apply_3d
