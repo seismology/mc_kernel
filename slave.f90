@@ -581,10 +581,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
       ! Print number of iterations
       if (any(niterations(:)==parameters%max_iter)) then
-        fmtstring = "(' Max number of iterations reached. ', I5 , ' kernels were not converged.')"
+        fmtstring = "(' Max number of iterations reached. ', I6 , ' kernels were not converged.')"
         write(lu_out, fmtstring) parameters%nkernel - int_kernel(1)%countconverged()
       else
-        fmtstring = "(' All kernels converged after', I5, ' iterations')"
+        fmtstring = "(' All kernels converged after', I8, ' iterations')"
         write(lu_out, fmtstring) maxval(niterations(:))
       end if
 

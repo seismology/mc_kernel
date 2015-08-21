@@ -10,12 +10,12 @@ implicit none
     private
     character(len=32), public            :: name
     real(kind=dp), dimension(2)          :: time_window
-    real(kind=dp), allocatable           :: seis_cut(:)       ! Seismogram (Velocity or displacement)
-                                                              ! in the time window of 
-                                                              ! this kernel
-    complex(kind=dp), allocatable        :: seis_cut_fd(:,:)  ! Seismogram (Velocity or displacement)
-                                                              ! in the time window of 
-                                                              ! this kernel in frequency domain
+    real(kind=dp), allocatable           :: seis_disp_cut(:), &      ! Seismogram (Velocity or displacement)
+                                            seis_velo_cut(:)         ! in the time window of 
+                                                                     ! this kernel
+    complex(kind=dp), allocatable        :: seis_disp_cut_fd(:,:), & ! Seismogram (Velocity or displacement)
+                                            seis_velo_cut_fd(:,:)    ! in the time window of 
+                                                                     ! this kernel in frequency domain
     real(kind=dp), allocatable           :: t(:)
     real(kind=dp), allocatable, public   :: t_cut(:)
     real(kind=dp)                        :: dt
@@ -158,9 +158,12 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
 
    type(rfft_type)                         :: fft_data
    type(timeshift_type)                    :: timeshift
-   complex(kind=dp), allocatable           :: seis_fd(:,:)
    real(kind=dp),    allocatable           :: seis_td(:,:)
-   real(kind=dp),    allocatable           :: seis_filtered(:,:), f(:)
+   complex(kind=dp), allocatable           :: seis_fd(:,:)
+   complex(kind=dp), allocatable           :: seis_disp_filtered_fd(:,:)
+   complex(kind=dp), allocatable           :: seis_velo_filtered_fd(:,:)
+   real(kind=dp),    allocatable           :: seis_disp_filtered(:,:)
+   real(kind=dp),    allocatable           :: seis_velo_filtered(:,:), f(:)
    real(kind=dp)                           :: normalization_term
    integer                                 :: ntimes, ntimes_ft, nomega, isample, nan_loc(2)
    logical                                 :: isnan 
@@ -178,7 +181,10 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    nomega = fft_data%get_nomega()
 
    allocate(seis_fd(nomega, 1))
-   allocate(seis_filtered(ntimes_ft, 1))
+   allocate(seis_disp_filtered_fd(nomega, 1))
+   allocate(seis_velo_filtered_fd(nomega, 1))
+   allocate(seis_disp_filtered(ntimes_ft, 1))
+   allocate(seis_velo_filtered(ntimes_ft, 1))
    allocate(this%t(ntimes_ft))
    this%t = fft_data%get_t()
 
@@ -194,17 +200,20 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
      call timeshift%freeme()
    end if
 
-   seis_fd = this%filter%apply_2d(seis_fd, kind='fwd')
-   call fft_data%irfft(seis_fd, seis_filtered)
+   seis_disp_filtered_fd = this%filter%apply_2d(seis_fd, kind='fwd')
+   seis_velo_filtered_fd = this%filter%apply_2d(seis_fd, kind='fwd_d')
 
-   call check_NaN(seis_filtered, isnan, nan_loc)
+   call fft_data%irfft(seis_disp_filtered_fd, seis_disp_filtered)
+   call fft_data%irfft(seis_velo_filtered_fd, seis_velo_filtered)
+
+   call check_NaN(seis_disp_filtered, isnan, nan_loc)
    if (isnan) then
      print *, myrank, ': ERROR: NaN found in seismogram:'
      print *, 'NaN index: ', nan_loc
      print *, 'Wrote seismogram to seis_nan.txt'
      open(unit=100, file='seis_nan.txt', action='write')
-     do isample = 1, size(seis_filtered,1)
-         write(100,*) this%t(isample), seis_filtered(isample,1)
+     do isample = 1, size(seis_disp_filtered,1)
+         write(100,*) this%t(isample), seis_disp_filtered(isample,1)
      end do
      close(100)
      open(unit=100, file='seis_nan_fd.txt', action='write')
@@ -220,16 +229,20 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
 
    ! Cut timewindow of the kernel from the seismogram
    call cut_timewindow(this%t,             &
-                       seis_filtered(:,1), &
+                       seis_disp_filtered(:,1), &
                        this%time_window,   &
-                       this%seis_cut )
+                       this%seis_disp_cut )
+   call cut_timewindow(this%t,             &
+                       seis_velo_filtered(:,1), &
+                       this%time_window,   &
+                       this%seis_velo_cut )
    call cut_timewindow(this%t,             &
                        this%t,             &
                        this%time_window,   &
                        this%t_cut )
 
    ! Set length of kernel time window
-   this%ntimes = size(this%seis_cut,1)
+   this%ntimes = size(this%t_cut,1)
 
    ! Init FFT type for kernel time window, here for Parseval integration, but 
    ! will be used later for integration over waveform kernels
@@ -239,16 +252,36 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
 
    allocate(this%datat(this%ntimes,1))
    allocate(this%dataf(this%nomega,1))
-   allocate(this%seis_cut_fd(this%nomega,1))
+   allocate(this%seis_disp_cut_fd(this%nomega,1))
+   allocate(this%seis_velo_cut_fd(this%nomega,1))
 
    ! FFT the cut and filtered seismogram
-   call this%fft_data%rfft(taperandzeropad(array = reshape(this%seis_cut, [this%ntimes, 1]),  &
+   call this%fft_data%rfft(taperandzeropad(array = reshape(this%seis_disp_cut, [this%ntimes, 1]),  &
                                            ntimes = this%ntimes_ft, &
                                            ntaper = 0 ),            &
-                            this%seis_cut_fd)
+                            this%seis_disp_cut_fd)
+   call this%fft_data%rfft(taperandzeropad(array = reshape(this%seis_velo_cut, [this%ntimes, 1]),  &
+                                           ntimes = this%ntimes_ft, &
+                                           ntaper = 0 ),            &
+                            this%seis_velo_cut_fd)
+
 
    ! Integrate over squared seismogram for normalization term in 5.13, TNM thesis
-   normalization_term = this%integrate_parseval(this%seis_cut, this%seis_cut)                  
+   select case(this%misfit_type)
+   case('CC')
+     ! For travel-time kernels, the velocity seismogram has to be used
+     normalization_term = this%integrate_parseval(this%seis_velo_cut, this%seis_velo_cut)                  
+   
+   case('AM')
+     ! For travel-time kernels, the velocity seismogram has to be used
+     normalization_term = this%integrate_parseval(this%seis_disp_cut, this%seis_disp_cut)                  
+
+   case default
+     print *, 'Unkown misfit type: ', trim(this%misfit_type)
+     call pabort()
+
+   end select
+
    if (normalization_term.gt.1.d-100) then
        this%normalization = 1.d0 / normalization_term 
    else
@@ -257,28 +290,31 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    
    if (verbose>0) then
       write(lu_out,*) '  Normalization coefficient: ', this%normalization
-      write(lu_out,*) '  Length of seismogram: ', size(this%seis_cut,1), ' samples'
+      write(lu_out,*) '  Length of seismogram: ', size(this%t_cut,1), ' samples'
       write(lu_out,*) '  ---------------------------------------------------------'
       write(lu_out,*) ''
    end if
 
    ! Write seismogram to disk (raw, filtered and cut to time window)
+   ! First column: time
+   ! 2nd column: displacement seismogram in meters
+   ! 3rd column: velocity seismogram in meters/sec
    if ((firstslave.and.write_smgr).or.testing) then
-      open(unit=100,file='./Seismograms/seismogram_raw_'//trim(this%name), action='write')
+      open(unit=100,file='./Seismograms/seis_raw_'//trim(this%name), action='write')
       do isample = 1, size(seis,1)
          write(100,*) this%t(isample), seis(isample)
       end do
       close(100)
 
-      open(unit=100,file='./Seismograms/seismogram_'//trim(this%name), action='write')
-      do isample = 1, size(seis_filtered,1)
-         write(100,*) this%t(isample), seis_filtered(isample,1)
+      open(unit=100,file='./Seismograms/seism_'//trim(this%name), action='write')
+      do isample = 1, size(seis_disp_filtered,1)
+         write(100,*) this%t(isample), seis_disp_filtered(isample,1), seis_velo_filtered(isample,1)
       end do
       close(100)
 
-      open(unit=100,file='./Seismograms/seismogram_cut_'//trim(this%name), action='write')
-      do isample = 1, size(this%seis_cut,1)
-         write(100,*) this%t_cut(isample), this%seis_cut(isample)
+      open(unit=100,file='./Seismograms/seism_cut_'//trim(this%name), action='write')
+      do isample = 1, size(this%t_cut,1)
+         write(100,*) this%t_cut(isample), this%seis_disp_cut(isample), this%seis_velo_cut(isample)
       end do
       close(100)
    end if
@@ -332,74 +368,79 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
 
          select case(lowtrim(int_scheme))
          case('trapezoidal')
-           calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_cut, &
+           calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_velo_cut, &
                                                                  this%dt ) &
                                         * this%normalization
          case('parseval')
-           calc_misfit_kernel(itrace) = this%integrate_parseval( timeseries_cut, this%seis_cut_fd) &
+           calc_misfit_kernel(itrace) = this%integrate_parseval( timeseries_cut, this%seis_velo_cut_fd) &
                                         * this%normalization
          end select
       end do
 
    case('AM')
 
-      ! @TODO: Amplitude kernels not yet implemented
-
-      ! do itrace = 1, ntrace
-
-      !    call cut_timewindow(this%t,                 &
-      !                        timeseries(:, itrace),  &
-      !                        this%time_window,       &
-      !                        cut_timeseries)
+      do itrace = 1, ntrace
          
-      !    calc_misfit_kernel(itrace) = integrate( cut_timeseries * this%seis, this%dt ) &
-      !                                 * this%normalization
-      ! end do
+         call cut_timewindow(this%t,                 &
+                             timeseries(:, itrace),  &
+                             this%time_window,       &
+                             timeseries_cut)
+
+         select case(lowtrim(int_scheme))
+         case('trapezoidal')
+           calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_disp_cut, &
+                                                                 this%dt ) &
+                                        * this%normalization
+         case('parseval')
+           calc_misfit_kernel(itrace) = this%integrate_parseval( timeseries_cut, this%seis_disp_cut_fd) &
+                                        * this%normalization
+         end select
+      end do
 
    end select
 
    ! Handle the case that the Kernel is NaN
-   if (any(calc_misfit_kernel.ne.calc_misfit_kernel)) then ! Kernel is NaN
-       print *, 'ERROR Kernel has value NaN!'
-       write(lu_out, *) 'ERROR Kernel has value NaN! Aborting calculation...'
-       print *, 'Values of Kernel:'
-       write(fmtstring, "('(',I6,'(ES11.3))')") ntrace
-       print fmtstring, calc_misfit_kernel
-       print *, 'Value of normalization:'
-       print *, this%normalization
-       print *, 'Convolved time series is written into "errorlog_timeseries",'
-       print *, 'seismogram is written into "errorlog_seismogram"'
-       do itrace = 1, ntrace
-         if (calc_misfit_kernel(itrace).ne.calc_misfit_kernel(itrace)) then !is NaN
-           call cut_timewindow(this%t,                 &
-                               timeseries(:, itrace),  &
-                               this%time_window,       &
-                               timeseries_cut)
+   !if (any(calc_misfit_kernel.ne.calc_misfit_kernel)) then ! Kernel is NaN
+   !    print *, 'ERROR Kernel has value NaN!'
+   !    write(lu_out, *) 'ERROR Kernel has value NaN! Aborting calculation...'
+   !    print *, 'Values of Kernel:'
+   !    write(fmtstring, "('(',I6,'(ES11.3))')") ntrace
+   !    print fmtstring, calc_misfit_kernel
+   !    print *, 'Value of normalization:'
+   !    print *, this%normalization
+   !    print *, 'Convolved time series is written into "errorlog_timeseries",'
+   !    print *, 'seismogram is written into "errorlog_seismogram"'
+   !    do itrace = 1, ntrace
+   !      if (calc_misfit_kernel(itrace).ne.calc_misfit_kernel(itrace)) then !is NaN
+   !        call cut_timewindow(this%t,                 &
+   !                            timeseries(:, itrace),  &
+   !                            this%time_window,       &
+   !                            timeseries_cut)
 
-           calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_cut, this%dt ) &
-                                        * this%normalization
+   !        calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_cut, this%dt ) &
+   !                                     * this%normalization
 
-           write(fnam_errorlog,'(I06, "_errorlog_timeseries_full")') myrank                             
-           open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
-           do it = 1, size(this%t)
-             write(lu_errorlog, '(ES11.3, ES15.8)') this%t(it), timeseries(it,itrace)
-           end do
-           close(lu_errorlog)
+   !        write(fnam_errorlog,'(I06, "_errorlog_timeseries_full")') myrank                             
+   !        open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
+   !        do it = 1, size(this%t)
+   !          write(lu_errorlog, '(ES11.3, ES15.8)') this%t(it), timeseries(it,itrace)
+   !        end do
+   !        close(lu_errorlog)
 
-           write(fnam_errorlog,'(I06, "_errorlog_timeseries_cut")') myrank                             
-           open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
-           write(lu_errorlog, '(ES15.8)') timeseries_cut
-           close(lu_errorlog)
+   !        write(fnam_errorlog,'(I06, "_errorlog_timeseries_cut")') myrank                             
+   !        open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
+   !        write(lu_errorlog, '(ES15.8)') timeseries_cut
+   !        close(lu_errorlog)
 
-           exit ! Only the first time series is written out, exit the loop
-         end if
-       end do
-       write(fnam_errorlog,'(I06, "_errorlog_seismogram")') myrank                             
-       open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
-       write(lu_errorlog, *) this%seis_cut
-       close(lu_errorlog)
-       call pabort
-   end if
+   !        exit ! Only the first time series is written out, exit the loop
+   !      end if
+   !    end do
+   !    write(fnam_errorlog,'(I06, "_errorlog_seismogram")') myrank                             
+   !    open(newunit=lu_errorlog, file=fnam_errorlog, status='replace')
+   !    write(lu_errorlog, *) this%seis_cut
+   !    close(lu_errorlog)
+   !    call pabort
+   !end if
 
 end function calc_misfit_kernel
 !-------------------------------------------------------------------------------

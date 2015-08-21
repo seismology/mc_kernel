@@ -25,7 +25,7 @@ subroutine do_master()
   integer               :: mpistatus(MPI_STATUS_SIZE)
   integer               :: itask, ntasks, ioutput, iclock, iclock_ref, ticks_per_sec
   integer               :: itask_result
-  real(kind=sp)         :: time
+  real(kind=dp)         :: time
   character(len=64)     :: fmtstring
 
   call init_queue(ntasks)
@@ -116,7 +116,7 @@ subroutine do_master()
     
     !Get time elapsed since start
     call system_clock(count=iclock)
-    time = real(iclock-iclock_ref) / real(ticks_per_sec)
+    time = real(iclock-iclock_ref, kind=dp) / real(ticks_per_sec, kind=dp)
 
     write(6,fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
 
@@ -156,7 +156,7 @@ subroutine do_master()
     
     !Get time elapsed since start
     call system_clock(count=iclock)
-    time = real(iclock-iclock_ref) / real(ticks_per_sec)
+    time = real(iclock-iclock_ref, kind=dp) / real(ticks_per_sec, kind=dp)
 
     write(6, fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
 

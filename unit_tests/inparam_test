@@ -1,9 +1,11 @@
 FWD_DIR         'test_wavefields/kerner_fwd/'
 BWD_DIR         'test_wavefields/kerner_bwd/'
 ALLOWED_ERROR   1e-1
-SOURCE_FILE     'unit_tests/CMTSOLUTION'
-RECEIVER_FILE   'unit_tests/receiver.dat'
-FILTER_FILE     'unit_tests/filters.dat'
+
+
+SRC_FILE        'unit_tests/CMTSOLUTION'
+REC_FILE        'unit_tests/receiver.dat'
+FILT_FILE       'unit_tests/filters.dat'
 MESH_FILE_TYPE       'abaqus'
 MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
 STF_FILE             'unit_tests/stf_test.dat'
@@ -11,10 +13,33 @@ STF_FILE             'unit_tests/stf_test.dat'
 #MESH_FILE_TYPE       'tetrahedral'
 #MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
 #MESH_FILE_FACETS     'unit_tests/facets.TEST'
+
+# Calculate kernels for relative perturbations dVp with respect to the background 
+# model (true, default)
+# or for absolute values of the model parameters like Vp (false)
+KERNEL_FOR_ABSOLUTE_PERTURBATIONS false
+
+# For plotting reasons one may wish to skip the integration over cell-volume.
+# Resulting kernels bear the unit [s/m^3]
+NO_INT_OVER_VOLUME false
+
+# Integrate the kernel over the background model. Classically, this was assumed
+# to result in the travel time of a phase. This assumption is highly dubious for
+# wavefield-derived kernels. For legacy reasons, we can still leave it in. 
+# Adds a version of the background model interpolated on the inversion mesh to 
+# the output file.
+INT_OVER_BACKGROUND_MODEL false
+
+# This activates the optional (linearity test) to integrate relative kernels over
+# model perturbations in percent, to assess how well our kernels predict measured
+# traveltime perturbations for the same model. This only makes sense when the flag
+# to compute relative perturbation kernels is set to true
+INT_OVER_3D_HETEROGENEITIES false
+HET_FILE 'unit_tests/savani.rtpv'
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
-OUTPUT_FILE          'unit_tests/test_master_queue'
+OUT_PREFIX           'unit_tests/test_master_queue'
 
 # Output format when dumping kernels and wavefields. 
 # Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
@@ -63,8 +88,31 @@ DISPL_BUFFER_SIZE    100
 # Number of elements in each MPI task. 
 ELEMENTS_PER_TASK    100 
 
+# Sort mesh by element midpoint coordinates. This should allow to use the buffer more 
+# efficiently. Testing
+NO_SORT_MESH_ELEMENTS false
+
 # Use quasirandom numbers instead of pseudorandom ones
-USE_QUASIRANDOM_NUMBERS true
+USE_PSEUDORANDOM_NUMBERS false
+
+# Mask Source and receiver
+# If true, the kernel value is set to zero inside the element that contains the source
+# and the one that contains the receiver. This is a crude way to mask the source, but 
+# it allows to reduce the time spent in the source region
+MASK_SOURCE_RECEIVER  false
+
+# Damping radius around source and receiver in meter
+# Inside this radius, the kernel values are damped by 
+# K = K_0 * R / DAMP_RADIUS_SOURCE_RECEIVER
+# where R is the distance of the point to source or receiver
+# If value is <=0, damping is switched off
+DAMP_RADIUS_SOURCE_RECEIVER  100.d3
+
+# Deconvolve the AxiSEM Source Time Function from the wavefield.
+# This is the correct way to do it, but it is not 100% stable yet. Leave it off for a while-
+# If set to false, than the wavefield is just time-shifted to account for the STF not centered 
+# at zero time.:
+NO_DECONVOLVE_STF false
 
 # Integration scheme
 # Options:

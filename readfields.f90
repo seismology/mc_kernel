@@ -43,9 +43,6 @@ module readfields
         type(parameter_interpolator)       :: vp, vs, rho           !< Model parameters
         type(parameter_interpolator)       :: lambda, mu            !< Elastic parameters
         type(parameter_interpolator)       :: phi, xi, eta          !< Anisotropic parameters
-        !real(kind=sp), allocatable         :: vp(:), vs(:), rho(:)  !< Model parameters
-        !real(kind=sp), allocatable         :: lambda(:), mu(:)      !< Elastic parameters
-        !real(kind=sp), allocatable         :: phi(:), xi(:), eta(:) !< Anisotropic parameters
         integer, allocatable               :: isaxis(:)             !< Is this point at the axis?
         integer, allocatable               :: gll_point_ids(:,:,:)  !< IDs of GLL points for this element
         integer                            :: npoints, nelem
@@ -119,7 +116,7 @@ module readfields
         real(kind=dp), public              :: desired_source_depth
         real(kind=dp), public              :: timeshift_fwd, timeshift_bwd
         real(kind=dp), public              :: amplitude_fwd, amplitude_bwd
-        real(kind=dp), public, allocatable :: veloseis(:,:) !, dispseis(:,:)
+        real(kind=dp), public, allocatable :: seis(:,:) 
         real(kind=dp), public, allocatable :: stf_fwd(:), stf_bwd(:)
         real(kind=dp), public, allocatable :: stf_d_fwd(:), stf_d_bwd(:)
         integer                            :: strain_buffer_size
@@ -1543,8 +1540,7 @@ subroutine load_seismogram_rdbm(this, rec_in, src_in)
    integer                           :: nrec
    integer                           :: irec
  
-   real(kind=dp), allocatable        :: seismogram_disp(:,:,:)
-   real(kind=dp), allocatable        :: seismogram_velo(:,:,:)
+   real(kind=dp), allocatable        :: seismogram(:,:,:)
 
    if (.not.this%kdtree_built) then
       print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
@@ -1559,26 +1555,20 @@ subroutine load_seismogram_rdbm(this, rec_in, src_in)
 
    call rec_rdbm%create_reci_sources(rec_in)
 
-   allocate(this%veloseis(this%ndumps, nrec))
-   !allocate(this%dispseis(this%ndumps, nrec))
+   allocate(this%seis(this%ndumps, nrec))
 
-   allocate(seismogram_disp(this%ndumps, 1, 1)) ! last 1 means 1 source
-   allocate(seismogram_velo(this%ndumps, 1, 1)) ! last 1 means 1 source
+   allocate(seismogram(this%ndumps, 1, 1)) ! last 1 means 1 source
 
    do irec=1,nrec
 
-      !seismogram_disp = this%load_fw_points_rdbm(src_rdbm, rec_rdbm%reci_sources(irec), &
-      !                                    rec_in(irec)%component)
-      seismogram_velo = this%load_fw_points_rdbm(src_rdbm, rec_rdbm%reci_sources(irec), &
-                                          rec_in(irec)%component)
+      seismogram = this%load_fw_points_rdbm(src_rdbm, rec_rdbm%reci_sources(irec), &
+                                            rec_in(irec)%component)
 
-      !this%dispseis(:, irec) = seismogram_disp(:,1,1)  
-      this%veloseis(:, irec) = seismogram_velo(:,1,1)
+      this%seis(:, irec) = seismogram(:,1,1)  
    
    end do
 
-   deallocate(seismogram_disp)
-   deallocate(seismogram_velo)
+   deallocate(seismogram)
 
 
 end subroutine load_seismogram_rdbm
@@ -2966,11 +2956,16 @@ subroutine cache_mesh(ncid, mesh, dump_type)
                          varname   = 'mesh_S',      &
                          limits = [0., 1e9],     & 
                          values = mesh%s   )
+
+  write(lu_out,*) 'sizeof mesh%s: ', sizeof(mesh%s)
+
               
   call nc_getvar_by_name(ncid   = ncid,          &
                          varname   = 'mesh_Z',      &
                          limits = [-1e9, 1e9],   & 
                          values = mesh%z   )
+
+  write(lu_out,*) 'sizeof mesh%s: ', sizeof(mesh%s)
               
 
   if (trim(dump_type) == 'displ_only') then
@@ -2979,31 +2974,37 @@ subroutine cache_mesh(ncid, mesh, dump_type)
                              varname   = 'eltype',     &
                              limits = [0, 3],       &
                              values = mesh%eltype)
+      write(lu_out,*) 'sizeof mesh%eltype: ', sizeof(mesh%eltype)
 
       call nc_getvar_by_name(ncid   = ncid,         &
                              varname   = 'axis',       &
                              limits = [0, 1],       &
                              values = mesh%isaxis)
+      write(lu_out,*) 'sizeof mesh%isaxis: ', sizeof(mesh%isaxis)
 
       call nc_getvar_by_name(ncid   = ncid,         &
                              varname   = 'mp_mesh_S',  &
                              limits = [0., 1e9],    & 
                              values = mesh%s_mp )
+      write(lu_out,*) 'sizeof mesh%s_mp: ', sizeof(mesh%s_mp)
                   
       call nc_getvar_by_name(ncid   = ncid,         &
                              varname   = 'mp_mesh_Z',  &
                              limits = [-1e9, 1e9],  & 
                              values = mesh%z_mp )
+      write(lu_out,*) 'sizeof mesh%z_mp: ', sizeof(mesh%z_mp)
 
       call nc_getvar_by_name(ncid   = ncid,         &
                              varname   = 'fem_mesh',   &
                              limits = [0, size(mesh%s)-1], &
                              values = mesh%corner_point_ids )
+      write(lu_out,*) 'sizeof mesh%corner_point_ids: ', sizeof(mesh%corner_point_ids)
 
       call nc_getvar_by_name(ncid   = ncid,         &
                              varname   = 'sem_mesh',   &
                              limits = [0, size(mesh%s)-1], &
                              values = mesh%gll_point_ids)
+      write(lu_out,*) 'sizeof mesh%gll_point_ids: ', sizeof(mesh%gll_point_ids)
 
   endif
 
