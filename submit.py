@@ -462,7 +462,7 @@ for key, value in params.iteritems():
 
   if key in ('NSLAVES', 'JOB_NAME', 'MESH_FILE_ABAQUS', 'MESH_FILE_VERTICES', 'MESH_FILE_FACETS', 
              'HET_FILE', 'INPUT_FILE', 'MESSAGE', 'AVAILABLE_MEMORY', 'WALL_TIME', 'MAIL_ADDRESS', 
-             'JOB_CLASS'): 
+             'JOB_CLASS', 'TASKS_PER_NODE'): 
     # Effectively nothing to do
     print ''
   elif key=='SRC_FILE':
