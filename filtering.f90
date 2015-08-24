@@ -33,6 +33,7 @@ module filtering
        procedure, pass   :: apply_3d
        procedure, pass   :: isinitialized
        procedure, pass   :: get_transferfunction
+       generic           :: apply => apply_1d, apply_2d, apply_3d
    end type
 
    type timeshift_type

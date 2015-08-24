@@ -26,7 +26,7 @@ implicit none
     integer,           public            :: model_parameter_index
     integer,           public            :: hetero_parameter_index
     character(len=32)                    :: strain_type 
-    type(filter_type), pointer           :: filter
+    type(filter_type), public, pointer   :: filter
     integer, public                      :: ntimes            !< Length of time window in samples
     type(rfft_type)                      :: fft_data          !< FFT type for Parseval integration
     real(kind=dp), allocatable           :: datat(:,:)        !< input vector for FFT
