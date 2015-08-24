@@ -206,17 +206,36 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    call fft_data%irfft(seis_disp_filtered_fd, seis_disp_filtered)
    call fft_data%irfft(seis_velo_filtered_fd, seis_velo_filtered)
 
+   call check_NaN(seis_velo_filtered, isnan, nan_loc)
+   if (isnan) then
+     print *, myrank, ': ERROR: NaN found in velocity seismogram:'
+     print *, 'NaN index: ', nan_loc
+     print *, 'Wrote seismogram to seis_velo_nan.txt'
+     open(unit=100, file='seis_velo_nan.txt', action='write')
+     do isample = 1, size(seis_velo_filtered,1)
+         write(100,*) this%t(isample), seis_velo_filtered(isample,1)
+     end do
+     close(100)
+     open(unit=100, file='seis_velo_nan_fd.txt', action='write')
+     f = fft_data%get_f()
+     do isample = 1, size(seis_fd,1)
+         write(100,*) f(isample), seis_fd(isample,1)
+     end do
+     close(100)
+     stop
+   end if
+
    call check_NaN(seis_disp_filtered, isnan, nan_loc)
    if (isnan) then
-     print *, myrank, ': ERROR: NaN found in seismogram:'
+     print *, myrank, ': ERROR: NaN found in displacement seismogram:'
      print *, 'NaN index: ', nan_loc
-     print *, 'Wrote seismogram to seis_nan.txt'
-     open(unit=100, file='seis_nan.txt', action='write')
+     print *, 'Wrote seismogram to seis_disp_nan.txt'
+     open(unit=100, file='seis_disp_nan.txt', action='write')
      do isample = 1, size(seis_disp_filtered,1)
          write(100,*) this%t(isample), seis_disp_filtered(isample,1)
      end do
      close(100)
-     open(unit=100, file='seis_nan_fd.txt', action='write')
+     open(unit=100, file='seis_disp_nan_fd.txt', action='write')
      f = fft_data%get_f()
      do isample = 1, size(seis_fd,1)
          write(100,*) f(isample), seis_fd(isample,1)
