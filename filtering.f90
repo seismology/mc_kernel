@@ -308,6 +308,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
   
     this%transferfunction_fwd = this%transferfunction_fwd * lowpass
     this%transferfunction_bwd = this%transferfunction_bwd * lowpass
+    this%transferfunction_fwd_deriv = this%transferfunction_fwd_deriv * lowpass
 
     ! Replace NaNs with zero
     where(abs(this%transferfunction_fwd).ne.abs(this%transferfunction_fwd)) 
@@ -316,6 +317,10 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     where(abs(this%transferfunction_bwd).ne.abs(this%transferfunction_bwd)) 
       this%transferfunction_bwd = 0
+    end where
+
+    where(abs(this%transferfunction_fwd_deriv).ne.abs(this%transferfunction_fwd_deriv)) 
+      this%transferfunction_fwd_deriv = 0
     end where
 
     call fft_stf%irfft(stf_sem_fd, stf_sem_td)
