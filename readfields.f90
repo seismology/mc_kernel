@@ -101,8 +101,8 @@ module readfields
         logical, private                   :: kdtree_built = .false.
         
         character(len=32)                  :: strain_type  !< full tensor or straintrace
-        integer                            :: ndim          !< Number of dimensions which has to be read to calculate 
-                                                            !! Kernel on parameter model_param
+        integer                            :: ndim     !< Number of dimensions which has to be read to calculate 
+                                                       !! Kernel on parameter model_param
 
         real(kind=dp), public              :: dt
         integer,       public              :: ndumps, decimate_factor

@@ -21,6 +21,7 @@ module master_queue
   type(parameter_type),           save :: parameters
   integer, allocatable,           save :: elems_in_task(:,:)
   real(kind=dp), allocatable,     save :: K_x(:,:), Var(:,:), Bg_Model(:,:), Het_Model(:,:)
+  real(kind=dp), allocatable,     save :: fw_field(:,:,:,:), bw_field(:,:,:,:), conv_field(:,:,:)
   integer,       allocatable,     save :: connectivity(:,:)
   integer,       allocatable,     save :: niterations(:,:), element_proc(:)
   real(kind=dp), allocatable,     save :: computation_time(:)
@@ -41,7 +42,7 @@ subroutine init_queue(ntasks, inparam_file)
   use work_type_mod, only                   : wt
   integer, intent(out)                     :: ntasks
   character(len=*), intent(in), optional   :: inparam_file
-  integer                                  :: nelems
+  integer                                  :: nelems, nbasisfuncs
   integer(kind=long)                       :: iclockold
   character(len=64)                        :: filename
   logical                                  :: intermediate_results_exist
@@ -105,16 +106,27 @@ subroutine init_queue(ntasks, inparam_file)
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Allocate variables to store result'
   write(lu_out,'(A)') '***************************************************************'
-  allocate(K_x(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
-  allocate(Var(inv_mesh%get_nbasisfuncs(parameters%int_type), parameters%nkernel))
-  allocate(Bg_Model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
-                    nmodel_parameters))
-  allocate(Het_Model(inv_mesh%get_nbasisfuncs(parameters%int_type),  &
-                     nmodel_parameters_hetero))
+  ! Number of vertices or number of cells, depending on mesh type
+  nbasisfuncs = inv_mesh%get_nbasisfuncs(parameters%int_type)
+  allocate(K_x(nbasisfuncs, parameters%nkernel))
+  allocate(Var(nbasisfuncs, parameters%nkernel))
+  allocate(Bg_Model(nbasisfuncs, nmodel_parameters))
+  allocate(Het_Model(nbasisfuncs, nmodel_parameters_hetero))
   K_x(:,:) = 0.0
   Var(:,:) = 0.0
   Bg_Model(:,:) = 0.0
   Het_Model(:,:) = 0.0
+
+  if (parameters%plot_wavefields) then
+    allocate(fw_field(nbasisfuncs, wt%ndumps, wt%ndim, &
+                      parameters%nkernel))
+    allocate(bw_field(nbasisfuncs, wt%ndumps, wt%ndim, &
+                      parameters%nkernel))
+    allocate(conv_field(nbasisfuncs, wt%ndumps, parameters%nkernel))
+    fw_field = 0.0
+    bw_field = 0.0
+    conv_field = 0.0
+  end if
 
   allocate(niterations(nelems, parameters%nkernel))
   allocate(computation_time(nelems))
@@ -224,6 +236,12 @@ subroutine extract_receive_buffer(itask, irank)
       if (parameters%int_over_hetero) then
         Het_Model(ipoint, :) = Het_Model(ipoint,:) + wt%hetero_model(:, ibasisfunc, iel) 
       end if
+      if (parameters%plot_wavefields) then
+        fw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + wt%fw_field(:, :, :, ibasisfunc, iel) 
+        bw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + wt%fw_field(:, :, :, ibasisfunc, iel) 
+        conv_field(ipoint, :, :) = conv_field(ipoint, :, :) + wt%conv_field(:, 1, :, ibasisfunc, iel) 
+      end if
+
 
     end do
     niterations(ielement,:)     = wt%niterations(:,iel)
@@ -238,10 +256,13 @@ end subroutine extract_receive_buffer
 
 !-----------------------------------------------------------------------------------------
 subroutine finalize()
+  use work_type_mod, only        : wt
   integer                       :: ikernel
   real(kind=dp)                 :: total_time
   real(kind=dp)                 :: delay_time
-  integer                       :: imodel
+  integer                       :: imodel, idim
+  character(len=32)             :: fmtstring
+  character(len=512)            :: var_name
 
 
   write(lu_out,'(A)') '***************************************************************'
@@ -277,14 +298,6 @@ subroutine finalize()
                                        entry_names = [('err_'//parameters%kernel(ikernel)%name, &
                                                        ikernel = 1, parameters%nkernel)] )
 
-       call inv_mesh%add_node_variable(var_name    = 'model',                                  &
-                                       nentries    = nmodel_parameters,              &
-                                       entry_names = parameter_name )
-
-       call inv_mesh%add_node_variable(var_name    = 'hetero',                                  &
-                                       nentries    = nmodel_parameters_hetero,              &
-                                       entry_names = parameter_name_het_store )
-
                                                     
        call inv_mesh%add_node_data(var_name = 'kernel',                      &
                                    values   = real(K_x, kind=sp) )
@@ -292,10 +305,18 @@ subroutine finalize()
                                    values   = real(sqrt(Var/K_x), kind=sp) )
 
        if (parameters%int_over_background) then
+         call inv_mesh%add_node_variable(var_name    = 'model',                                  &
+                                         nentries    = nmodel_parameters,              &
+                                         entry_names = parameter_name )
+
          call inv_mesh%add_node_data(var_name = 'model',                       &
                                      values   = real(Bg_Model, kind=sp) )
        end if
        if (parameters%int_over_hetero) then
+         call inv_mesh%add_node_variable(var_name    = 'hetero',                                  &
+                                         nentries    = nmodel_parameters_hetero,              &
+                                         entry_names = parameter_name_het_store )
+
          call inv_mesh%add_node_data(var_name = 'hetero',                       &
                                      values   = real(Het_Model, kind=sp) )
        end if
@@ -313,14 +334,6 @@ subroutine finalize()
                                        entry_names = [('err_'//parameters%kernel(ikernel)%name, &
                                                        ikernel = 1, parameters%nkernel)] )
 
-       call inv_mesh%add_cell_variable(var_name    = 'model',                                  &
-                                       nentries    = nmodel_parameters,              &
-                                       entry_names = parameter_name )
-
-       call inv_mesh%add_cell_variable(var_name    = 'hetero',                                  &
-                                       nentries    = nmodel_parameters_hetero,              &
-                                       entry_names = parameter_name_het_store )
-
                                                     
        call inv_mesh%add_cell_data(var_name = 'kernel',                      &
                                    values   = real(K_x, kind=sp) )
@@ -328,10 +341,17 @@ subroutine finalize()
                                    values   = real(sqrt(Var/K_x), kind=sp) )
 
        if (parameters%int_over_background) then
+         call inv_mesh%add_cell_variable(var_name    = 'model',                                  &
+                                         nentries    = nmodel_parameters,              &
+                                         entry_names = parameter_name )
+
          call inv_mesh%add_cell_data(var_name = 'model',                       &
                                      values   = real(Bg_Model, kind=sp) )
        end if
        if (parameters%int_over_hetero) then
+         call inv_mesh%add_cell_variable(var_name    = 'hetero',                                  &
+                                         nentries    = nmodel_parameters_hetero,              &
+                                         entry_names = parameter_name_het_store )
          call inv_mesh%add_cell_data(var_name = 'hetero',                       &
                                      values   = real(Het_Model, kind=sp) )
        end if
@@ -409,6 +429,44 @@ subroutine finalize()
   call inv_mesh%dump_data_xdmf(trim(parameters%output_file)//'_kernel')
       
   call inv_mesh%free_node_and_cell_data()
+
+  if (parameters%plot_wavefields) then
+    select case(trim(parameters%int_type))
+    case ('onvertices')
+      call inv_mesh%init_cell_data(starttime = 0.d0, dt = real(wt%dt, kind=dp))
+      call inv_mesh%add_cell_variable('forward', nentries=wt%ndumps, istime=.true.)
+
+      do ikernel = 1, parameters%nkernel
+        do idim = 1, wt%ndim
+          fmtstring = '("fw_", A, "_", I1)'
+          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          call inv_mesh%add_cell_data(var_name = var_name,                            &
+                                      values   = real(transpose(fw_field(:, :, idim, ikernel)), &
+                                                      kind=sp))
+                                      
+          fmtstring = '("bw_", A, "_", I1)'
+          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          call inv_mesh%add_cell_data(var_name = var_name,                            &
+                                      values   = real(transpose(bw_field(:, :, idim, ikernel)), &
+                                                      kind=sp))
+                                      
+        end do
+
+        fmtstring = '("conv_", A, "_", I1)'
+        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+        call inv_mesh%add_cell_data(var_name = var_name,                            &
+                                    values   = real(transpose(conv_field(:, :, ikernel)), &
+                                                    kind=sp))
+
+      end do
+
+    end select
+    call inv_mesh%dump_data_xdmf(trim(parameters%output_file)//'_wavefield')
+    call inv_mesh%free_node_and_cell_data()
+  end if
+    
+
+
   call inv_mesh%freeme()
 
 
