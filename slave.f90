@@ -332,6 +332,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     allocate(bw_field_filt(ntimes, ndim, nptperstep))
     allocate(fw_field_fd_filt(nomega, ndim, nptperstep))
     allocate(bw_field_fd_filt(nomega, ndim, nptperstep))
+
+    fw_field_out = 0.0d0
+    bw_field_out = 0.0d0
+    conv_field_out = 0.0d0
   end if
 
   allocate(fw_field(ndumps, ndim, nptperstep))
@@ -454,7 +458,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           ! Load forward field
           iclockold = tick()
           fw_field = sem_data%load_fw_points( random_points, parameters%source, & 
-            model = bg_model)
+                                              model = bg_model)
           iclockold = tick(id=id_fwd, since=iclockold)
 
           ! FFT of forward field
@@ -661,7 +665,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         end if
         if (parameters%plot_wavefields) then
           slave_result%fw_field(:, :, :, ibasisfunc, ielement)   = fw_field_out
-          slave_result%bw_field(:, :, :, ibasisfunc, ielement)   = fw_field_out
+          slave_result%bw_field(:, :, :, ibasisfunc, ielement)   = bw_field_out
           slave_result%conv_field(:, 1, :, ibasisfunc, ielement) = conv_field_out
         end if
         call int_kernel(ibasisfunc)%freeme()
