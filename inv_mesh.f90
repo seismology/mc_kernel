@@ -1266,6 +1266,8 @@ subroutine free_node_and_cell_data(this)
 
   call delete_variable(this%variable_cell)
   call delete_variable(this%variable_node)
+  this%nvar_node = 0
+  this%nvar_cell = 0
 
 end subroutine free_node_and_cell_data
 !-----------------------------------------------------------------------------------------

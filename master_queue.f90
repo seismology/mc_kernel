@@ -238,7 +238,7 @@ subroutine extract_receive_buffer(itask, irank)
       end if
       if (parameters%plot_wavefields) then
         fw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + wt%fw_field(:, :, :, ibasisfunc, iel) 
-        bw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + wt%fw_field(:, :, :, ibasisfunc, iel) 
+        bw_field(ipoint, :, :, :) = bw_field(ipoint, :, :, :) + wt%bw_field(:, :, :, ibasisfunc, iel) 
         conv_field(ipoint, :, :) = conv_field(ipoint, :, :) + wt%conv_field(:, 1, :, ibasisfunc, iel) 
       end if
 
@@ -455,7 +455,7 @@ subroutine finalize()
         end do
 
         fmtstring = '("conv_", A, "_", I1)'
-        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), 1
         call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
         call inv_mesh%add_cell_data(var_name = var_name,                            &
                                     values   = real(conv_field(:, :, ikernel), &
@@ -485,7 +485,7 @@ subroutine finalize()
         end do
 
         fmtstring = '("conv_", A, "_", I1)'
-        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), 1
         call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
         call inv_mesh%add_node_data(var_name = var_name,                            &
                                     values   = real(conv_field(:, :, ikernel), &
