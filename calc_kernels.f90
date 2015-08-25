@@ -3,7 +3,8 @@ program kerner_code
 #ifndef include_mpi
     use mpi
 #endif
-    use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier
+    use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier,&
+                                           pbroadcast_log
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
                                            master, lu_out, myrank
     use simple_routines,             only: lowtrim
@@ -111,6 +112,9 @@ program kerner_code
 
     call pbroadcast_int(nbasisfuncs_per_task, 0)
     call pbroadcast_int(nvertices_per_task, 0)
+    call pbroadcast_int(ndumps, 0)
+    call pbroadcast_int(ndim, 0)
+    call pbroadcast_log(plot_wavefields, 0)
 
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' Initialize MPI work type'

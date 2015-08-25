@@ -327,8 +327,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
     allocate(fw_field_out(ndumps, ndim, nkernel))
     allocate(bw_field_out(ndumps, ndim, nkernel))
-    allocate(fw_field_filt(ndumps, ndim, nptperstep))
-    allocate(bw_field_filt(ndumps, ndim, nptperstep))
+    allocate(conv_field_out(ndumps, nkernel))
+    allocate(fw_field_filt(ntimes, ndim, nptperstep))
+    allocate(bw_field_filt(ntimes, ndim, nptperstep))
     allocate(fw_field_fd_filt(nomega, ndim, nptperstep))
     allocate(bw_field_fd_filt(nomega, ndim, nptperstep))
   end if
@@ -675,6 +676,7 @@ end function slave_work
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+!> Do the integration/projection of the (1D) background model on the base functions
 function integrate_1d_model(sem_data, inv_mesh, ielement) result(int_model)
   use global_parameters,                     only: sp, dp
   use readfields,                            only: semdata_type
@@ -733,6 +735,7 @@ end function integrate_1d_model
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+!> Do the integration/projection of a (3D) heterogeneity model on the base functions
 function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
   use global_parameters,                     only: sp, dp
   use inversion_mesh,                        only: inversion_mesh_data_type

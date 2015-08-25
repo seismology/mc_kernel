@@ -208,7 +208,7 @@ subroutine read_parameters(this, input_file_in)
            read(keyvalue, *) this%fftw_plan
 
         case('WHAT_TO_DO')
-           if (keyvalue == 'plot_wavefields') then
+           if (keyvalue == 'plot_wavefield') then
              this%plot_wavefields = .true.
            end if
 
