@@ -509,11 +509,11 @@ function calc_basekernel(ibasekernel, strain_type_fwd, strain_type_bwd, &
      print*,"ERROR: Density kernels not yet implemented"
      stop
   case(4) ! k_a
-     conv_field_fd = ( bw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
-                     ( fw_field_fd(:,2,:) * bw_field_fd(:,1,:) )
+     conv_field_fd = ( fw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
+                     ( fw_field_fd(:,2,:) + bw_field_fd(:,1,:) )
   case(5) ! k_b
      conv_field_fd = ( ( bw_field_fd(:,5,:) * fw_field_fd(:,5,:) ) + &
-                     ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
+                       ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
   case(6) ! k_c
      conv_field_fd = ( fw_field_fd(:,1,:) + fw_field_fd(:,2,:) ) * &
                        bw_field_fd(:,3,:) + &
