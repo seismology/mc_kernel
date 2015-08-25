@@ -192,7 +192,8 @@ subroutine read_parameters(this, input_file_in)
            this%relative_kernel = .not. temp_logical
 
         case('NO_INT_OVER_VOLUME')
-           read(keyvalue, *) this%int_over_volume
+           read(keyvalue, *) temp_logical
+           this%int_over_volume = .not. 
 
         case('INT_OVER_BACKGROUND_MODEL')
            read(keyvalue, *) this%int_over_background
