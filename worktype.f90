@@ -26,7 +26,7 @@ module work_type_mod
      integer                    :: ielement_type !1-tet, 2-quad, 3-tri, 4-hex, 5-vox
      integer                    :: ndumps
      integer                    :: ndim
-     real(kind=sp)              :: dt   
+     integer                    :: dt   !< dt in microseconds
      integer, allocatable       :: connectivity(:,:)
      real(kind=dp), allocatable :: vertices(:,:)
      real(kind=dp), allocatable :: kernel_values(:,:,:)
@@ -80,7 +80,7 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
 
   wt%ndumps                    = ndumps
   wt%ndim                      = ndim
-  wt%dt                        = dt   
+  wt%dt                        = nint(dt*1.e6) !dt in microseconds
 
   fmtstring = '(A32, I5)'
   write(lu_out, fmtstring) 'nkernel:', wt%ntotal_kernel
@@ -128,7 +128,7 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   allocate(blocklengths(nblocks))
   allocate(offsets(nblocks))
 
-  blocklengths(1) = 11 ! variable sizes and itask
+  blocklengths(1) = 13 ! variable sizes and itask
   blocklengths(2) = wt%nelems_per_task * wt%nvertices_per_elem ! connectivity
   blocklengths(3) = wt%nvertices * 3                           ! vertices
   blocklengths(4) = wt%ntotal_kernel * wt%nbasisfuncs_per_elem * wt%nelems_per_task !kernel_values
@@ -139,6 +139,7 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
                     * wt%nelems_per_task                                            !model
   blocklengths(9) = wt%nmodel_parameters_hetero * wt%nbasisfuncs_per_elem &
                     * wt%nelems_per_task                                            !model
+
   if (plot_wavefields) then
     blocklengths(10) = wt%ndumps * wt%ndim * wt%ntotal_kernel * &       
                        wt%nbasisfuncs_per_elem * wt%nelems_per_task                 !Forward field
@@ -164,17 +165,17 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   oldtypes(12) = MPI_DOUBLE_PRECISION   ! convolved field
 
   ! find memory offsets, more stable then computing with MPI_TYPE_EXTEND
-  call MPI_GET_ADDRESS(wt%ntotal_kernel,    offsets(1), ierr)
-  call MPI_GET_ADDRESS(wt%connectivity,     offsets(2), ierr)
-  call MPI_GET_ADDRESS(wt%vertices,         offsets(3), ierr)
-  call MPI_GET_ADDRESS(wt%kernel_values,    offsets(4), ierr)
-  call MPI_GET_ADDRESS(wt%kernel_variance,  offsets(5), ierr)
-  call MPI_GET_ADDRESS(wt%niterations,      offsets(6), ierr)
-  call MPI_GET_ADDRESS(wt%computation_time, offsets(7), ierr)
-  call MPI_GET_ADDRESS(wt%model,            offsets(8), ierr)
-  call MPI_GET_ADDRESS(wt%hetero_model,     offsets(9), ierr)
-  call MPI_GET_ADDRESS(wt%fw_field,        offsets(10), ierr)
-  call MPI_GET_ADDRESS(wt%bw_field,        offsets(11), ierr)
+  call MPI_GET_ADDRESS(wt%ntotal_kernel,    offsets(1),  ierr)
+  call MPI_GET_ADDRESS(wt%connectivity,     offsets(2),  ierr)
+  call MPI_GET_ADDRESS(wt%vertices,         offsets(3),  ierr)
+  call MPI_GET_ADDRESS(wt%kernel_values,    offsets(4),  ierr)
+  call MPI_GET_ADDRESS(wt%kernel_variance,  offsets(5),  ierr)
+  call MPI_GET_ADDRESS(wt%niterations,      offsets(6),  ierr)
+  call MPI_GET_ADDRESS(wt%computation_time, offsets(7),  ierr)
+  call MPI_GET_ADDRESS(wt%model,            offsets(8),  ierr)
+  call MPI_GET_ADDRESS(wt%hetero_model,     offsets(9),  ierr)
+  call MPI_GET_ADDRESS(wt%fw_field,         offsets(10), ierr)
+  call MPI_GET_ADDRESS(wt%bw_field,         offsets(11), ierr)
   call MPI_GET_ADDRESS(wt%conv_field,       offsets(12), ierr)
 
   ! make offsets relative
