@@ -664,9 +664,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           call int_hetero(ibasisfunc)%freeme()              
         end if
         if (parameters%plot_wavefields) then
-          slave_result%fw_field(:, :, :, ibasisfunc, ielement)   = fw_field_out
-          slave_result%bw_field(:, :, :, ibasisfunc, ielement)   = bw_field_out
-          slave_result%conv_field(:, 1, :, ibasisfunc, ielement) = conv_field_out
+          do ikernel = 1, parameters%nkernel
+            slave_result%fw_field(:, :, ikernel, ibasisfunc, ielement)   = fw_field_out / niterations(ikernel)
+            slave_result%bw_field(:, :, ikernel, ibasisfunc, ielement)   = bw_field_out / niterations(ikernel)
+            slave_result%conv_field(:, 1, ikernel, ibasisfunc, ielement) = conv_field_out / niterations(ikernel)
+          end do
         end if
         call int_kernel(ibasisfunc)%freeme()
       end do

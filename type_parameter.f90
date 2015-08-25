@@ -193,7 +193,7 @@ subroutine read_parameters(this, input_file_in)
 
         case('NO_INT_OVER_VOLUME')
            read(keyvalue, *) temp_logical
-           this%int_over_volume = .not. 
+           this%int_over_volume = .not. temp_logical
 
         case('INT_OVER_BACKGROUND_MODEL')
            read(keyvalue, *) this%int_over_background
