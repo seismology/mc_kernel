@@ -205,6 +205,7 @@ subroutine extract_receive_buffer(itask, irank)
   use work_type_mod, only    : wt
   integer, intent(in)       :: itask, irank
   integer                   :: iel, ielement, ibasisfunc, ipoint
+  real(kind=dp)             :: valence
   integer(kind=long)        :: iclockold
 
   if (.not.iclockold_mpi==-1) then
@@ -224,17 +225,19 @@ subroutine extract_receive_buffer(itask, irank)
       select case(trim(parameters%int_type))
       case('onvertices')         
         ipoint = connectivity(ibasisfunc, ielement)
+        valence = 1.d0/real(inv_mesh%get_valence(ielement), kind=dp)
       case('volumetric')
         ipoint = ielement
+        valence = 1.d0
       end select
 
-      K_x(ipoint, :)       = K_x(ipoint,:)       + wt%kernel_values(:, ibasisfunc, iel)
-      Var(ipoint, :)       = Var(ipoint,:)       + wt%kernel_variance(:, ibasisfunc, iel) 
+      K_x(ipoint, :)       = K_x(ipoint,:)       + wt%kernel_values(:, ibasisfunc, iel) * valence
+      Var(ipoint, :)       = Var(ipoint,:)       + wt%kernel_variance(:, ibasisfunc, iel)  * valence
       if (parameters%int_over_background) then
-        Bg_Model(ipoint, :)  = Bg_Model(ipoint,:)  + wt%model(:, ibasisfunc, iel)
+        Bg_Model(ipoint, :)  = Bg_Model(ipoint,:)  + wt%model(:, ibasisfunc, iel) * valence
       end if
       if (parameters%int_over_hetero) then
-        Het_Model(ipoint, :) = Het_Model(ipoint,:) + wt%hetero_model(:, ibasisfunc, iel) 
+        Het_Model(ipoint, :) = Het_Model(ipoint,:) + wt%hetero_model(:, ibasisfunc, iel)  * valence
       end if
       if (parameters%plot_wavefields) then
         fw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + wt%fw_field(:, :, :, ibasisfunc, iel) 
