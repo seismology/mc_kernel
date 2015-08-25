@@ -431,31 +431,64 @@ subroutine finalize()
   call inv_mesh%free_node_and_cell_data()
 
   if (parameters%plot_wavefields) then
+    write(lu_out,*) 'Write wavefields to disk'
     select case(trim(parameters%int_type))
-    case ('onvertices')
-      call inv_mesh%init_cell_data(starttime = 0.d0, dt = real(wt%dt, kind=dp))
-      call inv_mesh%add_cell_variable('forward', nentries=wt%ndumps, istime=.true.)
+    case ('volumetric')
+      call inv_mesh%init_cell_data(starttime = 0.d0, dt = real(wt%dt*1d-6, kind=dp))
 
       do ikernel = 1, parameters%nkernel
         do idim = 1, wt%ndim
           fmtstring = '("fw_", A, "_", I1)'
           write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                      values   = real(transpose(fw_field(:, :, idim, ikernel)), &
+                                      values   = real(fw_field(:, :, idim, ikernel), &
                                                       kind=sp))
                                       
           fmtstring = '("bw_", A, "_", I1)'
           write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                      values   = real(transpose(bw_field(:, :, idim, ikernel)), &
+                                      values   = real(bw_field(:, :, idim, ikernel), &
                                                       kind=sp))
                                       
         end do
 
         fmtstring = '("conv_", A, "_", I1)'
         write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+        call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
         call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                    values   = real(transpose(conv_field(:, :, ikernel)), &
+                                    values   = real(conv_field(:, :, ikernel), &
+                                                    kind=sp))
+
+      end do
+
+    case ('onvertices')
+      call inv_mesh%init_node_data(starttime = 0.d0, dt = real(wt%dt*1d-6, kind=dp))
+
+      do ikernel = 1, parameters%nkernel
+        do idim = 1, wt%ndim
+          fmtstring = '("fw_", A, "_", I1)'
+          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
+          call inv_mesh%add_node_data(var_name = var_name,                            &
+                                      values   = real(fw_field(:, :, idim, ikernel), &
+                                                      kind=sp))
+                                      
+          fmtstring = '("bw_", A, "_", I1)'
+          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
+          call inv_mesh%add_node_data(var_name = var_name,                            &
+                                      values   = real(bw_field(:, :, idim, ikernel), &
+                                                      kind=sp))
+                                      
+        end do
+
+        fmtstring = '("conv_", A, "_", I1)'
+        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+        call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
+        call inv_mesh%add_node_data(var_name = var_name,                            &
+                                    values   = real(conv_field(:, :, ikernel), &
                                                     kind=sp))
 
       end do
