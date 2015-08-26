@@ -569,9 +569,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                     fw_field_out(:, :, ikernel) =  & 
                       fw_field_out(:, :, ikernel) + sum(fw_field_filt(1:ndumps, :, :), 3)
                     bw_field_out(:, :, ikernel) =  & 
-                      bw_field_out(:, :, ikernel) + sum(bw_field_filt(1:ndumps, :, :), 3)
+                      bw_field_out(:, :, ikernel) + sum(bw_field_filt(1:ndumps, :, :), 3) 
                     conv_field_out(:, ikernel) =  & 
-                      conv_field_out(:, ikernel) + sum(conv_field(1:ndumps, :), 2)
+                      conv_field_out(:, ikernel) + sum(conv_field(1:ndumps, :), 2) 
                   end if
 
                   iclockold = tick(id=id_kernel, since=iclockold)
@@ -665,9 +665,12 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         end if
         if (parameters%plot_wavefields) then
           do ikernel = 1, parameters%nkernel
-            slave_result%fw_field(:, :, ikernel, ibasisfunc, ielement)   = fw_field_out / niterations(ikernel)
-            slave_result%bw_field(:, :, ikernel, ibasisfunc, ielement)   = bw_field_out / niterations(ikernel)
-            slave_result%conv_field(:, 1, ikernel, ibasisfunc, ielement) = conv_field_out / niterations(ikernel)
+            slave_result%fw_field(:, :, ikernel, ibasisfunc, ielement)   &
+              = fw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep)
+            slave_result%bw_field(:, :, ikernel, ibasisfunc, ielement)   &
+              = bw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep)
+            slave_result%conv_field(:, 1, ikernel, ibasisfunc, ielement) &
+              = conv_field_out(:, ikernel) / (niterations(ikernel) * nptperstep)
           end do
         end if
         call int_kernel(ibasisfunc)%freeme()
