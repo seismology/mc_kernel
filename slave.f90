@@ -777,7 +777,7 @@ function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
   real(kind=dp),    allocatable                 :: hetero_random_points(:,:) 
   integer                                       :: ibasisfunc, istep_model
   integer                                       :: nbasisfuncs_per_elem
-  integer, parameter                            :: nptperstep_model = 100 !< Points per MC iteration for 
+  integer, parameter                            :: nptperstep_model = 10  !< Points per MC iteration for 
                                                                           !! Integration of model parameters
                                                                           !! Larger than for kernels, since
                                                                           !! evaluation is very cheap
@@ -792,8 +792,8 @@ function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
   do ibasisfunc = 1, nbasisfuncs_per_elem
      call int_hetero(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters_hetero,   & 
                                                        volume = 1d0,                 & 
-                                                       allowed_error = 1d-3,         &
-                                                       allowed_relerror = 1d-2)
+                                                       allowed_error = 1d-2,         &
+                                                       allowed_relerror = 1d-1)
   end do
   do while (.not.allallconverged(int_hetero))
      random_points = inv_mesh%generate_random_points( ielement, nptperstep_model, .true.)
