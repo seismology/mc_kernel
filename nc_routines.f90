@@ -2541,7 +2541,7 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
   character(len=nf90_max_name)               :: dimname
   character(len=80)                          :: fmtstring
   integer                                    :: i, variable_id, status, ncid_root
-  integer, allocatable                       :: dimid(:)
+  integer, allocatable                       :: dimid(:), chunksizes(:)
 
   call getvarid(ncid  = ncid,        &
                 name  = varname,     &
@@ -2550,6 +2550,7 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
 
   ndim = size(sizes)
   allocate(dimensions(ndim))
+  allocate(chunksizes(ndim))
 
   ! Get ncid of root group. Used for dimensions, which should always be defined
   ! in the root group (at least according to my taste)
@@ -2569,6 +2570,13 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
 
     dimensions = dimension_names
   end if
+
+  ! Find time dimension, if there is one 
+  ! and set its chunk size to one, which facilitates plotting movies strongly
+  chunksizes = sizes
+  do i = 1, ndim
+    if (dimname=='time') chunksizes(i) = 1
+  end do
 
   allocate(dimid(ndim))
 
@@ -2596,11 +2604,12 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
       end if
     end do
 
-    status = nf90_def_var( ncid   = ncid,          &
-                           name   = trim(varname), &
-                           xtype  = NF90_FLOAT,    &
-                           dimids = dimid,         &
-                           varid  = variable_id) 
+    status = nf90_def_var( ncid       = ncid,          &
+                           name       = trim(varname), &
+                           xtype      = NF90_FLOAT,    &
+                           dimids     = dimid,         &
+                           chunksizes = chunksizes,    &
+                           varid      = variable_id) 
     call check(nf90_enddef(ncid = ncid_root))
 
   else
