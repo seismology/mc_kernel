@@ -21,7 +21,7 @@ module master_queue
   type(parameter_type),           save :: parameters
   integer, allocatable,           save :: elems_in_task(:,:)
   real(kind=dp), allocatable,     save :: K_x(:,:), Var(:,:), Bg_Model(:,:), Het_Model(:,:)
-  real(kind=dp), allocatable,     save :: fw_field(:,:,:,:), bw_field(:,:,:,:), conv_field(:,:,:)
+  real(kind=sp), allocatable,     save :: fw_field(:,:,:,:), bw_field(:,:,:,:), conv_field(:,:,:)
   integer,       allocatable,     save :: connectivity(:,:)
   integer,       allocatable,     save :: niterations(:,:), element_proc(:)
   real(kind=dp), allocatable,     save :: computation_time(:)
@@ -447,15 +447,13 @@ subroutine finalize()
           write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
           call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                      values   = real(fw_field(:, :, idim, ikernel), &
-                                                      kind=sp))
+                                      values   = fw_field(:, :, idim, ikernel))
                                       
           fmtstring = '("bw_", A, "_", I1)'
           write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
           call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                      values   = real(bw_field(:, :, idim, ikernel), &
-                                                      kind=sp))
+                                      values   = bw_field(:, :, idim, ikernel))
                                       
         end do
 
@@ -463,8 +461,7 @@ subroutine finalize()
         write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), 1
         call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
         call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                    values   = real(conv_field(:, :, ikernel), &
-                                                    kind=sp))
+                                    values   = conv_field(:, :, ikernel))
 
       end do
 
@@ -477,15 +474,13 @@ subroutine finalize()
           write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
           call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_node_data(var_name = var_name,                            &
-                                      values   = real(fw_field(:, :, idim, ikernel), &
-                                                      kind=sp))
+                                      values   = fw_field(:, :, idim, ikernel))
                                       
           fmtstring = '("bw_", A, "_", I1)'
           write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
           call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_node_data(var_name = var_name,                            &
-                                      values   = real(bw_field(:, :, idim, ikernel), &
-                                                      kind=sp))
+                                      values   = bw_field(:, :, idim, ikernel))
                                       
         end do
 
@@ -493,8 +488,7 @@ subroutine finalize()
         write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), 1
         call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
         call inv_mesh%add_node_data(var_name = var_name,                            &
-                                    values   = real(conv_field(:, :, ikernel), &
-                                                    kind=sp))
+                                    values   = conv_field(:, :, ikernel))
 
       end do
 

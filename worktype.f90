@@ -36,9 +36,9 @@ module work_type_mod
      real(kind=dp), allocatable :: computation_time(:)
      real(kind=dp), allocatable :: model(:,:,:)
      real(kind=dp), allocatable :: hetero_model(:,:,:)
-     real(kind=dp), allocatable :: fw_field(:,:,:,:,:)
-     real(kind=dp), allocatable :: bw_field(:,:,:,:,:)
-     real(kind=dp), allocatable :: conv_field(:,:,:,:,:)
+     real(kind=sp), allocatable :: fw_field(:,:,:,:,:)
+     real(kind=sp), allocatable :: bw_field(:,:,:,:,:)
+     real(kind=sp), allocatable :: conv_field(:,:,:,:,:)
 
   end type
 
@@ -166,9 +166,9 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   oldtypes(7)  = MPI_DOUBLE_PRECISION   ! computation_time
   oldtypes(8)  = MPI_DOUBLE_PRECISION   ! model 
   oldtypes(9)  = MPI_DOUBLE_PRECISION   ! heterogeneity model 
-  oldtypes(10) = MPI_DOUBLE_PRECISION   ! forward field
-  oldtypes(11) = MPI_DOUBLE_PRECISION   ! backward field
-  oldtypes(12) = MPI_DOUBLE_PRECISION   ! convolved field
+  oldtypes(10) = MPI_REAL               ! forward field
+  oldtypes(11) = MPI_REAL               ! backward field
+  oldtypes(12) = MPI_REAL               ! convolved field
 
   ! find memory offsets, more stable then computing with MPI_TYPE_EXTEND
   call MPI_GET_ADDRESS(wt%ntotal_kernel,    offsets(1),  ierr)

@@ -23,9 +23,9 @@ module slave_mod
                                                !! vp, vs, rho, vph, vpv, vsh, vsv, eta, phi, xi, lam, mu
     real(kind=dp), allocatable :: hetero_model(:,:,:) !< (nmodel_parameter_hetero, nbasisfuncs_per_elem, nelements)
                                                !! dlnvp, dlnvs, dlnrho
-    real(kind=dp), allocatable :: fw_field(:,:,:,:,:)
-    real(kind=dp), allocatable :: bw_field(:,:,:,:,:)
-    real(kind=dp), allocatable :: conv_field(:,:,:,:,:)
+    real(kind=sp), allocatable :: fw_field(:,:,:,:,:)
+    real(kind=sp), allocatable :: bw_field(:,:,:,:,:)
+    real(kind=sp), allocatable :: conv_field(:,:,:,:,:)
   end type
 
 contains
