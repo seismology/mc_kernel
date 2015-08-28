@@ -32,7 +32,8 @@ subroutine ppinit
 !< Start message-passing interface, assigning the total number of processors 
 !! nproc and each processor with its local number mynum=0,...,nproc-1.
 
-  use global_parameters, only  : set_lu_out, set_myrank, set_nproc
+  use global_parameters, only  : set_lu_out, set_myrank, set_nproc, & 
+                                 set_master, set_firstslave
   integer                     :: ierror, lu_out_loc, myrank_loc, nproc_loc
   character(len=11)           :: fnam
   
@@ -43,14 +44,18 @@ subroutine ppinit
   call set_myrank(myrank_loc)
   call set_nproc(nproc_loc)
 
-  firstslave = .false. 
-
   if (myrank == 0) then
-      master = .true.
+      call set_master(.true.)
+      call set_firstslave(.false.)
       call set_lu_out(6)
   else
-      master = .false.
-      if (myrank == 1) firstslave = .true.
+      call set_master(.false.)
+      if (myrank == 1) then
+        call set_firstslave(.true.)
+      else
+        call set_firstslave(.false.)
+      end if
+
       write(fnam,"('OUTPUT_', I4.4)") myrank
       open(newunit=lu_out_loc, file=fnam, status='replace')
       call set_lu_out(lu_out_loc)
