@@ -212,6 +212,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     ! The FFT routines need 2D arrays. Second dimension will be size 1
     real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_sem_td(:,:), t(:)
     complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:), lowpass(:)
+    complex(kind=dp), allocatable   :: dev_fd(:)
 
     real(kind=dp)   , allocatable   :: stf_resampled(:), stf_src(:,:), stf_src_td(:,:)
 
@@ -241,6 +242,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     allocate(stf_src(size(stf_sem_fwd), 1))
     allocate(stf_src_fd(this%nfreq, 1))
     allocate(stf_src_td(fft_stf%get_ntimes(), 1))
+    allocate(dev_fd(fft_stf%get_nomega()))
     t = fft_stf%get_t()
 
     stf_sem(:,1) = stf_sem_fwd 
@@ -284,8 +286,11 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        close(10)
     end if
 
+    ! Calc array which contains the derivative operator in frequency domain
+    dev_fd = this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
+
     ! Calculate first derivatice of the STF
-    stf_sem_fd(:,1) = stf_sem_fd(:,1) * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
+    stf_sem_fd(:,1) = stf_sem_fd(:,1) * dev_fd
     stf_src_fd(:,1) = stf_src_fd(:,1) 
 
 
@@ -299,17 +304,16 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     this%transferfunction_fwd = this%transferfunction_fwd * stf_src_fd(:,1)
 
     ! Add filter with derivative for velocity seismograms
-    this%transferfunction_fwd_deriv = this%transferfunction_fwd  &
-                                      * this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
+    this%transferfunction_fwd_deriv = this%transferfunction_fwd  * dev_fd
 
 
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
     lowpass = butterworth_lowpass(this%f, this%f(this%nfreq/4), 16)
     lowpass = lowpass * conjg(lowpass)
   
-    this%transferfunction_fwd = this%transferfunction_fwd * lowpass
-    this%transferfunction_bwd = this%transferfunction_bwd * lowpass
-    this%transferfunction_fwd_deriv = this%transferfunction_fwd_deriv * lowpass
+    this%transferfunction_fwd       = this%transferfunction_fwd       * lowpass !/ dev_fd
+    this%transferfunction_bwd       = this%transferfunction_bwd       * lowpass !/ dev_fd
+    this%transferfunction_fwd_deriv = this%transferfunction_fwd_deriv * lowpass !* dev_fd
 
     ! Replace NaNs with zero
     where(abs(this%transferfunction_fwd).ne.abs(this%transferfunction_fwd)) 
@@ -338,7 +342,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
                                       real(this%transferfunction_fwd(ifreq)), &
                                       imag(this%transferfunction_fwd(ifreq)), &
                                       real(this%transferfunction_bwd(ifreq)), &
-                                      imag(this%transferfunction_bwd(ifreq))
+                                      imag(this%transferfunction_bwd(ifreq)), &
+                                      real(this%transferfunction_fwd_deriv(ifreq)), &
+                                      imag(this%transferfunction_fwd_deriv(ifreq))
        end do
        close(10)
        
