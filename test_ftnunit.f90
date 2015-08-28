@@ -2,7 +2,7 @@
 module unit_tests
 
   use ftnunit, only: test
-  use global_parameters, only: lu_out, verbose
+  use global_parameters, only: lu_out, verbose, set_master, set_master
   use test_source
   use test_montecarlo
   use test_halton_sequence
@@ -34,7 +34,7 @@ subroutine test_all
   integer   :: oldverbose
 
   verbose = 1
-  master  = .true.
+  call set_master(.true.)
   testing = .true.
 
   call init_output()
