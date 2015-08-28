@@ -146,7 +146,7 @@ subroutine do_slave()
   itask = 0
 
   ! Receive new tasks from master until the DIETAG is received and then exit the loop
-  do 
+  receive_tasks: do 
     write(lu_out,'(A)') '***************************************************************'
     write(lu_out,'(A)') ' Waiting for tasks from master rank'
     write(lu_out,'(A)') '***************************************************************'
@@ -193,7 +193,7 @@ subroutine do_slave()
     call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
     iclockold = tick(id=id_mpi, since=iclockold)
 
-  end do
+  end do receive_tasks
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A, I3, A)') ' All work done. Did ', itask, ' tasks in total'
@@ -296,7 +296,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
   integer                             :: nbasisfuncs_per_elem, nbasekernels, nkernel
   integer(kind=long)                  :: iclockold, iclockold_element
-  integer                             :: ndim
+  integer                             :: ndim, idump
   integer, parameter                  :: taper_length = 10      !< This is the bare minimum. It does 
                                                                 !! not produce artifacts yet, at least 
                                                                 !! no obvious ones
@@ -370,7 +370,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
   iclockold = tick(id=id_init, since=iclockold)
 
-  do ielement = 1, nelements 
+  loop_elements: do ielement = 1, nelements 
 
     write(lu_out, '(A,I10,A)') 'Element: ', ielement, ':'
 
@@ -385,6 +385,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
       iclockold = tick(id=id_inv_mesh)
     else
       volume = 1.d0
+    end if
+
+    ! Output arrays for wavefield plotting
+    if (parameters%plot_wavefields) then
+      fw_field_out = 0.0d0
+      bw_field_out = 0.0d0
+      conv_field_out = 0.0d0
     end if
 
     ! Background Model Integration 
@@ -443,7 +450,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
         niterations = 0
 
-        do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
+        loop_all_converged: do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
 
           iclockold = tick(id=id_mc)
 
@@ -566,12 +573,18 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                     call fft_data%irfft(bw_field_fd_filt, bw_field_filt)
 
                     ! Sum over all MC points in this iteration
+                    ! TODO: Introduce weighting of MC point contributions
                     fw_field_out(:, :, ikernel) =  & 
                       fw_field_out(:, :, ikernel) + sum(fw_field_filt(1:ndumps, :, :), 3)
                     bw_field_out(:, :, ikernel) =  & 
                       bw_field_out(:, :, ikernel) + sum(bw_field_filt(1:ndumps, :, :), 3) 
                     conv_field_out(:, ikernel) =  & 
                       conv_field_out(:, ikernel) + sum(conv_field(1:ndumps, :), 2) 
+                    !Test of planar wave with lambda=1000km and f = 1/50s
+                    !do idump = 1, ndumps
+                    !  fw_field_out(idump,:,ikernel) = &
+                    !    sum(cos(2*pi* (random_points(1,:)/1e6 + idump*sem_data%dt / (50.d0)) ))
+                    !end do
                   end if
 
                   iclockold = tick(id=id_kernel, since=iclockold)
@@ -598,6 +611,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         iclockold = tick(id=id_mc, since=iclockold)
 
         ! Check for convergence           
+        ! For volumetric basis functions, this loop has just one iteration,
+        ! for vertex-based basis functions, nvertices_per_elem iterations
         do ibasisfunc = 1, nbasisfuncs_per_elem
           iclockold = tick()
 
@@ -632,7 +647,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           call flush(lu_out)
         end if
 
-      end do ! End of Monte Carlo loop
+      end do loop_all_converged ! End of Monte Carlo loop
 
       ! Print number of iterations
       if (any(niterations(:)==parameters%max_iter)) then
@@ -665,19 +680,21 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         end if
         if (parameters%plot_wavefields) then
           do ikernel = 1, parameters%nkernel
+            ! In case of onvertices basis functions, all basis functions of this element get
+            ! the same value, i.e. each vertex gets the same value of the fields.
             slave_result%fw_field(:, :, ikernel, ibasisfunc, ielement)   &
-              = fw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep)
+              = fw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
             slave_result%bw_field(:, :, ikernel, ibasisfunc, ielement)   &
-              = bw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep)
+              = bw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
             slave_result%conv_field(:, 1, ikernel, ibasisfunc, ielement) &
-              = conv_field_out(:, ikernel) / (niterations(ikernel) * nptperstep)
-          end do
+              = conv_field_out(:, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
+          end do ! ikernel
         end if
         call int_kernel(ibasisfunc)%freeme()
-      end do
+      end do ! ibasisfunc
     end if 
 
-  end do ! ielement
+  end do loop_elements ! ielement
 
   call timeshift_fwd%freeme()
   call timeshift_bwd%freeme()

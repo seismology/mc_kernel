@@ -216,6 +216,8 @@ subroutine extract_receive_buffer(itask, irank)
   end if
 
   ! extract from receive buffer
+  ! iel = element number within task (in the local mesh of the slave)
+  ! ielement = element number within the global mesh of the master
   do iel = 1, parameters%nelems_per_task
     ielement = elems_in_task(itask, iel)
     if (ielement.eq.-1) cycle
@@ -225,7 +227,7 @@ subroutine extract_receive_buffer(itask, irank)
       select case(trim(parameters%int_type))
       case('onvertices')         
         ipoint = connectivity(ibasisfunc, ielement)
-        valence = 1.d0/real(inv_mesh%get_valence(ielement), kind=dp)
+        valence = 1.d0/real(inv_mesh%nbasisfuncs_per_elem, kind=dp)
       case('volumetric')
         ipoint = ielement
         valence = 1.d0
