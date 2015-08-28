@@ -5,6 +5,7 @@ module work_type_mod
   private
   
   public :: init_work_type
+  public :: free_work_type
   public :: wt          ! essentially implementing the singleton pattern by
                         ! providing a single variable of the private type work_type
 
@@ -14,7 +15,7 @@ module work_type_mod
      ! impossible to use the seqeuence keyword
      ! maybe can get around this by defining one block for each variable in the
      ! derived type and dropping the sequence statement
-     integer                    :: ntotal_kernel
+     integer                    :: ntotal_kernel = -1
      integer                    :: nelems_per_task
      integer                    :: nvertices
      integer                    :: nvertices_per_elem
@@ -69,6 +70,11 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   integer(kind=MPI_ADDRESS_KIND), allocatable  :: offsets(:)
   integer, parameter    :: nblocks = 12
   character(len=64)     :: fmtstring
+
+  if (wt%ntotal_kernel .ne. -1) then
+    print *, 'ERROR: Trying to init work type that is already initialized!'
+    stop
+  end if
 
   wt%ntotal_kernel             = nkernel
   wt%nelems_per_task           = nelems_per_task
@@ -191,5 +197,35 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
 end subroutine init_work_type
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+!> Free the variables of a worktype
+subroutine free_work_type()
+
+  wt%ntotal_kernel             = -1
+  wt%nelems_per_task           = -1
+  wt%nvertices                 = -1
+  wt%nvertices_per_elem        = -1
+  wt%nbasisfuncs_per_elem      = -1
+  wt%nmodel_parameters         = -1
+  wt%nmodel_parameters_hetero  = -1
+
+  wt%ndumps                    = -1
+  wt%ndim                      = -1
+  wt%dt                        = -1
+
+  deallocate(wt%connectivity)
+  deallocate(wt%vertices)
+  deallocate(wt%kernel_values)
+  deallocate(wt%kernel_variance)
+  deallocate(wt%niterations)
+  deallocate(wt%computation_time)
+  deallocate(wt%model)
+  deallocate(wt%hetero_model)
+  deallocate(wt%fw_field)
+  deallocate(wt%bw_field)
+  deallocate(wt%conv_field)
+
+end subroutine free_work_type
+!-----------------------------------------------------------------------------------------
 end module
 !=========================================================================================
