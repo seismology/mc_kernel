@@ -1405,12 +1405,18 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
 
   if (present(istime)) istime_loc = istime
 
-  call nc_create_var_by_name(ncid    = this%ncid_node,                  &
-                             varname = trim(var_name),                  &
-                             sizes   = [this%nvertices, nentries],      &
-                             dimension_names = ['Vertices', '        '])
-
-  if (istime_loc) this%ntimes = max(this%ntimes, nentries)
+  if (istime_loc) then
+    this%ntimes = max(this%ntimes, nentries)
+    call nc_create_var_by_name(ncid    = this%ncid_node,                  &
+                               varname = trim(var_name),                  &
+                               sizes   = [this%nvertices, nentries],      &
+                               dimension_names = ['Vertices', 'time    '])
+  else
+    call nc_create_var_by_name(ncid    = this%ncid_node,                  &
+                               varname = trim(var_name),                  &
+                               sizes   = [this%nvertices, nentries],      &
+                               dimension_names = ['Vertices', '        '])
+  end if
 
   call append_variable(this%variable_node, var_name, nentries, istime_loc, entry_names_loc)
 
@@ -1451,12 +1457,19 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
 
   if (present(istime)) istime_loc = istime
 
-  call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
-                             varname = trim(var_name),                  &
-                             sizes   = [this%nelements, nentries],      &
-                             dimension_names = ['Elements', '        '])
+  if (istime_loc) then
+    this%ntimes = max(this%ntimes, nentries)
+    call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
+                               varname = trim(var_name),                  &
+                               sizes   = [this%nelements, nentries],      &
+                               dimension_names = ['Elements', 'time    '])
+  else
+    call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
+                               varname = trim(var_name),                  &
+                               sizes   = [this%nelements, nentries],      &
+                               dimension_names = ['Elements', '        '])
+  end if
 
-  if (istime_loc) this%ntimes = max(this%ntimes, nentries)
 
   call append_variable(this%variable_cell, var_name, nentries, istime_loc, entry_names_loc)
 
@@ -1545,7 +1558,7 @@ subroutine add_node_data(this, var_name, values, ielement, ientry)
   use nc_routines, only                      : nc_putvar_by_name
   class(inversion_mesh_data_type)           :: this
   character(len=*), intent(in)              :: var_name
-  real(kind=sp)                             :: values(:,:)
+  real(kind=sp), intent(in)                 :: values(:,:) !< Dimension: nelements/vertices, nentries/ntimes
   integer, intent(in), optional             :: ielement(2), ientry(2)
 
   integer                                   :: ielement_loc(2), ientry_loc(2), start(2), count(2)
@@ -1617,7 +1630,7 @@ subroutine add_cell_data(this, var_name, values, ielement, ientry)
   use nc_routines, only                      : nc_putvar_by_name
   class(inversion_mesh_data_type)           :: this
   character(len=*), intent(in)              :: var_name
-  real(kind=sp), optional, intent(in)       :: values(:,:)
+  real(kind=sp), optional, intent(in)       :: values(:,:) !< Dimension: nelements/cells, nentries/ntimes
   integer, intent(in), optional             :: ielement(2), ientry(2)
 
   integer                                   :: ielement_loc(2), ientry_loc(2), start(2), count(2)
