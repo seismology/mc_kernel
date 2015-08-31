@@ -58,7 +58,7 @@ subroutine nc_open_for_read(filename, ncid)
       fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', " &
                     // "but could not find it')"
       print fmtstring, myrank, trim(filename)
-      stop
+      call pabort()
    end if
 
 end subroutine nc_open_for_read
@@ -91,12 +91,12 @@ subroutine nc_create_file(filename, ncid, cache_size, overwrite)
      fmtstring = "('ERROR: CPU ', I4, ' tried to create file ''', A, ''', " &
               // "but it already exists and overwrite was not set.')"
      print fmtstring, myrank, trim(filename)
-     stop
+     call pabort()
    elseif (status.ne.NF90_NOERR) then
      fmtstring = "('ERROR: CPU ', I4, ' tried to create file ''', A, ''', " &
               // "but could not. Check permissions.')"
      print fmtstring, myrank, trim(filename)
-     stop
+     call pabort()
    end if
    call check(nf90_enddef(ncid = ncid))
 
@@ -123,7 +123,7 @@ subroutine nc_create_group(group_name, ncid, ncid_group, overwrite)
        fmtstring = "('ERROR: CPU ', I4, ' tried to create group ''', A, ''', " &
                 // "but it already exists.')"
        print fmtstring, myrank, trim(group_name)
-       stop
+       call pabort()
      end if
 
    case default
@@ -135,7 +135,7 @@ subroutine nc_create_group(group_name, ncid, ncid_group, overwrite)
                 // "but could not. Check permissions.')"
        print fmtstring, myrank, trim(group_name)
        print *, nf90_strerror(status)
-       stop
+       call pabort()
      end if
      call check(nf90_enddef(ncid = ncid))
    end select
@@ -172,7 +172,7 @@ subroutine nc_open_for_write(filename, ncid, cache_size)
         fmtstring = "('ERROR: CPU ', I4, ' tried to create file ''', A, ''', " &
                  // "but could not. Check permissions.')"
         print fmtstring, myrank, trim(filename)
-        stop
+        call pabort()
      end if
      call check(nf90_enddef(ncid = ncid))
    end if
@@ -209,11 +209,11 @@ subroutine getvarid(ncid, name, varid, noerr)
           varid = -1
         else
           write(6,100) myrank, trim(name), ncid
-          stop
+          call pabort()
         end if
       else
         write(6,100) myrank, trim(name), ncid
-        stop
+        call pabort()
       end if
       if (verbose>1) then
         write(6,100) myrank, trim(name), ncid
@@ -256,12 +256,13 @@ end subroutine getgrpid
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_1d_int(ncid, varname, values, limits)
+subroutine nc_getvar_by_name_1d_int(ncid, varname, values, limits, varid)
 !< Looks up a 1D variable name and returns the complete variable
   integer, intent(in)                :: ncid
   character(len=*), intent(in)       :: varname
   integer, allocatable, intent(out)  :: values(:)
   integer, intent(in), optional      :: limits(2)
+  integer, intent(out), optional             :: varid
 
   integer                            :: variable_id, dimid(1), npoints, variable_type
   integer                            :: status
@@ -335,16 +336,19 @@ subroutine nc_getvar_by_name_1d_int(ncid, varname, values, limits)
      end if
   end if
 
+  if (present(varid)) varid = variable_id
+
 end subroutine nc_getvar_by_name_1d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_1d(ncid, varname, values, limits)
+subroutine nc_getvar_by_name_1d(ncid, varname, values, limits, varid)
 !< Looks up a 1D variable name and returns the complete variable
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
   real(kind=sp), allocatable, intent(inout)  :: values(:)
   real(kind=sp), intent(in), optional        :: limits(2)
+  integer, intent(out), optional             :: varid
 
   integer                                    :: variable_id, dimid(1), npoints, variable_type
   integer                                    :: status
@@ -407,16 +411,19 @@ subroutine nc_getvar_by_name_1d(ncid, varname, values, limits)
      end if
   end if
 
+  if (present(varid)) varid = variable_id
+
 end subroutine nc_getvar_by_name_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_2d_int(ncid, varname, values, limits)
+subroutine nc_getvar_by_name_2d_int(ncid, varname, values, limits, varid)
 !< Looks up a 2D variable name and returns the complete variable
   integer, intent(in)                :: ncid
   character(len=*), intent(in)       :: varname
   integer, allocatable, intent(out)  :: values(:,:)
   integer, intent(in), optional      :: limits(2)
+  integer, intent(out), optional     :: varid
 
   integer                            :: variable_id, dimid(2), len_dim1, len_dim2, variable_type
   integer                            :: status
@@ -493,16 +500,19 @@ subroutine nc_getvar_by_name_2d_int(ncid, varname, values, limits)
      end if
   end if
 
+  if (present(varid)) varid = variable_id
+
 end subroutine nc_getvar_by_name_2d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_2d(ncid, varname, values, limits)
+subroutine nc_getvar_by_name_2d(ncid, varname, values, limits, varid)
 !< Looks up a 2D variable name and returns the complete variable
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
   real(kind=sp), allocatable, intent(inout)  :: values(:,:)
   real(kind=sp), intent(in), optional        :: limits(2)
+  integer, intent(out), optional             :: varid
 
   integer                                    :: variable_id, dimid(2), len_dim1, len_dim2
   integer                                    :: variable_type
@@ -566,16 +576,19 @@ subroutine nc_getvar_by_name_2d(ncid, varname, values, limits)
      end if
   end if
 
+  if (present(varid)) varid = variable_id
+
 end subroutine nc_getvar_by_name_2d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_3d_int(ncid, varname, values, limits)
+subroutine nc_getvar_by_name_3d_int(ncid, varname, values, limits, varid)
 !< Looks up a 3D variable name and returns the complete variable
   integer, intent(in)                :: ncid
   character(len=*), intent(in)       :: varname
   integer, allocatable, intent(out)  :: values(:,:,:)
   integer, intent(in), optional      :: limits(2)
+  integer, intent(out), optional     :: varid
 
   integer                            :: variable_id, dimid(3), len_dim(3), variable_type
   integer                            :: status, i_dim
@@ -653,16 +666,19 @@ subroutine nc_getvar_by_name_3d_int(ncid, varname, values, limits)
      end if
   end if
 
+  if (present(varid)) varid = variable_id
+
 end subroutine nc_getvar_by_name_3d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_3d(ncid, varname, values, limits)
+subroutine nc_getvar_by_name_3d(ncid, varname, values, limits, varid)
 !< Looks up a 3D variable name and returns the complete variable
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
   real(kind=sp), allocatable, intent(out)    :: values(:,:,:)
   real(kind=sp), intent(in), optional        :: limits(2)
+  integer, intent(out), optional             :: varid
 
   integer                                    :: variable_id, dimid(3), len_dim(3), variable_type
   integer                                    :: status, i_dim
@@ -740,6 +756,8 @@ subroutine nc_getvar_by_name_3d(ncid, varname, values, limits)
      end if
   end if
 
+  if (present(varid)) varid = variable_id
+
 end subroutine nc_getvar_by_name_3d
 !-----------------------------------------------------------------------------------------
 
@@ -775,7 +793,7 @@ subroutine nc_putvar_by_name_1d(ncid, varname, values, start, count)
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
       print fmtstring, trim(varname)
       print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
-      stop
+      call pabort()
     else
       call check(nf90_redef(ncid = ncid))
       do i = 1, ndim
@@ -844,7 +862,7 @@ subroutine nc_putvar_by_name_1d_int(ncid, varname, values, start, count)
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
       print fmtstring, trim(varname)
       print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
-      stop
+      call pabort()
     else
       call check(nf90_redef(ncid = ncid))
       do i = 1, ndim
@@ -914,7 +932,7 @@ subroutine nc_putvar_by_name_2d(ncid, varname, values, start, count)
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
       print fmtstring, trim(varname)
       print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
-      stop
+      call pabort()
     else
       call check(nf90_redef(ncid = ncid))
       do i = 1, ndim
@@ -985,7 +1003,7 @@ subroutine nc_putvar_by_name_2d_int(ncid, varname, values, start, count)
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
       print fmtstring, trim(varname)
       print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
-      stop
+      call pabort()
     else
       call check(nf90_redef(ncid = ncid))
       do i = 1, ndim
@@ -1055,7 +1073,7 @@ subroutine nc_putvar_by_name_3d(ncid, varname, values, start, count)
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
       print fmtstring, trim(varname)
       print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
-      stop
+      call pabort()
     else
       call check(nf90_redef(ncid = ncid))
       do i = 1, ndim
@@ -1126,7 +1144,7 @@ subroutine nc_putvar_by_name_3d_int(ncid, varname, values, start, count)
       fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
       print fmtstring, trim(varname)
       print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
-      stop
+      call pabort()
     else
       call check(nf90_redef(ncid = ncid))
       do i = 1, ndim
@@ -1183,7 +1201,7 @@ subroutine nc_putvar_by_name_1d_into_nd(ncid, varname, values, start, count)
     print '(A)', "Argument ''count'' must be 1 at all but one dimension. "
     print *, 'count: ', count
     print *, 'start: ', start
-    stop
+    call pabort()
   end if
 
   ! Check whether variable size and values of count are compatible
@@ -1193,7 +1211,7 @@ subroutine nc_putvar_by_name_1d_into_nd(ncid, varname, values, start, count)
     print '(A)', "Value of ''count'' must fit size of variable to dump. "
     print *, 'count:          ', count
     print *, 'size(variable): ', start
-    stop
+    call pabort()
   end if
                   
   call getvarid(ncid  = ncid,        &
@@ -1206,7 +1224,7 @@ subroutine nc_putvar_by_name_1d_into_nd(ncid, varname, values, start, count)
     fmtstring = "('ERROR: Variable with name ', A, ' does not exist.')"
     print fmtstring, trim(varname)
     print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
-    stop
+    call pabort()
   end if
 
   select case (size(start,1))
@@ -1247,7 +1265,7 @@ subroutine nc_putvar_by_name_1d_into_nd_int(ncid, varname, values, start, count)
     print '(A)', "Argument ''count'' must be 1 at all but one dimension. "
     print *, 'count: ', count
     print *, 'start: ', start
-    stop
+    call pabort()
   end if
 
   ! Check whether variable size and values of count are compatible
@@ -1257,7 +1275,7 @@ subroutine nc_putvar_by_name_1d_into_nd_int(ncid, varname, values, start, count)
     print '(A)', "Value of ''count'' must fit size of variable to dump. "
     print *, 'count:          ', count
     print *, 'size(variable): ', start
-    stop
+    call pabort()
   end if
 
   call getvarid(ncid  = ncid,        &
@@ -1270,7 +1288,7 @@ subroutine nc_putvar_by_name_1d_into_nd_int(ncid, varname, values, start, count)
     fmtstring = "('ERROR: Variable with name ', A, ' does not exist.')"
     print fmtstring, trim(varname)
     print '(A)', "Arguments ''start'' or ''count'' are only allowed, if variable already exists"
-    stop
+    call pabort()
   end if
 
   select case (size(start,1))
@@ -1313,7 +1331,7 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
 
    if (size(values).ne.count) then
        write(*,100) myrank, trim(varname), varid, ncid, size(values), count
-       stop
+       call pabort()
    end if
 
    status_read = nf90_get_var(ncid   = ncid,           &
@@ -1351,7 +1369,7 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_read))
-       stop
+       call pabort()
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -1396,7 +1414,7 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
 
    if (size(values).ne.count) then
        write(*,100) myrank, trim(varname), varid, ncid, size(values), count
-       stop
+       call pabort()
    end if
 
    status_read = nf90_get_var(ncid   = ncid,           &
@@ -1478,7 +1496,7 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
 
    if (size(values).ne.count) then
        write(*,100) myrank, trim(varname), varid, ncid, size(values), count
-       stop
+       call pabort()
    end if
 
    status_read = nf90_get_var(ncid   = ncid,           &
@@ -1515,7 +1533,7 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_read))
-       stop
+       call pabort()
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -1564,7 +1582,7 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
            call flush(lu_out)
-           stop
+           call pabort()
        end if
    end do
 
@@ -1608,14 +1626,13 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
                call check(status)
            end if
 
-           ! Otherwise just dump as much information as possible and stop
-           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
-                        dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status_read))
-
        end do
 
-       stop
+       ! Otherwise just dump as much information as possible and call pabort()
+       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                    dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status_read))
+       call pabort()
    
    elseif (verbose>1) then
        ! Everything okay
@@ -1657,14 +1674,14 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
-       stop
+       call pabort()
    end if
 
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 2
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
-           stop
+           call pabort()
        end if
    end do
 
@@ -1686,7 +1703,7 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
        if (ndims.ne.2) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status))
-           stop
+           call pabort()
        end if
 
        ! Check whether dimension sizes are compatible with amount of data written
@@ -1706,17 +1723,16 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
                print *, trim(nf90_strerror(status_read))
-               stop 2
+               call pabort()
            end if
-
-           ! Otherwise just dump as much information as possible and stop
-           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
-                        dimsize, trim(dimname)
 
        end do
 
+       ! Otherwise just dump as much information as possible and call pabort()
+       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                    dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_read))
-       stop
+       call pabort()
    
    elseif (verbose>1) then
        ! Everything okay
@@ -1759,14 +1775,14 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
        call flush(6)
-       stop
+       call pabort()
    end if
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 3
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
            call flush(6)
-           stop
+           call pabort()
        end if
    end do
 
@@ -1790,7 +1806,7 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status))
            call flush(6)
-           stop
+           call pabort()
        end if
 
        ! Check whether dimension sizes are compatible with amount of data written
@@ -1811,18 +1827,16 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
                             dimsize, trim(dimname), idim 
                call flush(6)
                print *, trim(nf90_strerror(status))
-               stop
+               call pabort()
            end if
-
-           ! Otherwise just dump as much information as possible and stop
-           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
-                        dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status_read))
-           call flush(6)
 
        end do
 
-       stop
+       ! Otherwise just dump as much information as possible and call pabort()
+       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                    dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status_read))
+       call pabort()
    
    elseif (verbose>1) then
        ! Everything okay
@@ -1865,13 +1879,13 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
-       stop
+       call pabort()
    end if
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 3
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
-           stop
+           call pabort()
        end if
    end do
 
@@ -1894,7 +1908,7 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
        if (ndims.ne.3) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status))
-           stop
+           call pabort()
        end if
 
        ! Check whether dimension sizes are compatible with amount of data written
@@ -1914,17 +1928,17 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
                print *, trim(nf90_strerror(status))
-               stop
+               call pabort()
            end if
 
-           ! Otherwise just dump as much information as possible and stop
-           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
-                        dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status_read))
 
        end do
 
-       stop
+       ! Otherwise just dump as much information as possible and call pabort()
+       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                    dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status_read))
+       call pabort()
    
    elseif (verbose>1) then
        ! Everything okay
@@ -1966,12 +1980,12 @@ subroutine putvar_real1d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
-       stop
+       call pabort()
    end if
 
    if (size(values).ne.count) then
        write(*,100) myrank, trim(varname), varid, ncid, size(values), count
-       stop
+       call pabort()
    end if
 
    status_write = nf90_put_var(ncid   = ncid,           &
@@ -1989,7 +2003,7 @@ subroutine putvar_real1d(ncid, varid, values, start, count)
        if (ndims.ne.1) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status_write))
-           stop
+           call pabort()
        end if
        status = nf90_inquire_variable(ncid   = ncid,     &
                                       varid  = varid,    &
@@ -2005,12 +2019,12 @@ subroutine putvar_real1d(ncid, varid, values, start, count)
        if (start + count - 1 > dimsize) then
            write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
            print *, trim(nf90_strerror(status_write))
-           stop
+           call pabort()
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_write))
-       stop
+       call pabort()
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -2052,13 +2066,13 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
-       stop
+       call pabort()
    end if
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 2
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
-           stop
+           call pabort()
        end if
    end do
 
@@ -2081,7 +2095,7 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
        if (ndims.ne.2) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status_write))
-           stop
+           call pabort()
        end if
 
        ! Check whether dimension sizes are compatible with amount of data written
@@ -2101,17 +2115,16 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
                print *, trim(nf90_strerror(status_write))
-               stop
+               call pabort()
            end if
-
-           ! Otherwise just dump as much information as possible and stop
-           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
-                        dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status_write))
 
        end do
 
-       stop
+       ! Otherwise just dump as much information as possible and call pabort()
+       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                    dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status_write))
+       call pabort()
    
    elseif (verbose>1) then
        ! Everything okay
@@ -2154,13 +2167,13 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
-       stop
+       call pabort()
    end if
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 3
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
-           stop
+           call pabort()
        end if
    end do
 
@@ -2183,7 +2196,7 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
        if (ndims.ne.3) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status_write))
-           stop
+           call pabort()
        end if
 
        ! Check whether dimension sizes are compatible with amount of data written
@@ -2203,17 +2216,16 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
                print *, trim(nf90_strerror(status_write))
-               stop
+               call pabort()
            end if
-
-           ! Otherwise just dump as much information as possible and stop
-           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
-                        dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status_write))
 
        end do
 
-       stop
+       ! Otherwise just dump as much information as possible and call pabort()
+       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                    dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status_write))
+       call pabort()
    
    elseif (verbose>1) then
        ! Everything okay
@@ -2256,12 +2268,12 @@ subroutine putvar_int1d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
-       stop
+       call pabort()
    end if
 
    if (size(values).ne.count) then
        write(*,100) myrank, trim(varname), varid, ncid, size(values), count
-       stop
+       call pabort()
    end if
 
    status_write = nf90_put_var(ncid   = ncid,           &
@@ -2279,7 +2291,7 @@ subroutine putvar_int1d(ncid, varid, values, start, count)
        if (ndims.ne.1) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status_write))
-           stop
+           call pabort()
        end if
        status = nf90_inquire_variable(ncid   = ncid,     &
                                       varid  = varid,    &
@@ -2295,12 +2307,12 @@ subroutine putvar_int1d(ncid, varid, values, start, count)
        if (start + count - 1 > dimsize) then
            write(*,102) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
            print *, trim(nf90_strerror(status_write))
-           stop
+           call pabort()
        end if
 
        write(*,103) myrank, trim(varname), varid, ncid, start, count, dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_write))
-       stop
+       call pabort()
    
    elseif (verbose>1) then
        write(lu_out,200) myrank, real(count) * 4. / 1048576., ncid, varid
@@ -2342,13 +2354,13 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
-       stop
+       call pabort()
    end if
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 2
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
-           stop
+           call pabort()
        end if
    end do
 
@@ -2367,11 +2379,11 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
                                       name  = varname,  &
                                       ndims = ndims)
 
-       ! Check whether variable in NetCDF file has more or less than three dimensions
+       ! Check whether variable in NetCDF file has more or less than two dimensions
        if (ndims.ne.2) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status_write))
-           stop
+           call pabort()
        end if
 
        ! Check whether dimension sizes are compatible with amount of data written
@@ -2392,17 +2404,15 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
                             dimsize, trim(dimname), idim 
                print *, trim(nf90_strerror(status_write))
                call pabort()
-               stop
            end if
-
-           ! Otherwise just dump as much information as possible and stop
-           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
-                        dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status_write))
 
        end do
 
-       stop
+       ! Otherwise just dump as much information as possible and call pabort()
+       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                    dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status_write))
+       call pabort()
    
    elseif (verbose>1) then
        ! Everything okay
@@ -2445,13 +2455,13 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
-       stop
+       call pabort()
    end if
    ! Check if variable size is consistent with values of 'count'
    do idim = 1, 3
        if (size(values,idim).ne.count(idim)) then
            write(*,100) myrank, trim(varname), varid, ncid, idim, size(values, idim), count(idim)
-           stop
+           call pabort()
        end if
    end do
 
@@ -2474,7 +2484,7 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
        if (ndims.ne.3) then
            write(*,101) myrank, trim(varname), varid, ncid, ndims
            print *, trim(nf90_strerror(status_write))
-           stop
+           call pabort()
        end if
 
        ! Check whether dimension sizes are compatible with amount of data written
@@ -2494,17 +2504,16 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
                write(*,102) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
                             dimsize, trim(dimname), idim 
                print *, trim(nf90_strerror(status_write))
-               stop
+               call pabort()
            end if
-
-           ! Otherwise just dump as much information as possible and stop
-           write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
-                        dimsize, trim(dimname)
-           print *, trim(nf90_strerror(status_write))
 
        end do
 
-       stop
+       ! Otherwise just dump as much information as possible and call pabort()
+       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+                    dimsize, trim(dimname)
+       print *, trim(nf90_strerror(status_write))
+       call pabort()
    
    elseif (verbose>1) then
        ! Everything okay
@@ -2565,7 +2574,7 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
       write(*,*) 'ERROR: Each dimension must have a name in nc_create_var_by_name'
       write(*,*) '       To fill dimension names automatically, omit dimension_names'
       write(*,*) '       or set the elements to blank'
-      stop
+      call pabort()
     end if
 
     dimensions = dimension_names
@@ -2616,7 +2625,7 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
     fmtstring = "('ERROR: Variable with name ', A, ' cannot be created.')"
     print fmtstring, trim(varname)
     print '(A)', "it already exists"
-    stop
+    call pabort()
   end if
 
 end subroutine nc_create_var_by_name
