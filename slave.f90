@@ -284,7 +284,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   real(kind=dp),    allocatable       :: bw_field_filt(:,:,:)
   real(kind=dp),    allocatable       :: fw_field_out(:,:,:)
   real(kind=dp),    allocatable       :: bw_field_out(:,:,:)
-  real(kind=dp),    allocatable       :: conv_field_out(:,:)
+  real(kind=dp),    allocatable       :: conv_field_out(:,:), conv_field_temp(:,:,:)
   complex(kind=dp), allocatable       :: fw_field_fd_filt(:,:,:)
   complex(kind=dp), allocatable       :: bw_field_fd_filt(:,:,:)
 
@@ -328,6 +328,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     allocate(fw_field_out(ndumps, ndim, nkernel))
     allocate(bw_field_out(ndumps, ndim, nkernel))
     allocate(conv_field_out(ndumps, nkernel))
+    allocate(conv_field_temp(ndumps, nbasekernels, nkernel))
     allocate(fw_field_filt(ntimes, ndim, nptperstep))
     allocate(bw_field_filt(ntimes, ndim, nptperstep))
     allocate(fw_field_fd_filt(nomega, ndim, nptperstep))
@@ -481,7 +482,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           end if
 
           ! Loop over all receivers in receiver input file
-          do irec = 1, parameters%nrec
+          loop_receivers: do irec = 1, parameters%nrec
 
             if (inv_mesh%point_in_element(ielement, parameters%receiver(irec)%r) &
                 .and.parameters%mask_src_rec) then
@@ -527,7 +528,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
               ! Calculate the scalar kernel in the basic parameters ("base kernels")
               ! (lambda, mu, rho, a, b, c)  
-              do ibasekernel = 1, nbasekernels
+              loop_basekernels: do ibasekernel = 1, nbasekernels
                 ! Check whether any actual kernel on this receiver needs this base kernel
                 if (.not.parameters%receiver(irec)%needs_basekernel(ibasekernel)) cycle
 
@@ -540,8 +541,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                 iclockold = tick(id=id_filter_conv, since=iclockold)
 
                 ! Calculate scalar base kernels for kernels of one receiver
-                do ikernel = parameters%receiver(irec)%firstkernel, &
-                             parameters%receiver(irec)%lastkernel 
+                loop_kernels:                                        &
+                 do ikernel = parameters%receiver(irec)%firstkernel, &
+                              parameters%receiver(irec)%lastkernel 
 
                   ! Check whether kernel (ikernel) actually needs the base kernel 
                   ! (ibasekernel), otherwise cycle
@@ -566,33 +568,50 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
                   ! If the wavefields are to be plotted, it needs to be filtered and iFTd here.
                   if (parameters%plot_wavefields) then
-                    fw_field_fd_filt = parameters%kernel(ikernel)%filter%apply(fw_field_fd, kind='fwd')
-                    call fft_data%irfft(fw_field_fd_filt, fw_field_filt)
-
-                    bw_field_fd_filt = parameters%kernel(ikernel)%filter%apply(bw_field_fd, kind='bwd')
-                    call fft_data%irfft(bw_field_fd_filt, bw_field_filt)
-
-                    ! Sum over all MC points in this iteration
-                    ! TODO: Introduce weighting of MC point contributions
-                    fw_field_out(:, :, ikernel) =  & 
-                      fw_field_out(:, :, ikernel) + sum(fw_field_filt(1:ndumps, :, :), 3)
-                    bw_field_out(:, :, ikernel) =  & 
-                      bw_field_out(:, :, ikernel) + sum(bw_field_filt(1:ndumps, :, :), 3) 
-                    conv_field_out(:, ikernel) =  & 
-                      conv_field_out(:, ikernel) + sum(conv_field(1:ndumps, :), 2) 
-                    !Test of planar wave with lambda=1000km and f = 1/50s
-                    !do idump = 1, ndumps
-                    !  fw_field_out(idump,:,ikernel) = &
-                    !    sum(cos(2*pi* (random_points(1,:)/1e6 + idump*sem_data%dt / (50.d0)) ))
-                    !end do
+                    conv_field_temp(:, ibasekernel, ikernel) =  & 
+                      conv_field_temp(:, ibasekernel, ikernel) + sum(conv_field(1:ndumps, :), 2) 
                   end if
 
                   iclockold = tick(id=id_kernel, since=iclockold)
 
                   niterations(ikernel) = niterations(ikernel) + 1
-                end do ! ikernel
+                end do loop_kernels
 
-              end do ! ibasekernel 
+              end do loop_basekernels
+
+              if (parameters%plot_wavefields) then
+                ! Since the fwd and bwd wavefield do not depend on the basekernel type,
+                ! this can and should be done outside of the basekernel loop
+                do ikernel = parameters%receiver(irec)%firstkernel, &
+                              parameters%receiver(irec)%lastkernel 
+
+                  !Test of planar wave with lambda=1000km and f = 1/50s
+                  !do idump = 1, ndumps
+                  !  fw_field_out(idump,:,ikernel) = &
+                  !    sum(cos(2*pi* (random_points(1,:)/1e6 + idump*sem_data%dt / (50.d0)) ))
+                  !end do
+
+                  fw_field_fd_filt = parameters%kernel(ikernel)%filter%apply(fw_field_fd, kind='fwd')
+                  call fft_data%irfft(fw_field_fd_filt, fw_field_filt)
+
+                  bw_field_fd_filt = parameters%kernel(ikernel)%filter%apply(bw_field_fd, kind='bwd')
+                  call fft_data%irfft(bw_field_fd_filt, bw_field_filt)
+
+                  ! Sum over all MC points in this iteration
+                  ! TODO: Introduce weighting of MC point contributions
+                  fw_field_out(:, :, ikernel) =  & 
+                    fw_field_out(:, :, ikernel) + sum(fw_field_filt(1:ndumps, :, :), 3)
+                  bw_field_out(:, :, ikernel) =  & 
+                    bw_field_out(:, :, ikernel) + sum(bw_field_filt(1:ndumps, :, :), 3) 
+
+                  ! Compute the waveform kernels for the actual physical parameters of interest
+                  conv_field_out(:, ikernel) = calc_physical_kernels( &
+                    parameters%kernel(ikernel)%model_parameter,       &
+                    conv_field_temp(:, :, ikernel),                   &
+                    bg_model = bg_model,                              &
+                    relative_kernel = parameters%relative_kernel)
+                end do
+              end if
 
               ! Dampen kernel values, if the points are close to receiver or source
               call dampen_field(kernelvalue_basekers, random_points, &
@@ -606,7 +625,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
             end if ! Receiver is inside element?
 
-        end do ! irec
+        end do loop_receivers
 
         iclockold = tick(id=id_mc, since=iclockold)
 
