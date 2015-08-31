@@ -268,6 +268,7 @@ subroutine finalize()
   integer                       :: imodel, idim
   character(len=32)             :: fmtstring
   character(len=512)            :: var_name
+  character(len=2), parameter   :: dim_name(6) = ['tt', 'pp', 'rr', 'pr', 'tr', 'tp']
 
 
   write(lu_out,'(A)') '***************************************************************'
@@ -443,22 +444,22 @@ subroutine finalize()
 
       do ikernel = 1, parameters%nkernel
         do idim = 1, wt%ndim
-          fmtstring = '("fw_", A, "_", I1)'
-          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          fmtstring = '("fw_", A, "_", A2)'
+          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), dim_name(idim)
           call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_cell_data(var_name = var_name,                            &
                                       values   = fw_field(:, :, idim, ikernel))
                                       
-          fmtstring = '("bw_", A, "_", I1)'
-          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          fmtstring = '("bw_", A, "_", A2)'
+          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), dim_name(idim)
           call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_cell_data(var_name = var_name,                            &
                                       values   = bw_field(:, :, idim, ikernel))
                                       
         end do
 
-        fmtstring = '("conv_", A, "_", I1)'
-        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), 1
+        fmtstring = '("conv_", A, "_")'
+        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name)
         call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
         call inv_mesh%add_cell_data(var_name = var_name,                            &
                                     values   = conv_field(:, :, ikernel))
@@ -470,14 +471,14 @@ subroutine finalize()
 
       do ikernel = 1, parameters%nkernel
         do idim = 1, wt%ndim
-          fmtstring = '("fw_", A, "_", I1)'
-          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          fmtstring = '("fw_", A, "_", A2)'
+          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), dim_name(idim)
           call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_node_data(var_name = var_name,                            &
                                       values   = fw_field(:, :, idim, ikernel))
                                       
-          fmtstring = '("bw_", A, "_", I1)'
-          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), idim
+          fmtstring = '("bw_", A, "_", A2)'
+          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), dim_name(idim)
           call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
           call inv_mesh%add_node_data(var_name = var_name,                            &
                                       values   = bw_field(:, :, idim, ikernel))
