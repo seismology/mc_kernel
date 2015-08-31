@@ -2575,7 +2575,7 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
   ! and set its chunk size to one, which facilitates plotting movies strongly
   chunksizes = sizes
   do i = 1, ndim
-    if (dimname=='time') chunksizes(i) = 1
+    if (trim(dimensions(i))=='time') chunksizes(i) = 1
   end do
 
   allocate(dimid(ndim))

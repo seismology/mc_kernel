@@ -28,9 +28,9 @@ module inversion_mesh
   public :: append_variable
 
   type                              :: inversion_mesh_variable_type
-    character(len=80)               :: var_name
-    integer                         :: nentries
-    logical                         :: istime
+    character(len=80)               :: var_name = 'NONE'
+    integer                         :: nentries = -1
+    logical                         :: istime   = .false.
     character(len=80), allocatable  :: entry_names(:)
   end type
 
@@ -1391,7 +1391,7 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
 
   if (present(entry_names).and.present(istime)) then
     if (istime) then
-      print *, 'ERROR: Cell variable cannot have entry names, if it is a time variable'
+      print *, 'ERROR: Node variable cannot have entry names, if it is a time variable'
       stop
     end if
   end if
@@ -1400,10 +1400,14 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
     entry_names_loc = entry_names
   else
     allocate(entry_names_loc(nentries))
-    entry_names_loc(:) = var_name
+    entry_names_loc(:) = trim(var_name)
   end if
 
-  if (present(istime)) istime_loc = istime
+  if (present(istime)) then
+    istime_loc = istime
+  else
+    istime_loc = .false.
+  end if
 
   if (istime_loc) then
     this%ntimes = max(this%ntimes, nentries)
@@ -1455,7 +1459,11 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
     entry_names_loc(:) = trim(var_name)
   end if
 
-  if (present(istime)) istime_loc = istime
+  if (present(istime)) then
+    istime_loc = istime
+  else
+    istime_loc = .false.
+  end if
 
   if (istime_loc) then
     this%ntimes = max(this%ntimes, nentries)
@@ -1469,7 +1477,6 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
                                sizes   = [this%nelements, nentries],      &
                                dimension_names = ['Elements', '        '])
   end if
-
 
   call append_variable(this%variable_cell, var_name, nentries, istime_loc, entry_names_loc)
 
