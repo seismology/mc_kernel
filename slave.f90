@@ -284,7 +284,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   real(kind=dp),    allocatable       :: bw_field_filt(:,:,:)
   real(kind=dp),    allocatable       :: fw_field_out(:,:,:)
   real(kind=dp),    allocatable       :: bw_field_out(:,:,:)
-  real(kind=dp),    allocatable       :: conv_field_out(:,:), conv_field_temp(:,:,:)
+  real(kind=dp),    allocatable       :: conv_field_out(:,:), conv_field_temp(:,:,:,:)
   complex(kind=dp), allocatable       :: fw_field_fd_filt(:,:,:)
   complex(kind=dp), allocatable       :: bw_field_fd_filt(:,:,:)
 
@@ -294,7 +294,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   character(len=256)                  :: fmtstring
   integer                             :: ielement, irec, ikernel, ibasisfunc, ibasekernel
   integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
-  integer                             :: nbasisfuncs_per_elem, nbasekernels, nkernel
+  integer                             :: nbasisfuncs_per_elem, nkernel
+  integer                             :: nbasekernels = 6
   integer(kind=long)                  :: iclockold, iclockold_element
   integer                             :: ndim, idump
   integer, parameter                  :: taper_length = 10      !< This is the bare minimum. It does 
@@ -311,7 +312,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
   nelements = inv_mesh%get_nelements()
   nkernel = parameters%nkernel
-  nbasekernels = 6
 
   allocate(slave_result%kernel_values(nkernel, nbasisfuncs_per_elem, nelements))
   allocate(slave_result%kernel_variance(nkernel, nbasisfuncs_per_elem, nelements))
@@ -328,7 +328,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     allocate(fw_field_out(ndumps, ndim, nkernel))
     allocate(bw_field_out(ndumps, ndim, nkernel))
     allocate(conv_field_out(ndumps, nkernel))
-    allocate(conv_field_temp(ndumps, nbasekernels, nkernel))
+    allocate(conv_field_temp(ndumps, nptperstep, nbasekernels, nkernel))
     allocate(fw_field_filt(ntimes, ndim, nptperstep))
     allocate(bw_field_filt(ntimes, ndim, nptperstep))
     allocate(fw_field_fd_filt(nomega, ndim, nptperstep))
@@ -565,8 +565,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
                   ! If the wavefields are to be plotted, it needs to be filtered and iFTd here.
                   if (parameters%plot_wavefields) then
-                    conv_field_temp(:, ibasekernel, ikernel) =  & 
-                      conv_field_temp(:, ibasekernel, ikernel) + sum(conv_field(1:ndumps, :), 2) 
+                    conv_field_temp(:, :, ibasekernel, ikernel) =  & 
+                      conv_field_temp(:, :, ibasekernel, ikernel) + conv_field(1:ndumps, :)
                   end if
 
                   iclockold = tick(id=id_kernel, since=iclockold)
@@ -602,11 +602,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                     bw_field_out(:, :, ikernel) + sum(bw_field_filt(1:ndumps, :, :), 3) 
 
                   ! Compute the waveform kernels for the actual physical parameters of interest
-                  conv_field_out(:, ikernel) = calc_physical_kernels( &
+                  conv_field_out(:, ikernel) = sum(calc_physical_kernels( &
                     parameters%kernel(ikernel)%model_parameter,       &
-                    conv_field_temp(:, :, ikernel),                   &
+                    conv_field_temp(:, :, :, ikernel),                &
                     bg_model = bg_model,                              &
-                    relative_kernel = parameters%relative_kernel)
+                    relative_kernel = parameters%relative_kernel), 2)
                 end do
               end if
 
