@@ -333,10 +333,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     allocate(bw_field_filt(ntimes, ndim, nptperstep))
     allocate(fw_field_fd_filt(nomega, ndim, nptperstep))
     allocate(bw_field_fd_filt(nomega, ndim, nptperstep))
-
-    fw_field_out = 0.0d0
-    bw_field_out = 0.0d0
-    conv_field_out = 0.0d0
   end if
 
   allocate(fw_field(ndumps, ndim, nptperstep))
@@ -393,6 +389,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
       fw_field_out = 0.0d0
       bw_field_out = 0.0d0
       conv_field_out = 0.0d0
+      conv_field_temp = 0.0d0
     end if
 
     ! Background Model Integration 
