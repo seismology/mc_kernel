@@ -175,15 +175,15 @@ subroutine do_slave()
 
     slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data, het_model)
 
-    wt%kernel_values    = slave_result%kernel_values
-    wt%kernel_variance  = slave_result%kernel_variance
-    wt%niterations      = slave_result%niterations
-    wt%computation_time = slave_result%computation_time
-    wt%model            = slave_result%model
-    wt%hetero_model     = slave_result%hetero_model
-    wt%fw_field         = slave_result%fw_field
-    wt%bw_field         = slave_result%bw_field
-    wt%conv_field       = slave_result%conv_field
+    wt%kernel_values(:,:,:)    = slave_result%kernel_values(:,:,:)
+    wt%kernel_variance(:,:,:)  = slave_result%kernel_variance(:,:,:)
+    wt%niterations(:,:)        = slave_result%niterations(:,:)
+    wt%computation_time(:)     = slave_result%computation_time(:)
+    wt%model(:,:,:)            = slave_result%model(:,:,:)
+    wt%hetero_model(:,:,:)     = slave_result%hetero_model(:,:,:)
+    wt%fw_field(:,:,:,:,:)     = slave_result%fw_field(:,:,:,:,:)
+    wt%bw_field(:,:,:,:,:)     = slave_result%bw_field(:,:,:,:,:)
+    wt%conv_field(:,:,:,:,:)   = slave_result%conv_field(:,:,:,:,:)
 
     ! Finished writing my part of the mesh
     call inv_mesh%freeme
@@ -333,7 +333,22 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     allocate(bw_field_filt(ntimes, ndim, nptperstep))
     allocate(fw_field_fd_filt(nomega, ndim, nptperstep))
     allocate(bw_field_fd_filt(nomega, ndim, nptperstep))
+  else
+    allocate(slave_result%fw_field(1,1,1,1,1))
+    allocate(slave_result%bw_field(1,1,1,1,1))
+    allocate(slave_result%conv_field(1,1,1,1,1))
   end if
+
+  slave_result%kernel_values    = 0 
+  slave_result%kernel_variance  = 0  
+  slave_result%niterations      = 0  
+  slave_result%computation_time = 0 
+  slave_result%model            = 0 
+  slave_result%hetero_model     = 0 
+  slave_result%fw_field         = 0 
+  slave_result%bw_field         = 0 
+  slave_result%conv_field       = 0  
+
 
   allocate(fw_field(ndumps, ndim, nptperstep))
   allocate(bw_field(ndumps, ndim, nptperstep))
@@ -412,12 +427,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         .and.parameters%mask_src_rec ) then
 
         write(lu_out, '(A)') ' Contains source, not calculating kernel' 
-
-        slave_result%computation_time(ielement)    = 0.0
-        slave_result%niterations(:,ielement)       = 0
-
-        slave_result%kernel_values(:, :, ielement)   = 0.0
-        slave_result%kernel_variance(:, :, ielement) = 0.0
 
         do ibasisfunc = 1, nbasisfuncs_per_elem          
           ! Model should be communicated even for the masked elements
