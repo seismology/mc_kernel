@@ -201,7 +201,8 @@ subroutine test_all
   ! test kernel
   write(6,'(/,a)') 'TEST KERNEL MODULE'
   call test(test_kernel_init, 'Test Kernel initialization')
-  call test(test_integrate_parseval, 'Test Parseval integration')
+  call test(test_integrate_parseval_real, 'Test Parseval integration (real numbers)')
+  call test(test_integrate_parseval_complex, 'Test Parseval integration (complex numbers)')
   call test(test_kernel_cut_timewindow, 'Test Time window cutting')
   call test(test_tabulate_kernel, 'Test base kernel tabulation')
 

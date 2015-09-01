@@ -129,13 +129,13 @@ end subroutine test_kernel_init
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-subroutine test_integrate_parseval
+subroutine test_integrate_parseval_real
 
    type(kernelspec_type)       :: kernel
    type(filter_type), target   :: gabor
 
    character(len=32)           :: filtername, filterclass
-   real(kind=dp)               :: veloseis(256), integral_parseval
+   real(kind=dp)               :: veloseis(256), integral_parseval, integral_trapezoidal
    real(kind=dp), allocatable  :: func_to_int1(:), func_to_int2(:)
 
    ! Just create some kernel with a length of 256 samples
@@ -156,18 +156,28 @@ subroutine test_integrate_parseval
                     timeshift_fwd   = 1.0d0,             &
                     deconv_stf      = .false.)
 
-
-   ! Now create a function to integrate (sum of two sines)
-
    allocate(func_to_int1(kernel%ntimes))
    allocate(func_to_int2(kernel%ntimes))
+
+   func_to_int1(:) = 1 - 4*(kernel%t_cut - 1.5)**2
+   func_to_int2(:) = 1
+
+   integral_parseval    = kernel%integrate_parseval(func_to_int1, func_to_int2)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
+
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-2,  &
+                          'Integral of 1 * (1-4(x-1.5)**2) from 1 to 2')
+
+
+   ! Now create a function to integrate (sum of two sines)
 
    func_to_int1(:) = sin(kernel%t_cut * 2 * pi)
    func_to_int2(:) = sin(kernel%t_cut * 2 * pi)
 
-   integral_parseval = kernel%integrate_parseval(func_to_int1, func_to_int2)
+   integral_parseval    = kernel%integrate_parseval(func_to_int1, func_to_int2)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
 
-   call assert_comparable(integral_parseval, 0.5d0, 1d-7,  &
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-7,  &
                           'Integral of sin(2pix)**2 from 1 to 2')
 
 
@@ -175,22 +185,168 @@ subroutine test_integrate_parseval
    func_to_int2(:) = cos(kernel%t_cut * 3 * pi)
 
    integral_parseval = kernel%integrate_parseval(func_to_int1, func_to_int2)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
 
-   call assert_comparable(integral_parseval, 0.26568757573375174d0, 1d-7,  &
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-7,  &
                           'Integral of sin(2pix)*cos(3pix) from 1 to 2')
+   !call assert_comparable(integral_parseval, 0.26568757573375174d0, 1d-7,  &
 
 
    func_to_int1(:) = sin(kernel%t_cut * 2.2 * pi)
    func_to_int2(:) = cos(kernel%t_cut * 1.7 * pi)
 
    integral_parseval = kernel%integrate_parseval(func_to_int1, func_to_int2)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
 
-   call assert_comparable(integral_parseval, 0.32528761700943976d0, 1d-7,  &
+   !call assert_comparable(integral_parseval, 0.32528761700943976d0, 1d-7,  &
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-2,  &
                           'Integral of sin(2.2pix)*cos(1.7pix) from 1 to 2')
 
    call kernel%freeme()
 
-end subroutine test_integrate_parseval
+end subroutine test_integrate_parseval_real
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+subroutine test_integrate_parseval_complex
+   use fft,                    only: rfft_type, taperandzeropad
+
+   type(kernelspec_type)          :: kernel
+   type(filter_type), target      :: gabor
+   type(rfft_type)                :: fft_data
+  
+
+   character(len=32)              :: filtername, filterclass
+   real(kind=dp)                  :: veloseis(256), integral_parseval, integral_trapezoidal
+   real(kind=dp), allocatable     :: func_to_int1(:), func_to_int2(:)
+   complex(kind=dp), allocatable  :: func_to_int1_fd(:,:), func_to_int2_fd(:,:)
+   real(kind=dp), parameter       :: dt=0.1d0
+   integer                        :: nomega, ntimes_ft, ntimes
+
+   ! Just create some kernel with a length of 256 samples
+   ! Same as in test_kernel_init
+   filtername  = 'Gabor'
+   filterclass = 'Gabor'
+   call gabor%create(filtername, 1.0d0, 257, filterclass, [5.0d0, 0.5d0, 0.d0, 0.d0])
+
+   veloseis = 0.0
+
+   call kernel%init(name            = 'Testkernel      ',&
+                    time_window     = [1.0d0, 2.0d0],    &
+                    filter          = gabor,             &
+                    misfit_type     = 'CC  ',            &  
+                    model_parameter = 'vp  ',            &
+                    seis            = veloseis,          &
+                    dt              = dt,                &
+                    timeshift_fwd   = 1.0d0,             &
+                    deconv_stf      = .false.)
+
+   ! Create a FFT object
+   call fft_data%init(kernel%ntimes, 1, 1, dt)
+   nomega    = fft_data%get_nomega()
+   ntimes_ft = fft_data%get_ntimes()
+   ntimes    = kernel%ntimes
+
+   ! Now create a function to integrate (sum of two sines)
+
+   allocate(func_to_int1(ntimes))
+   allocate(func_to_int2(ntimes))
+   allocate(func_to_int1_fd(nomega,1))
+   allocate(func_to_int2_fd(nomega,1))
+
+   func_to_int1(:) = 1 - 4*(kernel%t_cut - 1.5)**2
+   func_to_int2(:) = 1
+
+   call fft_data%rfft(taperandzeropad(array  = reshape(func_to_int2, [ntimes, 1]), &
+                                      ntimes = ntimes_ft,   &
+                                      ntaper = 0),          &
+                      func_to_int2_fd)
+
+   integral_parseval    = kernel%integrate_parseval(func_to_int1, func_to_int2_fd)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
+
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-2,  &
+                          'Integral of 1 * (1-4(x-1.5)**2) from 1 to 2')
+
+   func_to_int1(:) = sin(kernel%t_cut * 2 * pi)
+   func_to_int2(:) = sin(kernel%t_cut * 2 * pi)
+
+   call fft_data%rfft(taperandzeropad(array  = reshape(func_to_int2, [ntimes, 1]), &
+                                      ntimes = ntimes_ft,   &
+                                      ntaper = 0),          &
+                      func_to_int2_fd)
+
+   integral_parseval    = kernel%integrate_parseval(func_to_int1, func_to_int2_fd)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
+
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-7,  &
+                          'Integral of sin(2pix)**2 from 1 to 2')
+
+
+   func_to_int1(:) = sin(kernel%t_cut * 2 * pi)
+   func_to_int2(:) = cos(kernel%t_cut * 3 * pi)
+
+   call fft_data%rfft(taperandzeropad(array  = reshape(func_to_int2, [ntimes, 1]), &
+                                      ntimes = ntimes_ft,   &
+                                      ntaper = 0),          &
+                      func_to_int2_fd)
+
+   integral_parseval    = kernel%integrate_parseval(func_to_int1, func_to_int2_fd)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
+
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-7,  &
+                          'Integral of sin(2pix)*cos(3pix) from 1 to 2')
+
+
+   func_to_int1(:) = sin(kernel%t_cut * 2.2 * pi)
+   func_to_int2(:) = cos(kernel%t_cut * 1.7 * pi)
+
+   call fft_data%rfft(taperandzeropad(array  = reshape(func_to_int2, [ntimes, 1]), &
+                                      ntimes = ntimes_ft,   &
+                                      ntaper = 0),          &
+                      func_to_int2_fd)
+
+   integral_parseval    = kernel%integrate_parseval(func_to_int1, func_to_int2_fd)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
+
+   ! In fact, the trapezoidal integration has a problem here
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-2,  &
+                          'Integral of sin(2.2pix)*cos(1.7pix) from 1 to 2')
+
+
+   func_to_int1(:) = sin(kernel%t_cut * 2 * pi)
+   func_to_int2(:) = cos(kernel%t_cut * 1.5 * pi) + 1
+
+   call fft_data%rfft(taperandzeropad(array  = reshape(func_to_int2, [ntimes, 1]), &
+                                      ntimes = ntimes_ft,   &
+                                      ntaper = 0),          &
+                      func_to_int2_fd)
+
+   integral_parseval    = kernel%integrate_parseval(func_to_int1, func_to_int2_fd)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
+
+   ! In fact, the trapezoidal integration has a problem here
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-5,  &
+                          'Integral of sin(2pix)*(cos(1.5pix)+1) from 1 to 2')
+
+   func_to_int1(:) = sin(kernel%t_cut * 2 * pi) 
+   func_to_int2(:) = cos(kernel%t_cut * 1.5 * pi) - 1
+
+   call fft_data%rfft(taperandzeropad(array  = reshape(func_to_int2, [ntimes, 1]), &
+                                      ntimes = ntimes_ft,   &
+                                      ntaper = 0),          &
+                      func_to_int2_fd)
+
+   integral_parseval    = kernel%integrate_parseval(func_to_int1, func_to_int2_fd)
+   integral_trapezoidal = integrate_trapezoidal(func_to_int1 * func_to_int2, 0.1d0)
+
+   ! In fact, the trapezoidal integration has a problem here
+   call assert_comparable(integral_parseval, integral_trapezoidal, 1d-5,  &
+                          'Integral of (sin(2pix)-1)*cos(1.5pix) from 1 to 2')
+
+   call kernel%freeme()
+
+end subroutine test_integrate_parseval_complex
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
