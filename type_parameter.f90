@@ -35,7 +35,6 @@ module type_parameter
         character(len=512)                   :: output_file = 'kerner'
         character(len=512)                   :: hetero_file
         character(len=1)                     :: component
-        character(len=32)                    :: whattodo
         character(len=32)                    :: int_type
         character(len=32)                    :: int_scheme = 'PARSEVAL'
         character(len=32)                    :: dump_type 
@@ -49,6 +48,7 @@ module type_parameter
         integer                              :: max_iter
         integer                              :: strain_buffer_size
         integer                              :: displ_buffer_size
+        logical                              :: plot_wavefields      = .false.
         logical                              :: parameters_read      = .false.
         logical                              :: receiver_read        = .false.
         logical                              :: source_read          = .false.
@@ -209,7 +209,9 @@ subroutine read_parameters(this, input_file_in)
            read(keyvalue, *) this%fftw_plan
 
         case('WHAT_TO_DO')
-           this%whattodo = keyvalue
+           if (keyvalue == 'plot_wavefield') then
+             this%plot_wavefields = .true.
+           end if
 
         case('INT_TYPE')
            this%int_type = keyvalue
@@ -269,7 +271,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_log(this%int_over_volume, 0)
   call pbroadcast_log(this%int_over_hetero, 0)
   call pbroadcast_char(this%fftw_plan, 0)
-  call pbroadcast_char(this%whattodo, 0)
+  call pbroadcast_log(this%plot_wavefields, 0)
   call pbroadcast_char(this%int_type, 0)
   call pbroadcast_char(this%hetero_file, 0)
   call pbroadcast_char(this%int_scheme, 0)

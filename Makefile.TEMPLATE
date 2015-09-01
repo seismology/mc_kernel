@@ -8,27 +8,26 @@ SRCS =	commpi.F90 background_model.f90 buffer.f90 calc_kernels.f90 \
 	interpolate_mesh.f90 inv_mesh.f90 kdtree2.f90 kernel.f90 lanczos.f90 \
 	master_helper.f90 master_mod.f90 master_queue.f90 \
 	master_slave_parameters.f90 mc_integration.f90 nc_routines.f90 \
-	plot_wavefields.f90 random_tetrahedron.f90 random_voxel.f90 \
-	readfields.f90 receiver.f90 receivers_rdbm.f90 rotations.f90 \
-	sem_derivatives.f90 simple_routines.f90 slave.f90 source.f90 \
-	spectral_basis.f90 test_background_model.f90 test_buffer.f90 \
-	test_fft_type.f90 test_filter.f90 test_finite_elem_mapping.f90 \
-	test_ftnunit.f90 test_halton.f90 test_inv_mesh.f90 test_kernel.f90 \
-	test_lanczos.f90 test_master_helper.f90 test_master_queue.f90 \
-	test_mc.f90 test_nc_routines.f90 test_readfields.f90 \
-	test_rotations.f90 test_sem_derivatives.f90 test_simple_routines.f90 \
-	test_source.f90 test_spectral_basis.f90 test_tetrahedra.f90 \
-	test_type_parameter.f90 test_voxel.f90 type_parameter.f90 \
-	worktype.f90
+	random_tetrahedron.f90 random_voxel.f90 readfields.f90 receiver.f90 \
+	receivers_rdbm.f90 rotations.f90 sem_derivatives.f90 \
+	simple_routines.f90 slave.f90 source.f90 spectral_basis.f90 \
+	test_background_model.f90 test_buffer.f90 test_fft_type.f90 \
+	test_filter.f90 test_finite_elem_mapping.f90 test_ftnunit.f90 \
+	test_halton.f90 test_inv_mesh.f90 test_kernel.f90 test_lanczos.f90 \
+	test_master_helper.f90 test_master_queue.f90 test_mc.f90 \
+	test_nc_routines.f90 test_readfields.f90 test_rotations.f90 \
+	test_sem_derivatives.f90 test_simple_routines.f90 test_source.f90 \
+	test_spectral_basis.f90 test_tetrahedra.f90 test_type_parameter.f90 \
+	test_voxel.f90 type_parameter.f90 worktype.f90
 
 OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	fft_type.o filtering.o finite_elem_mapping.o ftnunit.o \
 	global_parameters.o halton.o heterogeneities.o interpolate_mesh.o \
 	inv_mesh.o kdtree2.o kernel.o lanczos.o master_helper.o master_mod.o \
 	master_queue.o master_slave_parameters.o mc_integration.o \
-	nc_routines.o plot_wavefields.o random_tetrahedron.o random_voxel.o \
-	readfields.o receiver.o receivers_rdbm.o rotations.o \
-	sem_derivatives.o simple_routines.o slave.o source.o spectral_basis.o \
+	nc_routines.o random_tetrahedron.o random_voxel.o readfields.o \
+	receiver.o receivers_rdbm.o rotations.o sem_derivatives.o \
+	simple_routines.o slave.o source.o spectral_basis.o \
 	test_background_model.o test_buffer.o test_fft_type.o test_filter.o \
 	test_finite_elem_mapping.o test_ftnunit.o test_halton.o \
 	test_inv_mesh.o test_kernel.o test_lanczos.o test_master_helper.o \
@@ -82,7 +81,7 @@ background_model.o: commpi.o global_parameters.o Makefile make_kerner.macros
 buffer.o: commpi.o global_parameters.o Makefile make_kerner.macros 
 calc_kernels.o: background_model.o clocks.o commpi.o ftnunit.o \
 	global_parameters.o heterogeneities.o inv_mesh.o master_mod.o \
-	plot_wavefields.o simple_routines.o slave.o test_ftnunit.o \
+	readfields.o simple_routines.o slave.o test_ftnunit.o \
 	type_parameter.o worktype.o Makefile make_kerner.macros 
 clocks.o: global_parameters.o Makefile make_kerner.macros 
 fft_type.o: commpi.o global_parameters.o simple_routines.o Makefile make_kerner.macros 
@@ -107,8 +106,6 @@ master_queue.o: background_model.o clocks.o global_parameters.o \
 master_slave_parameters.o:  Makefile make_kerner.macros 
 mc_integration.o: commpi.o global_parameters.o Makefile make_kerner.macros 
 nc_routines.o: commpi.o global_parameters.o simple_routines.o Makefile make_kerner.macros 
-plot_wavefields.o: background_model.o clocks.o fft_type.o filtering.o \
-	global_parameters.o inv_mesh.o readfields.o type_parameter.o Makefile make_kerner.macros 
 random_tetrahedron.o: global_parameters.o halton.o simple_routines.o Makefile make_kerner.macros 
 random_voxel.o: global_parameters.o Makefile make_kerner.macros 
 readfields.o: background_model.o buffer.o clocks.o commpi.o \
@@ -122,7 +119,8 @@ sem_derivatives.o: commpi.o finite_elem_mapping.o global_parameters.o Makefile m
 simple_routines.o: global_parameters.o Makefile make_kerner.macros 
 slave.o: background_model.o clocks.o fft_type.o filtering.o \
 	global_parameters.o heterogeneities.o inv_mesh.o kernel.o \
-	mc_integration.o readfields.o type_parameter.o worktype.o Makefile make_kerner.macros 
+	mc_integration.o readfields.o simple_routines.o type_parameter.o \
+	worktype.o Makefile make_kerner.macros 
 source.o: commpi.o global_parameters.o lanczos.o Makefile make_kerner.macros 
 spectral_basis.o: global_parameters.o Makefile make_kerner.macros 
 test_background_model.o: background_model.o ftnunit.o global_parameters.o Makefile make_kerner.macros 

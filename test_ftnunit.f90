@@ -2,7 +2,7 @@
 module unit_tests
 
   use ftnunit, only: test
-  use global_parameters, only: lu_out, verbose
+  use global_parameters, only: lu_out, verbose, set_master, set_master
   use test_source
   use test_montecarlo
   use test_halton_sequence
@@ -34,7 +34,7 @@ subroutine test_all
   integer   :: oldverbose
 
   verbose = 1
-  master  = .true.
+  call set_master(.true.)
   testing = .true.
 
   call init_output()
@@ -247,7 +247,10 @@ subroutine test_all
   call test(test_init_mixed_data, 'Initialize mixed data')
   call test(test_set_node_data_and_dump, 'Set node data')
   call test(test_set_cell_data_and_dump, 'Set cell data')
+  call test(test_set_cell_time_data_and_dump, 'Set cell data on time dimension')
+  call test(test_set_node_time_data_and_dump, 'Set node data on time dimension')
   call test(test_set_mixed_data_and_dump, 'Set mixed data')
+  call test(test_set_mixed_data_and_dump_into_two_files, 'Dump mixed data into two files')
   call test(test_set_mixed_data, 'Set mixed data with entry names')
   call test(test_valence, 'computation of valence')
   call test(test_get_connected_elements, 'get connected elements')

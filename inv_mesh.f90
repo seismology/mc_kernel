@@ -28,9 +28,9 @@ module inversion_mesh
   public :: append_variable
 
   type                              :: inversion_mesh_variable_type
-    character(len=80)               :: var_name
-    integer                         :: nentries
-    logical                         :: istime
+    character(len=80)               :: var_name = 'NONE'
+    integer                         :: nentries = -1
+    logical                         :: istime   = .false.
     character(len=80), allocatable  :: entry_names(:)
   end type
 
@@ -81,8 +81,6 @@ module inversion_mesh
     private
     integer                            :: ntimes_node
     integer                            :: ntimes_cell
-    real(kind=sp), allocatable         :: datat_node(:,:)
-    real(kind=sp), allocatable         :: datat_cell(:,:)
     integer, allocatable               :: group_id_node(:)
     integer, allocatable               :: group_id_cell(:)
     character(len=32), allocatable     :: data_group_names_node(:)
@@ -1261,12 +1259,15 @@ end subroutine tree_sort
 subroutine free_node_and_cell_data(this)
   class(inversion_mesh_data_type)   :: this
 
-  if (allocated(this%datat_node))            deallocate(this%datat_node)
-  if (allocated(this%datat_cell))            deallocate(this%datat_cell)
   if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
   if (allocated(this%group_id_node))         deallocate(this%group_id_node)
   if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
   if (allocated(this%group_id_cell))         deallocate(this%group_id_cell)
+
+  call delete_variable(this%variable_cell)
+  call delete_variable(this%variable_node)
+  this%nvar_node = 0
+  this%nvar_cell = 0
 
 end subroutine free_node_and_cell_data
 !-----------------------------------------------------------------------------------------
@@ -1291,8 +1292,6 @@ subroutine freeme(this)
 
   select type (this)
   type is (inversion_mesh_data_type)
-     if (allocated(this%datat_node))            deallocate(this%datat_node)
-     if (allocated(this%datat_cell))            deallocate(this%datat_cell)
      if (allocated(this%data_group_names_node)) deallocate(this%data_group_names_node)
      if (allocated(this%group_id_node))         deallocate(this%group_id_node)
      if (allocated(this%data_group_names_cell)) deallocate(this%data_group_names_cell)
@@ -1392,7 +1391,7 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
 
   if (present(entry_names).and.present(istime)) then
     if (istime) then
-      print *, 'ERROR: Cell variable cannot have entry names, if it is a time variable'
+      print *, 'ERROR: Node variable cannot have entry names, if it is a time variable'
       stop
     end if
   end if
@@ -1401,17 +1400,27 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
     entry_names_loc = entry_names
   else
     allocate(entry_names_loc(nentries))
-    entry_names_loc(:) = var_name
+    entry_names_loc(:) = trim(var_name)
   end if
 
-  if (present(istime)) istime_loc = istime
+  if (present(istime)) then
+    istime_loc = istime
+  else
+    istime_loc = .false.
+  end if
 
-  call nc_create_var_by_name(ncid    = this%ncid_node,                  &
-                             varname = trim(var_name),                  &
-                             sizes   = [this%nvertices, nentries],      &
-                             dimension_names = ['Vertices', '        '])
-
-  if (istime_loc) this%ntimes = max(this%ntimes, nentries)
+  if (istime_loc) then
+    this%ntimes = max(this%ntimes, nentries)
+    call nc_create_var_by_name(ncid    = this%ncid_node,                  &
+                               varname = trim(var_name),                  &
+                               sizes   = [this%nvertices, nentries],      &
+                               dimension_names = ['Vertices', 'time    '])
+  else
+    call nc_create_var_by_name(ncid    = this%ncid_node,                  &
+                               varname = trim(var_name),                  &
+                               sizes   = [this%nvertices, nentries],      &
+                               dimension_names = ['Vertices', '        '])
+  end if
 
   call append_variable(this%variable_node, var_name, nentries, istime_loc, entry_names_loc)
 
@@ -1450,14 +1459,24 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
     entry_names_loc(:) = trim(var_name)
   end if
 
-  if (present(istime)) istime_loc = istime
+  if (present(istime)) then
+    istime_loc = istime
+  else
+    istime_loc = .false.
+  end if
 
-  call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
-                             varname = trim(var_name),                  &
-                             sizes   = [this%nelements, nentries],      &
-                             dimension_names = ['Elements', '        '])
-
-  if (istime_loc) this%ntimes = max(this%ntimes, nentries)
+  if (istime_loc) then
+    this%ntimes = max(this%ntimes, nentries)
+    call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
+                               varname = trim(var_name),                  &
+                               sizes   = [this%nelements, nentries],      &
+                               dimension_names = ['Elements', 'time    '])
+  else
+    call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
+                               varname = trim(var_name),                  &
+                               sizes   = [this%nelements, nentries],      &
+                               dimension_names = ['Elements', '        '])
+  end if
 
   call append_variable(this%variable_cell, var_name, nentries, istime_loc, entry_names_loc)
 
@@ -1533,11 +1552,20 @@ end subroutine append_variable
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine delete_variable(variable)
+  type(inversion_mesh_variable_type), intent(inout), allocatable  :: variable(:)
+
+  if (allocated(variable)) deallocate(variable)
+
+end subroutine delete_variable
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine add_node_data(this, var_name, values, ielement, ientry)
   use nc_routines, only                      : nc_putvar_by_name
   class(inversion_mesh_data_type)           :: this
   character(len=*), intent(in)              :: var_name
-  real(kind=sp)                             :: values(:,:)
+  real(kind=sp), intent(in)                 :: values(:,:) !< Dimension: nelements/vertices, nentries/ntimes
   integer, intent(in), optional             :: ielement(2), ientry(2)
 
   integer                                   :: ielement_loc(2), ientry_loc(2), start(2), count(2)
@@ -1609,7 +1637,7 @@ subroutine add_cell_data(this, var_name, values, ielement, ientry)
   use nc_routines, only                      : nc_putvar_by_name
   class(inversion_mesh_data_type)           :: this
   character(len=*), intent(in)              :: var_name
-  real(kind=sp), optional, intent(in)       :: values(:,:)
+  real(kind=sp), optional, intent(in)       :: values(:,:) !< Dimension: nelements/cells, nentries/ntimes
   integer, intent(in), optional             :: ielement(2), ientry(2)
 
   integer                                   :: ielement_loc(2), ientry_loc(2), start(2), count(2)
@@ -1833,8 +1861,12 @@ subroutine dump_data_xdmf(this, filename)
      call pabort 
   end if
   
-  if (.not. allocated(this%datat_cell) .and.this%ncid==-1) then
+  if (.not. (allocated(this%variable_cell).or.allocated(this%variable_node)) .or.this%ncid==-1) then
      write(*,*) 'ERROR: no data to dump available'
+     write(*,*) 'allocated(this%variable_cell) :', allocated(this%variable_cell)
+     write(*,*) 'allocated(this%variable_node) :', allocated(this%variable_node)
+     write(*,*) 'NCID:                          ', this%ncid
+
      call pabort 
   end if
 
@@ -1923,7 +1955,7 @@ subroutine dump_data_xdmf(this, filename)
       ! step, where every entry has to be written.
       if (itime.le.this%variable_node(ivar)%nentries .and. &
           this%variable_node(ivar)%istime) then
-        write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%entry_names(ientry)), &
+        write(iinput_xdmf, 73421) trim(this%variable_node(ivar)%entry_names(itime)),  &
                                  this%nvertices, itime-1, this%nvertices,             &
                                  this%variable_node(ivar)%nentries, this%nvertices,   &
                                  trim(filename_nc),                                   &
@@ -1934,7 +1966,7 @@ subroutine dump_data_xdmf(this, filename)
     do ivar = 1, this%nvar_cell
       if (itime.le.this%variable_cell(ivar)%nentries .and. &
           this%variable_cell(ivar)%istime) then
-        write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%entry_names(ientry)), &
+        write(iinput_xdmf, 73422) trim(this%variable_cell(ivar)%entry_names(itime)),  &
                                  this%nelements, itime-1, this%nelements,             &
                                  this%variable_cell(ivar)%nentries, this%nvertices,   &
                                  trim(filename_nc),                                   &
@@ -2031,6 +2063,7 @@ subroutine dump_data_xdmf(this, filename)
 
   ! Finalize and close NetCDF file
   call nc_close_file(this%ncid)
+  this%ncid = -1
 
   ! Move temporary NetCDF file to the requested location
   sys_cmd = 'mv '//this%filename_tmp_out//' '//trim(filename)//'.nc'

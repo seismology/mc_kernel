@@ -18,7 +18,7 @@ module global_parameters
   integer, parameter         :: WORKTAG = 1
   integer, parameter         :: DIETAG  = 2
   
-  logical                    :: master, firstslave
+  logical, protected         :: master, firstslave
   logical                    :: testing = .false. !< Set to true only for unit test, 
                                                   !! because some routines require action
                                                   !! from master or slave, which would not 
@@ -58,6 +58,22 @@ subroutine init_random_seed()
    deallocate(seed)
 end subroutine
 !-----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_master(master_value)
+  logical, intent(in)   :: master_value
+
+  master = master_value
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_firstslave(firstslave_value)
+  logical, intent(in)   :: firstslave_value
+
+  firstslave = firstslave_value
+end subroutine
+!----------------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------------
 subroutine set_myrank(myrank_value)

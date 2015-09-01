@@ -23,6 +23,9 @@ module slave_mod
                                                !! vp, vs, rho, vph, vpv, vsh, vsv, eta, phi, xi, lam, mu
     real(kind=dp), allocatable :: hetero_model(:,:,:) !< (nmodel_parameter_hetero, nbasisfuncs_per_elem, nelements)
                                                !! dlnvp, dlnvs, dlnrho
+    real(kind=sp), allocatable :: fw_field(:,:,:,:,:)
+    real(kind=sp), allocatable :: bw_field(:,:,:,:,:)
+    real(kind=sp), allocatable :: conv_field(:,:,:,:,:)
   end type
 
 contains
@@ -143,7 +146,7 @@ subroutine do_slave()
   itask = 0
 
   ! Receive new tasks from master until the DIETAG is received and then exit the loop
-  do 
+  receive_tasks: do 
     write(lu_out,'(A)') '***************************************************************'
     write(lu_out,'(A)') ' Waiting for tasks from master rank'
     write(lu_out,'(A)') '***************************************************************'
@@ -172,12 +175,15 @@ subroutine do_slave()
 
     slave_result = slave_work(parameters, sem_data, inv_mesh, fft_data, het_model)
 
-    wt%kernel_values    = slave_result%kernel_values
-    wt%kernel_variance  = slave_result%kernel_variance
-    wt%niterations      = slave_result%niterations
-    wt%computation_time = slave_result%computation_time
-    wt%model            = slave_result%model
-    wt%hetero_model     = slave_result%hetero_model
+    wt%kernel_values(:,:,:)    = slave_result%kernel_values(:,:,:)
+    wt%kernel_variance(:,:,:)  = slave_result%kernel_variance(:,:,:)
+    wt%niterations(:,:)        = slave_result%niterations(:,:)
+    wt%computation_time(:)     = slave_result%computation_time(:)
+    wt%model(:,:,:)            = slave_result%model(:,:,:)
+    wt%hetero_model(:,:,:)     = slave_result%hetero_model(:,:,:)
+    wt%fw_field(:,:,:,:,:)     = slave_result%fw_field(:,:,:,:,:)
+    wt%bw_field(:,:,:,:,:)     = slave_result%bw_field(:,:,:,:,:)
+    wt%conv_field(:,:,:,:,:)   = slave_result%conv_field(:,:,:,:,:)
 
     ! Finished writing my part of the mesh
     call inv_mesh%freeme
@@ -187,7 +193,7 @@ subroutine do_slave()
     call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
     iclockold = tick(id=id_mpi, since=iclockold)
 
-  end do
+  end do receive_tasks
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A, I3, A)') ' All work done. Did ', itask, ' tasks in total'
@@ -272,15 +278,26 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
   integer,          allocatable       :: niterations(:), kernel_list(:)
 
+  ! This block is only needed for wavefield plotting and only 
+  ! allocated, if it is enabled
+  real(kind=dp),    allocatable       :: fw_field_filt(:,:,:)
+  real(kind=dp),    allocatable       :: bw_field_filt(:,:,:)
+  real(kind=dp),    allocatable       :: fw_field_out(:,:,:)
+  real(kind=dp),    allocatable       :: bw_field_out(:,:,:)
+  real(kind=dp),    allocatable       :: conv_field_out(:,:), conv_field_temp(:,:,:,:)
+  complex(kind=dp), allocatable       :: fw_field_fd_filt(:,:,:)
+  complex(kind=dp), allocatable       :: bw_field_fd_filt(:,:,:)
+
   real(kind=dp)                       :: time_in_element
   real(kind=dp)                       :: volume
 
   character(len=256)                  :: fmtstring
   integer                             :: ielement, irec, ikernel, ibasisfunc, ibasekernel
   integer                             :: nptperstep, ndumps, ntimes, nomega, nelements
-  integer                             :: nbasisfuncs_per_elem, nbasekernels
+  integer                             :: nbasisfuncs_per_elem, nkernel
+  integer                             :: nbasekernels = 6
   integer(kind=long)                  :: iclockold, iclockold_element
-  integer                             :: ndim
+  integer                             :: ndim, idump
   integer, parameter                  :: taper_length = 10      !< This is the bare minimum. It does 
                                                                 !! not produce artifacts yet, at least 
                                                                 !! no obvious ones
@@ -294,14 +311,44 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   nomega = fft_data%get_nomega()
   nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
   nelements = inv_mesh%get_nelements()
-  nbasekernels = 6
+  nkernel = parameters%nkernel
 
-  allocate(slave_result%kernel_values(parameters%nkernel, nbasisfuncs_per_elem, nelements))
-  allocate(slave_result%kernel_variance(parameters%nkernel, nbasisfuncs_per_elem, nelements))
-  allocate(slave_result%niterations(parameters%nkernel, nelements))
+  allocate(slave_result%kernel_values(nkernel, nbasisfuncs_per_elem, nelements))
+  allocate(slave_result%kernel_variance(nkernel, nbasisfuncs_per_elem, nelements))
+  allocate(slave_result%niterations(nkernel, nelements))
   allocate(slave_result%computation_time(nelements))
   allocate(slave_result%model(nmodel_parameters, nbasisfuncs_per_elem, nelements))
   allocate(slave_result%hetero_model(nmodel_parameters_hetero, nbasisfuncs_per_elem, nelements))
+
+  if (parameters%plot_wavefields) then
+    allocate(slave_result%fw_field(ndumps, ndim, nkernel, nbasisfuncs_per_elem, nelements)) 
+    allocate(slave_result%bw_field(ndumps, ndim, nkernel, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%conv_field(ndumps, 1,  nkernel, nbasisfuncs_per_elem, nelements))
+
+    allocate(fw_field_out(ndumps, ndim, nkernel))
+    allocate(bw_field_out(ndumps, ndim, nkernel))
+    allocate(conv_field_out(ndumps, nkernel))
+    allocate(conv_field_temp(ndumps, nptperstep, nbasekernels, nkernel))
+    allocate(fw_field_filt(ntimes, ndim, nptperstep))
+    allocate(bw_field_filt(ntimes, ndim, nptperstep))
+    allocate(fw_field_fd_filt(nomega, ndim, nptperstep))
+    allocate(bw_field_fd_filt(nomega, ndim, nptperstep))
+  else
+    allocate(slave_result%fw_field(1,1,1,1,1))
+    allocate(slave_result%bw_field(1,1,1,1,1))
+    allocate(slave_result%conv_field(1,1,1,1,1))
+  end if
+
+  slave_result%kernel_values    = 0 
+  slave_result%kernel_variance  = 0  
+  slave_result%niterations      = 0  
+  slave_result%computation_time = 0 
+  slave_result%model            = 0 
+  slave_result%hetero_model     = 0 
+  slave_result%fw_field         = 0 
+  slave_result%bw_field         = 0 
+  slave_result%conv_field       = 0  
+
 
   allocate(fw_field(ndumps, ndim, nptperstep))
   allocate(bw_field(ndumps, ndim, nptperstep))
@@ -335,7 +382,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
   iclockold = tick(id=id_init, since=iclockold)
 
-  do ielement = 1, nelements 
+  loop_elements: do ielement = 1, nelements 
 
     write(lu_out, '(A,I10,A)') 'Element: ', ielement, ':'
 
@@ -350,6 +397,14 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
       iclockold = tick(id=id_inv_mesh)
     else
       volume = 1.d0
+    end if
+
+    ! Output arrays for wavefield plotting
+    if (parameters%plot_wavefields) then
+      fw_field_out = 0.0d0
+      bw_field_out = 0.0d0
+      conv_field_out = 0.0d0
+      conv_field_temp = 0.0d0
     end if
 
     ! Background Model Integration 
@@ -372,12 +427,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
         .and.parameters%mask_src_rec ) then
 
         write(lu_out, '(A)') ' Contains source, not calculating kernel' 
-
-        slave_result%computation_time(ielement)    = 0.0
-        slave_result%niterations(:,ielement)       = 0
-
-        slave_result%kernel_values(:, :, ielement)   = 0.0
-        slave_result%kernel_variance(:, :, ielement) = 0.0
 
         do ibasisfunc = 1, nbasisfuncs_per_elem          
           ! Model should be communicated even for the masked elements
@@ -408,7 +457,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
         niterations = 0
 
-        do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
+        loop_all_converged: do while (.not.allallconverged(int_kernel)) ! Beginning of Monte Carlo loop
 
           iclockold = tick(id=id_mc)
 
@@ -423,12 +472,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           ! Load forward field
           iclockold = tick()
           fw_field = sem_data%load_fw_points( random_points, parameters%source, & 
-            model = bg_model)
+                                              model = bg_model)
           iclockold = tick(id=id_fwd, since=iclockold)
 
           ! FFT of forward field
           call fft_data%rfft( taperandzeropad(fw_field, ntimes, taper_length), fw_field_fd )
           iclockold = tick(id=id_fft, since=iclockold)
+
 
           ! Timeshift forward field
           ! Not necessary, if STF is deconvolved
@@ -438,7 +488,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           end if
 
           ! Loop over all receivers in receiver input file
-          do irec = 1, parameters%nrec
+          loop_receivers: do irec = 1, parameters%nrec
 
             if (inv_mesh%point_in_element(ielement, parameters%receiver(irec)%r) &
                 .and.parameters%mask_src_rec) then
@@ -480,9 +530,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                 iclockold = tick(id=id_filter_conv, since=iclockold)
               end if
 
+
+
               ! Calculate the scalar kernel in the basic parameters ("base kernels")
               ! (lambda, mu, rho, a, b, c)  
-              do ibasekernel = 1, nbasekernels
+              loop_basekernels: do ibasekernel = 1, nbasekernels
                 ! Check whether any actual kernel on this receiver needs this base kernel
                 if (.not.parameters%receiver(irec)%needs_basekernel(ibasekernel)) cycle
 
@@ -495,8 +547,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                 iclockold = tick(id=id_filter_conv, since=iclockold)
 
                 ! Calculate scalar base kernels for kernels of one receiver
-                do ikernel = parameters%receiver(irec)%firstkernel, &
-                             parameters%receiver(irec)%lastkernel 
+                loop_kernels:                                        &
+                 do ikernel = parameters%receiver(irec)%firstkernel, &
+                              parameters%receiver(irec)%lastkernel 
 
                   ! Check whether kernel (ikernel) actually needs the base kernel 
                   ! (ibasekernel), otherwise cycle
@@ -519,12 +572,52 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                     parameters%kernel(ikernel)%calc_misfit_kernel(conv_field, parameters%int_scheme)
 
 
+                  ! If the wavefields are to be plotted, it needs to be filtered and iFTd here.
+                  if (parameters%plot_wavefields) then
+                    conv_field_temp(:, :, ibasekernel, ikernel) =  & 
+                      conv_field_temp(:, :, ibasekernel, ikernel) + conv_field(1:ndumps, :)
+                  end if
+
                   iclockold = tick(id=id_kernel, since=iclockold)
 
                   niterations(ikernel) = niterations(ikernel) + 1
-                end do ! ikernel
+                end do loop_kernels
 
-              end do ! ibasekernel 
+              end do loop_basekernels
+
+              if (parameters%plot_wavefields) then
+                ! Since the fwd and bwd wavefield do not depend on the basekernel type,
+                ! this can and should be done outside of the basekernel loop
+                do ikernel = parameters%receiver(irec)%firstkernel, &
+                              parameters%receiver(irec)%lastkernel 
+
+                  !Test of planar wave with lambda=1000km and f = 1/50s
+                  !do idump = 1, ndumps
+                  !  fw_field_out(idump,:,ikernel) = &
+                  !    sum(cos(2*pi* (random_points(1,:)/1e6 + idump*sem_data%dt / (50.d0)) ))
+                  !end do
+
+                  fw_field_fd_filt = parameters%kernel(ikernel)%filter%apply(fw_field_fd, kind='fwd')
+                  call fft_data%irfft(fw_field_fd_filt, fw_field_filt)
+
+                  bw_field_fd_filt = parameters%kernel(ikernel)%filter%apply(bw_field_fd, kind='bwd')
+                  call fft_data%irfft(bw_field_fd_filt, bw_field_filt)
+
+                  ! Sum over all MC points in this iteration
+                  ! TODO: Introduce weighting of MC point contributions
+                  fw_field_out(:, :, ikernel) =  & 
+                    fw_field_out(:, :, ikernel) + sum(fw_field_filt(1:ndumps, :, :), 3)
+                  bw_field_out(:, :, ikernel) =  & 
+                    bw_field_out(:, :, ikernel) + sum(bw_field_filt(1:ndumps, :, :), 3) 
+
+                  ! Compute the waveform kernels for the actual physical parameters of interest
+                  conv_field_out(:, ikernel) = sum(calc_physical_kernels( &
+                    parameters%kernel(ikernel)%model_parameter,       &
+                    conv_field_temp(:, :, :, ikernel),                &
+                    bg_model = bg_model,                              &
+                    relative_kernel = parameters%relative_kernel), 2)
+                end do
+              end if
 
               ! Dampen kernel values, if the points are close to receiver or source
               call dampen_field(kernelvalue_basekers, random_points, &
@@ -538,11 +631,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
             end if ! Receiver is inside element?
 
-        end do ! irec
+        end do loop_receivers
 
         iclockold = tick(id=id_mc, since=iclockold)
 
         ! Check for convergence           
+        ! For volumetric basis functions, this loop has just one iteration,
+        ! for vertex-based basis functions, nvertices_per_elem iterations
         do ibasisfunc = 1, nbasisfuncs_per_elem
           iclockold = tick()
 
@@ -577,7 +672,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           call flush(lu_out)
         end if
 
-      end do ! End of Monte Carlo loop
+      end do loop_all_converged ! End of Monte Carlo loop
 
       ! Print number of iterations
       if (any(niterations(:)==parameters%max_iter)) then
@@ -608,11 +703,23 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           slave_result%hetero_model(:, ibasisfunc, ielement)  = int_hetero(ibasisfunc)%getintegral()
           call int_hetero(ibasisfunc)%freeme()              
         end if
+        if (parameters%plot_wavefields) then
+          do ikernel = 1, parameters%nkernel
+            ! In case of onvertices basis functions, all basis functions of this element get
+            ! the same value, i.e. each vertex gets the same value of the fields.
+            slave_result%fw_field(:, :, ikernel, ibasisfunc, ielement)   &
+              = fw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
+            slave_result%bw_field(:, :, ikernel, ibasisfunc, ielement)   &
+              = bw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
+            slave_result%conv_field(:, 1, ikernel, ibasisfunc, ielement) &
+              = conv_field_out(:, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
+          end do ! ikernel
+        end if
         call int_kernel(ibasisfunc)%freeme()
-      end do
+      end do ! ibasisfunc
     end if 
 
-  end do ! ielement
+  end do loop_elements ! ielement
 
   call timeshift_fwd%freeme()
   call timeshift_bwd%freeme()
@@ -620,6 +727,7 @@ end function slave_work
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+!> Do the integration/projection of the (1D) background model on the base functions
 function integrate_1d_model(sem_data, inv_mesh, ielement) result(int_model)
   use global_parameters,                     only: sp, dp
   use readfields,                            only: semdata_type
@@ -678,6 +786,7 @@ end function integrate_1d_model
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+!> Do the integration/projection of a (3D) heterogeneity model on the base functions
 function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
   use global_parameters,                     only: sp, dp
   use inversion_mesh,                        only: inversion_mesh_data_type

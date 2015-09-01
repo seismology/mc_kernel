@@ -3,19 +3,20 @@ program kerner_code
 #ifndef include_mpi
     use mpi
 #endif
-    use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier
+    use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier,&
+                                           pbroadcast_log
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
                                            master, lu_out, myrank
     use simple_routines,             only: lowtrim
 
     use inversion_mesh,              only: inversion_mesh_data_type
+    use readfields,                  only: semdata_type
     use type_parameter,              only: parameter_type
     use ftnunit,                     only: runtests_init, runtests, runtests_final
     use unit_tests,                  only: test_all
     use slave_mod,                   only: do_slave
     use master_module,               only: do_master
     use work_type_mod,               only: init_work_type
-    use plot_wavefields_mod,         only: plot_wavefields
     use backgroundmodel,             only: nmodel_parameters
     use heterogeneities,             only: nmodel_parameters_hetero
 
@@ -27,11 +28,16 @@ program kerner_code
 
     type(inversion_mesh_data_type)      :: inv_mesh
     type(parameter_type)                :: parameters
+    type(semdata_type)                  :: sem_data
 
     integer                             :: nvertices_per_elem
     integer                             :: nvertices_per_task
     integer                             :: nbasisfuncs_per_elem
     integer                             :: nbasisfuncs_per_task
+    logical                             :: plot_wavefields
+    integer                             :: ndim
+    integer                             :: ndumps
+    real(kind=sp)                       :: dt
 
     verbose = 0
 
@@ -61,77 +67,89 @@ program kerner_code
     
 
 
-    select case(trim(parameters%whattodo))
-    case('integratekernel')
 
-       if (master) then
-           ! Get type of mesh and number of vertices per element
-           
-           select case(lowtrim(parameters%mesh_file_type))
-           case('tetrahedral') 
-               nvertices_per_elem = 4
-               nbasisfuncs_per_elem = 4
-           case('abaqus') 
-               call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%int_type)
-               nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
-               nvertices_per_elem = inv_mesh%nvertices_per_elem
-               call inv_mesh%freeme()
-           case default
-               write(*,*) 'Unknown mesh type: ', trim(parameters%mesh_file_type)
-               call pabort(do_traceback=.false.)
-           end select
-       end if
+    if (master) then
+        ! Get type of mesh and number of vertices per element
+        
+        select case(lowtrim(parameters%mesh_file_type))
+        case('tetrahedral') 
+            nvertices_per_elem = 4
+            nbasisfuncs_per_elem = 4
+        case('abaqus') 
+            call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%int_type)
+            nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
+            nvertices_per_elem = inv_mesh%nvertices_per_elem
+            call inv_mesh%freeme()
+        case default
+            write(*,*) 'Unknown mesh type: ', trim(parameters%mesh_file_type)
+            call pabort(do_traceback=.false.)
+        end select
 
-       call pbroadcast_int(nbasisfuncs_per_elem, 0)
-       call pbroadcast_int(nvertices_per_elem, 0)
+        ! Get number of wavefield dumps (samples)
+        call sem_data%set_params(parameters%fwd_dir,     &
+                                 parameters%bwd_dir,     &
+                                 parameters%strain_buffer_size, & 
+                                 parameters%displ_buffer_size, & 
+                                 parameters%strain_type_fwd,    &
+                                 parameters%source%depth)
 
-       nvertices_per_task = parameters%nelems_per_task * nvertices_per_elem
-       nbasisfuncs_per_task = parameters%nelems_per_task * nbasisfuncs_per_elem
+        call sem_data%open_files()
 
-       call pbroadcast_int(nbasisfuncs_per_task, 0)
-       call pbroadcast_int(nvertices_per_task, 0)
+        ndumps = sem_data%ndumps
+        ndim   = sem_data%get_ndim()
+        dt     = real(sem_data%dt, kind=sp) !SP because work type has only 4Byte entries
+        call sem_data%close_files()
 
-       write(lu_out,*) '***************************************************************'
-       write(lu_out,*) ' Initialize MPI work type'
-       write(lu_out,*) '***************************************************************'
+    end if
+
+    call pbroadcast_int(nbasisfuncs_per_elem, 0)
+    call pbroadcast_int(nvertices_per_elem, 0)
+
+    nvertices_per_task = parameters%nelems_per_task * nvertices_per_elem
+    nbasisfuncs_per_task = parameters%nelems_per_task * nbasisfuncs_per_elem
+
+    plot_wavefields = parameters%plot_wavefields
+
+    call pbroadcast_int(nbasisfuncs_per_task, 0)
+    call pbroadcast_int(nvertices_per_task, 0)
+    call pbroadcast_int(ndumps, 0)
+    call pbroadcast_int(ndim, 0)
+    call pbroadcast_log(plot_wavefields, 0)
+
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' Initialize MPI work type'
+    write(lu_out,*) '***************************************************************'
 
 
-        call init_work_type(nkernel                  = parameters%nkernel,          &
-                            nelems_per_task          = parameters%nelems_per_task,  &
-                            nvertices                = nvertices_per_task,          &
-                            nvertices_per_elem       = nvertices_per_elem,          &
-                            nbasisfuncs_per_elem     = nbasisfuncs_per_elem,        &
-                            nmodel_parameters        = nmodel_parameters,           &
-                            nmodel_parameters_hetero = nmodel_parameters_hetero)
+    call init_work_type(nkernel                  = parameters%nkernel,          &
+                        nelems_per_task          = parameters%nelems_per_task,  &
+                        nvertices                = nvertices_per_task,          &
+                        nvertices_per_elem       = nvertices_per_elem,          &
+                        nbasisfuncs_per_elem     = nbasisfuncs_per_elem,        &
+                        nmodel_parameters        = nmodel_parameters,           &
+                        nmodel_parameters_hetero = nmodel_parameters_hetero,    &
+                        plot_wavefields          = plot_wavefields,             &
+                        ndumps                   = ndumps,                      &
+                        ndim                     = ndim,                        &
+                        dt                       = dt                          )
 
-      
+    
 
-        write(lu_out,*) '***************************************************************'
-        write(lu_out,*) ' Master and slave part ways'
-        write(lu_out,*) '***************************************************************'
-        if (master) then
-           call do_master()
-        else
-           call do_slave()
-        endif
+    write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' Master and slave part ways'
+    write(lu_out,*) '***************************************************************'
+    if (master) then
+       call do_master()
+    else
+       call do_slave()
+    endif
 
-        call end_clock()   
- 
-        ! Wait for all other threads to arrive here before finalizing
-        call pbarrier()
-        call ppend()
+    call end_clock()   
+
+    ! Wait for all other threads to arrive here before finalizing
+    call pbarrier()
+    call ppend()
   
-    case('plot_wavefield')
-        if (master) then
-            call start_clock_slave()
-            call plot_wavefields()
-            call end_clock()
-        else
-            print *, 'Nothing to do on rank ', myrank
-        end if
-    end select
-
-
     write(lu_out,*)
     write(lu_out,*) ' Finished!'
 contains

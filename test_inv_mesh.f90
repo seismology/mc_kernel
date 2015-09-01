@@ -26,118 +26,6 @@ subroutine test_mesh_read
 end subroutine test_mesh_read
 !-----------------------------------------------------------------------------------------
 
-!!-----------------------------------------------------------------------------------------
-!subroutine test_mesh_dump
-!  type(inversion_mesh_type)    :: inv_mesh
-!  integer                      :: myunit, ierr
-!
-!  ! tidy up
-!  open(newunit=myunit, file='unit_tests/testmesh.xdmf', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  open(newunit=myunit, file='unit_tests/testmesh_points.dat', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  open(newunit=myunit, file='unit_tests/testmesh_grid.dat', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!  
-!  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
-!                              'onvertices')
-!
-!  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh')
-!
-!  call assert_file_exists('unit_tests_output/testmesh.xdmf', 'test xdmf dump')
-!  call assert_file_exists('unit_tests_output/testmesh_points.dat', 'test xdmf dump')
-!  call assert_file_exists('unit_tests_output/testmesh_grid.dat', 'test xdmf dump')
-!
-!  call inv_mesh%freeme()
-!end subroutine test_mesh_dump
-!!-----------------------------------------------------------------------------------------
-!
-!!-----------------------------------------------------------------------------------------
-!subroutine test_mesh_dump2
-!  type(inversion_mesh_type)    :: inv_mesh
-!  integer                      :: myunit, ierr
-!
-!  ! tidy up
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus.xdmf', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_points.dat', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_grid.dat', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
-!  !call inv_mesh%read_abaqus_mesh('Meshes/mantle_only_300km.inp','onvertices')
-!
-!  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus')
-!
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus.xdmf', 'test xdmf dump')
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus_points.dat', 'test xdmf dump')
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus_grid.dat', 'test xdmf dump')
-!
-!  call inv_mesh%freeme()
-!end subroutine test_mesh_dump2
-!!-----------------------------------------------------------------------------------------
-!
-!!-----------------------------------------------------------------------------------------
-!subroutine test_mesh_dump3
-!  type(inversion_mesh_type)    :: inv_mesh
-!  integer                      :: myunit, ierr
-!
-!  ! tidy up
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge.xdmf', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_points.dat', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_merge_grid.dat', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  call inv_mesh%read_abaqus_mesh('unit_tests/test_merge.inp','onvertices')
-!
-!  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_merge')
-!
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge.xdmf', 'test xdmf dump')
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_points.dat', 'test xdmf dump')
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus_merge_grid.dat', 'test xdmf dump')
-!  
-!  call inv_mesh%freeme()
-!end subroutine test_mesh_dump3
-!!!-----------------------------------------------------------------------------------------
-!
-!!-----------------------------------------------------------------------------------------
-!subroutine test_mesh_sort
-!  type(inversion_mesh_type)    :: inv_mesh
-!  integer                      :: myunit, ierr, i
-!
-!  ! tidy up
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted.xdmf', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted_points.dat', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  open(newunit=myunit, file='unit_tests_output/testmesh_abaqus_sorted_grid.dat', iostat=ierr)
-!  if (ierr == 0) close(myunit, status='delete')
-!
-!  call inv_mesh%read_abaqus_mesh('unit_tests/tetrahedron.inp','onvertices')
-!
-!  call inv_mesh%tree_sort()
-!
-!  call inv_mesh%dump_mesh_xdmf('unit_tests_output/testmesh_abaqus_sorted')
-!
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted.xdmf', 'test xdmf dump')
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted_points.dat', 'test xdmf dump')
-!  call assert_file_exists('unit_tests_output/testmesh_abaqus_sorted_grid.dat', 'test xdmf dump')
-!
-!  call inv_mesh%freeme()
-!end subroutine test_mesh_sort
-!!-----------------------------------------------------------------------------------------
-
 !-----------------------------------------------------------------------------------------
 subroutine test_append_variable
   type (inversion_mesh_variable_type), allocatable  :: variable(:)
@@ -309,7 +197,7 @@ subroutine test_set_mixed_data
   use netcdf
   use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
-  character(len=nf90_max_name)      :: variable_names(3)
+  character(len=NF90_MAX_NAME)      :: variable_names(3)
   integer                           :: variable_length(3)
 
   real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), &
@@ -509,7 +397,7 @@ subroutine test_set_node_data_and_dump()
   use netcdf
   use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
-  character(len=nf90_max_name)      :: variable_names(3)
+  character(len=NF90_MAX_NAME)      :: variable_names(3)
   integer                           :: variable_length(3)
 
   integer                           :: nf_status, ncid, id, grp_ncid
@@ -565,6 +453,7 @@ subroutine test_set_node_data_and_dump()
 
   ! Write file to disk
   call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_node_data')
+  call inv_mesh%free_node_and_cell_data()
 
   call nc_open_for_read(filename = 'unit_tests_output/test_set_node_data.nc', ncid = ncid)
   nf_status = nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid)
@@ -614,7 +503,7 @@ subroutine test_set_cell_data_and_dump()
   use netcdf
   use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
-  character(len=nf90_max_name)      :: variable_names(3)
+  character(len=NF90_MAX_NAME)      :: variable_names(3)
   integer                           :: variable_length(3)
 
   integer                           :: nf_status, ncid, id, grp_ncid
@@ -628,11 +517,11 @@ subroutine test_set_cell_data_and_dump()
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
   variable_length = [2, 3, 4]
 
-  allocate(testvar1_ref(2,2)) ! Mesh has two cells
+  allocate(testvar1_ref(2,variable_length(1))) ! Mesh has two cells
   call random_number(testvar1_ref)
-  allocate(testvar2_ref(2,3)) ! Mesh has two cells
+  allocate(testvar2_ref(2,variable_length(2))) ! Mesh has two cells
   call random_number(testvar2_ref)
-  allocate(testvar3_ref(2,4)) ! Mesh has two cells
+  allocate(testvar3_ref(2,variable_length(3))) ! Mesh has two cells
   call random_number(testvar3_ref)
 
   call inv_mesh%init_cell_data()
@@ -714,7 +603,7 @@ subroutine test_set_mixed_data_and_dump()
   use netcdf
   use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
-  character(len=nf90_max_name)      :: variable_names(3)
+  character(len=NF90_MAX_NAME)      :: variable_names(3)
   integer                           :: variable_length(3)
 
   integer                           :: nf_status, ncid, id, grp_ncid
@@ -907,6 +796,716 @@ subroutine test_set_mixed_data_and_dump()
   nf_status = nf90_close(ncid = ncid)
 
 end subroutine test_set_mixed_data_and_dump
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! Test whether two datasets for the same mesh can be written into two separate files
+! Needed for the wavefield output, which is written into another file than the kernels.
+subroutine test_set_mixed_data_and_dump_into_two_files()
+  use netcdf
+  use nc_routines
+  type(inversion_mesh_data_type)    :: inv_mesh
+  character(len=NF90_MAX_NAME)      :: variable_names(3)
+  integer                           :: variable_length(6)
+
+  integer                           :: nf_status, ncid, id, grp_ncid
+
+  ! Variables for first output file
+  real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_ref_node(:,:), testvar2_ref_node(:,:), testvar3_ref_node(:,:)
+  real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
+  real(kind=sp), allocatable        :: testvar1_res_node(:,:), testvar2_res_node(:,:), testvar3_res_node(:,:)
+
+  ! Variables for second output file
+  real(kind=sp), allocatable        :: testvar4_ref(:,:), testvar5_ref(:,:), testvar6_ref(:,:)
+  real(kind=sp), allocatable        :: testvar4_ref_node(:,:), testvar5_ref_node(:,:), testvar6_ref_node(:,:)
+  real(kind=sp), allocatable        :: testvar4_res(:,:), testvar5_res(:,:), testvar6_res(:,:)
+  real(kind=sp), allocatable        :: testvar4_res_node(:,:), testvar5_res_node(:,:), testvar6_res_node(:,:)
+
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  variable_names  = ['variable_1', 'variable_2', 'variable_3']
+  variable_length = [2, 3, 4, 5, 6, 7]
+
+
+  ! Variables for first output file
+  allocate(testvar1_ref(2,variable_length(1))) ! Mesh has two cells
+  call random_number(testvar1_ref)
+  allocate(testvar2_ref(2,variable_length(2))) ! Mesh has two cells
+  call random_number(testvar2_ref)
+  allocate(testvar3_ref(2,variable_length(3))) ! Mesh has two cells
+  call random_number(testvar3_ref)
+
+  allocate(testvar1_ref_node(5,variable_length(1))) ! Mesh has five points
+  call random_number(testvar1_ref_node)
+  allocate(testvar2_ref_node(5,variable_length(2))) ! Mesh has five points
+  call random_number(testvar2_ref_node)
+  allocate(testvar3_ref_node(5,variable_length(3))) ! Mesh has five points
+  call random_number(testvar3_ref_node)
+
+
+  ! Variables for second output file
+  variable_names  = ['variable_1', 'variable_2', 'variable_3']
+
+  allocate(testvar4_ref(2,variable_length(4))) ! Mesh has two cells
+  call random_number(testvar4_ref)
+  allocate(testvar5_ref(2,variable_length(5))) ! Mesh has two cells
+  call random_number(testvar5_ref)
+  allocate(testvar6_ref(2,variable_length(6))) ! Mesh has two cells
+  call random_number(testvar6_ref)
+
+  allocate(testvar4_ref_node(5,variable_length(4))) ! Mesh has five points
+  call random_number(testvar4_ref_node)
+  allocate(testvar5_ref_node(5,variable_length(5))) ! Mesh has five points
+  call random_number(testvar5_ref_node)
+  allocate(testvar6_ref_node(5,variable_length(6))) ! Mesh has five points
+  call random_number(testvar6_ref_node)
+
+
+  ! Data for first output file
+  ! CELL DATA
+  call inv_mesh%init_cell_data()
+
+  ! Write whole variable at once
+  call inv_mesh%add_cell_variable('cell_variable_1', &
+                                  nentries = variable_length(1))
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_1',   &
+                              values    = testvar1_ref)
+
+  ! Write variable element-wise
+  call inv_mesh%add_cell_variable('cell_variable_2', &
+                                  nentries = variable_length(2))
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar2_ref(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar2_ref(2:2,:),   &
+                              ielement  = [2, 2])
+  
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  call inv_mesh%add_cell_variable('cell_variable_3', &
+                                  nentries = variable_length(3))
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar3_ref(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar3_ref(:,2:variable_length(3)),   &
+                              ientry    = [2, variable_length(3)])
+
+  ! END OF CELL DATA                          
+
+  ! NODE DATA                          
+  call inv_mesh%init_node_data()
+
+  ! Write whole variable at once
+  call inv_mesh%add_node_variable('node_variable_1', &
+                                  nentries = variable_length(1))
+  call inv_mesh%add_node_data(var_name  = 'node_variable_1',   &
+                              values    = testvar1_ref_node)
+
+  ! Write variable element-wise
+  call inv_mesh%add_node_variable('node_variable_2', &
+                                  nentries = variable_length(2))
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(2:2,:),   &
+                              ielement  = [2, 2])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref_node(3:5,:),   &
+                              ielement  = [3, 5])
+
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  call inv_mesh%add_node_variable('node_variable_3', &
+                                  nentries = variable_length(3))
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar3_ref_node(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar3_ref_node(:,2:variable_length(3)),   &
+                              ientry    = [2, variable_length(3)])
+
+  ! END OF NODE DATA                           
+
+
+  ! Write file to first disk
+  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_mixed_data_1st_file')
+
+  call inv_mesh%free_node_and_cell_data()
+
+  
+  ! Data for second output file
+  ! CELL DATA
+  call inv_mesh%init_cell_data()
+
+  ! Write whole variable at once
+  call inv_mesh%add_cell_variable('cell_variable_1', &
+                                  nentries = variable_length(4))
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_1',   &
+                              values    = testvar4_ref)
+
+  ! Write variable element-wise
+  call inv_mesh%add_cell_variable('cell_variable_2', &
+                                  nentries = variable_length(5))
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar5_ref(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar5_ref(2:2,:),   &
+                              ielement  = [2, 2])
+  
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  call inv_mesh%add_cell_variable('cell_variable_3', &
+                                  nentries = variable_length(6))
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar6_ref(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar6_ref(:,2:variable_length(6)),   &
+                              ientry    = [2, variable_length(6)])
+
+  ! END OF CELL DATA                          
+
+  ! NODE DATA                          
+  call inv_mesh%init_node_data()
+
+  ! Write whole variable at once
+  call inv_mesh%add_node_variable('node_variable_1', &
+                                  nentries = variable_length(4))
+  call inv_mesh%add_node_data(var_name  = 'node_variable_1',   &
+                              values    = testvar4_ref_node)
+
+  ! Write variable element-wise
+  call inv_mesh%add_node_variable('node_variable_2', &
+                                  nentries = variable_length(5))
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar5_ref_node(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar5_ref_node(2:2,:),   &
+                              ielement  = [2, 2])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar5_ref_node(3:5,:),   &
+                              ielement  = [3, 5])
+
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  call inv_mesh%add_node_variable('node_variable_3', &
+                                  nentries = variable_length(6))
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar6_ref_node(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar6_ref_node(:,2:variable_length(6)),   &
+                              ientry    = [2, variable_length(6)])
+
+  ! END OF NODE DATA                           
+
+
+  ! Write data to second file
+  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_mixed_data_2nd_file')
+
+  call inv_mesh%free_node_and_cell_data()
+
+
+  ! Check first output file
+  call nc_open_for_read(filename = 'unit_tests_output/test_set_mixed_data_1st_file.nc', ncid = ncid)
+
+  ! CHECK FOR CELL DATA
+  nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for cell data has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_1', & 
+                         values  = testvar1_res, &
+                         limits  = [0.,1.] )
+
+  do id = 1, size(testvar1_ref, 2) 
+    call assert_comparable(testvar1_ref(:,id), testvar1_res(:,id),  &
+                           1e-7, 'Variable 1 retrieved successfully')
+  end do
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_2', & 
+                         values  = testvar2_res, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar2_ref, 2) 
+    call assert_comparable(testvar2_ref(:,id), testvar2_res(:,id),  &
+                           1e-7, 'Variable 2 retrieved successfully')
+  end do
+
+
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_3', & 
+                         values  = testvar3_res, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar3_ref, 2) 
+    call assert_comparable(testvar3_ref(:,id), testvar3_res(:,id),  &
+                           1e-7, 'Variable 3 retrieved successfully')
+  end do
+
+  deallocate(testvar1_res)
+  deallocate(testvar2_res)
+  deallocate(testvar3_res)
+
+
+  ! CHECK FOR NODE DATA
+  nf_status = nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for node data has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_1', & 
+                         values  = testvar1_res_node, &
+                         limits  = [0.,1.] )
+
+  do id = 1, size(testvar1_ref, 2) 
+    call assert_comparable(testvar1_ref_node(:,id), testvar1_res_node(:,id),  &
+                           1e-7, 'Variable 1 retrieved successfully')
+  end do
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_2', & 
+                         values  = testvar2_res_node, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar2_ref, 2) 
+    call assert_comparable(testvar2_ref_node(:,id), testvar2_res_node(:,id),  &
+                           1e-7, 'Variable 2 retrieved successfully')
+  end do
+
+
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_3', & 
+                         values  = testvar3_res_node, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar3_ref, 2) 
+    call assert_comparable(testvar3_ref_node(:,id), testvar3_res_node(:,id),  &
+                           1e-7, 'Variable 3 retrieved successfully')
+  end do
+
+  nf_status = nf90_close(ncid = ncid)
+
+
+  ! Check second output file
+  call nc_open_for_read(filename = 'unit_tests_output/test_set_mixed_data_2nd_file.nc', ncid = ncid)
+
+  ! CHECK FOR CELL DATA
+  nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for cell data from 2nd file has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_1', & 
+                         values  = testvar4_res, &
+                         limits  = [0.,1.] )
+
+  do id = 1, size(testvar4_ref, 2) 
+    call assert_comparable(testvar4_ref(:,id), testvar4_res(:,id),  &
+                           1e-7, 'Variable 1 retrieved successfully from 2nd file')
+  end do
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_2', & 
+                         values  = testvar5_res, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar5_ref, 2) 
+    call assert_comparable(testvar5_ref(:,id), testvar5_res(:,id),  &
+                           1e-7, 'Variable 2 retrieved successfully from 2nd file')
+  end do
+
+
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_variable_3', & 
+                         values  = testvar6_res, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar6_ref, 2) 
+    call assert_comparable(testvar6_ref(:,id), testvar6_res(:,id),  &
+                           1e-7, 'Variable 3 retrieved successfully from 2nd file')
+  end do
+
+  deallocate(testvar4_res)
+  deallocate(testvar5_res)
+  deallocate(testvar6_res)
+
+
+  ! CHECK FOR NODE DATA
+  nf_status = nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for node data from 2nd file has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_1', & 
+                         values  = testvar4_res_node, &
+                         limits  = [0.,1.] )
+
+  do id = 1, size(testvar4_ref, 2) 
+    call assert_comparable(testvar4_ref_node(:,id), testvar4_res_node(:,id),  &
+                           1e-7, 'Variable 1 retrieved successfully from 2nd file')
+  end do
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_2', & 
+                         values  = testvar5_res_node, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar5_ref, 2) 
+    call assert_comparable(testvar5_ref_node(:,id), testvar5_res_node(:,id),  &
+                           1e-7, 'Variable 2 retrieved successfully from 2nd file')
+  end do
+
+
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_variable_3', & 
+                         values  = testvar6_res_node, &
+                         limits  = [0.,1.] )
+  
+  do id = 1, size(testvar6_ref, 2) 
+    call assert_comparable(testvar6_ref_node(:,id), testvar6_res_node(:,id),  &
+                           1e-7, 'Variable 3 retrieved successfully from 2nd file')
+  end do
+
+  nf_status = nf90_close(ncid = ncid)
+
+end subroutine test_set_mixed_data_and_dump_into_two_files
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_set_node_time_data_and_dump
+  use netcdf
+  use nc_routines
+  type(inversion_mesh_data_type)    :: inv_mesh
+  character(len=NF90_MAX_NAME)      :: variable_names(3)
+  integer                           :: variable_length(3), chunksizes(2), grp_ncid, id
+  integer                           :: ncid, nf_status, varid, dimids(2)
+  logical                           :: iscontiguous
+  character(len=NF90_MAX_NAME)      :: dim_name
+
+  ! Variables for first output file
+  real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
+
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  variable_names  = ['variable_1', 'variable_2', 'variable_3']
+  variable_length = [10, 10, 10]
+
+  allocate(testvar1_ref(5,variable_length(1))) ! Mesh has five vertices
+  call random_number(testvar1_ref)
+  allocate(testvar2_ref(5,variable_length(2))) ! Mesh has five vertices
+  call random_number(testvar2_ref)
+  allocate(testvar3_ref(5,variable_length(3))) ! Mesh has five vertices
+  call random_number(testvar3_ref)
+
+
+  ! Data for first output file
+  ! node DATA
+  call inv_mesh%init_node_data(dt = 0.1d0, starttime = 0d0)
+
+  ! Write whole variable at once
+  call inv_mesh%add_node_variable('node_'//variable_names(1),    &
+                                  nentries = variable_length(1), &
+                                  istime   = .true.)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_1',   &
+                              values    = testvar1_ref)
+
+  ! Write variable element-wise
+  call inv_mesh%add_node_variable('node_'//variable_names(2),    &
+                                  nentries = variable_length(2), &
+                                  istime   = .true.)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_2',          &
+                              values    = testvar2_ref(2:5,:),   &
+                              ielement  = [2, 5])
+  
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_node_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  call inv_mesh%add_node_variable('node_'//variable_names(3),    &
+                                  nentries = variable_length(3), &
+                                  istime   = .true.)
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar3_ref(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_node_data(var_name  = 'node_variable_3',          &
+                              values    = testvar3_ref(:,2:variable_length(3)),   &
+                              ientry    = [2, variable_length(3)])
+
+  ! END OF node DATA                          
+
+  ! Write file to disk
+  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_node_data_time')
+  call inv_mesh%free_node_and_cell_data()
+
+  call nc_open_for_read(filename = 'unit_tests_output/test_set_node_data_time.nc', ncid = ncid)
+  call check(nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid))
+  call assert_equal(nf_status, NF90_NOERR, 'Group for node data has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_'//variable_names(1), &
+                         values  = testvar1_res, &
+                         limits  = [0.,1.],      &
+                         varid   = varid)
+
+  call assert_comparable(testvar1_ref, testvar1_res,  &
+                         1e-7, 'Variable 1 retrieved successfully')
+
+  call check(nf90_inquire_variable(grp_ncid, varid,           &
+                                   contiguous = iscontiguous, &
+                                   dimids     = dimids,       &
+                                   chunksizes = chunksizes))
+
+  call check(nf90_inquire_dimension(grp_ncid, dimids(2),      &
+                                    name      = dim_name))
+
+  call assert_true((trim(dim_name).eq.'time'), &
+    'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
+  call assert_true(.not.iscontiguous, 'Time variable should be chunked')
+  call assert_equal(chunksizes,  [inv_mesh%get_nvertices(), 1], &
+                    'Chunk size in time dimension is one')
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_'//variable_names(2), &
+                         values  = testvar2_res, &
+                         limits  = [0.,1.],      &
+                         varid   = varid)
+  
+  call assert_comparable(testvar2_ref, testvar2_res,  &
+                         1e-7, 'Variable 2 retrieved successfully')
+
+  call check(nf90_inquire_variable(grp_ncid, varid,           &
+                                   contiguous = iscontiguous, &
+                                   chunksizes = chunksizes,   &
+                                   dimids     = dimids))
+
+  call check(nf90_inquire_dimension(grp_ncid, dimids(2),      &
+                                    name      = dim_name))
+
+  call assert_true((trim(dim_name).eq.'time'), &
+    'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
+  call assert_true(.not.iscontiguous, 'Time variable should be chunked')
+  call assert_equal(chunksizes,  [inv_mesh%get_nvertices(), 1], &
+                    'Chunk size in time dimension is one')
+
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'node_'//variable_names(3), &
+                         values  = testvar3_res, &
+                         limits  = [0.,1.],      &
+                         varid   = varid)
+  
+  call assert_comparable(testvar3_ref, testvar3_res,  &
+                         1e-7, 'Variable 3 retrieved successfully')
+
+  call check(nf90_inquire_variable(grp_ncid, varid,           &
+                                   contiguous = iscontiguous, &
+                                   chunksizes = chunksizes))
+
+  call check(nf90_inquire_dimension(grp_ncid, dimids(2),      &
+                                    name      = dim_name))
+
+  call assert_true((trim(dim_name).eq.'time'), &
+    'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
+  call assert_true(.not.iscontiguous, 'Time variable should be chunked')
+  call assert_equal(chunksizes,  [inv_mesh%get_nvertices(), 1], &
+                    'Chunk size in time dimension is one')
+  call check(nf90_close(ncid = ncid))
+
+
+end subroutine test_set_node_time_data_and_dump
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_set_cell_time_data_and_dump
+  use netcdf
+  use nc_routines
+  type(inversion_mesh_data_type)    :: inv_mesh
+  character(len=NF90_MAX_NAME)      :: variable_names(3)
+  integer                           :: variable_length(3), chunksizes(2), grp_ncid, id
+  integer                           :: ncid, nf_status, varid, dimids(2)
+  logical                           :: iscontiguous
+  character(len=NF90_MAX_NAME)      :: dim_name
+
+  ! Variables for first output file
+  real(kind=sp), allocatable        :: testvar1_ref(:,:), testvar2_ref(:,:), testvar3_ref(:,:)
+  real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
+
+
+  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+                              'onvertices')
+
+  variable_names  = ['variable_1', 'variable_2', 'variable_3']
+  variable_length = [10, 10, 10]
+
+  allocate(testvar1_ref(2,variable_length(1))) ! Mesh has two cells
+  call random_number(testvar1_ref)
+  allocate(testvar2_ref(2,variable_length(2))) ! Mesh has two cells
+  call random_number(testvar2_ref)
+  allocate(testvar3_ref(2,variable_length(3))) ! Mesh has two cells
+  call random_number(testvar3_ref)
+
+
+  ! Data for first output file
+  ! CELL DATA
+  call inv_mesh%init_cell_data(dt = 0.1d0, starttime = 0d0)
+
+  ! Write whole variable at once
+  call inv_mesh%add_cell_variable('cell_'//variable_names(1),    &
+                                  nentries = variable_length(1), &
+                                  istime   = .true.)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_1',   &
+                              values    = testvar1_ref)
+
+  ! Write variable element-wise
+  call inv_mesh%add_cell_variable('cell_'//variable_names(2),    &
+                                  nentries = variable_length(2), &
+                                  istime   = .true.)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar2_ref(1:1,:),   &
+                              ielement  = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_2',          &
+                              values    = testvar2_ref(2:2,:),   &
+                              ielement  = [2, 2])
+  
+  ! Just to add confusion, init both once more
+  call inv_mesh%init_cell_data()
+  call inv_mesh%init_node_data()
+
+  ! Write variable snap-wise
+  call inv_mesh%add_cell_variable('cell_'//variable_names(3),    &
+                                  nentries = variable_length(3), &
+                                  istime   = .true.)
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar3_ref(:,1:1),   &
+                              ientry    = [1, 1])
+  call inv_mesh%add_cell_data(var_name  = 'cell_variable_3',          &
+                              values    = testvar3_ref(:,2:variable_length(3)),   &
+                              ientry    = [2, variable_length(3)])
+
+  ! END OF CELL DATA                          
+
+  ! Write file to disk
+  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_cell_data_time')
+  call inv_mesh%free_node_and_cell_data()
+
+  call nc_open_for_read(filename = 'unit_tests_output/test_set_cell_data_time.nc', ncid = ncid)
+  nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
+  call assert_equal(nf_status, NF90_NOERR, 'Group for cell data has been created')
+
+  ! Get variable 1
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_'//variable_names(1), &
+                         values  = testvar1_res, &
+                         limits  = [0.,1.],      &
+                         varid   = varid)
+
+  call assert_comparable(testvar1_ref(:,id), testvar1_res(:,id),  &
+                         1e-7, 'Variable 1 retrieved successfully')
+
+  nf_status = nf90_inquire_variable(grp_ncid, varid,           &
+                                    contiguous = iscontiguous, &
+                                    dimids     = dimids,       &
+                                    chunksizes = chunksizes)
+
+  nf_status = nf90_inquire_dimension(grp_ncid, dimids(2),      &
+                                     name      = dim_name)
+
+  call assert_true((trim(dim_name).eq.'time'), &
+    'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
+  call assert_true(.not.iscontiguous, 'Time variable should be chunked')
+  call assert_equal(chunksizes,  [inv_mesh%get_nelements(), 1], &
+                    'Chunk size in time dimension is one')
+
+  ! Get variable 2
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_'//variable_names(2), &
+                         values  = testvar2_res, &
+                         limits  = [0.,1.],      &
+                         varid   = varid)
+  
+  call assert_comparable(testvar2_ref(:,id), testvar2_res(:,id),  &
+                         1e-7, 'Variable 2 retrieved successfully')
+
+  nf_status = nf90_inquire_variable(grp_ncid, varid,           &
+                                    contiguous = iscontiguous, &
+                                    chunksizes = chunksizes,   &
+                                    dimids     = dimids)
+
+  nf_status = nf90_inquire_dimension(grp_ncid, dimids(2),      &
+                                     name      = dim_name)
+
+  call assert_true((trim(dim_name).eq.'time'), &
+    'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
+  call assert_true(.not.iscontiguous, 'Time variable should be chunked')
+  call assert_equal(chunksizes,  [inv_mesh%get_nelements(), 1], &
+                    'Chunk size in time dimension is one')
+
+  ! Get variable 3
+  call nc_getvar_by_name(ncid    = grp_ncid,     &
+                         varname = 'cell_'//variable_names(3), &
+                         values  = testvar3_res, &
+                         limits  = [0.,1.],      &
+                         varid   = varid)
+  
+  call assert_comparable(testvar3_ref(:,id), testvar3_res(:,id),  &
+                         1e-7, 'Variable 3 retrieved successfully')
+
+  nf_status = nf90_inquire_variable(grp_ncid, varid,           &
+                                    contiguous = iscontiguous, &
+                                    chunksizes = chunksizes)
+
+  nf_status = nf90_inquire_dimension(grp_ncid, dimids(2),      &
+                                     name      = dim_name)
+
+  call assert_true((trim(dim_name).eq.'time'), &
+    'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
+  call assert_true(.not.iscontiguous, 'Time variable should be chunked')
+  call assert_equal(chunksizes,  [inv_mesh%get_nelements(), 1], &
+                    'Chunk size in time dimension is one')
+  nf_status = nf90_close(ncid = ncid)
+
+
+end subroutine test_set_cell_time_data_and_dump
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

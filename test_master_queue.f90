@@ -13,7 +13,6 @@ contains
 subroutine test_master_all
   integer       ::  ntasks
 
-  master = .true.
   testing = .false.
   call init_queue(ntasks, 'unit_tests/inparam_test')
 
