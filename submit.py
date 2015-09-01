@@ -104,7 +104,7 @@ def read_receiver_dat(rec_file):
             time_window_start = float(str_line.split()[3])
             time_window_stop  = float(str_line.split()[4])
             model_param = str_line.split()[5]
-            if model_param in ('vs', 'rho', 'vsh', 'vsv', 'eta', 'phi', 'xi', 'mu '):
+            if model_param in ('vs', 'rho', 'vsh', 'vsv', 'eta', 'phi', 'xi', 'mu'):
               fullstrain_kernel = True
             elif model_param not in ('lam', 'vp', 'vph', 'vpv'):
               raise RuntimeError('Unknown model parameter %s in %s'%(model_param, rec_file))

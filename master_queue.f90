@@ -538,8 +538,12 @@ subroutine finalize()
     write(lu_out,'(A)') 'Kernels times 3D model'
     write(lu_out,'(A)') '***************************************************************'
      do ikernel = 1, parameters%nkernel
-        delay_time = sum(K_x(:, ikernel) * Het_Model(:, parameters%kernel(ikernel)%hetero_parameter_index))/100.d0
-        print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, delay_time
+        if (parameters%kernel(ikernel)%hetero_parameter_index>0) then
+          delay_time = sum(K_x(:, ikernel) * Het_Model(:, parameters%kernel(ikernel)%hetero_parameter_index))/100.d0
+          print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, delay_time
+        else
+          print '("Kernel ", A, " has model parameter not in het file")', parameters%kernel(ikernel)%name
+        end if
      end do
   end if
 
