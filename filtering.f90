@@ -212,7 +212,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     ! The FFT routines need 2D arrays. Second dimension will be size 1
     real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_sem_td(:,:), t(:)
     complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:), lowpass(:)
-    complex(kind=dp), allocatable   :: dev_fd(:)
+    complex(kind=dp), allocatable   :: stf_sem_d_fd(:,:), dev_fd(:)
 
     real(kind=dp)   , allocatable   :: stf_resampled(:), stf_src(:,:), stf_src_td(:,:)
 
@@ -238,6 +238,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     allocate(stf_sem(size(stf_sem_fwd), 1))
     allocate(stf_sem_fd(this%nfreq, 1))
+    allocate(stf_sem_d_fd(this%nfreq, 1))
     allocate(stf_sem_td(fft_stf%get_ntimes(), 1))
     allocate(stf_src(size(stf_sem_fwd), 1))
     allocate(stf_src_fd(this%nfreq, 1))
@@ -290,15 +291,15 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     dev_fd = this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
 
     ! Calculate first derivatice of the STF
-    stf_sem_fd(:,1) = stf_sem_fd(:,1) * dev_fd
-    stf_src_fd(:,1) = stf_src_fd(:,1) 
+    stf_sem_d_fd(:,1) = stf_sem_fd(:,1) * dev_fd
 
 
     ! Divide filter by spectrum of forward STF. It is established at initialization
     ! that forward and backward STF are identical.
-    this%transferfunction_fwd = this%transferfunction / stf_sem_fd(:,1)
+    this%transferfunction_fwd = this%transferfunction / stf_sem_d_fd(:,1)
     this%transferfunction_fwd = this%transferfunction_fwd * amplitude_fwd 
-    this%transferfunction_bwd = this%transferfunction_fwd
+    this%transferfunction_bwd = this%transferfunction / stf_sem_fd(:,1)
+    this%transferfunction_bwd = this%transferfunction_bwd * amplitude_fwd 
 
     ! Apply Earthquake STF, but only to forward transfer function
     this%transferfunction_fwd = this%transferfunction_fwd * stf_src_fd(:,1)
