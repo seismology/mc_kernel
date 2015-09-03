@@ -163,10 +163,11 @@ function get_hetparam_index(model_parameter)
     end if
   end do
   if (iparam == nmodel_parameters_hetero + 1) then
-    print '("ERROR: Unknown hetero parameter for kernel", A)', &
+    print '("WARNING: Unknown hetero parameter: ", A)', &
       trim(model_parameter)
-    print '("Available options: ", 10(A3))', parameter_name_het
-    call pabort(do_traceback=.false.)
+    !print '("Available options: ", 10(A3))', parameter_name_het
+    print *, "This kernel will not be integrated over at the end"
+    get_hetparam_index = -1 !call pabort(do_traceback=.false.)
   end if
 
 end function get_hetparam_index
