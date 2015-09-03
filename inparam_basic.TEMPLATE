@@ -153,3 +153,8 @@ WHAT_TO_DO           'integratekernel'
 # inside ('volumetric') each elements?
 INT_TYPE             'volumetric'
 
+# Create a file with intermediate results. Probably useful, if you have
+# reason to expect the job to be cancelled. 
+# Can inhibit performance significantly for large numbers of kernels and 
+# large inversion grids
+CREATE_INTERMEDIATE  true

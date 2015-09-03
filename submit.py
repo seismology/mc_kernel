@@ -351,6 +351,12 @@ def define_arguments():
   helptext = """Do not sort the mesh elements. Just for debugging."""
   performance_options.add_argument('--no_sort_mesh_elements', action="store_true", default=False,
                               help=helptext)
+  helptext = """ Create a file with intermediate results. Probably useful, if you have
+  reason to expect the job to be cancelled. 
+  Can inhibit performance significantly for large numbers of kernels and 
+  large inversion grids"""
+  performance_options.add_argument('--create_intermediate', default=False,
+                                   help=helptext)
   helptext = """Mask the source and the receiver element and set the kernel to 
   zero in each. A rough way to avoid spending hours until convergence in these 
   two elements in reached."""
