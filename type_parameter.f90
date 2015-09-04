@@ -64,6 +64,7 @@ module type_parameter
         logical                              :: int_over_hetero      = .false.
         logical                              :: sort_mesh_elements   = .false.
         logical                              :: mask_src_rec         = .false.
+        logical                              :: create_intermediate  = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -208,10 +209,8 @@ subroutine read_parameters(this, input_file_in)
         case('FFTW_PLAN')
            read(keyvalue, *) this%fftw_plan
 
-        case('WHAT_TO_DO')
-           if (keyvalue == 'plot_wavefield') then
-             this%plot_wavefields = .true.
-           end if
+        case('PLOT_WAVEFIELDS')
+           read(keyvalue, *) this%plot_wavefields 
 
         case('INT_TYPE')
            this%int_type = keyvalue
@@ -227,6 +226,9 @@ subroutine read_parameters(this, input_file_in)
 
         case('DAMP_RADIUS_SOURCE_RECEIVER')
            read(keyvalue, *) this%damp_radius
+
+        case('CREATE_INTERMEDIATE')
+           read(keyvalue, *) this%create_intermediate
 
         case default
            print *, 'Unknown parameter', trim(keyword)

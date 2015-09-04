@@ -104,7 +104,7 @@ def read_receiver_dat(rec_file):
             time_window_start = float(str_line.split()[3])
             time_window_stop  = float(str_line.split()[4])
             model_param = str_line.split()[5]
-            if model_param in ('vs', 'rho', 'vsh', 'vsv', 'eta', 'phi', 'xi', 'mu '):
+            if model_param in ('vs', 'rho', 'vsh', 'vsv', 'eta', 'phi', 'xi', 'mu'):
               fullstrain_kernel = True
             elif model_param not in ('lam', 'vp', 'vph', 'vpv'):
               raise RuntimeError('Unknown model parameter %s in %s'%(model_param, rec_file))
@@ -134,9 +134,9 @@ def define_arguments():
                       help="Description of run, which is saved in job_name/README.run\n"+
                            "If omitted, an editor window opens to collect description.")
 
-  parser.add_argument('--what_to_do', choices=['integrate_kernel', 'plot_wavefield'], 
-                      default='integratekernel',
-                      help='Calculate kernels or just plot wavefields')
+  parser.add_argument('--plot_wavefields', default=False, action='store_true', 
+                      help='Plot wavefields and waveform kernels in addition to the\n'+
+                           'normal misfit kernels')
 
   parser.add_argument('-a', '--available_memory', type=int,
                       help='Amount of memory available in MB')
@@ -351,6 +351,12 @@ def define_arguments():
   helptext = """Do not sort the mesh elements. Just for debugging."""
   performance_options.add_argument('--no_sort_mesh_elements', action="store_true", default=False,
                               help=helptext)
+  helptext = """ Create a file with intermediate results. Probably useful, if you have
+  reason to expect the job to be cancelled. 
+  Can inhibit performance significantly for large numbers of kernels and 
+  large inversion grids"""
+  performance_options.add_argument('--create_intermediate', default=False,
+                                   help=helptext)
   helptext = """Mask the source and the receiver element and set the kernel to 
   zero in each. A rough way to avoid spending hours until convergence in these 
   two elements in reached."""
@@ -498,6 +504,9 @@ for key, value in params.iteritems():
   elif key in ('FWD_DIR', 'BWD_DIR'):
     # Set mesh dir to absolute path
     params_out[key] = os.path.realpath(value)
+  elif key == 'PLOT_WAVEFIELDS':
+    if value:
+      params_out['WHAT_TO_DO'] = 'plot_wavefields'
 
   else:
     params_out[key] = value

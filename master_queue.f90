@@ -139,25 +139,29 @@ subroutine init_queue(ntasks, inparam_file)
   allocate(completed(nelems))
   completed(:) = .false.
   
-  ! Check for intermediate results and load them if available
-  write(lu_out,'(A)') '***************************************************************'
-  write(lu_out,'(A)') ' Check for intermediate results from previous run'
-  write(lu_out,'(A)') '***************************************************************'
-  filename = 'intermediate_results.nc'
-  inquire( file = trim(filename), exist = intermediate_results_exist)
+  if (parameters%create_intermediate) then
+    ! Check for intermediate results and load them if available
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Check for intermediate results from previous run'
+    write(lu_out,'(A)') '***************************************************************'
+    filename = 'intermediate_results.nc'
+    inquire( file = trim(filename), exist = intermediate_results_exist)
 
-  ! If available, read (sets global variables)
-  if (intermediate_results_exist) call read_intermediate(filename, completed)
+    ! If available, read (sets global variables)
+    if (intermediate_results_exist) call read_intermediate(filename, completed)
+  end if
 
   ! Create mapping array elems_in_task that contains which element belongs to which
   ! task. Uses the boolean array completed as input
   call create_tasks(completed, parameters%nelems_per_task, ntasks, elems_in_task)
   iclockold = tick(id=id_create_tasks, since=iclockold)
 
-  write(lu_out,'(A)') '***************************************************************'
-  write(lu_out,'(A)') ' Create file for intermediate results '
-  write(lu_out,'(A)') '***************************************************************'
-  call create_intermediate(filename)
+  if (parameters%create_intermediate) then
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Create file for intermediate results '
+    write(lu_out,'(A)') '***************************************************************'
+    call create_intermediate(filename)
+  end if
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Starting to distribute the work'
@@ -270,11 +274,12 @@ subroutine finalize()
   character(len=512)            :: var_name
   character(len=2), parameter   :: dim_name(6) = ['tt', 'pp', 'rr', 'pr', 'tr', 'tp']
 
-
-  write(lu_out,'(A)') '***************************************************************'
-  write(lu_out,'(A)') 'Finalize intermediate file'
-  write(lu_out,'(A)') '***************************************************************'
-  call nc_close_file(ncid = ncid_intermediate)
+  if (parameters%create_intermediate) then
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') 'Finalize intermediate file'
+    write(lu_out,'(A)') '***************************************************************'
+    call nc_close_file(ncid = ncid_intermediate)
+  end if
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
@@ -538,8 +543,12 @@ subroutine finalize()
     write(lu_out,'(A)') 'Kernels times 3D model'
     write(lu_out,'(A)') '***************************************************************'
      do ikernel = 1, parameters%nkernel
-        delay_time = sum(K_x(:, ikernel) * Het_Model(:, parameters%kernel(ikernel)%hetero_parameter_index))/100.d0
-        print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, delay_time
+        if (parameters%kernel(ikernel)%hetero_parameter_index>0) then
+          delay_time = sum(K_x(:, ikernel) * Het_Model(:, parameters%kernel(ikernel)%hetero_parameter_index))/100.d0
+          print '(A,": ",E15.5," s")', parameters%kernel(ikernel)%name, delay_time
+        else
+          print '("Kernel ", A, " has model parameter not in het file")', parameters%kernel(ikernel)%name
+        end if
      end do
   end if
 
@@ -635,77 +644,80 @@ subroutine dump_intermediate(itask)
   integer(kind=int4)         :: iel, ielement, ibasisfunc, ipoint, status
   integer(kind=long)         :: iclockold
 
-  iclockold = tick()
+! The check, whether to dump intermediate results at all needs to be done here, since the
+! calling routine in master_mod.f90 has no access to the parameter object
+if (parameters%create_intermediate) then
+    iclockold = tick()
 
-  do iel = 1, parameters%nelems_per_task
-    ielement = elems_in_task(itask, iel)
-    if (ielement.eq.-1) cycle
+    do iel = 1, parameters%nelems_per_task
+      ielement = elems_in_task(itask, iel)
+      if (ielement.eq.-1) cycle
 
-    ! are we in volumetric or vertex mode?
-    select case(trim(parameters%int_type))
-    case('onvertices')         
-      do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
-        ipoint = connectivity(ibasisfunc, ielement)
+      ! are we in volumetric or vertex mode?
+      select case(trim(parameters%int_type))
+      case('onvertices')         
+        do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
+          ipoint = connectivity(ibasisfunc, ielement)
+          call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                                 varname = 'K_x',             & 
+                                 values  = real(K_x(ipoint:ipoint, :), kind=sp),    &
+                                 start   = [ipoint, 1],       &
+                                 count   = [1, parameters%nkernel] )
+          call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                                 varname = 'Var',             & 
+                                 values  = real(Var(ipoint, :), kind=sp),    &
+                                 start   = [ipoint, 1],       &
+                                 count   = [1, parameters%nkernel] )
+          call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                                 varname = 'Bg_Model',        & 
+                                 values  = real(Bg_Model(ipoint, :), kind=sp),&
+                                 start   = [ipoint, 1],        &
+                                 count   = [1, nmodel_parameters] )
+          call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                                 varname = 'Het_Model',        & 
+                                 values  = real(Het_Model(ipoint, :), kind=sp),&
+                                 start   = [ipoint, 1],        &
+                                 count   = [1, nmodel_parameters_hetero] )
+        end do
+
+      case('volumetric')
         call nc_putvar_by_name(ncid    = ncid_intermediate, &
                                varname = 'K_x',             & 
-                               values  = real(K_x(ipoint:ipoint, :), kind=sp),    &
-                               start   = [ipoint, 1],       &
+                               values  = real(K_x(ielement, :), kind=sp),    &
+                               start   = [ielement, 1],       &
                                count   = [1, parameters%nkernel] )
         call nc_putvar_by_name(ncid    = ncid_intermediate, &
                                varname = 'Var',             & 
-                               values  = real(Var(ipoint, :), kind=sp),    &
-                               start   = [ipoint, 1],       &
+                               values  = real(Var(ielement, :), kind=sp),    &
+                               start   = [ielement, 1],       &
                                count   = [1, parameters%nkernel] )
         call nc_putvar_by_name(ncid    = ncid_intermediate, &
                                varname = 'Bg_Model',        & 
-                               values  = real(Bg_Model(ipoint, :), kind=sp),&
-                               start   = [ipoint, 1],        &
+                               values  = real(Bg_Model(ielement, :), kind=sp),&
+                               start   = [ielement, 1],        &
                                count   = [1, nmodel_parameters] )
         call nc_putvar_by_name(ncid    = ncid_intermediate, &
                                varname = 'Het_Model',        & 
-                               values  = real(Het_Model(ipoint, :), kind=sp),&
-                               start   = [ipoint, 1],        &
+                               values  = real(Het_Model(ielement, :), kind=sp),&
+                               start   = [ielement, 1],        &
                                count   = [1, nmodel_parameters_hetero] )
-      end do
 
-    case('volumetric')
-      call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                             varname = 'K_x',             & 
-                             values  = real(K_x(ielement, :), kind=sp),    &
-                             start   = [ielement, 1],       &
-                             count   = [1, parameters%nkernel] )
-      call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                             varname = 'Var',             & 
-                             values  = real(Var(ielement, :), kind=sp),    &
-                             start   = [ielement, 1],       &
-                             count   = [1, parameters%nkernel] )
-      call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                             varname = 'Bg_Model',        & 
-                             values  = real(Bg_Model(ielement, :), kind=sp),&
-                             start   = [ielement, 1],        &
-                             count   = [1, nmodel_parameters] )
-      call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                             varname = 'Het_Model',        & 
-                             values  = real(Het_Model(ielement, :), kind=sp),&
-                             start   = [ielement, 1],        &
-                             count   = [1, nmodel_parameters_hetero] )
+      end select ! int_type
 
-    end select ! int_type
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'niterations',        & 
+                             values  = niterations(ielement, :),&
+                             start   = [ielement, 1],        &
+                             count   = [1, parameters%nkernel] )
+    end do
 
     call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'niterations',        & 
-                           values  = niterations(ielement, :),&
-                           start   = [ielement, 1],        &
-                           count   = [1, parameters%nkernel] )
-  end do
-
-  call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                         varname = 'element_proc',    & 
-                         values  = element_proc)
-  
-  status = nf90_sync(ncid_intermediate)
-  iclockold = tick(id=id_dump, since=iclockold)
-
+                           varname = 'element_proc',    & 
+                           values  = element_proc)
+    
+    status = nf90_sync(ncid_intermediate)
+    iclockold = tick(id=id_dump, since=iclockold)
+  end if
 
 end subroutine dump_intermediate
 !-----------------------------------------------------------------------------------------
@@ -715,15 +727,17 @@ subroutine delete_intermediate
   character(len=512)                :: cmdmsg, sys_cmd
   integer                           :: exitstat
 
-  ! Delete intermediate file
-  sys_cmd = 'rm intermediate_results.nc'
-  call execute_command_line(command = trim(sys_cmd), wait = .true., exitstat = exitstat, &
-                            cmdmsg = cmdmsg)
+  if (parameters%create_intermediate) then
+    ! Delete intermediate file
+    sys_cmd = 'rm intermediate_results.nc'
+    call execute_command_line(command = trim(sys_cmd), wait = .true., exitstat = exitstat, &
+                              cmdmsg = cmdmsg)
 
-  if (exitstat.ne.0) then
-    write(*,*) 'WARNING: Deleting the intermediate file failed with status ', exitstat
-    write(*,*) '         and message:'
-    write(*,*) cmdmsg
+    if (exitstat.ne.0) then
+      write(*,*) 'WARNING: Deleting the intermediate file failed with status ', exitstat
+      write(*,*) '         and message:'
+      write(*,*) cmdmsg
+    end if
   end if
 
 end subroutine delete_intermediate

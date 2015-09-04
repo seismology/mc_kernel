@@ -142,14 +142,16 @@ INTEGRATION_SCHEME  parseval
 # for a detailed explanation: http://www.fftw.org/doc/Planner-Flags.html
 FFTW_PLAN              MEASURE
 
-# Do you want to calculate a kernel or just plot wavefields? 
-# integratekernel has to be run with MPI and at least two processors
-WHAT_TO_DO           'integratekernel'
-
-# plot_wavefield has to be run in serial
-#WHAT_TO_DO           'plot_wavefield'
+# Do you want to just calculate kernels or additionally plot wavefields? 
+# And waveform kernels, which needs a lot of memory
+PLOT_WAVEFIELDS         false
 
 # Do you want your kernels to be given on the vertices ('onvertices') or
 # inside ('volumetric') each elements?
 INT_TYPE             'volumetric'
 
+# Create a file with intermediate results. Probably useful, if you have
+# reason to expect the job to be cancelled. 
+# Can inhibit performance significantly for large numbers of kernels and 
+# large inversion grids
+CREATE_INTERMEDIATE  true
