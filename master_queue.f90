@@ -644,9 +644,9 @@ subroutine dump_intermediate(itask)
   integer(kind=int4)         :: iel, ielement, ibasisfunc, ipoint, status
   integer(kind=long)         :: iclockold
 
-  ! The check, whether to dump intermediate results at all needs to be done here, since the
-  ! calling routine in master_mod.f90 has no access to the parameter object
-  if (parameters%create_intermediate) then
+! The check, whether to dump intermediate results at all needs to be done here, since the
+! calling routine in master_mod.f90 has no access to the parameter object
+if (parameters%create_intermediate) then
     iclockold = tick()
 
     do iel = 1, parameters%nelems_per_task
@@ -727,15 +727,17 @@ subroutine delete_intermediate
   character(len=512)                :: cmdmsg, sys_cmd
   integer                           :: exitstat
 
-  ! Delete intermediate file
-  sys_cmd = 'rm intermediate_results.nc'
-  call execute_command_line(command = trim(sys_cmd), wait = .true., exitstat = exitstat, &
-                            cmdmsg = cmdmsg)
+  if (parameters%create_intermediate) then
+    ! Delete intermediate file
+    sys_cmd = 'rm intermediate_results.nc'
+    call execute_command_line(command = trim(sys_cmd), wait = .true., exitstat = exitstat, &
+                              cmdmsg = cmdmsg)
 
-  if (exitstat.ne.0) then
-    write(*,*) 'WARNING: Deleting the intermediate file failed with status ', exitstat
-    write(*,*) '         and message:'
-    write(*,*) cmdmsg
+    if (exitstat.ne.0) then
+      write(*,*) 'WARNING: Deleting the intermediate file failed with status ', exitstat
+      write(*,*) '         and message:'
+      write(*,*) cmdmsg
+    end if
   end if
 
 end subroutine delete_intermediate
