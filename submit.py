@@ -575,7 +575,7 @@ if args.queue == 'local':
   #run_cmd = mpirun_cmd, ' ../kerner', ' -n %d'%args.nslaves, ' inparam']
   run_cmd = 'nohup %s -n %d ./kerner inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves + 1)
   print run_cmd
-  #subprocess.call(run_cmd, shell=True)
+  subprocess.call(run_cmd, shell=True)
 
 elif args.queue == 'SuperMUC':
   # Create a LoadLeveler job script for SuperMUC
