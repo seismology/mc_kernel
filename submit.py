@@ -134,9 +134,9 @@ def define_arguments():
                       help="Description of run, which is saved in job_name/README.run\n"+
                            "If omitted, an editor window opens to collect description.")
 
-  parser.add_argument('--what_to_do', choices=['integrate_kernel', 'plot_wavefield'], 
-                      default='integratekernel',
-                      help='Calculate kernels or just plot wavefields')
+  parser.add_argument('--plot_wavefields', default=False, action='store_true', 
+                      help='Plot wavefields and waveform kernels in addition to the\n'+
+                           'normal misfit kernels')
 
   parser.add_argument('-a', '--available_memory', type=int,
                       help='Amount of memory available in MB')
@@ -504,6 +504,9 @@ for key, value in params.iteritems():
   elif key in ('FWD_DIR', 'BWD_DIR'):
     # Set mesh dir to absolute path
     params_out[key] = os.path.realpath(value)
+  elif key == 'PLOT_WAVEFIELDS':
+    if value:
+      params_out['WHAT_TO_DO'] = 'plot_wavefields'
 
   else:
     params_out[key] = value
@@ -572,7 +575,7 @@ if args.queue == 'local':
   #run_cmd = mpirun_cmd, ' ../kerner', ' -n %d'%args.nslaves, ' inparam']
   run_cmd = 'nohup %s -n %d ./kerner inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves + 1)
   print run_cmd
-  subprocess.call(run_cmd, shell=True)
+  #subprocess.call(run_cmd, shell=True)
 
 elif args.queue == 'SuperMUC':
   # Create a LoadLeveler job script for SuperMUC
