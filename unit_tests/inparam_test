@@ -8,7 +8,7 @@ REC_FILE        'unit_tests/receiver.dat'
 FILT_FILE       'unit_tests/filters.dat'
 MESH_FILE_TYPE       'abaqus'
 MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
-STF_FILE             'unit_tests/stf_test.dat'
+STF_FILE             'unit_tests/stf_errorf.dat'
 
 #MESH_FILE_TYPE       'tetrahedral'
 #MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
