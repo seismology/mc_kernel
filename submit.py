@@ -613,7 +613,7 @@ elif args.queue == 'SuperMUC':
     text_out = "# Job file automatically created by submit.py on %s\n"%str(datetime.datetime.now()) 
     text_out += "#@ output = job_$(jobid).out \n"
     text_out += "#@ error = job_$(jobid).err\n" 
-    text_out += "#@ job_type = MPICH \n"
+    text_out += "#@ job_type = parallel \n"
     text_out += "#@ network.MPI = sn_all,not_shared,us \n"
     text_out += "#@ notification=always \n"
     text_out += "#@ notify_user = staehler@geophysik.uni-muenchen.de \n"
@@ -629,16 +629,13 @@ elif args.queue == 'SuperMUC':
     text_out += "#@ queue \n"
     text_out += ". /etc/profile \n"
     text_out += ". /etc/profile.d/modules.sh \n"
-    text_out += "module unload mpi.ibm \n"
-    text_out += "module load mpi.intel \n"
-    text_out += "module load fortran/intel \n"
     text_out += "module load netcdf \n"
     text_out += "module load fftw \n"
     text_out += "module load mkl \n"
-    text_out += "mpiexec -n %d ./kerner inparam 2>&1  > OUTPUT_0000\n"%int(args.nslaves + 1)
+    text_out += "poe ./kerner inparam 2>&1  > OUTPUT_0000\n"%int(args.nslaves + 1)
     f.write(text_out)
   print 'Submitting to SuperMUC loadleveler queue'
-  subprocess.call(['llsubmit', job_script])
+  #subprocess.call(['llsubmit', job_script])
 
 elif args.queue == 'monch':
     with open(os.path.join(run_dir, 'sbatch.sh'), 'w') as f:
