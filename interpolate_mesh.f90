@@ -74,7 +74,7 @@ end subroutine init
 pure function get(this, r) result(values)
   class(parameter_interpolator), intent(in)   :: this
   real(kind=dp), intent(in)                   :: r(:)
-  real(kind=dp), allocatable                  :: values(:)
+  real(kind=dp)                               :: values(size(r))
 
   integer                                     :: idx(size(r))
 

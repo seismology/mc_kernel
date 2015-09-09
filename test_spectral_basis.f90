@@ -12,7 +12,7 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine test_lagrange_interpol_1D
 
-  real(dp), allocatable :: points(:), coefficients(:)
+  real(dp)              :: points(2), coefficients(2)
   real(dp)              :: x, interpol, interpol_ref
 
   ! automatic allocation
@@ -48,7 +48,8 @@ end subroutine test_lagrange_interpol_1D
 !-----------------------------------------------------------------------------------------
 subroutine test_lagrange_interpol_2D
 
-  real(dp), allocatable :: points1(:), points2(:), coefficients(:,:)
+  real(dp)              :: points1(2), points2(2)
+  real(dp)              :: coefficients(2,2)
   real(dp)              :: x1, x2, interpol, interpol_ref
 
   ! automatic allocation
@@ -90,10 +91,10 @@ end subroutine test_lagrange_interpol_2D
 !-----------------------------------------------------------------------------------------
 subroutine test_lagrange_interpol_2D_td
 
-  real(dp), allocatable :: points1(:), points2(:), coefficients(:,:,:)
+  real(dp)              :: points1(2), points2(2)
+  real(dp)              :: coefficients(1,2,2)
   real(dp)              :: x1, x2, interpol(1), interpol_ref
 
-  ! automatic allocation
   points1 = [-1, 1]
   points2 = [-1, 1]
   coefficients = reshape([1, 1, 1, 1], [1,2,2])
@@ -136,13 +137,15 @@ subroutine test_gll_points()
   integer               :: n
 
   n = 1
-  ! automatic allocation
+  allocate(eta(n+1), eta_ref(n+1))
   eta = zelegl(n)
   eta_ref = [-1, 1]
   call assert_comparable_real1d(5 + real(eta), 5 + real(eta_ref), &
                                 1e-7, 'gll points n=1')
 
   n = 2
+  deallocate(eta, eta_ref)
+  allocate(eta(n+1), eta_ref(n+1))
   eta = zelegl(n)
   eta_ref = [-1, 0, 1]
   call assert_comparable_real1d(5 + real(eta), 5 + real(eta_ref), &
@@ -155,12 +158,16 @@ subroutine test_gll_points()
   ! NSolve[(1 - x*x) D[LegendreP[n, x], x] == 0, x]
   
   n = 3
+  deallocate(eta, eta_ref)
+  allocate(eta(n+1), eta_ref(n+1))
   eta = zelegl(n)
   eta_ref = [-1d0, -.2d0**.5d0, .2d0**.5d0, 1d0]
   call assert_comparable_real1d(5 + real(eta), 5 + real(eta_ref), &
                                 1e-7, 'gll points n=3')
 
   n = 4
+  deallocate(eta, eta_ref)
+  allocate(eta(n+1), eta_ref(n+1))
   eta = zelegl(n)
   eta_ref = [-1d0, -(3d0/7d0)**.5d0, 0d0, (3d0/7d0)**.5d0, 1d0]
   call assert_comparable_real1d(5 + real(eta), 5 + real(eta_ref), &
@@ -179,25 +186,31 @@ subroutine test_glj_points()
   ! Sort[NSolve[D[(LegendreP[n, x] + LegendreP[n + 1, x] )/(1 + x), x] == 0, x]]
 
   n = 1
-  ! automatic allocation
+  allocate(eta(n+1), eta_ref(n+1))
   eta = zemngl2(n)
   eta_ref = [-1, 1]
   call assert_comparable_real1d(5 + real(eta), 5 + real(eta_ref), &
                                 1e-7, 'glj points n=1')
 
   n = 2
+  deallocate(eta, eta_ref)
+  allocate(eta(n+1), eta_ref(n+1))
   eta = zemngl2(n)
   eta_ref = [-1d0, 0.2d0, 1d0]
   call assert_comparable_real1d(5 + real(eta), 5 + real(eta_ref), &
                                 1e-7, 'glj points n=2')
 
   n = 3
+  deallocate(eta, eta_ref)
+  allocate(eta(n+1), eta_ref(n+1))
   eta = zemngl2(n)
   eta_ref = [-1d0, -0.26120387496374153d0, 0.54691816067802723d0, 1d0]
   call assert_comparable_real1d(5 + real(eta), 5 + real(eta_ref), &
                                 1e-7, 'glj points n=3')
 
   n = 4
+  deallocate(eta, eta_ref)
+  allocate(eta(n+1), eta_ref(n+1))
   eta = zemngl2(n)
   eta_ref = [-1d0, -0.50778762955831502d0, 0.13230082077732325d0, &
              0.70882014211432509d0, 1d0]

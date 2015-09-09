@@ -378,6 +378,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   !    write(*,*) '***************************************************************'
 
   allocate(random_points(3, nptperstep))
+  allocate(weights(nptperstep))
   allocate(int_kernel(nbasisfuncs_per_elem))
 
   iclockold = tick(id=id_init, since=iclockold)
@@ -508,6 +509,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
               !Receiver not in element
               
               ! List of kernels for this receiver
+              allocate(kernel_list(parameters%receiver(irec)%nkernel))
               kernel_list = [(ikernel, ikernel = parameters%receiver(irec)%firstkernel,     &
                                                  parameters%receiver(irec)%lastkernel) ]
 
@@ -628,6 +630,10 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                 parameters%damp_radius)
 
               iclockold = tick(id=id_mc, since=iclockold)
+
+              ! Deallocate list of kernels for this receiver, since the next receiver 
+              ! will have another number of kernels
+              deallocate(kernel_list)
 
             end if ! Receiver is inside element?
 

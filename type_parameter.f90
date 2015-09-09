@@ -114,7 +114,8 @@ subroutine read_parameters(this, input_file_in)
         if (ioerr < 0) exit
         if (len(trim(line)) < 1 .or. line(1:1) == '#') cycle
      
-        read(line,*) keyword, keyvalue 
+        read(line,*, iostat=ioerr) keyword, keyvalue 
+        if (ioerr < 0) cycle
       
         parameter_to_read : select case(trim(keyword))
         case('ALLOWED_ERROR')

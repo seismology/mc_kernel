@@ -473,8 +473,10 @@ end subroutine test_nc_putvar_3d
 subroutine test_nc_putvar_1d_into_nd
   integer                       :: ncid, idim_1, idim_2, idim_3
   character(len=128)            :: filename='unit_tests_output/test_nc_putvar_1d_into_nd.nc'
-  real(kind=sp), allocatable    :: readdata_fp(:,:,:), array_1d_fp(:)
-  integer,       allocatable    :: readdata_int(:,:,:), array_1d_int(:)
+  real(kind=sp), allocatable    :: readdata_fp(:,:,:)
+  real(kind=sp)                 :: array_1d_fp(10)
+  integer,       allocatable    :: readdata_int(:,:,:)
+  integer                       :: array_1d_int(10)
   
   
   dim_size = [10, 20, 30]

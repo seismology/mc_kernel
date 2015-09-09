@@ -30,10 +30,13 @@ subroutine test_strain_monopole_td()
   npol = 4
   nsamp = 2
 
-  G1 = def_lagrange_derivs_glj(npol)
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
   allocate(G1T(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
   G1T = transpose(G1)
   G2T = transpose(G2)
 
@@ -153,10 +156,13 @@ subroutine test_strain_monopole()
 
   npol = 4
 
-  G1 = def_lagrange_derivs_glj(npol)
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
   allocate(G1T(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
   G1T = transpose(G1)
   G2T = transpose(G2)
 
@@ -271,10 +277,13 @@ subroutine test_strain_dipole_td()
   npol = 4
   nsamp = 2
 
-  G1 = def_lagrange_derivs_glj(npol)
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
   allocate(G1T(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
   G1T = transpose(G1)
   G2T = transpose(G2)
 
@@ -395,10 +404,13 @@ subroutine test_strain_dipole()
 
   npol = 4
 
-  G1 = def_lagrange_derivs_glj(npol)
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
   allocate(G1T(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
   G1T = transpose(G1)
   G2T = transpose(G2)
 
@@ -514,10 +526,13 @@ subroutine test_strain_quadpole_td()
   npol = 4
   nsamp = 2
 
-  G1 = def_lagrange_derivs_glj(npol)
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
   allocate(G1T(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
   G1T = transpose(G1)
   G2T = transpose(G2)
 
@@ -638,10 +653,13 @@ subroutine test_strain_quadpole()
 
   npol = 4
 
-  G1 = def_lagrange_derivs_glj(npol)
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
   allocate(G1T(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+ 
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
   G1T = transpose(G1)
   G2T = transpose(G2)
 
@@ -763,9 +781,13 @@ subroutine test_f_over_s_td()
   npol = 4
   nsamp = 2
 
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G2(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G2 = def_lagrange_derivs_gll(npol)
   G2T = transpose(G2)
+
+  allocate(gll_points(0:npol))
   gll_points = zelegl(npol)
 
   allocate(u(1:nsamp,0:npol,0:npol))
@@ -816,9 +838,13 @@ subroutine test_f_over_s()
 
   npol = 4
 
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G2(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G2 = def_lagrange_derivs_gll(npol)
   G2T = transpose(G2)
+
+  allocate(gll_points(0:npol))
   gll_points = zelegl(npol)
 
   allocate(u(0:npol,0:npol))
@@ -883,17 +909,24 @@ subroutine test_dsdf()
 
   npol = 1
 
-  G1 = def_lagrange_derivs_glj(npol)
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
   allocate(G1T(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G1 = def_lagrange_derivs_glj(npol)
+  G2 = def_lagrange_derivs_gll(npol)
+
   G1T = transpose(G1)
   G2T = transpose(G2)
 
+  allocate(gll_points(0:npol))
+  allocate(glj_points(0:npol))
   glj_points = zemngl2(npol)
   gll_points = zelegl(npol)
 
   allocate(u(0:npol,0:npol))
+  allocate(dsdu(0:npol))
   allocate(dsdu_ref(0:npol))
   
   u = 1
@@ -948,13 +981,17 @@ subroutine test_td_dsdf()
   npol = 1
   nsamp = 2
 
-  G2 = def_lagrange_derivs_gll(npol)
+  allocate(G2(0:npol,0:npol))
   allocate(G2T(0:npol,0:npol))
+
+  G2 = def_lagrange_derivs_gll(npol)
   G2T = transpose(G2)
 
+  allocate(gll_points(0:npol))
   gll_points = zelegl(npol)
 
   allocate(u(1:nsamp,0:npol,0:npol))
+  allocate(dsdu(1:nsamp,0:npol))
   allocate(dsdu_ref(1:nsamp,0:npol))
   
   u(1,0,:) = 0
@@ -992,13 +1029,16 @@ subroutine test_gradient()
 
   npol = 1
 
+  allocate(G2(0:npol,0:npol))
   G2 = def_lagrange_derivs_gll(npol)
   allocate(G2T(0:npol,0:npol))
   G2T = transpose(G2)
 
+  allocate(gll_points(0:npol))
   gll_points = zelegl(npol)
 
   allocate(u(0:npol,0:npol))
+  allocate(grad_u(0:npol,0:npol,2))
   allocate(grad_u_ref(0:npol,0:npol,2))
   
   u = 1
@@ -1054,18 +1094,25 @@ subroutine test_gradient2()
 
   npol = 4
 
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
+  allocate(G1T(0:npol,0:npol))
+  allocate(G2T(0:npol,0:npol))
+
   G1 = def_lagrange_derivs_glj(npol)
   G2 = def_lagrange_derivs_gll(npol)
 
-  allocate(G1T(0:npol,0:npol))
-  allocate(G2T(0:npol,0:npol))
   G1T = transpose(G1)
   G2T = transpose(G2)
+
+  allocate(glj_points(0:npol))
+  allocate(gll_points(0:npol))
 
   glj_points = zemngl2(npol)
   gll_points = zelegl(npol)
 
   allocate(u(0:npol,0:npol))
+  allocate(grad_u(0:npol,0:npol,2))
   allocate(grad_u_ref(0:npol,0:npol,2))
 
   do ipol = 0, npol
@@ -1136,18 +1183,25 @@ subroutine test_td_gradient()
   npol = 1
   nsamp = 2
 
+  allocate(G1(0:npol,0:npol))
+  allocate(G2(0:npol,0:npol))
+  allocate(G1T(0:npol,0:npol))
+  allocate(G2T(0:npol,0:npol))
+
   G1 = def_lagrange_derivs_glj(npol)
   G2 = def_lagrange_derivs_gll(npol)
 
-  allocate(G1T(0:npol,0:npol))
-  allocate(G2T(0:npol,0:npol))
   G1T = transpose(G1)
   G2T = transpose(G2)
+
+  allocate(glj_points(0:npol))
+  allocate(gll_points(0:npol))
 
   glj_points = zemngl2(npol)
   gll_points = zelegl(npol)
 
   allocate(u(1:nsamp,0:npol,0:npol))
+  allocate(grad_u(1:nsamp,0:npol,0:npol,2))
   allocate(grad_u_ref(1:nsamp,0:npol,0:npol,2))
   
   u = 1

@@ -73,6 +73,9 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        call pabort
     end if
     allocate(this%transferfunction(nfreq))
+    allocate(this%transferfunction_fwd(nfreq))
+    allocate(this%transferfunction_bwd(nfreq))
+    allocate(this%transferfunction_fwd_deriv(nfreq))
     allocate(this%f(nfreq))
 
     this%name              = name
@@ -168,8 +171,8 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
 
     ! Set forward and backward transfer functions.
     ! STF of fwd and bwd earthquake may be added later
-    this%transferfunction_fwd = this%transferfunction
-    this%transferfunction_bwd = this%transferfunction
+    this%transferfunction_fwd       = this%transferfunction
+    this%transferfunction_bwd       = this%transferfunction
     this%transferfunction_fwd_deriv = this%transferfunction
 
     if (firstslave) then
@@ -244,12 +247,13 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     allocate(stf_src_fd(this%nfreq, 1))
     allocate(stf_src_td(fft_stf%get_ntimes(), 1))
     allocate(dev_fd(fft_stf%get_nomega()))
-    t = fft_stf%get_t()
+    allocate(t(fft_stf%get_ntimes()))
 
     stf_sem(:,1) = stf_sem_fwd 
 
     ! Resample earthquake STF to sampling rate of the SEM simulation
     stf_src(:,:) = 0.0d0
+    allocate(stf_resampled(int(size(stf_source) * stf_dt / sem_dt)))
     stf_resampled = lanczos_resample(stf_source, stf_dt, sem_dt, a=8)
     stf_src(1:size(stf_resampled,1),1) = stf_resampled
 
@@ -309,6 +313,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
 
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
+    allocate(lowpass(this%nfreq))
     lowpass = butterworth_lowpass(this%f, this%f(this%nfreq/4), 16)
     lowpass = lowpass * conjg(lowpass)
   
@@ -410,6 +415,9 @@ subroutine deleteme(this)
 
     this%filterclass = ''
     deallocate(this%transferfunction)
+    deallocate(this%transferfunction_fwd)
+    deallocate(this%transferfunction_bwd)
+    deallocate(this%transferfunction_fwd_deriv)
     deallocate(this%f)
     this%initialized = .false.
 

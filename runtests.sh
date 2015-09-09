@@ -10,13 +10,13 @@ echo "Compiling code"
 make -s
 
 
-if [ ! -d test_wavefields ] ; then
-    echo "Downloading test wavefield files"
-    wget http://geophysik.uni-muenchen.de/~staehler/test_wavefields.tar.gz
-    echo "Unpacking test wavefield files"
-    tar -xf test_wavefields.tar.gz
-fi
-
+#if [ ! -d test_wavefields ] ; then
+#    echo "Downloading test wavefield files"
+#    wget http://geophysik.uni-muenchen.de/~staehler/test_wavefields.tar.gz
+#    echo "Unpacking test wavefield files"
+#    tar -xf test_wavefields.tar.gz
+#fi
+#
 if test -f OUTPUT_test ; then
     rm OUTPUT_test
 fi

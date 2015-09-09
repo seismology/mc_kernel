@@ -4,7 +4,7 @@ ALLOWED_ERROR   1e-1
 SRC_FILE     'unit_tests/CMTSOLUTION_load_seismogram'
 REC_FILE   'unit_tests/receiver_load_seismogram.dat'
 FILT_FILE     'unit_tests/filters_load_seismogram.dat'
-STF_FILE     'stf_test.txt
+STF_FILE     'unit_tests/stf_test.dat'
 MESH_FILE_TYPE       'abaqus'
 MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
 
