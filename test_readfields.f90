@@ -53,13 +53,20 @@ end subroutine test_get_chunk_bounds
 
 !-----------------------------------------------------------------------------------------
 subroutine test_readfields_set_params()
-   type(semdata_type)   :: sem_data
-   character(len=512)   :: fwd_dir, bwd_dir
+   use type_parameter, only : parameter_type
+   type(semdata_type)      :: sem_data
+   type(parameter_type)    :: parameters
+   character(len=512)      :: fwd_dir, bwd_dir
 
-   fwd_dir = './test_wavefields/kerner_fwd'
-   bwd_dir = './test_wavefields/kerner_bwd'
-   
-   call sem_data%set_params(fwd_dir, bwd_dir, 100, 100, 'straintensor_trace', 100.0d0)
+   call parameters%read_parameters('unit_tests/inparam_test')
+   call parameters%read_source()
+
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = 'straintensor_trace',        &
+                            desired_source_depth = parameters%source%depth)
 
    call assert_equal_int(sem_data%nsim_fwd, 4, 'nsim_fwd == 4')
    call assert_equal_int(sem_data%nsim_bwd, 2, 'nsim_bwd == 2')
@@ -71,12 +78,17 @@ end subroutine test_readfields_set_params
 subroutine test_readfields_open_files()
    use type_parameter, only : parameter_type
    type(parameter_type)    :: parameters
-   type(semdata_type)   :: sem_data
+   type(semdata_type)      :: sem_data
 
    call parameters%read_parameters('unit_tests/inparam_test')
+   call parameters%read_source()
    
-   call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, &
-                            100, 100, 'straintensor_trace', 100.0d0) 
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = 'straintensor_trace',        &
+                            desired_source_depth = parameters%source%depth)
 
    call sem_data%open_files()
 
@@ -86,128 +98,64 @@ end subroutine  test_readfields_open_files
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-!subroutine test_readfields_read_meshes
-!   use type_parameter, only : parameter_type
-!   type(parameter_type)    :: parameters
-!   type(semdata_type)   :: sem_data
-!   type(meshtype)       :: testmesh_fwd, testmesh_bwd
-!   integer              :: i_max_vp, i_max_vs, i_max_rho
-!   real(kind=sp)        :: r_max_vp, r_max_vs, r_max_rho
-!
-!   call parameters%read_parameters('unit_tests/inparam_test')
-!   
-!   call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, &
-!                            100, 100, 'straintensor_trace', 100.0d0) 
-!
-!   call sem_data%open_files()
-!
-!   call sem_data%read_meshes()
-!
-!   testmesh_fwd = sem_data%get_mesh('fwd')
-!   testmesh_bwd = sem_data%get_mesh('bwd')
-!
-!   call assert_comparable(testmesh_fwd%s, testmesh_bwd%s, 1e-10, &
-!                          'FWD and BWD meshes are identical')
-!   
-!   call assert_comparable(testmesh_fwd%mu, testmesh_bwd%mu, 1e-10, &
-!                          'FWD and BWD meshes are identical')
-!   
-!
-!   !This is PREM, so we might check whether the mesh variables have reasonable limits
-!
-!   ! S
-!   call assert_comparable(minval(testmesh_fwd%s),   0.0,       1e-5, 'All S>0')
-!   call assert_comparable(maxval(testmesh_fwd%s),   6371000.0, 1e-5, 'All S<6371')
-!
-!   ! Z
-!   call assert_comparable(minval(testmesh_fwd%z),  -6371000.0, 1e-5, 'All Z>-6371')
-!   call assert_comparable(maxval(testmesh_fwd%z),   6371000.0, 1e-5, 'All Z< 6371')
-!
-!   ! VP
-!   call assert_comparable(minval(testmesh_fwd%vp),  5800.0 ,   1e-2, 'Min VP=5800')
-!   call assert_comparable(maxval(testmesh_fwd%vp),  13716.6,   1e-2, 'Max VP=13717')
-!
-!   ! VS
-!   call assert_comparable(minval(testmesh_fwd%vs),  0000.0 ,   1e-2, 'All VS>0000')
-!   call assert_comparable(maxval(testmesh_fwd%vs),  7265.97,   1e-2, 'All VS<7265')
-!
-!   ! Rho
-!   call assert_comparable(minval(testmesh_fwd%rho), 2600.0 ,   1e-2, 'All Rho>2600')
-!   call assert_comparable(maxval(testmesh_fwd%rho), 13088.48,  1e-2, 'All Rho<13089')
-!   
-!   ! Mu
-!   call assert_comparable(minval(testmesh_fwd%mu),  0.0 ,     1e-5, 'Min Mu=0')
-!   call assert_comparable(maxval(testmesh_fwd%mu),  293.77e9,  1e-1, 'Max Mu=293.8 GPa')
-!   
-!   ! Lambda
-!   ! These would be the correct values according to the PREM paper, but who knows
-!   !call assert_comparable(minval(testmesh_fwd%lambda), 52.0e9 ,   1e-5, 'Min Lambda=52 GPa')
-!   !call assert_comparable(maxval(testmesh_fwd%lambda), 1425.3e9,  1e-5, 'Max Lambda=1425 GPa')
-!   call assert_comparable(minval(testmesh_fwd%lambda), 34.216e9 ,   1e-2, 'Min Lambda=34 GPa')
-!   call assert_comparable(maxval(testmesh_fwd%lambda), 1307.96e9,  1e-2, 'Max Lambda=1308 GPa')
-!  
-!   ! Eta
-!   call assert_comparable(minval(testmesh_fwd%eta), 1.0,   1e-5, 'Min eta=1')
-!   call assert_comparable(maxval(testmesh_fwd%eta), 1.0,   1e-5, 'Max eta=1')
-!
-!   ! I have no idea, what these values should be - SCS
-!   !! Phi
-!   !call assert_comparable(minval(testmesh_fwd%phi), 52.0e9 ,   1e-5, 'Min phi=52 GPa')
-!   !call assert_comparable(maxval(testmesh_fwd%phi), 1425.3e9,  1e-5, 'Max phi=1425 GPa')
-!   !
-!   !! Xi
-!   !call assert_comparable(minval(testmesh_fwd%xi), 52.0e9 ,   1e-5, 'Min xi=52 GPa')
-!   !call assert_comparable(maxval(testmesh_fwd%xi), 1425.3e9,  1e-5, 'Max xi=1425 GPa')
-!   
-!   ! Maximum VP should be at the CMB
-!   i_max_vp = maxloc(testmesh_fwd%vp, 1)
-!   r_max_vp = norm2([testmesh_fwd%s(i_max_vp), testmesh_fwd%z(i_max_vp)])
-!   call assert_comparable(r_max_vp, 3480000.0, 1e-2, 'Max VP at the CMB')
-!
-!   ! Maximum VS should be at the D"
-!   i_max_vs = maxloc(testmesh_fwd%vs, 1)
-!   r_max_vs = norm2([testmesh_fwd%s(i_max_vs), testmesh_fwd%z(i_max_vs)])
-!   call assert_comparable(r_max_vs, 3630000.0, 1e-2, 'Max VS at the D"')
-!
-!   ! Maximum Rho should be in the center
-!   i_max_rho = maxloc(testmesh_fwd%rho, 1)
-!   r_max_rho = norm2([testmesh_fwd%s(i_max_rho), testmesh_fwd%z(i_max_rho)])
-!   call assert_comparable(r_max_rho, 0.0, 1e-5, 'Max rho at the center of the earth')
-!
-!
-!
-!   call sem_data%close_files()
-!
-!end subroutine  test_readfields_read_meshes
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-!> For now, this test only checks, whether something crashes while reading points
+!> Reads straintrace from a coordinate and compares with a reference version
+!! Reference version was manually extracted from a AxiSEM pure MRR run.
 subroutine test_readfields_load_fw_points
-   use readfields,     only : semdata_type
-   use type_parameter, only : parameter_type
-   type(parameter_type)    :: parameters
-   type(semdata_type)      :: sem_data
-   real(kind=dp)           :: u(73, 6, 2), coordinates(3,2)
+   use readfields,     only    : semdata_type
+   use type_parameter, only    : parameter_type
+   use fft,            only: rfft_type, taperandzeropad
+   type(parameter_type)       :: parameters
+   type(semdata_type)         :: sem_data
+   type(rfft_type)            :: fft_data
+   real(kind=dp), allocatable :: u(:,:,:), straintrace_ref(:), straintrace_res(:)
+   real(kind=dp), allocatable :: straintrace_res_filt(:,:)
+   real(kind=dp)              :: coordinates(3,2), df
+   integer                    :: ntimes, nomega, i, lu_refstrain
    
-   call parameters%read_parameters('unit_tests/inparam_test')
+   call parameters%read_parameters('unit_tests/inparam_load_wavefield')
    call parameters%read_source()
    call parameters%read_receiver()
 
-   call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100,  &
-                            parameters%strain_type_fwd, parameters%source%depth)
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = parameters%strain_type_fwd,  &
+                            desired_source_depth = parameters%source%depth)
    call sem_data%open_files()
    call sem_data%read_meshes()
-   !call sem_data%build_kdtree()
    call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
 
-   call parameters%read_filter(nomega=129, df=0.1d0)
-     
+   ! Initialize FFT - just needed to get df and nomega
+   call fft_data%init(ntimes_in = sem_data%ndumps,     &
+                      ndim      = sem_data%get_ndim(), &
+                      ntraces   = 1,                   &
+                      dt        = sem_data%dt)
+
+   ntimes = fft_data%get_ntimes()
+   nomega = fft_data%get_nomega()
+   df     = fft_data%get_df()
+   call fft_data%freeme()
+
+   call parameters%read_filter(nomega=nomega, df=df)
    call parameters%read_kernel(sem_data, parameters%filter)
 
-   coordinates(:,1) = [ 1d6, 1d6, 1d6]
+   ! Read reference strain trace and point coordinates
+   open(newunit=lu_refstrain, file='unit_tests/read_strain_point1.txt', action='read')
+   read(lu_refstrain, *) coordinates(:,1)
+   do i=1, ntimes
+     read(lu_refstrain, *) straintrace_ref(i)
+   end do
+
    coordinates(:,2) = [-1d6, 1d6, 1d6]
+
    u = sem_data%load_fw_points(coordinates, parameters%source)
+
+   straintrace_res(:) = u(:, 1, 1)
+   !straintrace_res_filt = parameters%kernel(1)%filter%apply(u(:,1,:), kind='fwd')
+
+   call assert_comparable(straintrace_ref, straintrace_res, 1d-7, &
+                          'strain trace is equal to reference, point one')
 
    call sem_data%close_files()
 
@@ -219,7 +167,7 @@ end subroutine test_readfields_load_fw_points
 subroutine test_load_seismograms_rdbm
    use readfields,     only : semdata_type
    use type_parameter, only : parameter_type
-   use fft,                                  only: rfft_type, taperandzeropad
+   use fft,            only: rfft_type, taperandzeropad
    type(parameter_type)    :: parameters
    type(semdata_type)      :: sem_data
    type(rfft_type)         :: fft_data
@@ -319,10 +267,15 @@ subroutine test_readfields_load_model_coeffs
         1000d3]   !        inner core
 
 
-   call parameters%read_parameters('unit_tests/inparam_test')
+   call parameters%read_source()
+   call parameters%read_receiver()
 
-   call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100, &
-                            'straintensor_trace', 100.0d0) 
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = 'straintensor_trace',        &
+                            desired_source_depth = parameters%source%depth)
 
    call sem_data%open_files()
 
