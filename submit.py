@@ -504,9 +504,6 @@ for key, value in params.iteritems():
   elif key in ('FWD_DIR', 'BWD_DIR'):
     # Set mesh dir to absolute path
     params_out[key] = os.path.realpath(value)
-  elif key == 'PLOT_WAVEFIELDS':
-    if value:
-      params_out['WHAT_TO_DO'] = 'plot_wavefields'
 
   else:
     params_out[key] = value
@@ -598,7 +595,7 @@ elif args.queue == 'SuperMUC':
 
   elif args.job_class=='thin':
     if not args.tasks_per_node:
-      tasks_per_node = 16
+      tasks_per_node = 28
     else: 
       tasks_per_node = args.tasks_per_node
 
@@ -609,8 +606,8 @@ elif args.queue == 'SuperMUC':
     else:
       job_class = 'micro'
 
-    if args.available_memory > 1500.*(16./tasks_per_node):
-      raise IOError('Thin island has only 1.5GB RAM per node')
+    if args.available_memory > 2000.*(28./tasks_per_node):
+      raise IOError('Thin island has only 2.0GB RAM per node')
 
   with open(job_script, 'w') as f:
     text_out = "# Job file automatically created by submit.py on %s\n"%str(datetime.datetime.now()) 
@@ -623,7 +620,7 @@ elif args.queue == 'SuperMUC':
     text_out += "#@ energy_policy_tag = Kerner_intel_mpi \n"
     text_out += "#@ minimize_time_to_solution = yes     \n"
     text_out += "#@ class = %s\n"%job_class
-    text_out += "#@ tasks_per_node = %d\n"%nodes
+    text_out += "#@ tasks_per_node = %d\n"%tasks_per_node
     text_out += "#@ first_node_tasks=1\n"
     text_out += "#@ node = %d\n"%nodes
     text_out += "#@ wall_clock_limit = %d:00:00\n"%args.wall_time
@@ -632,10 +629,10 @@ elif args.queue == 'SuperMUC':
     text_out += "#@ queue \n"
     text_out += ". /etc/profile \n"
     text_out += ". /etc/profile.d/modules.sh \n"
-    text_out += "module load netcdf \n"
+    text_out += "module load netcdf/4.2 \n"
     text_out += "module load fftw \n"
     text_out += "module load mkl \n"
-    text_out += "poe ./kerner inparam 2>&1  > OUTPUT_0000\n"%int(args.nslaves + 1)
+    text_out += "poe ./kerner inparam 2>&1  > OUTPUT_0000\n"
     f.write(text_out)
   print 'Submitting to SuperMUC loadleveler queue'
   #subprocess.call(['llsubmit', job_script])
