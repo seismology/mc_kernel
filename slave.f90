@@ -193,6 +193,9 @@ subroutine do_slave()
     call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
     iclockold = tick(id=id_mpi, since=iclockold)
 
+    ! Re-open NetCDF files, just to be sure to avoid a potential library bug
+    call sem_data%reopen_files()
+
   end do receive_tasks
 
   write(lu_out,'(A)') '***************************************************************'
