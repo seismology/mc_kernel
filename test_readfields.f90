@@ -134,6 +134,32 @@ end subroutine  test_readfields_open_files
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+!> Just show that at least it does not crash
+subroutine test_readfields_reopen_files()
+   use type_parameter, only : parameter_type
+   type(parameter_type)    :: parameters
+   type(semdata_type)      :: sem_data
+
+   call parameters%read_parameters('unit_tests/inparam_test')
+   call parameters%read_source()
+   
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = 'straintensor_trace',        &
+                            desired_source_depth = parameters%source%depth)
+
+   call sem_data%open_files()
+
+   call sem_data%reopen_files()
+
+   call sem_data%close_files()
+
+end subroutine  test_readfields_reopen_files
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 !> Reads straintrace from a coordinate and compares with a reference version
 !! Reference version was manually extracted from a AxiSEM pure MRR run.
 subroutine test_readfields_load_fw_points

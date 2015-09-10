@@ -130,6 +130,8 @@ module readfields
             procedure, pass                :: get_mesh 
             procedure, pass                :: set_params
             procedure, pass                :: open_files
+            procedure, pass                :: reopen_files
+            procedure, pass                :: close_files
             procedure, pass                :: check_consistency
             procedure, pass                :: read_meshes
             procedure, pass, private       :: build_kdtree
@@ -137,7 +139,6 @@ module readfields
             procedure, pass                :: load_fw_points_rdbm
             procedure, pass                :: load_bw_points
             procedure, pass                :: load_model_coeffs
-            procedure, pass                :: close_files
             !!procedure, pass                :: load_seismogram
             procedure, pass                :: load_seismogram_rdbm
 
@@ -739,6 +740,64 @@ subroutine open_files(this)
     call flush(lu_out)
 
 end subroutine open_files
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> This routine closes the NetCDF files and directy opens them again. Meant as a workaround
+!! to the library crashes for long runs. Since the variable IDs are a property of the file,
+!! they do not have to be read again. Only the group IDs (which are Root ID + Group ID in 
+!! file) are read again, just to be sure.
+subroutine reopen_files(this)
+  use nc_routines, only             : nc_close_file, nc_open_for_read
+  class(semdata_type)              :: this
+  integer                          :: isim
+  character(len=200)               :: format20, filename
+
+  format20 = "('  Trying to reopen NetCDF file ', A, ' on CPU ', I5)"
+  do isim = 1, this%nsim_fwd
+     if (verbose>0) write(lu_out,format20) trim(filename), myrank
+     call nc_close_file(this%fwd(isim)%ncid)
+     filename=trim(this%fwd(isim)%meshdir)//'/Data/ordered_output.nc4'
+     
+     call nc_open_for_read(filename = filename,              &
+                           ncid     = this%fwd(isim)%ncid) 
+          
+     call getgrpid(ncid     = this%fwd(isim)%ncid,   &
+                   name     = "Snapshots",           &
+                   grp_ncid = this%fwd(isim)%snap)
+
+     call getgrpid(ncid      = this%fwd(isim)%ncid,   &
+                   name      = "Surface",             &
+                   grp_ncid  = this%fwd(isim)%surf)
+
+     call getgrpid(ncid      = this%fwd(isim)%ncid,   &
+                   name      = "Mesh",                &
+                   grp_ncid  = this%fwd(isim)%mesh)
+  end do
+
+  do isim = 1, this%nsim_bwd
+     if (verbose>0) write(lu_out,format20) trim(filename), myrank
+     call nc_close_file(this%fwd(isim)%ncid)
+     filename=trim(this%bwd(isim)%meshdir)//'/Data/ordered_output.nc4'
+     
+     if (verbose>0) write(lu_out,format20) trim(filename), myrank
+     call nc_open_for_read(filename = filename,              &
+                           ncid     = this%bwd(isim)%ncid) 
+          
+     call getgrpid(ncid     = this%bwd(isim)%ncid,   &
+                   name     = "Snapshots",           &
+                   grp_ncid = this%bwd(isim)%snap)
+
+     call getgrpid(ncid      = this%bwd(isim)%ncid,   &
+                   name      = "Surface",             &
+                   grp_ncid  = this%bwd(isim)%surf)
+
+     call getgrpid(ncid      = this%bwd(isim)%ncid,   &
+                   name      = "Mesh",                &
+                   grp_ncid  = this%bwd(isim)%mesh)
+  end do
+
+end subroutine reopen_files
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
