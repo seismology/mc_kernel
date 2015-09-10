@@ -743,5 +743,19 @@ subroutine delete_intermediate
 end subroutine delete_intermediate
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+# if defined(__INTEL_COMPILER)
+! Apparently, ifort does not support execute_command_line yet
+subroutine execute_command_line(command, wait, exitstat, cmdmsg)
+  use ifport
+  character(len=*), intent(in)   :: command
+  logical, intent(in)            :: wait
+  integer, intent(out)           :: exitstat
+  character(len=80), intent(out) :: cmdmsg
+
+  exitstat = system(command)
+  cmdmsg = 'Ifort-specific replacement for execute_command_line, with meaningless output msg'
+end subroutine execute_command_line
+# endif
 end module
 !=========================================================================================

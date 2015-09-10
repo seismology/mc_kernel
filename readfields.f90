@@ -2375,8 +2375,9 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
                                               0:sem_obj%npol,   &
                                               0:sem_obj%npol,   &
                                               6)
-    real(kind=dp), allocatable      :: G(:,:), GT(:,:)
-    real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
+    real(kind=dp)                   :: G( 0:sem_obj%npol, 0:sem_obj%npol)
+    real(kind=dp)                   :: GT(0:sem_obj%npol, 0:sem_obj%npol)
+    real(kind=dp)                   :: col_points_xi(0:sem_obj%npol), col_points_eta(0:sem_obj%npol)
     integer                         :: ipol, jpol, i
     integer(kind=long)              :: iclockold, iclockold_total
     logical                         :: strain_nan
@@ -2557,8 +2558,9 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
     real(kind=sp)                   :: straintrace(1:sem_obj%ndumps, &
                                                    0:sem_obj%npol,   &
                                                    0:sem_obj%npol)
-    real(kind=dp), allocatable      :: G(:,:), GT(:,:)
-    real(kind=dp), allocatable      :: col_points_xi(:), col_points_eta(:)
+    real(kind=dp)                   :: G( 0:sem_obj%npol, 0:sem_obj%npol)
+    real(kind=dp)                   :: GT(0:sem_obj%npol, 0:sem_obj%npol)
+    real(kind=dp)                   :: col_points_xi(0:sem_obj%npol), col_points_eta(0:sem_obj%npol)
     integer                         :: ipol, jpol, i, status
     integer(kind=long)              :: iclockold, iclockold_total
     logical                         :: strain_nan

@@ -29,9 +29,9 @@ end subroutine test_mesh_read
 !-----------------------------------------------------------------------------------------
 subroutine test_append_variable
   type (inversion_mesh_variable_type), allocatable  :: variable(:)
-  character(len=16), dimension(:), allocatable      :: entry_names_ref_1
-  character(len=16), dimension(:), allocatable      :: entry_names_ref_2
-  character(len=16), dimension(:), allocatable      :: entry_names_ref_3
+  character(len=80)                                 :: entry_names_ref_1(2)
+  character(len=80)                                 :: entry_names_ref_2(4)
+  character(len=80)                                 :: entry_names_ref_3(1)
 
   entry_names_ref_1 = ['entry1', 'entry2']
   ! Test initialization of inversion_mesh_data_type variable
@@ -44,6 +44,7 @@ subroutine test_append_variable
   call assert_equal(size(variable), 1,  'variable has size 1')
   call assert_equal(variable(1)%nentries, 2,  'First datum has has size 2')
   call assert_false(variable(1)%istime,    'variable is not a time')
+  !print *, variable(1)%entry_names, entry_names_ref_1 
   call assert_true(variable(1)%entry_names.eq.entry_names_ref_1, &
                    'Entry names are correct: ')
 
@@ -60,12 +61,14 @@ subroutine test_append_variable
   ! First verify that existing entries are not compromised
   call assert_equal(variable(1)%nentries, 2,  'First datum has has size 2')
   call assert_false(variable(1)%istime,    'variable is not a time')
+  !print *, variable(1)%entry_names, entry_names_ref_1 
   call assert_true(variable(1)%entry_names.eq.entry_names_ref_1, &
                    'Entry names are correct: ')
 
   ! Now check the new entries               
   call assert_equal(variable(2)%nentries, 4,  'Second datum has has size 3')
   call assert_false(variable(2)%istime,    'variable is not a time')
+  !print *, variable(2)%entry_names, entry_names_ref_2 
   call assert_true(variable(2)%entry_names.eq.entry_names_ref_2, &
                    'Entry names are correct: ')
 
@@ -82,17 +85,20 @@ subroutine test_append_variable
   ! First verify that existing entries are not compromised
   call assert_equal(variable(1)%nentries, 2,  'First datum has has size 2')
   call assert_false(variable(1)%istime,    'variable is not a time')
+  !print *, variable(1)%entry_names, entry_names_ref_1 
   call assert_true(variable(1)%entry_names.eq.entry_names_ref_1, &
                    'Entry names are correct: ')
 
   call assert_equal(variable(2)%nentries, 4,  'Second datum has has size 3')
   call assert_false(variable(2)%istime,    'variable is not a time')
+  !print *, variable(2)%entry_names, entry_names_ref_2 
   call assert_true(variable(2)%entry_names.eq.entry_names_ref_2, &
                    'Entry names are correct: ')
 
   ! Now check the new entries               
   call assert_equal(variable(3)%nentries, 1,  'Third datum has has size 3')
   call assert_false(variable(3)%istime,    'variable is not a time')
+  !print *, variable(3)%entry_names, entry_names_ref_3 
   call assert_true(variable(3)%entry_names.eq.entry_names_ref_3, &
                    'Entry names are correct: ')
 
@@ -204,10 +210,10 @@ subroutine test_set_mixed_data
                                        testvar3_ref(:,:), testvar4_ref(:,:)
   real(kind=sp), allocatable        :: testvar1_ref_node(:,:), testvar2_ref_node(:,:), &
                                        testvar3_ref_node(:,:), testvar4_ref_node(:,:)
-  character(len=16), dimension(:), allocatable  :: entry_names_cell_1, entry_names_cell_2, &
-                                                   entry_names_cell_3, entry_names_cell_4
-  character(len=16), dimension(:), allocatable  :: entry_names_node_1, entry_names_node_2, &
-                                                   entry_names_node_3, entry_names_node_4
+  character(len=16)                 :: entry_names_cell_1(2), entry_names_cell_2(3), &
+                                       entry_names_cell_3(4), entry_names_cell_4(1)
+  character(len=16)                 :: entry_names_node_1(2), entry_names_node_2(3), &
+                                       entry_names_node_3(4), entry_names_node_4(1)
 
 
 
@@ -1277,7 +1283,8 @@ subroutine test_set_node_time_data_and_dump
 
   call nc_open_for_read(filename = 'unit_tests_output/test_set_node_data_time.nc', ncid = ncid)
   call check(nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid))
-  call assert_equal(nf_status, NF90_NOERR, 'Group for node data has been created')
+  call assert_equal(nf_status, NF90_NOERR, 'Group for node data has been created. Error: '//&
+                    NF90_STRERROR(nf_status))
 
   ! Get variable 1
   call nc_getvar_by_name(ncid    = grp_ncid,     &
@@ -1439,7 +1446,7 @@ subroutine test_set_cell_time_data_and_dump
                          limits  = [0.,1.],      &
                          varid   = varid)
 
-  call assert_comparable(testvar1_ref(:,id), testvar1_res(:,id),  &
+  call assert_comparable(testvar1_ref(:,:), testvar1_res(:,:),  &
                          1e-7, 'Variable 1 retrieved successfully')
 
   nf_status = nf90_inquire_variable(grp_ncid, varid,           &
@@ -1463,7 +1470,7 @@ subroutine test_set_cell_time_data_and_dump
                          limits  = [0.,1.],      &
                          varid   = varid)
   
-  call assert_comparable(testvar2_ref(:,id), testvar2_res(:,id),  &
+  call assert_comparable(testvar2_ref(:,:), testvar2_res(:,:),  &
                          1e-7, 'Variable 2 retrieved successfully')
 
   nf_status = nf90_inquire_variable(grp_ncid, varid,           &
@@ -1487,7 +1494,7 @@ subroutine test_set_cell_time_data_and_dump
                          limits  = [0.,1.],      &
                          varid   = varid)
   
-  call assert_comparable(testvar3_ref(:,id), testvar3_res(:,id),  &
+  call assert_comparable(testvar3_ref(:,:), testvar3_res(:,:),  &
                          1e-7, 'Variable 3 retrieved successfully')
 
   nf_status = nf90_inquire_variable(grp_ncid, varid,           &
@@ -1589,6 +1596,7 @@ subroutine test_point_in_element_triangle_mesh
   end do
 
   ntest_tot = itest
+  allocate(is_in_element_npoint_ref(ntest_tot))
   is_in_element_npoint_ref = is_in_element_npoint_ref_temp(1:ntest_tot)
 
   connectivity(:,1) = [1, 2, 3]
@@ -1604,6 +1612,7 @@ subroutine test_point_in_element_triangle_mesh
     end if
   end do
 
+  allocate(is_in_element_npoint(ntest_tot))
   is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
   call assert_true((is_in_element_npoint .eqv. is_in_element_npoint_ref), &
                    'Points are correctly found to be in element - n points')
@@ -1703,6 +1712,7 @@ subroutine test_point_in_element_tetrahedral_mesh
   end do
 
   ntest_tot = itest
+  allocate(is_in_element_npoint_ref(ntest_tot))
   is_in_element_npoint_ref = is_in_element_npoint_ref_temp(1:ntest_tot)
 
   connectivity(:,1) = [1, 2, 3, 4]
@@ -1714,6 +1724,7 @@ subroutine test_point_in_element_tetrahedral_mesh
                      'Points are correctly found to be in element - 1 point')
   end do
 
+  allocate(is_in_element_npoint(ntest_tot))
   is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
   call assert_true((is_in_element_npoint .eqv. is_in_element_npoint_ref), &
                    'Points are correctly found to be in element - n points')

@@ -1397,6 +1397,7 @@ subroutine add_node_variable(this, var_name, nentries, entry_names, istime)
   end if
 
   if (present(entry_names)) then
+    allocate(entry_names_loc(nentries))
     entry_names_loc = entry_names
   else
     allocate(entry_names_loc(nentries))
@@ -1453,6 +1454,7 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
   end if
 
   if (present(entry_names)) then
+    allocate(entry_names_loc(nentries))
     entry_names_loc = entry_names
   else
     allocate(entry_names_loc(nentries))
@@ -1522,6 +1524,7 @@ subroutine append_variable(variable, var_name, nentries, istime, entry_names)
       variable_temp(ivar)%nentries    = variable(ivar)%nentries
       variable_temp(ivar)%istime      = variable(ivar)%istime
       variable_temp(ivar)%entry_names = variable(ivar)%entry_names
+      deallocate(variable(ivar)%entry_names)
     end do
 
     ! Increase size of 'variable' by one
@@ -1530,11 +1533,12 @@ subroutine append_variable(variable, var_name, nentries, istime, entry_names)
 
     ! Copy 'variable_temp' to 'variable'
     do ivar = 1, nvar
-      allocate(variable(ivar)%entry_names(nentries)) 
+      allocate(variable(ivar)%entry_names(variable_temp(ivar)%nentries)) 
       variable(ivar)%var_name    = variable_temp(ivar)%var_name
       variable(ivar)%nentries    = variable_temp(ivar)%nentries
       variable(ivar)%istime      = variable_temp(ivar)%istime
       variable(ivar)%entry_names = variable_temp(ivar)%entry_names
+      deallocate(variable_temp(ivar)%entry_names)
     end do
     deallocate(variable_temp)
 

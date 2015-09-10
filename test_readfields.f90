@@ -11,11 +11,14 @@ contains
 
 !-----------------------------------------------------------------------------------------
 subroutine test_get_chunk_bounds()
+   use iso_c_binding, only: c_new_line
    integer  :: npoints, chunksize, ipoint, start_chunk, count_chunk, i, iinchunk
    integer  :: start_chunk_ref, count_chunk_ref
-   character(len=80) :: err_msg
+   character(len=512) :: err_msg
+   character(len=1) :: cnl = c_new_line
 
    ! This should have 20 chunks
+   ! The first 19 are 5 points long, the last one has 4.
    npoints = 99
    chunksize = 5
 
@@ -47,7 +50,40 @@ subroutine test_get_chunk_bounds()
 
      end do
    end do
-     
+
+   ! Second test. start_chunk should never be smaller than one and 
+   ! start_chunk+count_chunk-1 should be smaller than npoints
+
+   do chunksize = 3, 11
+     do npoints = 100, 110
+       do ipoint = 1, npoints
+         call get_chunk_bounds(pointid     = ipoint,        &
+                               chunksize   = chunksize,     &
+                               npoints     = npoints,       & 
+                               start_chunk = start_chunk,   &
+                               count_chunk = count_chunk)
+
+         write(err_msg, 100) cnl, start_chunk, cnl, count_chunk, cnl, ipoint, cnl, npoints, cnl, chunksize
+         call assert_true(start_chunk >= 0, trim(err_msg))
+
+         write(err_msg, 101) cnl, start_chunk, cnl, count_chunk, cnl, ipoint, cnl, npoints, cnl, chunksize 
+         call assert_true(start_chunk + count_chunk - 1 <= npoints, trim(err_msg))
+       end do
+     end do
+   end do
+
+100      format('Start of chunk larger zero:', A, &        
+                'start_chunk: ', I4, A, &
+                'count_chunk: ', I4, A, &
+                'ipoint:      ', I4, A, &
+                'npoints:     ', I4, A, &
+                'chunksize:   ', I4)
+101      format('Start + count of chunk smaller npoints:', A, &        
+                'start_chunk: ', I4, A, &
+                'count_chunk: ', I4, A, &
+                'ipoint:      ', I4, A, &
+                'npoints:     ', I4, A, &
+                'chunksize:   ', I4)
 end subroutine test_get_chunk_bounds
 !-----------------------------------------------------------------------------------------
 

@@ -676,7 +676,7 @@ function checklim_1d_int(array, limits, array_name, ntoosmall, ntoolarge) result
   logical                                ::  out_of_limit
   integer                                ::  limits_loc(2)
   integer                                ::  ntoosmall_loc, ntoolarge_loc
-  logical, allocatable                   ::  toosmall(:), toolarge(:)
+  logical                                ::  toosmall(size(array)), toolarge(size(array))
   integer                                ::  i
 
   out_of_limit = .false.
@@ -756,7 +756,8 @@ function checklim_2d_int(array, limits, array_name, ntoosmall, ntoolarge) result
   logical                                ::  out_of_limit
   integer                                ::  limits_loc(2)
   integer                                ::  ntoosmall_loc, ntoolarge_loc
-  logical, allocatable                   ::  toosmall(:,:), toolarge(:,:)
+  logical                                ::  toosmall(size(array,1), size(array,2))
+  logical                                ::  toolarge(size(array,1), size(array,2))
   integer                                ::  i, j
 
   out_of_limit = .false.
@@ -853,6 +854,8 @@ function checklim_3d_int(array, limits, array_name, ntoosmall, ntoolarge) result
     limits_loc(2) = huge(array)
   end if
 
+  allocate(toosmall(size(array,1), size(array,2), size(array,3)))
+  allocate(toolarge, mold=toosmall)
   toosmall = (.not.array.ge.limits_loc(1)) ! This catches NaNs as well, which give .false.
                                            ! for every binary comparison.
 
@@ -928,7 +931,7 @@ function checklim_1d(array, limits, array_name, ntoosmall, ntoolarge) result(out
   logical                                ::  out_of_limit
   real(kind=sp)                          ::  limits_loc(2)
   integer                                ::  ntoosmall_loc, ntoolarge_loc
-  logical, allocatable                   ::  toosmall(:), toolarge(:)
+  logical                                ::  toosmall(size(array)), toolarge(size(array))
   integer                                ::  i
 
   out_of_limit = .false.
@@ -1008,7 +1011,8 @@ function checklim_2d(array, limits, array_name, ntoosmall, ntoolarge) result(out
   logical                                ::  out_of_limit
   real(kind=sp)                          ::  limits_loc(2)
   integer                                ::  ntoosmall_loc, ntoolarge_loc
-  logical, allocatable                   ::  toosmall(:,:), toolarge(:,:)
+  logical                                ::  toosmall(size(array,1), size(array,2))
+  logical                                ::  toolarge(size(array,1), size(array,2))
   integer                                ::  i, j
 
   out_of_limit = .false.
@@ -1104,6 +1108,9 @@ function checklim_3d(array, limits, array_name, ntoosmall, ntoolarge) result(out
     limits_loc(1) = -huge(array)
     limits_loc(2) = huge(array)
   end if
+
+  allocate(toosmall(size(array,1), size(array,2), size(array,3)))
+  allocate(toolarge, mold=toosmall)
 
   toosmall = (.not.array.ge.limits_loc(1)) ! This catches NaNs as well, which give .false.
                                            ! for every binary comparison.

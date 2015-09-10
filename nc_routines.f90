@@ -1334,6 +1334,15 @@ subroutine getvar_int1d(ncid, varid, values, start, count)
        call pabort()
    end if
 
+   if ((start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
+
    status_read = nf90_get_var(ncid   = ncid,           &
                               varid  = varid,          &
                               values = values,         &
@@ -1417,6 +1426,15 @@ subroutine getvar_real1d(ncid, varid, values, start, count)
        call pabort()
    end if
 
+   if ((start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
+
    status_read = nf90_get_var(ncid   = ncid,           &
                               varid  = varid,          &
                               values = values,         &
@@ -1488,6 +1506,16 @@ subroutine getvar_real1d_dble(ncid, varid, values, start, count)
    status = nf90_inquire_variable(ncid  = ncid,     &
                                   varid = varid,    &
                                   name  = varname )
+
+
+   if ((start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
 
    if (status.ne.NF90_NOERR) then
        write(*,99) myrank, varid, ncid
@@ -1586,6 +1614,16 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
        end if
    end do
 
+   if (any(start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
+
+
    ! Read data from file
    status_read = nf90_get_var(ncid   = ncid,           &
                               varid  = varid,          &
@@ -1629,7 +1667,7 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
        end do
 
        ! Otherwise just dump as much information as possible and call pabort()
-       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+       write(*,103) myrank, trim(varname), varid, ncid, start(:), count(:), &
                     dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_read))
        call pabort()
@@ -1649,8 +1687,8 @@ subroutine getvar_real2d(ncid, varid, values, start, count)
            '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
            '       of dimension ', A, ' (', I1, ')')
 103 format('ERROR: CPU ', I4, ' could not read 2D variable: ''', A, '''(',I7,') in NCID', I7, / &
-           '       start:   ', I10, / &
-           '       count:   ', I10, / &
+           '       start:   ', 2I10, / &
+           '       count:   ', 2I10, / &
            '       dimsize: ', I10, / &
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Read', F10.3, ' MB into 2D variable in NCID', I7, ', with ID:', I7)
@@ -1675,6 +1713,15 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
        write(*,99) myrank, varid, ncid
        print *, trim(nf90_strerror(status))
        call pabort()
+   end if
+
+   if (any(start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
    end if
 
    ! Check if variable size is consistent with values of 'count'
@@ -1729,7 +1776,7 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
        end do
 
        ! Otherwise just dump as much information as possible and call pabort()
-       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+       write(*,103) myrank, trim(varname), varid, ncid, start(:), count(:), &
                     dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_read))
        call pabort()
@@ -1749,8 +1796,8 @@ subroutine getvar_int2d(ncid, varid, values, start, count)
            '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
            '       of dimension ', A, ' (', I1, ')')
 103 format('ERROR: CPU ', I4, ' could not read 2D variable: ''', A, '''(',I7,') in NCID', I7, / &
-           '       start:   ', I10, / &
-           '       count:   ', I10, / &
+           '       start:   ', 2I10, / &
+           '       count:   ', 2I10, / &
            '       dimsize: ', I10, / &
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Read', F10.3, ' MB into 2D variable in NCID', I7, ', with ID:', I7)
@@ -1785,6 +1832,15 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
            call pabort()
        end if
    end do
+
+   if (any(start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
 
    ! Read data from file
    status_read = nf90_get_var(ncid   = ncid,           &
@@ -1833,7 +1889,7 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
        end do
 
        ! Otherwise just dump as much information as possible and call pabort()
-       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+       write(*,103) myrank, trim(varname), varid, ncid, start(:), count(:), &
                     dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_read))
        call pabort()
@@ -1853,8 +1909,8 @@ subroutine getvar_int3d(ncid, varid, values, start, count)
            '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
            '       of dimension ', A, ' (', I1, ')')
 103 format('ERROR: CPU ', I4, ' could not read 3D variable: ''', A, '''(',I7,') in NCID', I7, / &
-           '       start:   ', I10, / &
-           '       count:   ', I10, / &
+           '       start:   ', 3I10, / &
+           '       count:   ', 3I10, / &
            '       dimsize: ', I10, / &
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Read', F10.3, ' MB from 3D variable in NCID', I7, ', with ID:', I7)
@@ -1888,6 +1944,15 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
            call pabort()
        end if
    end do
+
+   if (any(start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
 
    ! Read data from file
    status_read = nf90_get_var(ncid   = ncid,      &
@@ -1935,7 +2000,7 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
        end do
 
        ! Otherwise just dump as much information as possible and call pabort()
-       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+       write(*,103) myrank, trim(varname), varid, ncid, start(:), count(:), &
                     dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_read))
        call pabort()
@@ -1955,8 +2020,8 @@ subroutine getvar_real3d(ncid, varid, values, start, count)
            '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
            '       of dimension ', A, ' (', I1, ')')
 103 format('ERROR: CPU ', I4, ' could not read 3D variable: ''', A, '''(',I7,') in NCID', I7, / &
-           '       start:   ', I10, / &
-           '       count:   ', I10, / &
+           '       start:   ', 3I10, / &
+           '       count:   ', 3I10, / &
            '       dimsize: ', I10, / &
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Read', F10.3, ' MB from 3D variable in NCID', I7, ', with ID:', I7)
@@ -1986,6 +2051,15 @@ subroutine putvar_real1d(ncid, varid, values, start, count)
    if (size(values).ne.count) then
        write(*,100) myrank, trim(varname), varid, ncid, size(values), count
        call pabort()
+   end if
+
+   if ((start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
    end if
 
    status_write = nf90_put_var(ncid   = ncid,           &
@@ -2076,6 +2150,15 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
        end if
    end do
 
+   if (any(start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
+
    ! Write data to file
    status_write = nf90_put_var(ncid   = ncid,           &
                                varid  = varid,          &
@@ -2121,7 +2204,7 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
        end do
 
        ! Otherwise just dump as much information as possible and call pabort()
-       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+       write(*,103) myrank, trim(varname), varid, ncid, start(:), count(:), &
                     dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_write))
        call pabort()
@@ -2141,8 +2224,8 @@ subroutine putvar_real2d(ncid, varid, values, start, count)
            '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
            '       of dimension ', A, ' (', I1, ')')
 103 format('ERROR: CPU ', I4, ' could not write 2D variable: ''', A, '''(',I7,') in NCID', I7, / &
-           '       start:   ', I10, / &
-           '       count:   ', I10, / &
+           '       start:   ', 2I10, / &
+           '       count:   ', 2I10, / &
            '       dimsize: ', I10, / &
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 2D variable in NCID', I7, ', with ID:', I7)
@@ -2176,6 +2259,15 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
            call pabort()
        end if
    end do
+
+   if (any(start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
 
    ! Write data to file
    status_write = nf90_put_var(ncid   = ncid,           &
@@ -2222,7 +2314,7 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
        end do
 
        ! Otherwise just dump as much information as possible and call pabort()
-       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+       write(*,103) myrank, trim(varname), varid, ncid, start(:), count(:), &
                     dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_write))
        call pabort()
@@ -2242,8 +2334,8 @@ subroutine putvar_real3d(ncid, varid, values, start, count)
            '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
            '       of dimension ', A, ' (', I1, ')')
 103 format('ERROR: CPU ', I4, ' could not write 3D variable: ''', A, '''(',I7,') in NCID', I7, / &
-           '       start:   ', I10, / &
-           '       count:   ', I10, / &
+           '       start:   ', 3I10, / &
+           '       count:   ', 3I10, / &
            '       dimsize: ', I10, / &
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 3D variable in NCID', I7, ', with ID:', I7)
@@ -2274,6 +2366,15 @@ subroutine putvar_int1d(ncid, varid, values, start, count)
    if (size(values).ne.count) then
        write(*,100) myrank, trim(varname), varid, ncid, size(values), count
        call pabort()
+   end if
+
+   if ((start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
    end if
 
    status_write = nf90_put_var(ncid   = ncid,           &
@@ -2364,6 +2465,15 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
        end if
    end do
 
+   if (any(start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
+
    ! Write data to file
    status_write = nf90_put_var(ncid   = ncid,           &
                                varid  = varid,          &
@@ -2409,7 +2519,7 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
        end do
 
        ! Otherwise just dump as much information as possible and call pabort()
-       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+       write(*,103) myrank, trim(varname), varid, ncid, start(:), count(:), &
                     dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_write))
        call pabort()
@@ -2429,8 +2539,8 @@ subroutine putvar_int2d(ncid, varid, values, start, count)
            '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
            '       of dimension ', A, ' (', I1, ')')
 103 format('ERROR: CPU ', I4, ' could not write 2D variable: ''', A, '''(',I7,') in NCID', I7, / &
-           '       start:   ', I10, / &
-           '       count:   ', I10, / &
+           '       start:   ', 2I10, / &
+           '       count:   ', 2I10, / &
            '       dimsize: ', I10, / &
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 2D variable in NCID', I7, ', with ID:', I7)
@@ -2464,6 +2574,15 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
            call pabort()
        end if
    end do
+
+   if (any(start<1)) then
+     print *, 'Start is smaller than one. NetCDF variables start at one.'
+     print *, 'Variable: ', trim(varname)
+     print *, 'varid :   ', varid
+     print *, 'start :   ', start
+     print *, 'count :   ', count
+     call pabort()
+   end if
 
    ! Write data to file
    status_write = nf90_put_var(ncid   = ncid,           &
@@ -2510,7 +2629,7 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
        end do
 
        ! Otherwise just dump as much information as possible and call pabort()
-       write(*,103) myrank, trim(varname), varid, ncid, start(idim), count(idim), &
+       write(*,103) myrank, trim(varname), varid, ncid, start(:), count(:), &
                     dimsize, trim(dimname)
        print *, trim(nf90_strerror(status_write))
        call pabort()
@@ -2530,8 +2649,8 @@ subroutine putvar_int3d(ncid, varid, values, start, count)
            '       start (', I10, ') + count(', I10, ') is larger than size (', I10,')',    / &
            '       of dimension ', A, ' (', I1, ')')
 103 format('ERROR: CPU ', I4, ' could not write 3D variable: ''', A, '''(',I7,') in NCID', I7, / &
-           '       start:   ', I10, / &
-           '       count:   ', I10, / &
+           '       start:   ', 3I10, / &
+           '       count:   ', 3I10, / &
            '       dimsize: ', I10, / &
            '       dimname: ', A)
 200 format('    Proc ', I4, ': Wrote', F10.3, ' MB into 3D variable in NCID', I7, ', with ID:', I7)

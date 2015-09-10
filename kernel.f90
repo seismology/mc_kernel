@@ -600,7 +600,8 @@ function calc_physical_kernels_scalar(model_param, base_kernel, bg_model, &
   use backgroundmodel, only               :  backgroundmodel_type
   character(len=*), intent(in)           :: model_param
   real(kind=dp),    intent(in)           :: base_kernel(:,:)
-  real(kind=dp), allocatable             :: temp_in(:,:,:), temp_out(:,:)
+  real(kind=dp), allocatable             :: temp_in(:,:,:)
+  real(kind=dp)                          :: temp_out(1,size(base_kernel,1))
   type(backgroundmodel_type), intent(in) :: bg_model
   logical, intent(in)                    :: relative_kernel
   real(kind=dp)                          :: physical_kernel(size(base_kernel,1))

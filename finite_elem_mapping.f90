@@ -632,7 +632,7 @@ pure function inv_mapping_spheroid(s, z, nodes)
      dz = z - sz(2)
 
      ! check convergence
-     if ((ds**2 + dz**2) / (s**2 + z**2) < 1e-7**2) then
+     if ((ds**2 + dz**2) / (s**2 + z**2) < 1d-7**2) then
         exit
      endif
 

@@ -189,7 +189,7 @@ end subroutine test_background_models_weight
 !-----------------------------------------------------------------------------------------
 subroutine test_background_models_get_parameter_names()
   type(backgroundmodel_type)    :: bg_model
-  character(len=3), allocatable :: parameter_names(:)
+  character(len=3)              :: parameter_names(12)
   character(len=3), parameter   :: parameter_names_ref(12) =            &
                                   ['vp ', 'vs ', 'rho', 'vph', 'vpv', 'vsh', &
                                    'vsv', 'eta', 'phi', 'xi ', 'lam', 'mu ']
