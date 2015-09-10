@@ -247,7 +247,7 @@ subroutine test_load_seismograms_rdbm
    ! Retrieve seismograms
    ! 1st one filtered with Butterworth, 6th order at 40s
    allocate(seis(ntimes))
-   open(newunit=lu_seis, file='seismogram_T001_P_BW', action='read')
+   open(newunit=lu_seis, file='Seismograms/seismogram_T001_P_BW', action='read')
    do isample = 1, ntimes
      read(lu_seis,*) t, seis(isample)
    end do
@@ -303,6 +303,7 @@ subroutine test_readfields_load_model_coeffs
         1000d3]   !        inner core
 
 
+   call parameters%read_parameters('unit_tests/inparam_test')
    call parameters%read_source()
    call parameters%read_receiver()
 

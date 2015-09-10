@@ -12,8 +12,12 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine test_parameter_reading
    use readfields,     only : semdata_type
+   use fft,            only : rfft_type
    type(parameter_type)    :: parameters
    type(semdata_type)      :: sem_data
+   type(rfft_type)         :: fft_data
+   integer                 :: nomega, ntimes 
+   real(kind=dp)           :: df
    logical                 :: ref_var(6)
    
    call parameters%read_parameters('unit_tests/inparam_test')
@@ -28,10 +32,20 @@ subroutine test_parameter_reading
                             parameters%strain_type_fwd, parameters%source%depth)
    call sem_data%open_files()
    call sem_data%read_meshes()
-   !call sem_data%build_kdtree()
    call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
 
-   call parameters%read_filter(nomega=129, df=0.1d0)
+   ! Initialize FFT - just needed to get df and nomega
+   call fft_data%init(ntimes_in = sem_data%ndumps,     &
+                      ndim      = sem_data%get_ndim(), &
+                      ntraces   = 1,                   &
+                      dt        = sem_data%dt)
+
+   ntimes = fft_data%get_ntimes()
+   nomega = fft_data%get_nomega()
+   df     = fft_data%get_df()
+   call fft_data%freeme()
+
+   call parameters%read_filter(nomega=nomega, df=df)
      
    ! Do checks on filters
    call assert_equal(parameters%nfilter, 2, '2 Filters in input file')
