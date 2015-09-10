@@ -855,7 +855,7 @@ function checklim_3d_int(array, limits, array_name, ntoosmall, ntoolarge) result
   end if
 
   allocate(toosmall(size(array,1), size(array,2), size(array,3)))
-  allocate(toolarge, mold=toosmall)
+  allocate(toolarge(size(array,1), size(array,2), size(array,3)))
   toosmall = (.not.array.ge.limits_loc(1)) ! This catches NaNs as well, which give .false.
                                            ! for every binary comparison.
 
@@ -1110,7 +1110,7 @@ function checklim_3d(array, limits, array_name, ntoosmall, ntoolarge) result(out
   end if
 
   allocate(toosmall(size(array,1), size(array,2), size(array,3)))
-  allocate(toolarge, mold=toosmall)
+  allocate(toolarge(size(array,1), size(array,2), size(array,3)))
 
   toosmall = (.not.array.ge.limits_loc(1)) ! This catches NaNs as well, which give .false.
                                            ! for every binary comparison.
