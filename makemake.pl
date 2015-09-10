@@ -93,7 +93,7 @@ print MAKEFILE ") \$(LDFLAGS) -o \$@ \$(OBJS) \$(LIBS)\n\n";
 # make clean
 #
 print MAKEFILE "clean:\n";
-print MAKEFILE "\trm -f \$(PROG) \$(OBJS) *.M *.mod *.d *.il core \n\n";
+print MAKEFILE "\trm -f \$(PROG) \$(OBJS) *.M *.mod *.d *.il core *.gcda *.gcno \n\n";
 #
 # Make .f90 a valid suffix
 #

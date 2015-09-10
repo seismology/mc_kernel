@@ -56,14 +56,14 @@ LDFLAGS = -O3 -g -fbacktrace -cpp -march=native -fopenmp
 # Intel Compiler suite (fast)
 #CC      = icc
 #FC      = mpif90
-#FFLAGS  = -vec-report:0 -shared-intel  -assume realloc_lhs -heap-arrays 10 -O3  -Dinclude_mpi -fpp
+#FFLAGS  = -shared-intel  -heap-arrays 10 -O3  -Dinclude_mpi -fpp
 #CFLAGS  = -O3
 #LDFLAGS = -O3 
 
 # Intel Compiler suite (debug)
 #CC      = mpiicc
 #FC      = mpiifort
-#FFLAGS  = -vec-report:0 -g -shared-intel  -mcmodel=medium -check all -traceback -heap-arrays 10
+#FFLAGS  = -g -shared-intel  -mcmodel=medium -check all -traceback -heap-arrays 10
 #CFLAGS  = -g -traceback
 #LDFLAGS = -g -traceback
 

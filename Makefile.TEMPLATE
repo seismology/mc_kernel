@@ -18,7 +18,7 @@ SRCS =	commpi.F90 background_model.f90 buffer.f90 calc_kernels.f90 \
 	test_nc_routines.f90 test_readfields.f90 test_rotations.f90 \
 	test_sem_derivatives.f90 test_simple_routines.f90 test_source.f90 \
 	test_spectral_basis.f90 test_tetrahedra.f90 test_type_parameter.f90 \
-	test_voxel.f90 type_parameter.f90 worktype.f90
+	test_voxel.f90 test_worktype.f90 type_parameter.f90 worktype.f90
 
 OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	fft_type.o filtering.o finite_elem_mapping.o ftnunit.o \
@@ -34,7 +34,8 @@ OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	test_master_queue.o test_mc.o test_nc_routines.o test_readfields.o \
 	test_rotations.o test_sem_derivatives.o test_simple_routines.o \
 	test_source.o test_spectral_basis.o test_tetrahedra.o \
-	test_type_parameter.o test_voxel.o type_parameter.o worktype.o
+	test_type_parameter.o test_voxel.o test_worktype.o type_parameter.o \
+	worktype.o
 
 # Handle NetCDF and other library paths
 ifeq ($(strip $(USE_NETCDF)),true)
@@ -67,7 +68,7 @@ $(PROG): $(OBJS)
 	$(FC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 clean:
-	rm -f $(PROG) $(OBJS) *.M *.mod *.d *.il core 
+	rm -f $(PROG) $(OBJS) *.M *.mod *.d *.il core *.gcda *.gcno
 
 .SUFFIXES: $(SUFFIXES) .f90 .F90
 
@@ -140,7 +141,7 @@ test_ftnunit.o: ftnunit.o global_parameters.o test_background_model.o \
 test_halton.o: ftnunit.o global_parameters.o halton.o Makefile make_kerner.macros 
 test_inv_mesh.o: ftnunit.o global_parameters.o halton.o inv_mesh.o \
 	mc_integration.o nc_routines.o random_tetrahedron.o Makefile make_kerner.macros 
-test_kernel.o: ftnunit.o global_parameters.o kernel.o Makefile make_kerner.macros 
+test_kernel.o: fft_type.o ftnunit.o global_parameters.o kernel.o Makefile make_kerner.macros 
 test_lanczos.o: ftnunit.o global_parameters.o lanczos.o Makefile make_kerner.macros 
 test_master_helper.o: ftnunit.o global_parameters.o master_helper.o Makefile make_kerner.macros 
 test_master_queue.o: ftnunit.o global_parameters.o master_queue.o Makefile make_kerner.macros 
@@ -157,9 +158,10 @@ test_source.o: ftnunit.o global_parameters.o source.o Makefile make_kerner.macro
 test_spectral_basis.o: ftnunit.o global_parameters.o spectral_basis.o Makefile make_kerner.macros 
 test_tetrahedra.o: ftnunit.o global_parameters.o halton.o inv_mesh.o \
 	random_tetrahedron.o simple_routines.o Makefile make_kerner.macros 
-test_type_parameter.o: ftnunit.o global_parameters.o readfields.o \
+test_type_parameter.o: fft_type.o ftnunit.o global_parameters.o readfields.o \
 	type_parameter.o Makefile make_kerner.macros 
 test_voxel.o: ftnunit.o global_parameters.o inv_mesh.o random_voxel.o Makefile make_kerner.macros 
+test_worktype.o: ftnunit.o global_parameters.o worktype.o Makefile make_kerner.macros 
 type_parameter.o: background_model.o commpi.o filtering.o global_parameters.o \
 	kernel.o readfields.o receiver.o simple_routines.o source.o Makefile make_kerner.macros 
 worktype.o: global_parameters.o Makefile make_kerner.macros 
