@@ -5,3 +5,5 @@ fort.*
 *.old
 *.org
 *.tmp
+*.gcda
+*.gcno

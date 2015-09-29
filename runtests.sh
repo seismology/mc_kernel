@@ -17,13 +17,9 @@ make -s
 #    tar -xf test_wavefields.tar.gz
 #fi
 #
-if test -f OUTPUT_test ; then
-    rm OUTPUT_test
-fi
-
-if test -f runtests.log ; then
-    rm runtests.log
-fi
+rm -f netcdf_out_*.tmp; 
+rm -f OUTPUT_test
+rm -f mckernel_tests.log
 
 echo "Running test"
 set +e 
@@ -33,7 +29,7 @@ chk=1
 until test ! -f ftnunit.lst -a $chk -eq 0 ; do
     chk=0
     #valgrind --tool=memcheck $1 $2 $3 $4 $5 $6 $7 $8 $9 >>runtests.log 2>&1
-    $1 $2 $3 $4 $5 $6 $7 $8 $9 >>runtests.log 2>&1
+    $1 $2 $3 $4 $5 $6 $7 $8 $9 >>mckernel_tests.log 2>&1
 done
 
 rm ftnunit.run

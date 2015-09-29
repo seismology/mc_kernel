@@ -32,12 +32,12 @@
 
 open(MAKEFILE, "> Makefile");
 
-print MAKEFILE "PROG = kerner\n\n";
+print MAKEFILE "PROG = ../bin/mc_kernel\n\n";
 
 #
 # Read header file with compiler names etc.
 #
-print MAKEFILE "include make_kerner.macros\n\n";
+print MAKEFILE "include ../make_mc_kernel.macros\n\n";
 
 #
 # Source listing
@@ -212,7 +212,7 @@ sub MakeDepends {
          $file =~ s/\.[^.]+$/.o/;
          print MAKEFILE "$file: ";
          &PrintWords(length($file) + 2, 0, @incs);
-         print MAKEFILE " Makefile make_kerner.macros \n";
+         print MAKEFILE " Makefile ../make_mc_kernel.macros \n";
          undef @incs;
       }
    }
@@ -256,14 +256,14 @@ sub MakeDependsf90 {
          @dependencies = &uniq(sort(@dependencies));
          &PrintWords(length($objfile) + 2, 0,
                      @dependencies, &uniq(sort(@incs)));
-      print MAKEFILE " Makefile make_kerner.macros \n";
+         print MAKEFILE " Makefile ../make_mc_kernel.macros \n";
          undef @incs;
          undef @modules;
          #
          }
       }
    
-print MAKEFILE "kdtree2.o:  Makefile make_kerner.macros\n";
-system("perl -ni -e 'print unless /^kdtree2.o: kdtree2.o/' Makefile ");
+print MAKEFILE "kdtree2.o:  Makefile ../make_mc_kernel.macros\n";
+system("perl -ni -e 'print unless /^kdtree2.o: kdtree2.o/' Makefile ../make_mc_kernel.macros ");
 
 print "\nCheck Makefile to make sure you're happy with it.\n\n";

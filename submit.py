@@ -116,7 +116,7 @@ def read_receiver_dat(rec_file):
   return nkernel_total, nrec, fullstrain_kernel
 
 def define_arguments():
-  parser = argparse.ArgumentParser(description='Create Kerner input file and submit job.',
+  parser = argparse.ArgumentParser(description='Create MC Kernel input file and submit job.',
                                    formatter_class=argparse.RawTextHelpFormatter)
 
   parser.add_argument('job_name', help='Job directory name')
@@ -540,15 +540,15 @@ with open(out_input_file, 'w') as f_out:
     else:
       f_out.write('%s "%s"\n'%(key, value))
 
-# Get mpirun from make_kerner.macros
-with open('make_kerner.macros') as f:
+# Get mpirun from make_mckernel.macros
+with open('make_mc_kernel.macros') as f:
   for line in f:
     if line.strip()!='':
       key = line.split()[0]
       if key=='MPIRUN':
         mpirun_cmd = line.split()[2]
 
-# Make kerner code 
+# Make MC kernel code 
 subprocess.check_call('make -sj', shell=True)
 
 # Copy code files into run_dir, tar it and delete it.
@@ -556,21 +556,20 @@ subprocess.check_call('make -sj', shell=True)
 code_dir = os.path.join(run_dir, 'Code')
 archive_name = os.path.join(run_dir, 'Code')
 os.mkdir(code_dir)
-for f90_file in glob.glob('*.f90'):
+for f90_file in glob.glob('./src/*.90'):
   shutil.copy(f90_file, code_dir)
 shutil.copy('Makefile', code_dir)
-shutil.copy('make_kerner.macros', code_dir)
+shutil.copy('make_mc_kernel.macros', code_dir)
 shutil.make_archive(archive_name, 'gztar', code_dir)
 shutil.rmtree(code_dir)
 
-shutil.copy('./kerner', run_dir)
+shutil.copy('./bin/mc_kernel', run_dir)
 
 if args.queue == 'local':
   # Change dir and submit
   os.chdir(run_dir)
 
-  #run_cmd = mpirun_cmd, ' ../kerner', ' -n %d'%args.nslaves, ' inparam']
-  run_cmd = 'nohup %s -n %d ./kerner inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves + 1)
+  run_cmd = 'nohup %s -n %d ./mc_kernel inparam 2>&1 > OUTPUT_0000 &'%(mpirun_cmd, args.nslaves + 1)
   print run_cmd
   subprocess.call(run_cmd, shell=True)
 
@@ -617,7 +616,7 @@ elif args.queue == 'SuperMUC':
     text_out += "#@ network.MPI = sn_all,not_shared,us \n"
     text_out += "#@ notification=always \n"
     text_out += "#@ notify_user = staehler@geophysik.uni-muenchen.de \n"
-    text_out += "#@ energy_policy_tag = Kerner_intel_mpi \n"
+    text_out += "#@ energy_policy_tag = MCKernel_intel_mpi \n"
     text_out += "#@ minimize_time_to_solution = yes     \n"
     text_out += "#@ class = %s\n"%job_class
     text_out += "#@ tasks_per_node = %d\n"%tasks_per_node
@@ -632,7 +631,7 @@ elif args.queue == 'SuperMUC':
     text_out += "module load netcdf/4.2 \n"
     text_out += "module load fftw \n"
     text_out += "module load mkl \n"
-    text_out += "poe ./kerner inparam 2>&1  > OUTPUT_0000\n"
+    text_out += "poe ./mc_kernel inparam 2>&1  > OUTPUT_0000\n"
     f.write(text_out)
   print 'Submitting to SuperMUC loadleveler queue'
   #subprocess.call(['llsubmit', job_script])
@@ -647,13 +646,13 @@ elif args.queue == 'monch':
         text_out += "#SBATCH --time=%d:00:00\n" % args.wall_time
         text_out += "#SBATCH --partition=_compute\n"
         text_out += "#SBATCH --job-name=%s\n" % args.job_name
-        text_out += "#SBATCH --output=kerner_out.o\n"
-        text_out += "#SBATCH --error=kerner_err.o\n"
+        text_out += "#SBATCH --output=mc_kernel_out.o\n"
+        text_out += "#SBATCH --error=mc_kernel_err.o\n"
         text_out += "echo The current job ID is $SLURM_JOB_ID\n"
         text_out += "echo Running on $SLURM_JOB_NUM_NODES nodes\n"
         text_out += "echo Using $SLURM_NTASKS_PER_NODE tasks per node\n"
         text_out += "echo A total of $SLURM_NTASKS tasks is used\n"
-        text_out += "mpirun -n %d ./kerner inparam_basic &> OUTPUT_0000\n" % (args.nslaves + 1)
+        text_out += "mpirun -n %d ./mc_kernel inparam_basic &> OUTPUT_0000\n" % (args.nslaves + 1)
         f.write(text_out)
     os.chdir(run_dir)
     run_cmd = 'sbatch sbatch.sh'
