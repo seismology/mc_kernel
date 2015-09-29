@@ -1,6 +1,0 @@
-0020.e3  ri inner radius of the shell
-6371.e3  re outer radius of the shell
-14       nang number of horizontal segments along an edge of the cube
-22       nr number of segments in the spherical radial direction
-2        npol horizontal polynomial order
-3        nrpol radial polynomial order
