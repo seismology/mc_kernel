@@ -1,9 +1,11 @@
 #!/bin/bash
 
-cp make_mc_kernel.macros.TEMPLATE make_mc_kernel.macros
-cp Makefile.TEMPLATE Makefile
-cp src/Makefile.TEMPLATE src/Makefile
-cp CMTSOLUTION.TEMPLATE CMTSOLUTION
-cp inparam_basic.TEMPLATE inparam_basic
-cp receiver.dat.TEMPLATE receiver.dat
-cp filters.dat.TEMPLATE filters.dat
+cp TEMPLATES/make_mc_kernel.macros.TEMPLATE make_mc_kernel.macros
+cp TEMPLATES/Makefile.TEMPLATE Makefile
+cp TEMPLATES/CMTSOLUTION.TEMPLATE CMTSOLUTION
+cp TEMPLATES/inparam_basic.TEMPLATE inparam_basic
+cp TEMPLATES/receiver.dat.TEMPLATE receiver.dat
+cp TEMPLATES/filters.dat.TEMPLATE filters.dat
+
+cp TEMPLATES/Makefile_src.TEMPLATE src/Makefile
+
