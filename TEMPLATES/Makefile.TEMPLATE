@@ -8,5 +8,6 @@ clean:
 	rm bin/mc_kernel
 
 test: $(all)
-	./runtests.sh ./bin/mc_kernel
+	./unit_tests/runtests.sh ./bin/mc_kernel
+	tail -n 5 runtests.log
 
