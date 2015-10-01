@@ -44,14 +44,15 @@ Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meye
 <h2>
 <a id="prequisites" class="anchor" href="#prequisites" aria-hidden="true"><span class="octicon octicon-link"></span></a>Prequisites</h2>
 
-<p>MC Kernel needs a recent Fortran compiler (gfortran 4.8 or later), an MPI installation, the NetCDF library for accessing the wavefield files, the FFTW library for Fourier transforms and LAPACK, because we were too lazy to write a matrix inversion routine ourselves. The installation of these libraries can be done by hand on desktop machines or using modules on HPC environments</p>
+<p>MC Kernel needs a recent Fortran compiler (gfortran 4.8 or later), an MPI installation, the NetCDF library for accessing the wavefield files, the FFTW library for Fourier transforms and LAPACK, because we were too lazy to write a matrix inversion routine ourselves. The installation of these libraries can be done by hand on desktop machines or using modules on HPC environments.
+The recommended submit script uses Python and needs NetCDF4</p>
 
 <h4>
 <a id="ubuntudebian-linux" class="anchor" href="#ubuntudebian-linux" aria-hidden="true"><span class="octicon octicon-link"></span></a>Ubuntu/Debian Linux</h4>
 
 <p>Since Ubuntu 14.04LTS, the system libraries can be used:</p>
 
-<div class="highlight highlight-source-shell"><pre>sudo apt-get install gfortran libnetcdff5 libfftw3-dev libblas3 openmpi-bin gfortran</pre></div>
+<div class="highlight highlight-source-shell"><pre>sudo apt-get install gfortran libnetcdff5 libfftw3-dev libblas3 openmpi-bin gfortran python python-netcdf</pre></div>
 
 <h4>
 <a id="macos-x" class="anchor" href="#macos-x" aria-hidden="true"><span class="octicon octicon-link"></span></a>MacOS X</h4>
@@ -80,13 +81,17 @@ module load mkl
 
 <p>The file <em>make_mc_kerner.macros</em> allows you to modify the compiler name and compiler flags according to your system. To compile, use make</p>
 
-<div class="highlight highlight-source-shell"><pre>make </pre></div>
-
-<p>and </p>
-
-<div class="highlight highlight-source-shell"><pre>make <span class="pl-c1">test</span> </pre></div>
+<div class="highlight highlight-source-shell"><pre>make 
+make <span class="pl-c1">test</span> </pre></div>
 
 <p>to run a set of tests.</p>
+
+<h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<p>To run the code, a convenient submit script is available:</p>
+
+<div class="highlight highlight-source-shell"><pre>python submit.py JOB_NAME</pre></div>
 
 <h2>
 <a id="faqs" class="anchor" href="#faqs" aria-hidden="true"><span class="octicon octicon-link"></span></a>FAQs</h2>
