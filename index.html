@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>MC Kernel by sstaehler</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>MC Kernel</h1>
+        <p>Calculate seismic sensitivity kernels using Axisem</p>
+
+        <p class="view"><a href="https://github.com/sstaehler/kerner">View the Project on GitHub <small>sstaehler/kerner</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/sstaehler/kerner/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/sstaehler/kerner/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/sstaehler/kerner">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p><img src="https://raw.githubusercontent.com/sstaehler/kerner/master/doc/Logo.png?token=AE0eePWntw2plejxLzd4JL8W0MWxSKoQks5WFnW3wA%3D%3D" alt=""></p>
+
+<p>Authors:
+Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meyer</p>
+
+<h2>
+<a id="download" class="anchor" href="#download" aria-hidden="true"><span class="octicon octicon-link"></span></a>Download</h2>
+
+<p>To download the current developer version, use git clone</p>
+
+<pre><code>git clone https://github.com/sstaehler/kerner
+</code></pre>
+
+<h2>
+<a id="prequisites" class="anchor" href="#prequisites" aria-hidden="true"><span class="octicon octicon-link"></span></a>Prequisites</h2>
+
+<p>MC Kernel needs a recent Fortran compiler (gfortran 4.8 or later), an MPI installation, the NetCDF library for accessing the wavefield files, the FFTW library for Fourier transforms and LAPACK, because we were too lazy to write a matrix inversion routine ourselves. The installation of these libraries can be done by hand on desktop machines or using modules on HPC environments</p>
+
+<h4>
+<a id="ubuntudebian-linux" class="anchor" href="#ubuntudebian-linux" aria-hidden="true"><span class="octicon octicon-link"></span></a>Ubuntu/Debian Linux</h4>
+
+<p>Since Ubuntu 14.04LTS, the system libraries can be used:</p>
+
+<div class="highlight highlight-source-shell"><pre>sudo apt-get install gfortran libnetcdff5 libfftw3-dev libblas3 openmpi-bin gfortran</pre></div>
+
+<h4>
+<a id="macos-x" class="anchor" href="#macos-x" aria-hidden="true"><span class="octicon octicon-link"></span></a>MacOS X</h4>
+
+<p>We recommend using Homebrew to download and compile the necessary libraries. Be careful to add the <em>--with-fortran</em> argument while installing any library. Otherwise, only C libraries are installed. If you did install the libraries before without the <em>--with-fortran</em> argument, it may be necessary to remove and reinstall them.</p>
+
+<h4>
+<a id="hpc-environments" class="anchor" href="#hpc-environments" aria-hidden="true"><span class="octicon octicon-link"></span></a>HPC environments</h4>
+
+<p>Be sure to load modules for Fortran, NetCDF, FFTW and LAPACK.
+On SuperMUC, the necessary commands are</p>
+
+<pre><code>module load fortran
+module load netcdf/4.2
+module load fftw
+module load mkl
+</code></pre>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>Change into the download directory and copy the included template files into the main directory</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c1">cd</span> kerner
+./copy_templates.sh</pre></div>
+
+<p>The file <em>make_mc_kerner.macros</em> allows you to modify the compiler name and compiler flags according to your system. To compile, use make</p>
+
+<div class="highlight highlight-source-shell"><pre>make </pre></div>
+
+<p>and </p>
+
+<div class="highlight highlight-source-shell"><pre>make <span class="pl-c1">test</span> </pre></div>
+
+<p>to run a set of tests.</p>
+
+<h2>
+<a id="faqs" class="anchor" href="#faqs" aria-hidden="true"><span class="octicon octicon-link"></span></a>FAQs</h2>
+
+<h3>
+<a id="anaconda-interference" class="anchor" href="#anaconda-interference" aria-hidden="true"><span class="octicon octicon-link"></span></a>Anaconda interference</h3>
+
+<p>The python package manager Anaconda installs his own version of gfortran, which interferes with the system version and the MPI libraries. 
+A solution is to replace the compiler name <em>FC</em> and the <em>MPIRUN</em> variable in <em>make_mc_kerner.macros</em> with absolute paths</p>
+
+<div class="highlight highlight-source-shell"><pre>FC = /usr/bin/mpif90</pre></div>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/sstaehler">sstaehler</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
