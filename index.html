@@ -30,8 +30,10 @@
       <section>
         <p><img src="https://raw.githubusercontent.com/sstaehler/kerner/master/doc/Logo.png?token=AE0eePWntw2plejxLzd4JL8W0MWxSKoQks5WFnW3wA%3D%3D" alt=""></p>
 
-<p>Authors:
-Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meyer</p>
+<h2>
+<a id="authors" class="anchor" href="#authors" aria-hidden="true"><span class="octicon octicon-link"></span></a>Authors:</h2>
+
+<p>Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meyer</p>
 
 <h2>
 <a id="download" class="anchor" href="#download" aria-hidden="true"><span class="octicon octicon-link"></span></a>Download</h2>
@@ -87,11 +89,45 @@ make <span class="pl-c1">test</span> </pre></div>
 <p>to run a set of tests.</p>
 
 <h2>
+<a id="axisem-wavefields" class="anchor" href="#axisem-wavefields" aria-hidden="true"><span class="octicon octicon-link"></span></a>AxiSEM wavefields</h2>
+
+<p>Using the code requires computation of a global seismic wavefield using AxiSEM. Please refer to the AxiSEM documentation on how to do this. An set of example wavefields with a dominant period of 40s can be downloaded:</p>
+
+<pre><code>wget https://www.geophysik.uni-muenchen.de/~staehler/kernel_wavefields_40s.tar.gz
+tar -xvf kernel_wavefields_40s.tar.gz
+</code></pre>
+
+<h2>
 <a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
 
 <p>To run the code, a convenient submit script is available:</p>
 
-<div class="highlight highlight-source-shell"><pre>python submit.py JOB_NAME</pre></div>
+<div class="highlight highlight-source-shell"><pre>python submit.py -n NSLAVES JOB_NAME</pre></div>
+
+<p>This creates a run directory <em>JOB_NAME</em>, puts the default input files there and starts a MPI job with one master and NSLAVES worker tasks. In this simple form, it uses default values stored in the files <em>CMTSOLUTION</em>, <em>receivers.dat</em>, <em>filters.dat</em> and <em>stf_20s.dat</em> together with AxiSEM wavefields in ./wavefield/fwd and ./wavefield/bwd.<br>
+Modifying the settings for the run is possible by setting one of the options of submit.py, which can be queried by</p>
+
+<div class="highlight highlight-source-shell"><pre>python submit.py -h</pre></div>
+
+<h2>
+<a id="plot-results" class="anchor" href="#plot-results" aria-hidden="true"><span class="octicon octicon-link"></span></a>Plot results</h2>
+
+<p>MC Kerner comes with a set of simple Python plotting scripts to visualize kernels and the seismograms they are based on. They can be found in the folder <strong>pyfiles</strong> and need a few extra programs to run:</p>
+
+<ul>
+<li>Paraview (version &gt;= 4.3)</li>
+<li>Python packages matplotlib and wand</li>
+</ul>
+
+<p>To run the scripts change into the job directory</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c1">cd</span> JOB_DIR</pre></div>
+
+<p>and run</p>
+
+<div class="highlight highlight-source-shell"><pre>python ../pyfiles/plot_all_seismograms.py
+pvpython ../pyfiles/plot_all_kernels.py
+python ../pyfiles/create_composites.py</pre></div>
 
 <h2>
 <a id="faqs" class="anchor" href="#faqs" aria-hidden="true"><span class="octicon octicon-link"></span></a>FAQs</h2>
