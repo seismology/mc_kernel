@@ -301,7 +301,7 @@ def define_arguments():
     mc_options.add_argument('--allowed_relative_error', type=float,
                             default=1e-2, help=helptext)
 
-    helptext = """Use pseudorandom numbers instead of quasirandom"""
+    helptext = "Use pseudorandom numbers instead of quasirandom"
     mc_options.add_argument('--use_pseudorandom_numbers', action="store_true",
                             default=False, help=helptext)
 
@@ -319,7 +319,7 @@ def define_arguments():
                                action="store_true", default=False,
                                help=helptext)
 
-    helptext = """Path to heterogeneity file"""
+    helptext = "Path to heterogeneity file"
     debug_options.add_argument('--het_file', default='unit_tests/savani.rtpv',
                                help=helptext)
 
@@ -344,9 +344,9 @@ def define_arguments():
                                action="store_true", default=False,
                                help=helptext)
 
-    helptext = """Do not deconvolve the Source Time Function and \n" + \
+    helptext = "Do not deconvolve the Source Time Function and \n" + \
                "reconvolve with the one set in --stf_file, but just \n" + \
-               "timeshift the wavefields."""
+               "timeshift the wavefields."
     debug_options.add_argument('--no_deconvolve_stf', action="store_true",
                                default=False, help=helptext)
 
@@ -373,16 +373,16 @@ def define_arguments():
     output_options.add_argument('--dump_type', choices=['xdmf', 'ascii', 'csr'],
                                 default='xdmf', help=helptext)
 
-    helptext = """Write out Seismograms (raw full trace, filtered full \n" + \
+    helptext = "Write out Seismograms (raw full trace, filtered full \n" + \
                "trace and cut trace) into run_dir/SEISMOGRAMS. Produces \n" + \
                "three files per kernel.  Disable to avoid congesting \n" + \
-               "your file system."""
+               "your file system."
     output_options.add_argument('--write_seismograms', default=False,
                                 help=helptext)
 
-    helptext = """Prefix of output file names.  \n" + \
+    helptext = "Prefix of output file names.  \n" + \
                "Kernel files are called $OUTPUT_FILE_kernel.xdmf \n" + \
-               "Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf"""
+               "Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf"
     output_options.add_argument('--out_prefix', default='kerner',
                                 help=helptext)
 
@@ -413,7 +413,7 @@ def define_arguments():
     performance_options.add_argument('--elements_per_task', type=int,
                                      default=100, help=helptext)
 
-    helptext = "Do not sort the mesh elements. Just for debugging."""
+    helptext = "Do not sort the mesh elements. Just for debugging."
     performance_options.add_argument('--no_sort_mesh_elements',
                                      action="store_true", default=False,
                                      help=helptext)
