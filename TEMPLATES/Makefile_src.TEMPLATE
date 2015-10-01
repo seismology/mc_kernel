@@ -38,20 +38,13 @@ OBJS =	commpi.o background_model.o buffer.o calc_kernels.o clocks.o \
 	worktype.o
 
 # Handle NetCDF and other library paths
-ifeq ($(strip $(USE_NETCDF)),true)
-   FFLAGS += -Dunc
-   ifdef NETCDF_PATH
-       LIBS = -llapack -L $(strip $(NETCDF_PATH))/lib -lnetcdff -lfftw3 -Wl,-rpath,$(strip $(NETCDF_PATH))/lib
-       INCLUDE = -I/usr/include -I $(strip $(NETCDF_PATH))/include
-   else
-       LIBS = -lfftw3 -llapack -lnetcdff
-       INCLUDE = -I /usr/include
-   endif
+ifdef NETCDF_PATH
+    LIBS = -llapack -L $(strip $(NETCDF_PATH))/lib -lnetcdff -lfftw3 -Wl,-rpath,$(strip $(NETCDF_PATH))/lib
+    INCLUDE = -I/usr/include -I $(strip $(NETCDF_PATH))/include
 else
-   LIBS = 
-   INCLUDE = 
+    LIBS = -lfftw3 -llapack -lnetcdff
+    INCLUDE = -I /usr/include
 endif
-
 # If the MPI module comes from another compiler version
 ifeq ($(strip $(INCLUDE_MPI)),true) 
   FFLAGS += -Dinclude_mpi 

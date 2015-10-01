@@ -1,13 +1,22 @@
 include make_kerner.macros
 
-all:  
+mc_kernel:  
 	cd src; $(MAKE) $(MFLAGS)
 
 clean:
 	cd src; rm -f *.o *.M *.mod *.d *.il core *.gcda *.gcno; cd ..
 	rm bin/mc_kernel
 
-test: $(all)
+test: $(mc_kernel)
 	./unit_tests/runtests.sh ./bin/mc_kernel
 	tail -n 5 runtests.log
 
+.PHONY: doc
+doc: 
+	doxygen ./src/doxygen.config
+
+.PHONY: cleandoc
+cleandoc:
+	rm -rf ./doc/html
+
+all: $(mc_kernel) $(doc)
