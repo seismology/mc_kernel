@@ -1,3 +1,9 @@
+# coding: utf-8
+"""
+Submit a MC kerner job locally or into a HPC queue
+Author: Simon Stähler, LMU München
+"""
+
 import os
 import argparse
 import shutil
