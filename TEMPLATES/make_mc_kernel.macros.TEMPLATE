@@ -21,6 +21,9 @@ INCLUDE_MPI = false
 # This can be a special directory on HPC environments
 RUNS_DIRECTORY = ./runs
 
+# Set the path to the Doxygen executable
+DOXYGEN_PATH = doxygen
+
 
 ####################################
 # Choose compiler names and flags: #
