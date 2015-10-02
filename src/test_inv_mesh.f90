@@ -13,7 +13,7 @@ subroutine test_mesh_read
   type(inversion_mesh_type)    :: inv_mesh
   integer                      :: npoints, nelems
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   npoints = inv_mesh%get_nvertices()
@@ -114,7 +114,7 @@ subroutine test_init_node_data
   integer                           :: nf_status, ncid, grp_ncid
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   call inv_mesh%init_node_data()
@@ -140,7 +140,7 @@ subroutine test_init_mixed_data
   integer                           :: nf_status, ncid, grp_ncid
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   call inv_mesh%init_cell_data()
@@ -177,7 +177,7 @@ subroutine test_init_cell_data
   integer                           :: nf_status, ncid, grp_ncid
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   call inv_mesh%init_cell_data()
@@ -217,7 +217,7 @@ subroutine test_set_mixed_data
 
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
@@ -411,7 +411,7 @@ subroutine test_set_node_data_and_dump()
   real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
@@ -458,10 +458,10 @@ subroutine test_set_node_data_and_dump()
                               ientry    = [2, 4])
 
   ! Write file to disk
-  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_node_data')
+  call inv_mesh%dump_data_xdmf('./output/test_set_node_data')
   call inv_mesh%free_node_and_cell_data()
 
-  call nc_open_for_read(filename = 'unit_tests_output/test_set_node_data.nc', ncid = ncid)
+  call nc_open_for_read(filename = './output/test_set_node_data.nc', ncid = ncid)
   nf_status = nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid)
   call assert_equal(nf_status, NF90_NOERR, 'Group for node data has been created')
 
@@ -517,7 +517,7 @@ subroutine test_set_cell_data_and_dump()
   real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
@@ -559,9 +559,9 @@ subroutine test_set_cell_data_and_dump()
                               ientry    = [2, 4])
 
   ! Write file to disk
-  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_cell_data')
+  call inv_mesh%dump_data_xdmf('./output/test_set_cell_data')
 
-  call nc_open_for_read(filename = 'unit_tests_output/test_set_cell_data.nc', ncid = ncid)
+  call nc_open_for_read(filename = './output/test_set_cell_data.nc', ncid = ncid)
   nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
   call assert_equal(nf_status, NF90_NOERR, 'Group for cell data has been created')
 
@@ -619,7 +619,7 @@ subroutine test_set_mixed_data_and_dump()
   real(kind=sp), allocatable        :: testvar1_res_node(:,:), testvar2_res_node(:,:), testvar3_res_node(:,:)
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
@@ -714,9 +714,9 @@ subroutine test_set_mixed_data_and_dump()
 
 
   ! Write file to disk
-  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_mixed_data')
+  call inv_mesh%dump_data_xdmf('./output/test_set_mixed_data')
 
-  call nc_open_for_read(filename = 'unit_tests_output/test_set_mixed_data.nc', ncid = ncid)
+  call nc_open_for_read(filename = './output/test_set_mixed_data.nc', ncid = ncid)
 
   ! CHECK FOR CELL DATA
   nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
@@ -829,7 +829,7 @@ subroutine test_set_mixed_data_and_dump_into_two_files()
   real(kind=sp), allocatable        :: testvar4_res_node(:,:), testvar5_res_node(:,:), testvar6_res_node(:,:)
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
@@ -946,7 +946,7 @@ subroutine test_set_mixed_data_and_dump_into_two_files()
 
 
   ! Write file to first disk
-  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_mixed_data_1st_file')
+  call inv_mesh%dump_data_xdmf('./output/test_set_mixed_data_1st_file')
 
   call inv_mesh%free_node_and_cell_data()
 
@@ -1027,13 +1027,13 @@ subroutine test_set_mixed_data_and_dump_into_two_files()
 
 
   ! Write data to second file
-  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_mixed_data_2nd_file')
+  call inv_mesh%dump_data_xdmf('./output/test_set_mixed_data_2nd_file')
 
   call inv_mesh%free_node_and_cell_data()
 
 
   ! Check first output file
-  call nc_open_for_read(filename = 'unit_tests_output/test_set_mixed_data_1st_file.nc', ncid = ncid)
+  call nc_open_for_read(filename = './output/test_set_mixed_data_1st_file.nc', ncid = ncid)
 
   ! CHECK FOR CELL DATA
   nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
@@ -1120,7 +1120,7 @@ subroutine test_set_mixed_data_and_dump_into_two_files()
 
 
   ! Check second output file
-  call nc_open_for_read(filename = 'unit_tests_output/test_set_mixed_data_2nd_file.nc', ncid = ncid)
+  call nc_open_for_read(filename = './output/test_set_mixed_data_2nd_file.nc', ncid = ncid)
 
   ! CHECK FOR CELL DATA
   nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
@@ -1224,7 +1224,7 @@ subroutine test_set_node_time_data_and_dump
   real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
@@ -1278,10 +1278,10 @@ subroutine test_set_node_time_data_and_dump
   ! END OF node DATA                          
 
   ! Write file to disk
-  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_node_data_time')
+  call inv_mesh%dump_data_xdmf('./output/test_set_node_data_time')
   call inv_mesh%free_node_and_cell_data()
 
-  call nc_open_for_read(filename = 'unit_tests_output/test_set_node_data_time.nc', ncid = ncid)
+  call nc_open_for_read(filename = './output/test_set_node_data_time.nc', ncid = ncid)
   call check(nf90_inq_ncid(ncid=ncid, name='node_data', grp_ncid=grp_ncid))
   call assert_equal(nf_status, NF90_NOERR, 'Group for node data has been created. Error: '//&
                     NF90_STRERROR(nf_status))
@@ -1378,7 +1378,7 @@ subroutine test_set_cell_time_data_and_dump
   real(kind=sp), allocatable        :: testvar1_res(:,:), testvar2_res(:,:), testvar3_res(:,:)
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   variable_names  = ['variable_1', 'variable_2', 'variable_3']
@@ -1432,10 +1432,10 @@ subroutine test_set_cell_time_data_and_dump
   ! END OF CELL DATA                          
 
   ! Write file to disk
-  call inv_mesh%dump_data_xdmf('unit_tests_output/test_set_cell_data_time')
+  call inv_mesh%dump_data_xdmf('./output/test_set_cell_data_time')
   call inv_mesh%free_node_and_cell_data()
 
-  call nc_open_for_read(filename = 'unit_tests_output/test_set_cell_data_time.nc', ncid = ncid)
+  call nc_open_for_read(filename = './output/test_set_cell_data_time.nc', ncid = ncid)
   nf_status = nf90_inq_ncid(ncid=ncid, name='cell_data', grp_ncid=grp_ncid)
   call assert_equal(nf_status, NF90_NOERR, 'Group for cell data has been created')
 
@@ -1519,7 +1519,7 @@ end subroutine test_set_cell_time_data_and_dump
 subroutine test_valence
   type(inversion_mesh_type) :: inv_mesh
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   call assert_equal(inv_mesh%get_valence(1), 2, 'valence of first vertex in facets.TEST')
@@ -1538,7 +1538,7 @@ subroutine test_get_connected_elements
   type(inversion_mesh_type) :: inv_mesh
   integer, allocatable      :: cn_elems(:)
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   ! uncomment to NOT use automatic allocation
@@ -1873,7 +1873,7 @@ subroutine test_weight
  
 
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
   ! Weight should be one at each of the vertices for the respective parameter and 
@@ -2038,7 +2038,7 @@ subroutine test_integration_in_tetrahedron
   real(kind=dp)                     :: values(nptperstep,1), coords(3, nptperstep), integral(1)
   real(kind=dp), parameter          :: pi = 3.141419265d0
 
-  call inv_mesh%read_tet_mesh('unit_tests/vertices.TEST', 'unit_tests/facets.TEST', &
+  call inv_mesh%read_tet_mesh('./vertices.TEST', './facets.TEST', &
                               'onvertices')
 
 

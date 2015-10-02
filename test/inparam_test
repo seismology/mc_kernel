@@ -1,14 +1,14 @@
-FWD_DIR         'test_wavefields/kerner_fwd/'
-BWD_DIR         'test_wavefields/kerner_bwd/'
+FWD_DIR         '../wavefield/fwd/'
+BWD_DIR         '../wavefield/bwd/'
 ALLOWED_ERROR   1e-1
 
 
-SRC_FILE        'unit_tests/CMTSOLUTION'
-REC_FILE        'unit_tests/receiver.dat'
-FILT_FILE       'unit_tests/filters.dat'
+SRC_FILE        './CMTSOLUTION'
+REC_FILE        './receiver.dat'
+FILT_FILE       './filters.dat'
 MESH_FILE_TYPE       'abaqus'
-MESH_FILE_ABAQUS     'unit_tests/flat_triangles.inp'
-STF_FILE             'unit_tests/stf_errorf.dat'
+MESH_FILE_ABAQUS     './flat_triangles.inp'
+STF_FILE             './stf_errorf.dat'
 
 #MESH_FILE_TYPE       'tetrahedral'
 #MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
@@ -39,7 +39,7 @@ HET_FILE 'unit_tests/savani.rtpv'
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
-OUT_PREFIX           'unit_tests/test_master_queue'
+OUT_PREFIX           'test_master_queue'
 
 # Output format when dumping kernels and wavefields. 
 # Choose between xdmf, Yale-style csr binary format (compressed sparse row) and

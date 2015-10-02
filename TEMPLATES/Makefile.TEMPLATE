@@ -10,9 +10,10 @@ clean:
 	cd src; rm -f *.o *.M *.mod *.d *.il core *.gcda *.gcno; cd ..
 	rm bin/mc_kernel
 
+.PHONY: test
 test: $(mc_kernel)
-	./unit_tests/runtests.sh ./bin/mc_kernel
-	@tail -n 5 runtests.log
+	cd test; ./runtests.sh ../bin/mc_kernel
+	@tail -n 5 test/mckernel_tests.log
 
 .PHONY: doc
 doc: 

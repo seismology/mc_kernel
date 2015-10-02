@@ -6,7 +6,7 @@ module test_nc_routines
 
   implicit none
 
-  character(len=128), save         :: nc_filename='unit_tests_output/test_nc_routines.nc'
+  character(len=128), save         :: nc_filename='./output/test_nc_routines.nc'
   integer                          :: dim_size(3) 
   real(kind=sp), allocatable, save :: testdata_fp(:,:,:)
   integer      , allocatable, save :: testdata_int(:,:,:)
@@ -87,7 +87,7 @@ end subroutine test_nc_create_testfile
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_create_file
   integer           :: ncid, formatnum, status
-  character(len=80) :: filename = 'unit_tests_output/test_nc_create_file.nc'
+  character(len=80) :: filename = './output/test_nc_create_file.nc'
 
   call nc_create_file(filename = filename, ncid = ncid)
 
@@ -108,7 +108,7 @@ end subroutine test_nc_create_file
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_create_group
   integer           :: ncid, formatnum, status, ncid_group, ncid_group_2
-  character(len=80) :: filename = 'unit_tests_output/test_nc_create_group.nc'
+  character(len=80) :: filename = './output/test_nc_create_group.nc'
 
   call nc_create_file(filename = filename, ncid = ncid)
   
@@ -140,7 +140,7 @@ end subroutine test_nc_create_group
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_open_for_read
   integer           :: ncid, formatnum, status
-  character(len=80) :: filename = 'unit_tests_output/test_nc_open_for_write'
+  character(len=80) :: filename = './output/test_nc_open_for_write'
 
   ! Create test file
   call nc_create_file(filename = filename, ncid = ncid)
@@ -165,7 +165,7 @@ end subroutine test_nc_open_for_read
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_open_for_write
   integer           :: ncid, formatnum, status
-  character(len=80) :: filename = 'unit_tests_output/test_nc_open_for_write'
+  character(len=80) :: filename = './output/test_nc_open_for_write'
 
   ! Create test file
   call nc_create_file(filename = filename, ncid = ncid)
@@ -306,7 +306,7 @@ end subroutine test_nc_getvar_3d_int
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_putvar_1d
   integer                       :: ncid, idim_1, idim_2, idim_3
-  character(len=128)            :: filename='unit_tests_output/test_nc_putvar_1d.nc'
+  character(len=128)            :: filename='./output/test_nc_putvar_1d.nc'
   real(kind=sp), allocatable    :: readdata_fp(:)
   integer,       allocatable    :: readdata_int(:)
   
@@ -359,7 +359,7 @@ end subroutine test_nc_putvar_1d
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_putvar_2d
   integer                       :: ncid, idim_1, idim_2, idim_3
-  character(len=128)            :: filename='unit_tests_output/test_nc_putvar_2d.nc'
+  character(len=128)            :: filename='./output/test_nc_putvar_2d.nc'
   real(kind=sp), allocatable    :: readdata_fp(:,:)
   integer,       allocatable    :: readdata_int(:,:)
   
@@ -415,7 +415,7 @@ end subroutine test_nc_putvar_2d
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_putvar_3d
   integer                       :: ncid, idim_1, idim_2, idim_3
-  character(len=128)            :: filename='unit_tests_output/test_nc_putvar_3d.nc'
+  character(len=128)            :: filename='./output/test_nc_putvar_3d.nc'
   real(kind=sp), allocatable    :: readdata_fp(:,:,:)
   integer,       allocatable    :: readdata_int(:,:,:)
   
@@ -472,7 +472,7 @@ end subroutine test_nc_putvar_3d
 !-----------------------------------------------------------------------------------------
 subroutine test_nc_putvar_1d_into_nd
   integer                       :: ncid, idim_1, idim_2, idim_3
-  character(len=128)            :: filename='unit_tests_output/test_nc_putvar_1d_into_nd.nc'
+  character(len=128)            :: filename='./output/test_nc_putvar_1d_into_nd.nc'
   real(kind=sp), allocatable    :: readdata_fp(:,:,:)
   real(kind=sp)                 :: array_1d_fp(10)
   integer,       allocatable    :: readdata_int(:,:,:)

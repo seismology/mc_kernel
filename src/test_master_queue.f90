@@ -14,7 +14,7 @@ subroutine test_master_all
   integer       ::  ntasks
 
   testing = .false.
-  call init_queue(ntasks, 'unit_tests/inparam_test')
+  call init_queue(ntasks, './inparam_test')
 
   call finalize
 

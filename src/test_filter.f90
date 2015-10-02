@@ -106,7 +106,7 @@ subroutine test_filter_gabor_response
 
    call assert_equal(ntimes_ft, 2048, 'ntimes==expected value')
 
-   open(100, file='unit_tests/gaborinput.txt')
+   open(100, file='./gaborinput.txt')
    read(100,*) data_in
    close(100)
 
@@ -116,11 +116,11 @@ subroutine test_filter_gabor_response
    allocate(tf(nomega, 3))
    allocate(tf_ref(nomega,2))
 
-   open(100, file='unit_tests/gaborresponse.txt')
+   open(100, file='./gaborresponse.txt')
    read(100,*) data_filtered_ref
    close(100)
    
-   open(100, file='unit_tests/gabortransferfunction.txt')
+   open(100, file='./gabortransferfunction.txt')
    read(100,*) tf_ref(1:1024,1)
    read(100,*) tf_ref(1:1024,2)
    close(100)
@@ -207,7 +207,7 @@ subroutine test_filter_butterworth_lp_response
 
    call assert_equal(ntimes_ft, 2048, 'ntimes==expected value')
 
-   open(100, file='unit_tests/gaborinput.txt')
+   open(100, file='./gaborinput.txt')
    read(100,*) data_in
    close(100)
 
@@ -215,7 +215,7 @@ subroutine test_filter_butterworth_lp_response
    allocate(data_filtered_ref(ntimes_ft,1))
    allocate(data_fd(nomega,1))
 
-   open(100, file='unit_tests/butterresponse.txt')
+   open(100, file='./butterresponse.txt')
    read(100,*) data_filtered_ref
    close(100)
    
@@ -268,7 +268,7 @@ subroutine test_filter_butterworth_hp_response
 
    call assert_equal(ntimes_ft, 2048, 'ntimes==expected value')
 
-   open(100, file='unit_tests/gaborinput.txt')
+   open(100, file='./gaborinput.txt')
    read(100,*) data_in
    close(100)
 
@@ -276,7 +276,7 @@ subroutine test_filter_butterworth_hp_response
    allocate(data_filtered_ref(ntimes_ft,1))
    allocate(data_fd(nomega,1))
 
-   open(100, file='unit_tests/butterresponse_hp.txt')
+   open(100, file='./butterresponse_hp.txt')
    read(100,*) data_filtered_ref
    close(100)
    
@@ -329,7 +329,7 @@ subroutine test_filter_butterworth_bp_response
 
    call assert_equal(ntimes_ft, 2048, 'ntimes==expected value')
 
-   open(100, file='unit_tests/gaborinput.txt')
+   open(100, file='./gaborinput.txt')
    read(100,*) data_in
    close(100)
 
@@ -337,7 +337,7 @@ subroutine test_filter_butterworth_bp_response
    allocate(data_filtered_ref(ntimes_ft,1))
    allocate(data_fd(nomega,1))
 
-   open(100, file='unit_tests/butterresponse_bp.txt')
+   open(100, file='./butterresponse_bp.txt')
    read(100,*) data_filtered_ref
    close(100)
    

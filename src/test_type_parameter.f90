@@ -20,7 +20,7 @@ subroutine test_parameter_reading
    real(kind=dp)           :: df
    logical                 :: ref_var(6)
    
-   call parameters%read_parameters('unit_tests/inparam_test')
+   call parameters%read_parameters('./inparam_test')
    call parameters%read_source()
    call parameters%read_receiver()
 

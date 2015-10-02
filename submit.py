@@ -320,7 +320,7 @@ def define_arguments():
                                help=helptext)
 
     helptext = "Path to heterogeneity file"
-    debug_options.add_argument('--het_file', default='unit_tests/savani.rtpv',
+    debug_options.add_argument('--het_file', default='test/savani.rtpv',
                                help=helptext)
 
     helptext = "Integrate the kernel over the background model. \n" + \
@@ -377,7 +377,7 @@ def define_arguments():
                "trace and cut trace) into run_dir/SEISMOGRAMS. Produces \n" + \
                "three files per kernel.  Disable to avoid congesting \n" + \
                "your file system."
-    output_options.add_argument('--write_seismograms', default=False,
+    output_options.add_argument('--write_seismograms', default=True,
                                 help=helptext)
 
     helptext = "Prefix of output file names.  \n" + \
