@@ -1,3 +1,4 @@
+# coding: utf-8
 """
 Plot all kernels with Paraview
 Author: Simon Stähler, LMU München
@@ -11,7 +12,6 @@ The camera focal point is adapted to the 2D Mesh in Meshes/circle_050.inp
 To plot 3D kernels, you have to modify this script by introducing a clipping
 plane at the right place.
 """
-# coding: utf-8
 
 from paraview.simple import *
 import os
@@ -89,7 +89,30 @@ for data in kerner_kernelxdmf.PointData:
         # show color legend
         kerner_kernelxdmfDisplay.SetScalarBarVisibility(renderView1, True)
 
-        filename_out = os.path.join(kernel_plot_dir, 'K_x_%s.png' % data.Name)
+        filename_out = os.path.join(kernel_plot_dir, '%s.png' % data.Name)
+        SaveScreenshot(filename=filename_out,
+                       view=renderView1,
+                       magnification=2)
+
+        print '  ...done!'
+
+# Loop over all Cell variables in file and print them
+for data in kerner_kernelxdmf.CellData:
+    if data.Name[0:3] == 'K_x':
+
+        print 'Plotting kernel %s' % data.Name
+
+        # show data from kerner_kernelxdmf
+        kerner_kernelxdmfDisplay = Show(kerner_kernelxdmf, renderView1)
+
+        # trace defaults for the display properties.
+        kerner_kernelxdmfDisplay.ColorArrayName = ['CELLS', data.Name]
+        kerner_kernelxdmfDisplay.LookupTable = LUT
+
+        # show color legend
+        kerner_kernelxdmfDisplay.SetScalarBarVisibility(renderView1, True)
+
+        filename_out = os.path.join(kernel_plot_dir, '%s.png' % data.Name)
         SaveScreenshot(filename=filename_out,
                        view=renderView1,
                        magnification=2)

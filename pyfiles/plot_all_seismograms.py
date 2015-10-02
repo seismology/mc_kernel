@@ -1,9 +1,9 @@
+# coding: utf-8
 """
 Plot all seismograms in this rundir with a zoom window on the
 respective time windows
 Author: Simon Stähler, LMU München
 """
-# coding: utf-8
 
 import matplotlib.pyplot as plt
 import numpy as np
