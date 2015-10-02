@@ -1,4 +1,7 @@
-include make_kerner.macros
+include make_mc_kernel.macros
+
+# Does not work for some reason
+#REVISION = $(git describe --dirty --abbrev=6 --always --tags)
 
 mc_kernel:  
 	cd src; $(MAKE) $(MFLAGS)
@@ -9,11 +12,13 @@ clean:
 
 test: $(mc_kernel)
 	./unit_tests/runtests.sh ./bin/mc_kernel
-	tail -n 5 runtests.log
+	@tail -n 5 runtests.log
 
 .PHONY: doc
 doc: 
-	doxygen ./src/doxygen.config
+	#@echo $(REVISION)  
+	#@echo "PROJECT_NUMBER = "$(REVISION) >> ./src/doxygen.config
+	$(DOXYGEN_PATH) ./src/doxygen.config
 
 .PHONY: cleandoc
 cleandoc:
