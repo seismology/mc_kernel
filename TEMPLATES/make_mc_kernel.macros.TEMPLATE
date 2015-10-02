@@ -17,14 +17,19 @@ NETCDF_PATH = # $(HOME)/local # e.g. $(HOME)/local, uses /usr/include if not def
 # module. Should not affect performance, but can make debugging a bit harder
 INCLUDE_MPI = false
 
+# Set directory where the submit script places runs.
+# This can be a special directory on HPC environments
+RUNS_DIRECTORY = ./runs
+
+
 ####################################
 # Choose compiler names and flags: #
 ####################################
 
 # GFORTRAN (fast)
-FC      = mpif90                                           # Fortran compiler
-FFLAGS  = -O3 -g -fbacktrace -cpp -march=native -fopenmp   # Fortran compiler flags        
-LDFLAGS = -O3 -g -fbacktrace -cpp -march=native -fopenmp   # Linking flags   
+FC      = mpif90                                  # Fortran compiler
+FFLAGS  = -O3 -g -fbacktrace -cpp -march=native   # Fortran compiler flags        
+LDFLAGS = -O3 -g -fbacktrace -cpp -march=native   # Linking flags   
 
 # GFORTRAN (debug)
 #FC      = mpif90                             # Fortran compiler
@@ -48,7 +53,7 @@ LDFLAGS = -O3 -g -fbacktrace -cpp -march=native -fopenmp   # Linking flags
 
 # Intel Compiler suite (debug)
 #FC      = mpif90
-#FFLAGS  = -g -shared-intel  -mcmodel=medium -check all -traceback -heap-arrays 10
+#FFLAGS  = -g -shared-intel  -mcmodel=medium -check all -traceback -heap-arrays 10 -fpp
 #LDFLAGS = -g -traceback
 
 # Cray: byteswapio needed to produce vtk files with big-endian

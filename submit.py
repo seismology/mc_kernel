@@ -130,7 +130,13 @@ def define_arguments():
     parser = argparse.ArgumentParser(description=helptext,
                                      formatter_class=formatter_class)
 
-    parser.add_argument('job_name', help='Job directory name')
+    helptext = "Job directory name. \n" + \
+               "If this argument is an absolute path (starting with /),\n " + \
+               "this path will be created and used. \n " + \
+               "If not, a run directory with this name will be created\n" + \
+               "in the 'RUNS_DIRECTORY' directory set in\n" + \
+               "make_mc_kernel.macros."
+    parser.add_argument('job_name', help=helptext)
 
     helptext = "Input file to use. It will overwrite default values, \n" + \
                "but will be overwritten by any argument to this function."
@@ -543,8 +549,23 @@ if (npoints_fwd != npoints_bwd or
 
 params_out = {}
 
+# Get mpirun and runs_directory from make_mckernel.macros
+with open('make_mc_kernel.macros') as f:
+    for line in f:
+        if line.strip() != '':
+            key = line.split()[0]
+            if key == 'MPIRUN':
+                mpirun_cmd = line.split()[2]
+            elif key == 'RUNS_DIRECTORY':
+                runs_directory = line.split()[2]
+
 # Create run_dir
-run_dir = args.job_name
+# Check whether absolute or relative path is given
+if os.path.isabs(args.job_name):
+    run_dir = args.job_name
+else:
+    run_dir = os.path.join(runs_directory, args.job_name)
+
 os.mkdir(run_dir)
 
 # Copy necessary files to rundir
@@ -642,14 +663,6 @@ with open(out_input_file, 'w') as f_out:
         else:
             f_out.write('%s "%s"\n' % (key, value))
 
-# Get mpirun from make_mckernel.macros
-with open('make_mc_kernel.macros') as f:
-    for line in f:
-        if line.strip() != '':
-            key = line.split()[0]
-            if key == 'MPIRUN':
-                mpirun_cmd = line.split()[2]
-
 # Make MC kernel code
 subprocess.check_call('make -sj', shell=True)
 
@@ -673,7 +686,7 @@ if args.queue == 'local':
 
     run_cmd = 'nohup %s -n %d ./mc_kernel inparam 2>&1 > OUTPUT_0000 &' % \
               (mpirun_cmd, args.nslaves + 1)
-    print run_cmd
+    print 'Starting local job in %s' % run_dir
     subprocess.call(run_cmd, shell=True)
 
 elif args.queue == 'SuperMUC':
