@@ -19,9 +19,10 @@ os.mkdir(seis_plot_dir)
 
 for filename in smgr_list:
     kernel = os.path.split(filename)[1][6:]
-    print kernel
     if kernel[0:3] == 'cut':
         continue
+
+    print kernel
 
     smgr_name = os.path.join(seis_dir, 'seism_%s' % kernel)
     cut_name = os.path.join(seis_dir, 'seism_cut_%s' % kernel)
