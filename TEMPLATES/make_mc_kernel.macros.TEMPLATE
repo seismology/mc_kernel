@@ -15,7 +15,7 @@ NETCDF_PATH = # $(HOME)/local # e.g. $(HOME)/local, uses /usr/include if not def
 # If the MPI module has been compiled with another Fortran compiler, it sometimes 
 # helps to include the MPI header file into the code instead of using the MPI
 # module. Should not affect performance, but can make debugging a bit harder
-INCLUDE_MPI = false
+INCLUDE_MPI = true
 
 # Set directory where the submit script places runs.
 # This can be a special directory on HPC environments
