@@ -205,6 +205,7 @@ subroutine test_readfields_load_fw_points
    ! Read reference strain trace and point coordinates
    open(newunit=lu_refstrain, file='./read_strain_point1.txt', action='read')
    read(lu_refstrain, *) coordinates(:,1)
+   allocate(straintrace_ref(sem_data%ndumps))
    do i=1, ntimes
      read(lu_refstrain, *) straintrace_ref(i)
    end do

@@ -517,7 +517,7 @@ subroutine read_kernel(this, sem_data, filter)
    call pbarrier
 
    if (master) then
-       write(6,*)'Reading kernels from file ', trim(this%receiver_file)
+       write(lu_out,*)'Reading kernels from file ', trim(this%receiver_file)
        open(newunit=lu_receiver, file=trim(this%receiver_file), status='old')
        read(lu_receiver,*) 
        read(lu_receiver,*) this%component

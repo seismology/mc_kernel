@@ -276,7 +276,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     ! FT STF of Earthquake
     call fft_stf%rfft(taperandzeropad(stf_src, fft_stf%get_ntimes(), ntaper = 5), stf_src_fd)
 
-    if (firstslave) then
+    if (firstslave.or.testing) then
 18     format('stf_spectrum_', A, 2('_', F0.3))
 19     format(5(E16.8))
        write(fnam,18) trim(this%filterclass), this%frequencies(1:2)
@@ -338,7 +338,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     call fft_stf%freeme()
 
-    if (firstslave) then
+    if (firstslave.or.testing) then
 20     format('filterresponse_stf_', A, 2('_', F0.3))
        write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
        open(10, file=trim(fnam), action='write')
@@ -389,7 +389,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
-       if (firstslave) then
+      if (firstslave.or.testing) then
          print *, 'ERROR: Filter ', trim(this%name), ' is not vanishing fast enough for '
          print *, 'high frequencies.'
          print *, 'Numerical noise from frequencies above mesh limit will be propagated'
