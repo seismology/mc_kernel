@@ -222,7 +222,7 @@ subroutine init(this, ntimes_in, ndim, ntraces, dt, fftw_plan, nfft)
      this%f(i) = (i-1) * this%df
   end do
   do i = 1, this%ntimes
-     this%t(i) = i * this%dt
+     this%t(i) = (i-1) * this%dt
   end do
 
   ! temporaryly allocating work arrays, are needed in generation of the plan
