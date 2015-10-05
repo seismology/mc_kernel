@@ -14,6 +14,7 @@ clean:
 check: $(mc_kernel)
 	cd tests; ./runtests.sh ../bin/mc_kernel
 	@tail -n 5 tests/mckernel_tests.log
+	@echo "See tests/mckernel_tests.log for details"
 
 .PHONY: doc
 doc: 

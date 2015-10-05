@@ -22,6 +22,8 @@ rm -f OUTPUT_test
 rm -f mckernel_tests.log
 rm -rf Seismograms
 mkdir Seismograms
+rm -rf Filters
+mkdir Filters
 
 echo "Running test"
 set +e 
