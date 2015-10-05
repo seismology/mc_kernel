@@ -176,7 +176,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     this%transferfunction_fwd_deriv = this%transferfunction
 
     if (firstslave) then
-20     format('filterresponse_', A, 2('_', F0.6))
+20     format('./Filters/filterresponse_', A, 2('_', F0.6))
        write(fnam,20) trim(filterclass), frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
@@ -259,7 +259,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! Write out original Source STF
     if (firstslave) then
-16     format('stf_source_', A, 2('_', F0.3))
+16     format('./Filters/stf_source_', A, 2('_', F0.3))
 17     format(3(E16.8))
        write(fnam,16) trim(this%filterclass), this%frequencies(1:2)
 
@@ -277,7 +277,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     call fft_stf%rfft(taperandzeropad(stf_src, fft_stf%get_ntimes(), ntaper = 5), stf_src_fd)
 
     if (firstslave.or.testing) then
-18     format('stf_spectrum_', A, 2('_', F0.3))
+18     format('./Filters/stf_spectrum_', A, 2('_', F0.3))
 19     format(5(E16.8))
        write(fnam,18) trim(this%filterclass), this%frequencies(1:2)
 
@@ -339,7 +339,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     call fft_stf%freeme()
 
     if (firstslave.or.testing) then
-20     format('filterresponse_stf_', A, 2('_', F0.3))
+20     format('./Filters/filterresponse_stf_', A, 2('_', F0.3))
        write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
@@ -354,7 +354,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        end do
        close(10)
        
-21     format('stf_spectrum_deriv_', A, 2('_', F0.3))
+21     format('./Filters/stf_spectrum_deriv_', A, 2('_', F0.3))
 22     format(5(E16.8))
        write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
 
@@ -367,7 +367,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        end do
        close(10)
        
-23     format('stf_', A, 2('_', F0.3))
+23     format('./Filters/stf_', A, 2('_', F0.3))
 24     format(3(E16.8))
        write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
 
@@ -377,7 +377,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        end do
        close(10)
        
-25     format('stf_deriv_', A, 2('_', F0.3))
+25     format('./Filters/stf_deriv_', A, 2('_', F0.3))
 26     format(3(E16.8))
        write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
 
