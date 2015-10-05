@@ -203,7 +203,7 @@ end subroutine create
 !! If we had nothing else to do.
 subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt)
     use fft,                     only: rfft_type, taperandzeropad
-    use simple_routines,         only: firstderiv
+    use simple_routines,         only: absreldiff
     use lanczos,                 only: lanczos_resample
     class(filter_type)              :: this
     real(kind=dp)   , intent(in)    :: stf_sem_fwd(:) ! STF of the AxiSEM simulation
@@ -213,15 +213,18 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     real(kind=dp)   , intent(in)    :: stf_dt         ! time step of STF
 
     ! The FFT routines need 2D arrays. Second dimension will be size 1
-    real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_sem_td(:,:), t(:)
-    complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:), lowpass(:)
-    complex(kind=dp), allocatable   :: stf_sem_d_fd(:,:), dev_fd(:)
+    real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_src(:,:), t(:)
+    real(kind=dp)   , allocatable   :: stf_src_td(:,:), stf_src_d_td(:,:)
+    real(kind=dp)   , allocatable   :: stf_sem_td(:,:), stf_sem_d_td(:,:)
+    complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:)
+    complex(kind=dp), allocatable   :: lowpass(:), highpass(:)
+    complex(kind=dp), allocatable   :: stf_sem_d_fd(:,:), stf_src_d_fd(:,:), dev_fd(:)
 
-    real(kind=dp)   , allocatable   :: stf_resampled(:), stf_src(:,:), stf_src_td(:,:)
+    real(kind=dp)   , allocatable   :: stf_resampled(:)
 
     type(rfft_type)                 :: fft_stf
     character(len=64)               :: fnam
-    integer                         :: ifreq
+    integer                         :: ifreq, i
 
     if (.not.this%initialized) then
        write(*,*) 'ERROR: Filter is not initialized yet'
@@ -242,20 +245,35 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     allocate(stf_sem(size(stf_sem_fwd), 1))
     allocate(stf_sem_fd(this%nfreq, 1))
     allocate(stf_sem_d_fd(this%nfreq, 1))
-    allocate(stf_sem_td(fft_stf%get_ntimes(), 1))
+    allocate(stf_src_d_fd(this%nfreq, 1))
     allocate(stf_src(size(stf_sem_fwd), 1))
     allocate(stf_src_fd(this%nfreq, 1))
+
+    ! Allocate variables to store FTd and iFTd STFs
     allocate(stf_src_td(fft_stf%get_ntimes(), 1))
+    allocate(stf_src_d_td(fft_stf%get_ntimes(), 1))
+    allocate(stf_sem_td(fft_stf%get_ntimes(), 1))
+    allocate(stf_sem_d_td(fft_stf%get_ntimes(), 1))
+
+    ! Allocate differentiation operator
     allocate(dev_fd(fft_stf%get_nomega()))
+
+    ! Allocate time variable
     allocate(t(fft_stf%get_ntimes()))
 
     stf_sem(:,1) = stf_sem_fwd 
+    t = fft_stf%get_t()
 
     ! Resample earthquake STF to sampling rate of the SEM simulation
     stf_src(:,:) = 0.0d0
-    allocate(stf_resampled(int(size(stf_source) * stf_dt / sem_dt)))
-    stf_resampled = lanczos_resample(stf_source, stf_dt, sem_dt, a=8)
-    stf_src(1:size(stf_resampled,1),1) = stf_resampled
+
+    if (absreldiff(stf_dt, sem_dt)>1d-8) then
+      allocate(stf_resampled(int(size(stf_source) * stf_dt / sem_dt)))
+      stf_resampled = lanczos_resample(stf_source, stf_dt, sem_dt, a=8)
+      stf_src(1:size(stf_resampled,1),1) = stf_resampled
+    else
+      stf_src(1:size(stf_source,1),1) = stf_source
+    end if
 
     ! Write out original Source STF
     if (firstslave) then
@@ -271,10 +289,19 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     end if
 
     ! FT STF of AxiSEM
-    call fft_stf%rfft(taperandzeropad(stf_sem, fft_stf%get_ntimes(), ntaper = 5), stf_sem_fd)
+    call fft_stf%rfft(taperandzeropad(stf_sem,              &
+                                      fft_stf%get_ntimes(), &
+                                      ntaper = 2),          &
+                      stf_sem_fd)
 
     ! FT STF of Earthquake
-    call fft_stf%rfft(taperandzeropad(stf_src, fft_stf%get_ntimes(), ntaper = 5), stf_src_fd)
+    call fft_stf%rfft(taperandzeropad(stf_src,              &
+                                      fft_stf%get_ntimes(), &
+                                      ntaper = 2),          &
+                      stf_src_fd)
+
+    stf_sem_fd(1,1) = 0
+    stf_src_fd(1,1) = 0
 
     if (firstslave.or.testing) then
 18     format('./Filters/stf_spectrum_', A, 2('_', F0.3))
@@ -296,6 +323,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! Calculate first derivatice of the STF
     stf_sem_d_fd(:,1) = stf_sem_fd(:,1) * dev_fd
+    stf_src_d_fd(:,1) = stf_src_fd(:,1) * dev_fd ! This is just needed for debugging
 
 
     ! Divide filter by spectrum of forward STF. It is established at initialization
@@ -314,12 +342,17 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
     allocate(lowpass(this%nfreq))
-    lowpass = butterworth_lowpass(this%f, this%f(this%nfreq/4), 16)
+    allocate(highpass(this%nfreq))
+    lowpass = butterworth_lowpass(this%f, 1.d0/(this%f(this%nfreq)*0.75d0), 8)
     lowpass = lowpass * conjg(lowpass)
+    !print *, 1.d0/(this%f(2))*0.2d0, 1.d0/(this%f(this%nfreq)*0.75d0)
+    !highpass = butterworth_highpass(this%f, 1.d0/(this%f(2))*0.2d0, 8)
+    !highpass = highpass * conjg(highpass)
   
-    this%transferfunction_fwd       = this%transferfunction_fwd       * lowpass !/ dev_fd
-    this%transferfunction_bwd       = this%transferfunction_bwd       * lowpass !/ dev_fd
-    this%transferfunction_fwd_deriv = this%transferfunction_fwd_deriv * lowpass !* dev_fd
+    this%transferfunction_fwd       = this%transferfunction_fwd       * lowpass 
+    this%transferfunction_bwd       = this%transferfunction_bwd       * lowpass 
+    this%transferfunction_fwd_deriv = this%transferfunction_fwd_deriv * lowpass 
+
 
     ! Replace NaNs with zero
     where(abs(this%transferfunction_fwd).ne.abs(this%transferfunction_fwd)) 
@@ -335,6 +368,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     end where
 
     call fft_stf%irfft(stf_sem_fd, stf_sem_td)
+    call fft_stf%irfft(stf_src_fd, stf_src_td)
+    call fft_stf%irfft(stf_src_d_fd, stf_src_d_td)
+    call fft_stf%irfft(stf_sem_d_fd, stf_sem_d_td)
 
     call fft_stf%freeme()
 
@@ -350,7 +386,12 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
                                       real(this%transferfunction_bwd(ifreq)), &
                                       imag(this%transferfunction_bwd(ifreq)), &
                                       real(this%transferfunction_fwd_deriv(ifreq)), &
-                                      imag(this%transferfunction_fwd_deriv(ifreq))
+                                      imag(this%transferfunction_fwd_deriv(ifreq)), &
+                                      real(lowpass(ifreq)), &
+                                      imag(lowpass(ifreq)), &
+                                      real(highpass(ifreq)), &
+                                      imag(highpass(ifreq))
+
        end do
        close(10)
        
@@ -367,23 +408,35 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        end do
        close(10)
        
-23     format('./Filters/stf_', A, 2('_', F0.3))
+23     format('./Filters/stf_in_', A, 2('_', F0.3))
 24     format(3(E16.8))
        write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
-       do ifreq = 1, size(stf_sem_fwd)
-         write(10,24) t(ifreq), stf_sem_fwd(ifreq), stf_src(ifreq,1)
+       do i = 1, size(stf_sem_fwd)
+         write(10,24) t(i), stf_sem_fwd(i), stf_src(i,1)
        end do
        close(10)
-       
-25     format('./Filters/stf_deriv_', A, 2('_', F0.3))
+
+       ! Contains the STFs after FFTs
+25     format('./Filters/stf_out_', A, 2('_', F0.3))
 26     format(3(E16.8))
        write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
-       do ifreq = 1, size(stf_sem_fwd)
-         write(10,26) t(ifreq), stf_sem_td(ifreq,1), stf_src_td(ifreq,1)
+       do i = 1, size(stf_sem_fwd)
+         write(10,26) t(i), stf_sem_td(i,1), stf_src_td(i,1)
+       end do
+       close(10)
+       
+       ! Contains the derivatives of STFs after FFTs
+27     format('./Filters/stf_deriv_', A, 2('_', F0.3))
+28     format(3(E16.8))
+       write(fnam,27) trim(this%filterclass), this%frequencies(1:2)
+
+       open(10, file=trim(fnam), action='write')
+       do i = 1, size(stf_sem_fwd)
+         write(10,28) t(i), stf_sem_d_td(i,1), stf_src_d_td(i,1)
        end do
        close(10)
     end if   
