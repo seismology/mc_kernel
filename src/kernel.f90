@@ -195,9 +195,11 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    allocate(this%t(ntimes_ft))
    this%t = fft_data%get_t()
 
+   !! Demean
+   !seis_td = seis_td - (sum(seis_td) / size(seis_td,1))
 
    ! FFT, timeshift and filter the seismogram
-   call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft), seis_fd)
+   call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft, ntaper=5), seis_fd)
  
    if (.not.deconv_stf) then
      ! It's slightly ineffective to init that every time, but it is only 
@@ -333,7 +335,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
       close(100)
 
       open(unit=100,file='./Seismograms/seism_'//trim(this%name), action='write')
-      do isample = 1, size(seis_disp_filtered,1)
+      do isample = 1, size(seis,1)
          write(100,*) this%t(isample), seis_disp_filtered(isample,1), seis_velo_filtered(isample,1)
       end do
       close(100)
