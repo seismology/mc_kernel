@@ -46,7 +46,7 @@ INT_OVER_BACKGROUND_MODEL false
 # traveltime perturbations for the same model. This only makes sense when the flag
 # to compute relative perturbation kernels is set to true
 INT_OVER_3D_HETEROGENEITIES false
-HET_FILE 'unit_tests/savani.rtpv'
+HET_FILE 'tests/savani.rtpv'
 
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf

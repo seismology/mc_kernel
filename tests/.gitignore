@@ -1,5 +1,7 @@
-# Ignore everything in this directory
+# Ignore test output
 OUTPUT_test
 mckernel_tests.log
+Seismograms
+Filters
 # Except this file
 !.gitignore
