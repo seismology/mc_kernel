@@ -415,7 +415,7 @@ subroutine compare_seismograms(stat_name, message)
 
   ! Compare RAW seismogram                     
   ! Load reference seismogram
-  filename = './seism_ref_raw_'//trim(stat_name)
+  filename = './reference_seismograms/seism_ref_raw_'//trim(stat_name)
   open(newunit=lu_seis, file=filename, action='read', status='old')
   read(lu_seis,*) ntimes_reference
   allocate(seis_ref_raw(ntimes_reference))
@@ -436,7 +436,7 @@ subroutine compare_seismograms(stat_name, message)
 
   ! Compare FILTERED seismograms                     
   ! Load reference seismograms
-  filename = './seism_ref_'//trim(stat_name)
+  filename = './reference_seismograms/seism_ref_'//trim(stat_name)
   open(newunit=lu_seis, file=filename, action='read', status='old')
   read(lu_seis,*) ntimes_reference
   allocate(seis_ref_disp(ntimes_reference))
