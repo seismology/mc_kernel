@@ -2,7 +2,7 @@ FWD_DIR         '../wavefield/fwd/'
 BWD_DIR         '../wavefield/bwd/'
 ALLOWED_ERROR   1e-1
 SRC_FILE     './CMTSOLUTION_load_seismogram'
-REC_FILE     './receiver_load_seismogram.dat'
+REC_FILE     './receiver_load_seismogram_R.dat'
 FILT_FILE    './filters_load_seismogram.dat'
 STF_FILE     './stf_test.dat'
 MESH_FILE_TYPE       'abaqus'

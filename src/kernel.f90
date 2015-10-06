@@ -195,9 +195,6 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    allocate(this%t(ntimes_ft))
    this%t = fft_data%get_t()
 
-   !! Demean
-   !seis_td = seis_td - (sum(seis_td) / size(seis_td,1))
-
    ! FFT, timeshift and filter the seismogram
    call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft, ntaper=5), seis_fd)
  
@@ -328,7 +325,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    ! 2nd column: displacement seismogram in meters
    ! 3rd column: velocity seismogram in meters/sec
    if ((firstslave.and.write_smgr).or.testing) then
-      open(unit=100,file='./Seismograms/seis_raw_'//trim(this%name), action='write')
+      open(unit=100,file='./Seismograms/seism_raw_'//trim(this%name), action='write')
       do isample = 1, size(seis,1)
          write(100,*) this%t(isample), seis(isample)
       end do
