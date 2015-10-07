@@ -1,0 +1,29 @@
+include make_mc_kernel.macros
+
+# Does not work for some reason
+#REVISION = $(git describe --dirty --abbrev=6 --always --tags)
+
+mc_kernel:  
+	cd src; $(MAKE) $(MFLAGS)
+
+clean:
+	cd src; rm -f *.o *.M *.mod *.d *.il core *.gcda *.gcno; cd ..
+	rm bin/mc_kernel
+
+.PHONY: check
+check: $(mc_kernel)
+	cd tests; ./runtests.sh ../bin/mc_kernel
+	@tail -n 5 tests/mckernel_tests.log
+	@echo "See tests/mckernel_tests.log for details"
+
+.PHONY: doc
+doc: 
+	#@echo $(REVISION)  
+	#@echo "PROJECT_NUMBER = "$(REVISION) >> ./src/doxygen.config
+	$(DOXYGEN_PATH) ./src/doxygen.config
+
+.PHONY: cleandoc
+cleandoc:
+	rm -rf ./doc/html
+
+all: $(mc_kernel) $(doc)

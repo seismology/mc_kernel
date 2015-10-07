@@ -5,3 +5,14 @@ fort.*
 *.old
 *.org
 *.tmp
+*.gcda
+*.gcno
+CMTSOLUTION
+Makefile
+inparam_basic
+receiver.dat
+filters.dat
+stf_20s.dat
+make_mc_kernel.macros
+wavefield
+kernel_wavefields_40s.tar.gz

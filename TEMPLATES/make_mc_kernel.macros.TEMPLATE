@@ -1,0 +1,63 @@
+#------------------------------------------------------------------------------#
+#                                                                              #
+#       Standard Makefile Macro Setup for MC Kernel                            #
+#       The variables set here will affect                                     # 
+#       compilation and submitting.                                            #
+#                                                                              #
+#------------------------------------------------------------------------------#
+
+# Set name of mpirun command on your system
+MPIRUN  = mpirun
+
+# Enable NetCDF
+NETCDF_PATH = # $(HOME)/local # e.g. $(HOME)/local, uses /usr/include if not defined
+
+# If the MPI module has been compiled with another Fortran compiler, it sometimes 
+# helps to include the MPI header file into the code instead of using the MPI
+# module. Should not affect performance, but can make debugging a bit harder
+INCLUDE_MPI = true
+
+# Set directory where the submit script places runs.
+# This can be a special directory on HPC environments
+RUNS_DIRECTORY = ./runs
+
+
+####################################
+# Choose compiler names and flags: #
+####################################
+
+# GFORTRAN (fast)
+FC      = mpif90                                  # Fortran compiler
+FFLAGS  = -O3 -g -fbacktrace -cpp -march=native   # Fortran compiler flags        
+LDFLAGS = -O3 -g -fbacktrace -cpp -march=native   # Linking flags   
+
+# GFORTRAN (debug)
+#FC      = mpif90                             # Fortran compiler
+#FFLAGS  = -g -fbacktrace -cpp -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic
+#LDFLAGS = -g -fbacktrace -cpp -Wall
+
+# PORTLAND (fast)
+#FC      = mpif90  
+#FFLAGS  = -fast 
+#LDFLAGS = -fast
+
+# PORTLAND (debug)
+#FC      = mpif90  
+#FFLAGS  = --Mbounds --traceback -g
+#LDFLAGS = --Mbounds --traceback -g
+
+# Intel Compiler suite (fast)
+#FC      = mpif90
+#FFLAGS  = -shared-intel  -heap-arrays 10 -O3  -Dinclude_mpi -fpp
+#LDFLAGS = -O3 
+
+# Intel Compiler suite (debug)
+#FC      = mpif90
+#FFLAGS  = -g -shared-intel  -mcmodel=medium -check all -traceback -heap-arrays 10 -fpp
+#LDFLAGS = -g -traceback
+
+# Cray: byteswapio needed to produce vtk files with big-endian
+#FC      = mpif90
+#FFLAGS = -h byteswapio -O3
+#LDFLAGS = -h byteswapio -O3
+
