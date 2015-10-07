@@ -512,6 +512,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
               !Receiver not in element
               
               ! List of kernels for this receiver
+              if (allocated(kernel_list)) deallocate(kernel_list)
               allocate(kernel_list(parameters%receiver(irec)%nkernel))
               kernel_list = [(ikernel, ikernel = parameters%receiver(irec)%firstkernel,     &
                                                  parameters%receiver(irec)%lastkernel) ]
