@@ -156,7 +156,7 @@ end subroutine init
 !! Is called by init subroutine
 subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_fwd)
    use filtering,                     only  : timeshift_type
-   use simple_routines,               only  : check_nan
+   use simple_routines,               only  : check_nan, cumsum_trapezoidal
    class(kernelspec_type)                  :: this
    real(kind=dp), intent(in)               :: seis(:)
    logical, intent(in)                     :: deconv_stf
@@ -165,8 +165,10 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
 
    type(rfft_type)                         :: fft_data
    type(timeshift_type)                    :: timeshift
-   real(kind=dp),    allocatable           :: seis_td(:,:)
-   complex(kind=dp), allocatable           :: seis_fd(:,:)
+   real(kind=dp),    allocatable           :: seis_disp_td(:,:)
+   real(kind=dp),    allocatable           :: seis_velo_td(:,:)
+   complex(kind=dp), allocatable           :: seis_disp_fd(:,:)
+   complex(kind=dp), allocatable           :: seis_velo_fd(:,:)
    complex(kind=dp), allocatable           :: seis_disp_filtered_fd(:,:)
    complex(kind=dp), allocatable           :: seis_velo_filtered_fd(:,:)
    real(kind=dp),    allocatable           :: seis_disp_filtered(:,:)
@@ -179,15 +181,19 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
 
    ! Allocate temporary variable
    ntimes = size(seis, 1)
-   allocate(seis_td(ntimes, 1))
-   seis_td(:,1) = seis
+   allocate(seis_disp_td(ntimes, 1))
+   allocate(seis_velo_td(ntimes, 1))
+   seis_disp_td(:,1) = cumsum_trapezoidal(seis, this%dt)
+   seis_velo_td(:,1) = seis
+
 
    ! Initialize FFT type for the seismogram 
    call fft_data%init(ntimes, 1, 1, this%dt)
    ntimes_ft = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
 
-   allocate(seis_fd(nomega, 1))
+   allocate(seis_disp_fd(nomega, 1))
+   allocate(seis_velo_fd(nomega, 1))
    allocate(seis_disp_filtered_fd(nomega, 1))
    allocate(seis_velo_filtered_fd(nomega, 1))
    allocate(seis_disp_filtered(ntimes_ft, 1))
@@ -195,19 +201,21 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    allocate(this%t(ntimes_ft))
    this%t = fft_data%get_t()
 
-   ! FFT, timeshift and filter the seismogram
-   call fft_data%rfft(taperandzeropad(seis_td, ntimes_ft, ntaper=5), seis_fd)
- 
+   ! FFT the seismograms
+   call fft_data%rfft(taperandzeropad(seis_disp_td, ntimes_ft, ntaper=0), seis_disp_fd)
+   call fft_data%rfft(taperandzeropad(seis_velo_td, ntimes_ft, ntaper=0), seis_velo_fd)
+
    if (.not.deconv_stf) then
      ! It's slightly ineffective to init that every time, but it is only 
      ! called once per receiver at initialization.
      call timeshift%init_ts(fft_data%get_f(), dtshift = timeshift_fwd)
-     call timeshift%apply(seis_fd)
+     call timeshift%apply(seis_disp_fd)
+     call timeshift%apply(seis_velo_fd)
      call timeshift%freeme()
    end if
 
-   seis_disp_filtered_fd = this%filter%apply_2d(seis_fd, kind='fwd')
-   seis_velo_filtered_fd = this%filter%apply_2d(seis_fd, kind='fwd_d')
+   seis_disp_filtered_fd = this%filter%apply_2d(seis_disp_fd, kind='fwd')
+   seis_velo_filtered_fd = this%filter%apply_2d(seis_velo_fd, kind='fwd')
 
    call fft_data%irfft(seis_disp_filtered_fd, seis_disp_filtered)
    call fft_data%irfft(seis_velo_filtered_fd, seis_velo_filtered)
@@ -224,8 +232,8 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
      close(100)
      open(unit=100, file='seis_velo_nan_fd.txt', action='write')
      f = fft_data%get_f()
-     do isample = 1, size(seis_fd,1)
-         write(100,*) f(isample), seis_fd(isample,1)
+     do isample = 1, size(seis_velo_fd,1)
+         write(100,*) f(isample), seis_velo_fd(isample,1)
      end do
      close(100)
      stop
@@ -243,8 +251,8 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
      close(100)
      open(unit=100, file='seis_disp_nan_fd.txt', action='write')
      f = fft_data%get_f()
-     do isample = 1, size(seis_fd,1)
-         write(100,*) f(isample), seis_fd(isample,1)
+     do isample = 1, size(seis_disp_fd,1)
+         write(100,*) f(isample), seis_disp_fd(isample,1)
      end do
      close(100)
      stop

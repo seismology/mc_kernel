@@ -15,7 +15,6 @@ module filtering
        character(len=32), public       :: name
        complex(kind=dp), allocatable   :: transferfunction(:)
        complex(kind=dp), allocatable   :: transferfunction_fwd(:)
-       complex(kind=dp), allocatable   :: transferfunction_fwd_deriv(:)
        complex(kind=dp), allocatable   :: transferfunction_bwd(:)
        integer                         :: nfreq                !< Number of frequencies
        real(kind=dp), allocatable      :: f(:)
@@ -75,7 +74,6 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     allocate(this%transferfunction(nfreq))
     allocate(this%transferfunction_fwd(nfreq))
     allocate(this%transferfunction_bwd(nfreq))
-    allocate(this%transferfunction_fwd_deriv(nfreq))
     allocate(this%f(nfreq))
 
     this%name              = name
@@ -173,7 +171,6 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     ! STF of fwd and bwd earthquake may be added later
     this%transferfunction_fwd       = this%transferfunction
     this%transferfunction_bwd       = this%transferfunction
-    this%transferfunction_fwd_deriv = this%transferfunction
 
     if (firstslave) then
 20     format('./Filters/filterresponse_', A, 2('_', F0.6))
@@ -214,11 +211,10 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! The FFT routines need 2D arrays. Second dimension will be size 1
     real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_src(:,:), t(:)
-    real(kind=dp)   , allocatable   :: stf_src_td(:,:), stf_src_d_td(:,:)
-    real(kind=dp)   , allocatable   :: stf_sem_td(:,:), stf_sem_d_td(:,:)
+    real(kind=dp)   , allocatable   :: stf_src_td(:,:)
+    real(kind=dp)   , allocatable   :: stf_sem_td(:,:)
     complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:)
-    complex(kind=dp), allocatable   :: lowpass(:), highpass(:)
-    complex(kind=dp), allocatable   :: stf_sem_d_fd(:,:), stf_src_d_fd(:,:), dev_fd(:)
+    complex(kind=dp), allocatable   :: lowpass(:)
 
     real(kind=dp)   , allocatable   :: stf_resampled(:)
 
@@ -244,19 +240,12 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     allocate(stf_sem(size(stf_sem_fwd), 1))
     allocate(stf_sem_fd(this%nfreq, 1))
-    allocate(stf_sem_d_fd(this%nfreq, 1))
-    allocate(stf_src_d_fd(this%nfreq, 1))
     allocate(stf_src(size(stf_sem_fwd), 1))
     allocate(stf_src_fd(this%nfreq, 1))
 
     ! Allocate variables to store FTd and iFTd STFs
     allocate(stf_src_td(fft_stf%get_ntimes(), 1))
-    allocate(stf_src_d_td(fft_stf%get_ntimes(), 1))
     allocate(stf_sem_td(fft_stf%get_ntimes(), 1))
-    allocate(stf_sem_d_td(fft_stf%get_ntimes(), 1))
-
-    ! Allocate differentiation operator
-    allocate(dev_fd(fft_stf%get_nomega()))
 
     ! Allocate time variable
     allocate(t(fft_stf%get_ntimes()))
@@ -297,11 +286,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     ! FT STF of Earthquake
     call fft_stf%rfft(taperandzeropad(stf_src,              &
                                       fft_stf%get_ntimes(), &
-                                      ntaper = 2),          &
+                                      ntaper = 2,           &
+                                      end_only=.true.),     &
                       stf_src_fd)
-
-    stf_sem_fd(1,1) = 0
-    stf_src_fd(1,1) = 0
 
     if (firstslave.or.testing) then
 18     format('./Filters/stf_spectrum_', A, 2('_', F0.3))
@@ -318,41 +305,24 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        close(10)
     end if
 
-    ! Calc array which contains the derivative operator in frequency domain
-    dev_fd = this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
-
-    ! Calculate first derivatice of the STF
-    stf_sem_d_fd(:,1) = stf_sem_fd(:,1) * dev_fd
-    stf_src_d_fd(:,1) = stf_src_fd(:,1) * dev_fd ! This is just needed for debugging
-
-
     ! Divide filter by spectrum of forward STF. It is established at initialization
     ! that forward and backward STF are identical.
-    this%transferfunction_fwd = this%transferfunction / stf_sem_d_fd(:,1)
+    this%transferfunction_fwd = this%transferfunction / stf_sem_fd(:,1)
     this%transferfunction_fwd = this%transferfunction_fwd * amplitude_fwd 
+
     this%transferfunction_bwd = this%transferfunction / stf_sem_fd(:,1)
     this%transferfunction_bwd = this%transferfunction_bwd * amplitude_fwd 
 
     ! Apply Earthquake STF, but only to forward transfer function
     this%transferfunction_fwd = this%transferfunction_fwd * stf_src_fd(:,1)
 
-    ! Add filter with derivative for velocity seismograms
-    this%transferfunction_fwd_deriv = this%transferfunction_fwd  * dev_fd
-
-
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
     allocate(lowpass(this%nfreq))
-    allocate(highpass(this%nfreq))
     lowpass = butterworth_lowpass(this%f, 1.d0/(this%f(this%nfreq)*0.75d0), 8)
     lowpass = lowpass * conjg(lowpass)
-    !print *, 1.d0/(this%f(2))*0.2d0, 1.d0/(this%f(this%nfreq)*0.75d0)
-    !highpass = butterworth_highpass(this%f, 1.d0/(this%f(2))*0.2d0, 8)
-    !highpass = highpass * conjg(highpass)
   
     this%transferfunction_fwd       = this%transferfunction_fwd       * lowpass 
     this%transferfunction_bwd       = this%transferfunction_bwd       * lowpass 
-    this%transferfunction_fwd_deriv = this%transferfunction_fwd_deriv * lowpass 
-
 
     ! Replace NaNs with zero
     where(abs(this%transferfunction_fwd).ne.abs(this%transferfunction_fwd)) 
@@ -363,14 +333,8 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
       this%transferfunction_bwd = 0
     end where
 
-    where(abs(this%transferfunction_fwd_deriv).ne.abs(this%transferfunction_fwd_deriv)) 
-      this%transferfunction_fwd_deriv = 0
-    end where
-
     call fft_stf%irfft(stf_sem_fd, stf_sem_td)
     call fft_stf%irfft(stf_src_fd, stf_src_td)
-    call fft_stf%irfft(stf_src_d_fd, stf_src_d_td)
-    call fft_stf%irfft(stf_sem_d_fd, stf_sem_d_td)
 
     call fft_stf%freeme()
 
@@ -385,12 +349,8 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
                                       imag(this%transferfunction_fwd(ifreq)), &
                                       real(this%transferfunction_bwd(ifreq)), &
                                       imag(this%transferfunction_bwd(ifreq)), &
-                                      real(this%transferfunction_fwd_deriv(ifreq)), &
-                                      imag(this%transferfunction_fwd_deriv(ifreq)), &
                                       real(lowpass(ifreq)), &
-                                      imag(lowpass(ifreq)), &
-                                      real(highpass(ifreq)), &
-                                      imag(highpass(ifreq))
+                                      imag(lowpass(ifreq))
 
        end do
        close(10)
@@ -429,16 +389,16 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        end do
        close(10)
        
-       ! Contains the derivatives of STFs after FFTs
-27     format('./Filters/stf_deriv_', A, 2('_', F0.3))
-28     format(3(E16.8))
-       write(fnam,27) trim(this%filterclass), this%frequencies(1:2)
+       !! Contains the derivatives of STFs after FFTs
+27     !format('./Filters/stf_deriv_', A, 2('_', F0.3))
+28     !format(3(E16.8))
+       !write(fnam,27) trim(this%filterclass), this%frequencies(1:2)
 
-       open(10, file=trim(fnam), action='write')
-       do i = 1, size(stf_sem_fwd)
-         write(10,28) t(i), stf_sem_d_td(i,1), stf_src_d_td(i,1)
-       end do
-       close(10)
+       !open(10, file=trim(fnam), action='write')
+       !do i = 1, size(stf_sem_fwd)
+       !  write(10,28) t(i), stf_sem_d_td(i,1), stf_src_d_td(i,1)
+       !end do
+       !close(10)
     end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
@@ -470,7 +430,6 @@ subroutine deleteme(this)
     deallocate(this%transferfunction)
     deallocate(this%transferfunction_fwd)
     deallocate(this%transferfunction_bwd)
-    deallocate(this%transferfunction_fwd_deriv)
     deallocate(this%f)
     this%initialized = .false.
 
@@ -500,8 +459,6 @@ function apply_1d(this, freq_series, kind)
    select case(kind)
    case('fwd')
      apply_1d = freq_series * this%transferfunction_fwd
-   case('fwd_d')
-     apply_1d = freq_series * this%transferfunction_fwd_deriv
    case('bwd')
      apply_1d = freq_series * this%transferfunction_bwd
    case default
@@ -535,10 +492,6 @@ function apply_2d(this, freq_series, kind)
    case('fwd')
      do itrace = 1, (size(freq_series, 2))
         apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_fwd(:)
-     end do
-   case('fwd_d')
-     do itrace = 1, (size(freq_series, 2))
-        apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_fwd_deriv(:)
      end do
    case('bwd')
      do itrace = 1, (size(freq_series, 2))
@@ -579,8 +532,6 @@ function apply_3d(this, freq_series, kind)
    select case(kind)
    case('fwd')
      apply_3d = mult3d_1d(freq_series, this%transferfunction_fwd)
-   case('fwd_d')
-     apply_3d = mult3d_1d(freq_series, this%transferfunction_fwd_deriv)
    case('bwd')
      apply_3d = mult3d_1d(freq_series, this%transferfunction_bwd)
    case default

@@ -255,7 +255,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   use backgroundmodel,             only: backgroundmodel_type, nmodel_parameters
   use heterogeneities,             only: hetero_type, nmodel_parameters_hetero         
   use clocks_mod,                  only: tick, get_clock, reset_clock
-  use simple_routines,             only: mult3d_1d
+  use simple_routines,             only: mult3d_1d, cumsum_trapezoidal
 
   type(inversion_mesh_data_type), intent(in)    :: inv_mesh
   type(parameter_type),           intent(in)    :: parameters
@@ -477,6 +477,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           iclockold = tick()
           fw_field = sem_data%load_fw_points( random_points, parameters%source, & 
                                               model = bg_model)
+          ! Integrate time series once. The SEM simulation is run with a Gaussian source term,
+          ! which means the wavefield has the form of velocities/strain rates. For the forward
+          ! field, we need the displacement response to a Heaviside source term.
+          fw_field = cumsum_trapezoidal(fw_field, sem_data%dt)
+
           iclockold = tick(id=id_fwd, since=iclockold)
 
           ! FFT of forward field
