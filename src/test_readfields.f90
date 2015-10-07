@@ -457,18 +457,26 @@ subroutine compare_seismograms(stat_name, message)
   end do
   close(lu_seis)
 
-  misfit_raw = norm2(seis_raw - seis_ref_raw) / norm2(seis_ref_raw)
-  misfit_disp = norm2(seis_disp - seis_ref_disp) / norm2(seis_ref_disp)
-  misfit_velo = norm2(seis_velo - seis_ref_velo) / norm2(seis_ref_velo)
 
-  write(message_full, '(A, " (raw):  ", E15.8)') message, misfit_raw
-  call assert_true(misfit_raw < 1d-4, message_full)
+  ! Due to tapering, the last five samples are off anyway
+  misfit_raw =  norm2(seis_raw(1:ntimes_reference-6)          &
+                      - seis_ref_raw(1:ntimes_reference-6)) / &
+                norm2(seis_ref_raw(1:ntimes_reference-6))
+  misfit_disp = norm2(seis_disp(1:ntimes_reference-6)          &
+                      - seis_ref_disp(1:ntimes_reference-6)) / & 
+                norm2(seis_ref_disp(1:ntimes_reference-6))
+  misfit_velo = norm2(seis_velo(1:ntimes_reference-6)          &
+                      - seis_ref_velo(1:ntimes_reference-6)) / &
+                norm2(seis_ref_velo(1:ntimes_reference-6))
+
   ! The limits are very high here, I know. Seems to be some inconsistency
   ! in definition of filters compared to instaseis.
+  write(message_full, '(A, " (raw):  ", E15.8)') message, misfit_raw
+  call assert_true(misfit_raw < 5.0d-1, message_full)
   write(message_full, '(A, " (disp): ",  E15.8)') message, misfit_disp
-  call assert_true(misfit_disp < 1d-0, message_full)
+  call assert_true(misfit_disp < 3.33d-1, message_full)
   write(message_full, '(A, " (velo): ",  E15.8)') message, misfit_velo
-  call assert_true(misfit_velo < 1d-0, message_full)
+  call assert_true(misfit_velo < 3.33d-1, message_full)
 
 end subroutine compare_seismograms
 !-----------------------------------------------------------------------------------------
