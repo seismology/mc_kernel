@@ -19,7 +19,7 @@ os.mkdir(seis_plot_dir)
 
 for filename in smgr_list:
     kernel = os.path.split(filename)[1][6:]
-    if kernel[0:3] == 'cut':
+    if kernel[0:3] in ('cut', 'raw'):
         continue
 
     print kernel
