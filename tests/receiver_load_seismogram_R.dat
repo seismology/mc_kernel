@@ -1,14 +1,11 @@
-4
+3
 R
 R_OBN    55.115    36.567  2
-P_BW  BW_4_40s  CC   600.000  700.000  vp
+P_BW  BW_4_50s  CC   600.000  700.000  vp
 P_ident  Ident  CC   600.000  700.000  vp
 R_XMAS     2.045  -157.446  2
-P_BW  BW_4_40s  CC   600.000  700.000  vp
-P_ident  Ident  CC   600.000  700.000  vp
-R_HRV    42.506   -71.558  2
-P_BW  BW_4_40s  CC   600.000  700.000  vp
+P_BW  BW_4_50s  CC   600.000  700.000  vp
 P_ident  Ident  CC   600.000  700.000  vp
 R_CASY   -66.279   110.535  2
-P_BW  BW_4_40s  CC   600.000  700.000  vp
+P_BW  BW_4_50s  CC   600.000  700.000  vp
 P_ident  Ident  CC   600.000  700.000  vp
