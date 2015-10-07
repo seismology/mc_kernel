@@ -10,10 +10,11 @@ clean:
 	cd src; rm -f *.o *.M *.mod *.d *.il core *.gcda *.gcno; cd ..
 	rm bin/mc_kernel
 
-.PHONY: test
-test: $(mc_kernel)
-	cd test; ./runtests.sh ../bin/mc_kernel
-	@tail -n 5 test/mckernel_tests.log
+.PHONY: check
+check: $(mc_kernel)
+	cd tests; ./runtests.sh ../bin/mc_kernel
+	@tail -n 5 tests/mckernel_tests.log
+	@echo "See tests/mckernel_tests.log for details"
 
 .PHONY: doc
 doc: 

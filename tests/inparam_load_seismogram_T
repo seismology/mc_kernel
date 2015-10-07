@@ -1,57 +1,18 @@
-# directory of the forward and backward run
-FWD_DIR              './wavefield/fwd/'
-BWD_DIR              './wavefield/bwd/'
-
-# Paths of parameter files 
-SRC_FILE          'CMTSOLUTION'
-REC_FILE          'receiver.dat'
-FILT_FILE         'filters.dat'
-STF_FILE          'stf_20s.dat'
-
-# Select the mesh file type. Allowed values are
-# abaqus      : .inp file, can be generated with Qubit or other codes. Can
-#               contain various geometries and multiple sub-objects
-#               Supported geometries: tetrahedra, triangles, quadrilaterals
-#               Set file name in MESH_FILE_ABAQUS
-# 
-# tetrahedral : tetrahedral mesh in two separate files with 
-#               1. coordinates of the vertices (MESH_FILE_VERTICES)
-#               2. the connectivity of the facets of the tetrahedrons
-#                  (MESH_FILE_FACETS)
+FWD_DIR         '../wavefield/fwd/'
+BWD_DIR         '../wavefield/bwd/'
+ALLOWED_ERROR   1e-1
+SRC_FILE     './CMTSOLUTION_load_seismogram'
+REC_FILE     './receiver_load_seismogram_T.dat'
+FILT_FILE    './filters_load_seismogram.dat'
+STF_FILE     './stf_test.dat'
 MESH_FILE_TYPE       'abaqus'
-MESH_FILE_ABAQUS     'Meshes/flat_triangles.inp'
+MESH_FILE_ABAQUS     './flat_triangles.inp'
 
-#MESH_FILE_TYPE       'tetrahedral'
-#MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
-#MESH_FILE_FACETS     'unit_tests/facets.TEST'
-
-# Calculate kernels for relative perturbations dVp with respect to the background 
-# model (true, default)
-# or for absolute values of the model parameters like Vp (false)
-KERNEL_FOR_ABSOLUTE_PERTURBATIONS false
-
-# For plotting reasons one may wish to skip the integration over cell-volume.
-# Resulting kernels bear the unit [s/m^3]
-NO_INT_OVER_VOLUME false
-
-# Integrate the kernel over the background model. Classically, this was assumed
-# to result in the travel time of a phase. This assumption is highly dubious for
-# wavefield-derived kernels. For legacy reasons, we can still leave it in. 
-# Adds a version of the background model interpolated on the inversion mesh to 
-# the output file.
-INT_OVER_BACKGROUND_MODEL false
-
-# This activates the optional (linearity test) to integrate relative kernels over
-# model perturbations in percent, to assess how well our kernels predict measured
-# traveltime perturbations for the same model. This only makes sense when the flag
-# to compute relative perturbation kernels is set to true
-INT_OVER_3D_HETEROGENEITIES false
-HET_FILE 'tests/savani.rtpv'
 
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
-OUT_PREFIX          'kerner'
+OUT_PREFIX           './test_master_queue'
 
 # Output format when dumping kernels and wavefields. 
 # Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
@@ -80,7 +41,6 @@ POINTS_PER_MC_STEP   20
 
 # Maximum number of iterations after which to cancel Monte Carlo integration 
 # in one cell, regardless of error.
-
 MAXIMUM_ITERATIONS   100
 
 # Write detailed convergence of elements (default: false)
@@ -122,8 +82,9 @@ MASK_SOURCE_RECEIVER  false
 DAMP_RADIUS_SOURCE_RECEIVER  100.d3
 
 # Deconvolve the AxiSEM Source Time Function from the wavefield.
-# If set to true, then the wavefield is just time-shifted to account 
-# for the STF not centered at zero time.
+# This is the correct way to do it, but it is not 100% stable yet. Leave it off for a while-
+# If set to false, than the wavefield is just time-shifted to account for the STF not centered 
+# at zero time.:
 NO_DECONVOLVE_STF false
 
 # Integration scheme
@@ -149,9 +110,3 @@ PLOT_WAVEFIELDS         false
 # Do you want your kernels to be given on the vertices ('onvertices') or
 # inside ('volumetric') each elements?
 INT_TYPE             'volumetric'
-
-# Create a file with intermediate results. Probably useful, if you have
-# reason to expect the job to be cancelled. 
-# Can inhibit performance significantly for large numbers of kernels and 
-# large inversion grids
-CREATE_INTERMEDIATE  true

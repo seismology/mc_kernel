@@ -145,7 +145,9 @@ subroutine test_all
   call test(test_readfields_reopen_files, 'Close and Re-Open SEM file')
   call test(test_readfields_load_fw_points, 'Read FWD points')
   call test(test_readfields_load_model_coeffs, 'Read Model coefficients from SEM mesh')
-  call test(test_load_seismograms_rdbm, 'Read seismograms')
+  call test(test_load_seismograms_rdbm_Z, 'Read seismograms (Z-component)')
+  call test(test_load_seismograms_rdbm_R, 'Read seismograms (R-component)')
+  call test(test_load_seismograms_rdbm_T, 'Read seismograms (T-component)')
   call test(test_dampen_field, 'Dampen fields around source')
   call test(test_get_chunk_bounds, 'Get_chunk_bounds')
 

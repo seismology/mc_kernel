@@ -15,7 +15,6 @@ module filtering
        character(len=32), public       :: name
        complex(kind=dp), allocatable   :: transferfunction(:)
        complex(kind=dp), allocatable   :: transferfunction_fwd(:)
-       complex(kind=dp), allocatable   :: transferfunction_fwd_deriv(:)
        complex(kind=dp), allocatable   :: transferfunction_bwd(:)
        integer                         :: nfreq                !< Number of frequencies
        real(kind=dp), allocatable      :: f(:)
@@ -75,7 +74,6 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     allocate(this%transferfunction(nfreq))
     allocate(this%transferfunction_fwd(nfreq))
     allocate(this%transferfunction_bwd(nfreq))
-    allocate(this%transferfunction_fwd_deriv(nfreq))
     allocate(this%f(nfreq))
 
     this%name              = name
@@ -173,10 +171,9 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     ! STF of fwd and bwd earthquake may be added later
     this%transferfunction_fwd       = this%transferfunction
     this%transferfunction_bwd       = this%transferfunction
-    this%transferfunction_fwd_deriv = this%transferfunction
 
     if (firstslave) then
-20     format('filterresponse_', A, 2('_', F0.6))
+20     format('./Filters/filterresponse_', A, 2('_', F0.6))
        write(fnam,20) trim(filterclass), frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
@@ -203,7 +200,7 @@ end subroutine create
 !! If we had nothing else to do.
 subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt)
     use fft,                     only: rfft_type, taperandzeropad
-    use simple_routines,         only: firstderiv
+    use simple_routines,         only: absreldiff
     use lanczos,                 only: lanczos_resample
     class(filter_type)              :: this
     real(kind=dp)   , intent(in)    :: stf_sem_fwd(:) ! STF of the AxiSEM simulation
@@ -213,15 +210,17 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     real(kind=dp)   , intent(in)    :: stf_dt         ! time step of STF
 
     ! The FFT routines need 2D arrays. Second dimension will be size 1
-    real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_sem_td(:,:), t(:)
-    complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:), lowpass(:)
-    complex(kind=dp), allocatable   :: stf_sem_d_fd(:,:), dev_fd(:)
+    real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_src(:,:), t(:)
+    real(kind=dp)   , allocatable   :: stf_src_td(:,:)
+    real(kind=dp)   , allocatable   :: stf_sem_td(:,:)
+    complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:)
+    complex(kind=dp), allocatable   :: lowpass(:)
 
-    real(kind=dp)   , allocatable   :: stf_resampled(:), stf_src(:,:), stf_src_td(:,:)
+    real(kind=dp)   , allocatable   :: stf_resampled(:)
 
     type(rfft_type)                 :: fft_stf
     character(len=64)               :: fnam
-    integer                         :: ifreq
+    integer                         :: ifreq, i
 
     if (.not.this%initialized) then
        write(*,*) 'ERROR: Filter is not initialized yet'
@@ -241,25 +240,33 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     allocate(stf_sem(size(stf_sem_fwd), 1))
     allocate(stf_sem_fd(this%nfreq, 1))
-    allocate(stf_sem_d_fd(this%nfreq, 1))
-    allocate(stf_sem_td(fft_stf%get_ntimes(), 1))
     allocate(stf_src(size(stf_sem_fwd), 1))
     allocate(stf_src_fd(this%nfreq, 1))
+
+    ! Allocate variables to store FTd and iFTd STFs
     allocate(stf_src_td(fft_stf%get_ntimes(), 1))
-    allocate(dev_fd(fft_stf%get_nomega()))
+    allocate(stf_sem_td(fft_stf%get_ntimes(), 1))
+
+    ! Allocate time variable
     allocate(t(fft_stf%get_ntimes()))
 
     stf_sem(:,1) = stf_sem_fwd 
+    t = fft_stf%get_t()
 
     ! Resample earthquake STF to sampling rate of the SEM simulation
     stf_src(:,:) = 0.0d0
-    allocate(stf_resampled(int(size(stf_source) * stf_dt / sem_dt)))
-    stf_resampled = lanczos_resample(stf_source, stf_dt, sem_dt, a=8)
-    stf_src(1:size(stf_resampled,1),1) = stf_resampled
+
+    if (absreldiff(stf_dt, sem_dt)>1d-8) then
+      allocate(stf_resampled(int(size(stf_source) * stf_dt / sem_dt)))
+      stf_resampled = lanczos_resample(stf_source, stf_dt, sem_dt, a=8)
+      stf_src(1:size(stf_resampled,1),1) = stf_resampled
+    else
+      stf_src(1:size(stf_source,1),1) = stf_source
+    end if
 
     ! Write out original Source STF
     if (firstslave) then
-16     format('stf_source_', A, 2('_', F0.3))
+16     format('./Filters/stf_source_', A, 2('_', F0.3))
 17     format(3(E16.8))
        write(fnam,16) trim(this%filterclass), this%frequencies(1:2)
 
@@ -271,13 +278,20 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     end if
 
     ! FT STF of AxiSEM
-    call fft_stf%rfft(taperandzeropad(stf_sem, fft_stf%get_ntimes(), ntaper = 5), stf_sem_fd)
+    call fft_stf%rfft(taperandzeropad(stf_sem,              &
+                                      fft_stf%get_ntimes(), &
+                                      ntaper = 2),          &
+                      stf_sem_fd)
 
     ! FT STF of Earthquake
-    call fft_stf%rfft(taperandzeropad(stf_src, fft_stf%get_ntimes(), ntaper = 5), stf_src_fd)
+    call fft_stf%rfft(taperandzeropad(stf_src,              &
+                                      fft_stf%get_ntimes(), &
+                                      ntaper = 2,           &
+                                      end_only=.true.),     &
+                      stf_src_fd)
 
-    if (firstslave) then
-18     format('stf_spectrum_', A, 2('_', F0.3))
+    if (firstslave.or.testing) then
+18     format('./Filters/stf_spectrum_', A, 2('_', F0.3))
 19     format(5(E16.8))
        write(fnam,18) trim(this%filterclass), this%frequencies(1:2)
 
@@ -291,35 +305,24 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        close(10)
     end if
 
-    ! Calc array which contains the derivative operator in frequency domain
-    dev_fd = this%f * (2.0d0 * pi * cmplx(0.0d0,1.0d0, kind=dp))
-
-    ! Calculate first derivatice of the STF
-    stf_sem_d_fd(:,1) = stf_sem_fd(:,1) * dev_fd
-
-
     ! Divide filter by spectrum of forward STF. It is established at initialization
     ! that forward and backward STF are identical.
-    this%transferfunction_fwd = this%transferfunction / stf_sem_d_fd(:,1)
+    this%transferfunction_fwd = this%transferfunction / stf_sem_fd(:,1)
     this%transferfunction_fwd = this%transferfunction_fwd * amplitude_fwd 
+
     this%transferfunction_bwd = this%transferfunction / stf_sem_fd(:,1)
     this%transferfunction_bwd = this%transferfunction_bwd * amplitude_fwd 
 
     ! Apply Earthquake STF, but only to forward transfer function
     this%transferfunction_fwd = this%transferfunction_fwd * stf_src_fd(:,1)
 
-    ! Add filter with derivative for velocity seismograms
-    this%transferfunction_fwd_deriv = this%transferfunction_fwd  * dev_fd
-
-
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
     allocate(lowpass(this%nfreq))
-    lowpass = butterworth_lowpass(this%f, this%f(this%nfreq/4), 16)
+    lowpass = butterworth_lowpass(this%f, 1.d0/(this%f(this%nfreq)*0.75d0), 8)
     lowpass = lowpass * conjg(lowpass)
   
-    this%transferfunction_fwd       = this%transferfunction_fwd       * lowpass !/ dev_fd
-    this%transferfunction_bwd       = this%transferfunction_bwd       * lowpass !/ dev_fd
-    this%transferfunction_fwd_deriv = this%transferfunction_fwd_deriv * lowpass !* dev_fd
+    this%transferfunction_fwd       = this%transferfunction_fwd       * lowpass 
+    this%transferfunction_bwd       = this%transferfunction_bwd       * lowpass 
 
     ! Replace NaNs with zero
     where(abs(this%transferfunction_fwd).ne.abs(this%transferfunction_fwd)) 
@@ -330,16 +333,13 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
       this%transferfunction_bwd = 0
     end where
 
-    where(abs(this%transferfunction_fwd_deriv).ne.abs(this%transferfunction_fwd_deriv)) 
-      this%transferfunction_fwd_deriv = 0
-    end where
-
     call fft_stf%irfft(stf_sem_fd, stf_sem_td)
+    call fft_stf%irfft(stf_src_fd, stf_src_td)
 
     call fft_stf%freeme()
 
-    if (firstslave) then
-20     format('filterresponse_stf_', A, 2('_', F0.3))
+    if (firstslave.or.testing) then
+20     format('./Filters/filterresponse_stf_', A, 2('_', F0.3))
        write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
@@ -349,12 +349,13 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
                                       imag(this%transferfunction_fwd(ifreq)), &
                                       real(this%transferfunction_bwd(ifreq)), &
                                       imag(this%transferfunction_bwd(ifreq)), &
-                                      real(this%transferfunction_fwd_deriv(ifreq)), &
-                                      imag(this%transferfunction_fwd_deriv(ifreq))
+                                      real(lowpass(ifreq)), &
+                                      imag(lowpass(ifreq))
+
        end do
        close(10)
        
-21     format('stf_spectrum_deriv_', A, 2('_', F0.3))
+21     format('./Filters/stf_spectrum_deriv_', A, 2('_', F0.3))
 22     format(5(E16.8))
        write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
 
@@ -367,29 +368,41 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        end do
        close(10)
        
-23     format('stf_', A, 2('_', F0.3))
+23     format('./Filters/stf_in_', A, 2('_', F0.3))
 24     format(3(E16.8))
        write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
-       do ifreq = 1, size(stf_sem_fwd)
-         write(10,24) t(ifreq), stf_sem_fwd(ifreq), stf_src(ifreq,1)
+       do i = 1, size(stf_sem_fwd)
+         write(10,24) t(i), stf_sem_fwd(i), stf_src(i,1)
        end do
        close(10)
-       
-25     format('stf_deriv_', A, 2('_', F0.3))
+
+       ! Contains the STFs after FFTs
+25     format('./Filters/stf_out_', A, 2('_', F0.3))
 26     format(3(E16.8))
        write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
-       do ifreq = 1, size(stf_sem_fwd)
-         write(10,26) t(ifreq), stf_sem_td(ifreq,1), stf_src_td(ifreq,1)
+       do i = 1, size(stf_sem_fwd)
+         write(10,26) t(i), stf_sem_td(i,1), stf_src_td(i,1)
        end do
        close(10)
+       
+       !! Contains the derivatives of STFs after FFTs
+27     !format('./Filters/stf_deriv_', A, 2('_', F0.3))
+28     !format(3(E16.8))
+       !write(fnam,27) trim(this%filterclass), this%frequencies(1:2)
+
+       !open(10, file=trim(fnam), action='write')
+       !do i = 1, size(stf_sem_fwd)
+       !  write(10,28) t(i), stf_sem_d_td(i,1), stf_src_d_td(i,1)
+       !end do
+       !close(10)
     end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
-       if (firstslave) then
+      if (firstslave.or.testing) then
          print *, 'ERROR: Filter ', trim(this%name), ' is not vanishing fast enough for '
          print *, 'high frequencies.'
          print *, 'Numerical noise from frequencies above mesh limit will be propagated'
@@ -417,7 +430,6 @@ subroutine deleteme(this)
     deallocate(this%transferfunction)
     deallocate(this%transferfunction_fwd)
     deallocate(this%transferfunction_bwd)
-    deallocate(this%transferfunction_fwd_deriv)
     deallocate(this%f)
     this%initialized = .false.
 
@@ -447,8 +459,6 @@ function apply_1d(this, freq_series, kind)
    select case(kind)
    case('fwd')
      apply_1d = freq_series * this%transferfunction_fwd
-   case('fwd_d')
-     apply_1d = freq_series * this%transferfunction_fwd_deriv
    case('bwd')
      apply_1d = freq_series * this%transferfunction_bwd
    case default
@@ -482,10 +492,6 @@ function apply_2d(this, freq_series, kind)
    case('fwd')
      do itrace = 1, (size(freq_series, 2))
         apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_fwd(:)
-     end do
-   case('fwd_d')
-     do itrace = 1, (size(freq_series, 2))
-        apply_2d(:,itrace) = freq_series(:,itrace) * this%transferfunction_fwd_deriv(:)
      end do
    case('bwd')
      do itrace = 1, (size(freq_series, 2))
@@ -526,8 +532,6 @@ function apply_3d(this, freq_series, kind)
    select case(kind)
    case('fwd')
      apply_3d = mult3d_1d(freq_series, this%transferfunction_fwd)
-   case('fwd_d')
-     apply_3d = mult3d_1d(freq_series, this%transferfunction_fwd_deriv)
    case('bwd')
      apply_3d = mult3d_1d(freq_series, this%transferfunction_bwd)
    case default

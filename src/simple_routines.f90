@@ -5,6 +5,7 @@ module simple_routines
    private
    public mult2d_1d, mult3d_1d, absreldiff, check_NaN, cross
    public to_lower, lowtrim, firstderiv, check_limits
+   public cumsum_trapezoidal
 
    interface mult2d_1d
       module procedure  :: mult2d_1d_dble
@@ -27,6 +28,12 @@ module simple_routines
      module procedure   :: cross_dp
      module procedure   :: cross_qp
    end interface cross
+
+   interface cumsum_trapezoidal
+     module procedure   :: cumsum_trapezoidal_1d
+     module procedure   :: cumsum_trapezoidal_2d
+     module procedure   :: cumsum_trapezoidal_3d
+   end interface cumsum_trapezoidal
 
    interface check_NaN
      module procedure   :: check_NaN_1d_sp
@@ -235,6 +242,91 @@ pure function cross_qp(a,b)
                                                 
 end function cross_qp
 !------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!> Integrate timeseries once using the trapezoidal rule. 1D version
+pure function cumsum_trapezoidal_1d(timeseries, dt) result(cumsum)
+    real(kind=dp), intent(in)   :: timeseries(:), dt
+    real(kind=dp)               :: cumsum(size(timeseries))
+    integer                     :: npoints, ipoint
+
+    npoints = size(timeseries, 1)
+
+    ! Trapezoidal rule: I = dt/2 * (f(x1) + 2f(x2) + ... + 2f(xN-1) + f(xN))
+    cumsum(1) = timeseries(1)
+    if (npoints>1) then
+      cumsum(2) = cumsum(1) + timeseries(2)
+      if (npoints>2) then
+        do ipoint = 3, npoints
+          cumsum(ipoint) = cumsum(ipoint-1) + timeseries(ipoint-1) + timeseries(ipoint) 
+          !timeseries(1) + timeseries(ipoint) + 2*sum(timeseries(2:ipoint-1), 1)
+        end do
+      end if
+    end if
+    cumsum = cumsum * dt * 0.5
+
+end function cumsum_trapezoidal_1d
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!> Integrate timeseries once using the trapezoidal rule. 2D version
+!! Integration is done along first dimension.
+!! @TODO: This is inefficient memory access and should be optimized
+pure function cumsum_trapezoidal_2d(timeseries, dt) result(cumsum)
+    real(kind=dp), intent(in)   :: timeseries(:,:), dt
+    real(kind=dp)               :: cumsum(size(timeseries, 1), &
+                                          size(timeseries, 2))
+    integer                     :: npoints, ipoint
+
+    npoints = size(timeseries, 1)
+
+    ! Trapezoidal rule: I = dt/2 * (f(x1) + 2f(x2) + ... + 2f(xN-1) + f(xN))
+    cumsum(1,:) = timeseries(1,:)
+    if (npoints>1) then
+      cumsum(2,:) = cumsum(1,:) + timeseries(2,:)
+      if (npoints>2) then
+        do ipoint = 3, npoints
+          cumsum(ipoint,:) = cumsum(ipoint-1,:) &
+                           + timeseries(ipoint-1,:) + timeseries(ipoint,:) 
+          !timeseries(1) + timeseries(ipoint) + 2*sum(timeseries(2:ipoint-1), 1)
+        end do
+      end if
+    end if
+    cumsum = cumsum * dt * 0.5
+
+end function cumsum_trapezoidal_2d
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!> Integrate timeseries once using the trapezoidal rule. 3D version
+!! Integration is done along first dimension.
+!! @TODO: This is inefficient memory access and should be optimized
+pure function cumsum_trapezoidal_3d(timeseries, dt) result(cumsum)
+    real(kind=dp), intent(in)   :: timeseries(:,:,:), dt
+    real(kind=dp)               :: cumsum(size(timeseries, 1), &
+                                          size(timeseries, 2), &
+                                          size(timeseries, 3))
+    integer                     :: npoints, ipoint
+
+    npoints = size(timeseries, 1)
+
+    ! Trapezoidal rule: I = dt/2 * (f(x1) + 2f(x2) + ... + 2f(xN-1) + f(xN))
+    cumsum(1,:,:) = timeseries(1,:,:)
+    if (npoints>1) then
+      cumsum(2,:,:) = cumsum(1,:,:) + timeseries(2,:,:)
+      if (npoints>2) then
+        do ipoint = 3, npoints
+          cumsum(ipoint,:,:) = cumsum(ipoint-1,:,:) & 
+                             + timeseries(ipoint-1,:,:) + timeseries(ipoint,:,:) 
+          !timeseries(1) + timeseries(ipoint) + 2*sum(timeseries(2:ipoint-1), 1)
+        end do
+      end if
+    end if
+    cumsum = cumsum * dt * 0.5
+
+end function cumsum_trapezoidal_3d
+!-------------------------------------------------------------------------------
+
 
 !------------------------------------------------------------------------------
 !> Checks, whether any value of 'array' is NaN and returns its location

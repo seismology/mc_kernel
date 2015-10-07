@@ -11,6 +11,7 @@ import glob
 import datetime
 import subprocess
 import math
+import psutil
 from netCDF4 import Dataset
 
 
@@ -137,8 +138,8 @@ def define_arguments():
                                      formatter_class=formatter_class)
 
     helptext = "Job directory name. \n" + \
-               "If this argument is an absolute path (starting with /),\n " + \
-               "this path will be created and used. \n " + \
+               "If this argument is an absolute path (starting with /),\n" + \
+               "this path will be created and used. \n" + \
                "If not, a run directory with this name will be created\n" + \
                "in the 'RUNS_DIRECTORY' directory set in\n" + \
                "make_mc_kernel.macros."
@@ -148,16 +149,19 @@ def define_arguments():
                "but will be overwritten by any argument to this function."
     parser.add_argument('-i', '--input_file', help=helptext)
 
-    helptext = "Number of slaves to use. If --queue==SuperMUC, it \n" + \
+    helptext = "Number of slaves to use. Default is local number \n" + \
+               "of CPUs - 1 (for the master).                     \n" + \
+               "Number of slaves to use. If --queue==SuperMUC, it \n" + \
                "will be rounded up to a multiple of 16 (thin island) \n" + \
                "or 40 (fat island)"
-    parser.add_argument('-n', '--nslaves', type=int, default=2,
+    parser.add_argument('-n', '--nslaves', type=int,
+                        default=psutil.cpu_count() - 1,
                         metavar='N',
                         help=helptext)
 
     helptext = "Description of run, which is saved in \n" + \
-               "JOB_NAME/README.run. \n If omitted, an editor window opens" + \
-               "to collect description."
+               "JOB_NAME/README.run. \n" + \
+               "If omitted, an editor window opens to collect description."
     parser.add_argument('-m', '--message', metavar='JOB_DESCRIPTION_MESSAGE',
                         help=helptext)
 
@@ -246,12 +250,12 @@ def define_arguments():
     helptext = "Path to Vertices file:\n" + \
                "(only if --mesh_file_type=tetrahedral)"
     mesh_files.add_argument('--mesh_file_vertices',
-                            default='unit_tests/vertices.TEST',
+                            default='tests/vertices.TEST',
                             help=helptext)
     helptext = "Path to Facets file:\n" + \
                "(only if --mesh_file_type=tetrahedral)"
     mesh_files.add_argument('--mesh_file_facets',
-                            default='unit_tests/facets.TEST',
+                            default='tests/facets.TEST',
                             help=helptext)
 
     ############################################################################
@@ -332,7 +336,7 @@ def define_arguments():
                                help=helptext)
 
     helptext = "Path to heterogeneity file"
-    debug_options.add_argument('--het_file', default='test/savani.rtpv',
+    debug_options.add_argument('--het_file', default='tests/savani.rtpv',
                                help=helptext)
 
     helptext = "Integrate the kernel over the background model. \n" + \
@@ -659,6 +663,9 @@ shutil.move(out_readme, os.path.join(run_dir, 'README.run'))
 
 # Create directory for seismogram output
 os.mkdir(os.path.join(run_dir, 'Seismograms'))
+
+# Create directory for filter output
+os.mkdir(os.path.join(run_dir, 'Filters'))
 
 # Create input file for run
 out_input_file = os.path.join(run_dir, 'inparam')
