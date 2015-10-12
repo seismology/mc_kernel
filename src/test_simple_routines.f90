@@ -705,6 +705,104 @@ end subroutine test_checklim_3d
 !------------------------------------------------------------------------------
 
 
+!------------------------------------------------------------------------------
+subroutine test_cumsum_trapezoidal_1d
+  real(kind=dp), allocatable :: data_in(:), data_out(:), data_ref(:)
+  real(kind=dp)              :: dt, misfit
+  integer                    :: lu_ref, lu_res, len_ref, isample
+
+  open(newunit=lu_ref, file='./cumsum_1d_ref', action='read')
+  read(lu_ref, *) len_ref, dt
+  allocate(data_in(len_ref))
+  allocate(data_ref(len_ref))
+  allocate(data_out(len_ref))
+
+  do isample = 1, len_ref
+    read(lu_ref, *) data_in(isample), data_ref(isample)
+  end do
+  close(lu_ref)
+
+  data_out = cumsum_trapezoidal(data_in, dt)
+
+  misfit = norm2(data_out -  &
+                 data_ref) / &
+           norm2(data_ref)
+  call assert_true(misfit<1d-6, 'misfit is small')
+
+  open(newunit=lu_res, file='./output/cumsum_1d_res', action='write')
+  do isample = 1, len_ref
+    write(lu_res, *) data_ref(isample), data_out(isample)
+  end do
+  close(lu_res)
+
+end subroutine test_cumsum_trapezoidal_1d
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_cumsum_trapezoidal_2d
+  real(kind=dp), allocatable :: data_in(:,:), data_out(:,:), data_ref(:,:)
+  real(kind=dp)              :: dt, misfit
+  integer                    :: lu_ref, lu_res, len_ref, isample
+
+  open(newunit=lu_ref, file='./cumsum_2d_ref', action='read')
+  read(lu_ref, *) len_ref, dt
+  allocate(data_in(len_ref, 2))
+  allocate(data_ref(len_ref, 2))
+  allocate(data_out(len_ref, 2))
+
+  do isample = 1, len_ref
+    read(lu_ref, *) data_in(isample, :), data_ref(isample, :)
+  end do
+  close(lu_ref)
+
+  data_out = cumsum_trapezoidal(data_in, dt)
+
+  misfit = norm2(data_out -  &
+                 data_ref) / &
+           norm2(data_ref)
+  call assert_true(misfit<1d-6, 'misfit is small')
+
+  open(newunit=lu_res, file='./output/cumsum_2d_res', action='write')
+  do isample = 1, len_ref
+    write(lu_res, *) data_ref(isample, :), data_out(isample, :)
+  end do
+  close(lu_res)
+
+end subroutine test_cumsum_trapezoidal_2d
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_cumsum_trapezoidal_3d
+  real(kind=dp), allocatable :: data_in(:,:,:), data_out(:,:,:), data_ref(:,:,:)
+  real(kind=dp)              :: dt, misfit
+  integer                    :: lu_ref, lu_res, len_ref, isample
+
+  open(newunit=lu_ref, file='./cumsum_3d_ref', action='read')
+  read(lu_ref, *) len_ref, dt
+  allocate(data_in(len_ref, 2, 2))
+  allocate(data_ref(len_ref, 2, 2))
+  allocate(data_out(len_ref, 2, 2))
+
+  do isample = 1, len_ref
+    read(lu_ref, *) data_in(isample, :, :), data_ref(isample, :, :)
+  end do
+  close(lu_ref)
+
+  data_out = cumsum_trapezoidal(data_in, dt)
+
+  misfit = norm2(data_out -  &
+                 data_ref) / &
+           norm2(data_ref)
+  call assert_true(misfit<1d-6, 'misfit is small')
+
+  open(newunit=lu_res, file='./output/cumsum_3d_res', action='write')
+  do isample = 1, len_ref
+    write(lu_res, *) data_ref(isample, :, :), data_out(isample, :, :)
+  end do
+  close(lu_res)
+
+end subroutine test_cumsum_trapezoidal_3d
+!------------------------------------------------------------------------------
 
 end module test_simple_routines
 !=========================================================================================

@@ -61,6 +61,9 @@ subroutine test_all
   call test(test_checklim_1d,     'Check limits 1D (float)')
   call test(test_checklim_2d,     'Check limits 2D (float)')
   call test(test_checklim_3d,     'Check limits 3D (float)')
+  call test(test_cumsum_trapezoidal_1d, 'Cumulative sum (integration), 1D')
+  call test(test_cumsum_trapezoidal_2d, 'Cumulative sum (integration), 2D')
+  call test(test_cumsum_trapezoidal_3d, 'Cumulative sum (integration), 3D')
   verbose = oldverbose
 
   ! test sem derivatives
