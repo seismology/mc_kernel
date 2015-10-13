@@ -4,11 +4,11 @@ ALLOWED_ERROR   1e-1
 
 
 SRC_FILE        './CMTSOLUTION'
-REC_FILE        './receiver.dat'
-FILT_FILE       './filters.dat'
+REC_FILE        './receiver_load_wavefield.dat'
+FILT_FILE       './filters_load_wavefield.dat'
 MESH_FILE_TYPE       'abaqus'
 MESH_FILE_ABAQUS     './flat_triangles.inp'
-STF_FILE             './stf_test.dat'
+STF_FILE             './stf_load_wavefield.dat'
 
 #MESH_FILE_TYPE       'tetrahedral'
 #MESH_FILE_VERTICES   './vertices.TEST'

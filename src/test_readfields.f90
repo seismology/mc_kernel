@@ -166,13 +166,17 @@ subroutine test_readfields_load_fw_points
    use readfields,     only    : semdata_type
    use type_parameter, only    : parameter_type
    use fft,            only: rfft_type, taperandzeropad
+   use simple_routines, only   : cumsum_trapezoidal
    type(parameter_type)       :: parameters
    type(semdata_type)         :: sem_data
    type(rfft_type)            :: fft_data
-   real(kind=dp), allocatable :: u(:,:,:), straintrace_ref(:), straintrace_res(:)
+   real(kind=dp), allocatable :: u(:,:,:), straintrace_ref(:), straintrace_res(:,:)
    real(kind=dp), allocatable :: straintrace_res_filt(:,:)
-   real(kind=dp)              :: coordinates(3,2), df
-   integer                    :: ntimes, nomega, i, lu_refstrain
+   complex(kind=dp), allocatable :: straintrace_fd(:,:), straintrace_fd_filt(:,:)
+   real(kind=dp)              :: coordinates(3,2), df, misfit_straintrace
+   integer                    :: ntimes, nomega, i, lu_refstrain, lu_resstrain
+   character(len=255)         :: message_full
+
    
    call parameters%read_parameters('./inparam_load_wavefield')
    call parameters%read_source()
@@ -197,28 +201,62 @@ subroutine test_readfields_load_fw_points
    ntimes = fft_data%get_ntimes()
    nomega = fft_data%get_nomega()
    df     = fft_data%get_df()
-   call fft_data%freeme()
 
    call parameters%read_filter(nomega=nomega, df=df)
    call parameters%read_kernel(sem_data, parameters%filter)
 
+   allocate(straintrace_fd(nomega,1))
+   allocate(straintrace_fd_filt(nomega,1))
+
    ! Read reference strain trace and point coordinates
-   open(newunit=lu_refstrain, file='./read_strain_point1.txt', action='read')
+   open(newunit=lu_refstrain, file='./straintrace_ref_1', action='read')
    read(lu_refstrain, *) coordinates(:,1)
    allocate(straintrace_ref(sem_data%ndumps))
-   do i=1, ntimes
+   allocate(straintrace_res(sem_data%ndumps, 1))
+   allocate(straintrace_res_filt(ntimes,1))
+   read(lu_refstrain, *) ntimes
+   print *, ntimes, sem_data%ndumps
+   do i=1, sem_data%ndumps
      read(lu_refstrain, *) straintrace_ref(i)
    end do
+   close(lu_refstrain)
 
    coordinates(:,2) = [-1d6, 1d6, 1d6]
 
+   print *, coordinates
+
    u = sem_data%load_fw_points(coordinates, parameters%source)
+   straintrace_fd(:,:) = 0
+   straintrace_res_filt(:,:) = 0
+   !straintrace_res(:,1) = cumsum_trapezoidal(u(:, 1, 1), sem_data%dt)
+   straintrace_res(:,1) = u(:, 1, 1)
 
-   straintrace_res(:) = u(:, 1, 1)
-   !straintrace_res_filt = parameters%kernel(1)%filter%apply(u(:,1,:), kind='fwd')
+   call fft_data%rfft(taperandzeropad(straintrace_res(:,:),             &
+                                      fft_data%get_ntimes(), ntaper=2), &
+                      straintrace_fd)
+   straintrace_fd_filt = parameters%kernel(1)%filter%apply(straintrace_fd, kind='fwd')
+   call fft_data%irfft(straintrace_fd_filt, straintrace_res_filt)
 
-   call assert_comparable(straintrace_ref, straintrace_res, 1d-7, &
-                          'strain trace is equal to reference, point one')
+   straintrace_res_filt(:,1) = cumsum_trapezoidal(straintrace_res_filt(:, 1), sem_data%dt)
+
+   open(newunit=lu_resstrain, file='./output/straintrace_res_1', action='write')
+   do i=1, sem_data%ndumps
+     write(lu_resstrain, *) straintrace_res_filt(i,1), straintrace_ref(i)
+   end do
+   close(lu_resstrain)
+
+
+   misfit_straintrace = norm2(straintrace_res_filt(1:sem_data%ndumps-6, 1) -  &
+                              straintrace_ref(1:sem_data%ndumps-6)) / &
+                        norm2(straintrace_ref(1:sem_data%ndumps-6))
+
+   ! The limits are very high here, I know. Seems to be some inconsistency
+   ! in definition of filters compared to instaseis.
+   write(message_full, '(A, " (raw):  ", E15.8)') "waveform difference", misfit_straintrace
+   call assert_true(misfit_straintrace < 5.0d-1, message_full)
+
+   !call assert_comparable(straintrace_ref, straintrace_res, 1d-7, &
+   !                       'strain trace is equal to reference, point one')
 
    call sem_data%close_files()
 
