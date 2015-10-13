@@ -128,9 +128,9 @@ subroutine runtests_final
     if ( ftnunit_file_exists("ftnunit.run") ) then
         write(6,'(/,/,a,/,a)') 'TEST SUMMARY', '------------'
         write(*,'(a,i5)') 'Number of failed assertions:                ', nofails
-        write(*,'(a,i5)') 'Number of runs needed to complete the tests:', noruns
+        write(*,'(a,i5)') 'Number of program crashes during testing:   ', noruns - 1
         call ftnunit_remove_file( "ftnunit.lst" )
-        stop
+        call exit()
     endif
 end subroutine
 !-----------------------------------------------------------------------------------------

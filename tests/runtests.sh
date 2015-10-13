@@ -5,7 +5,7 @@
 #
 #    $Id: runtests.sh,v 1.2 2008/01/26 11:15:10 arjenmarkus Exp $
 #
-#set -e 
+set -e 
 #echo "Compiling code"
 #make -s
 #
@@ -20,6 +20,7 @@
 rm -f netcdf_out_*.tmp; 
 rm -f OUTPUT_test
 rm -f mckernel_tests.log
+rm -f fail_messages.txt
 rm -rf Seismograms
 mkdir Seismograms
 rm -rf Filters
@@ -35,5 +36,18 @@ until test ! -f ftnunit.lst -a $chk -eq 0 ; do
     #valgrind --tool=memcheck $1 $2 $3 $4 $5 $6 $7 $8 $9 >>runtests.log 2>&1
     $1 $2 >>mckernel_tests.log 2>&1
 done
+set -e 
 
 rm ftnunit.run
+
+# Present some test results
+tail -n 5 mckernel_tests.log
+if grep -B 1 "assertion failed" ./mckernel_tests.log > fail_messages.txt
+then
+  echo 
+  echo "Details of failed tests:"
+  cat fail_messages.txt
+  echo 
+  echo "See tests/mckernel_tests.log for details"
+  return -1
+fi

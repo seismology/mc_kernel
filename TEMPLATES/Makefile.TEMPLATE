@@ -4,17 +4,17 @@ include make_mc_kernel.macros
 #REVISION = $(git describe --dirty --abbrev=6 --always --tags)
 
 mc_kernel:  
-	cd src; $(MAKE) $(MFLAGS)
+	@cd src; $(MAKE) $(MFLAGS)
 
 clean:
 	cd src; rm -f *.o *.M *.mod *.d *.il core *.gcda *.gcno; cd ..
-	rm bin/mc_kernel
+	rm -f bin/mc_kernel
 
 .PHONY: check
 check: $(mc_kernel)
-	cd tests; ./runtests.sh ../bin/mc_kernel
-	@tail -n 5 tests/mckernel_tests.log
-	@echo "See tests/mckernel_tests.log for details"
+	@cd tests; ./runtests.sh ../bin/mc_kernel
+	@#@echo "Failed tests:"
+	@#@grep "assertion failed" tests/mckernel_tests.log
 
 .PHONY: doc
 doc: 

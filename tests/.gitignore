@@ -3,5 +3,6 @@ OUTPUT_test
 mckernel_tests.log
 Seismograms
 Filters
+fail_messages.txt
 # Except this file
 !.gitignore
