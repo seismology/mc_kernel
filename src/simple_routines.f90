@@ -5,7 +5,7 @@ module simple_routines
    implicit none
    private
    public mult2d_1d, mult3d_1d, absreldiff, check_NaN, cross
-   public to_lower, lowtrim, firstderiv, check_limits
+   public to_lower, lowtrim, check_limits
    public cumsum_trapezoidal
 
    interface mult2d_1d
@@ -127,20 +127,6 @@ pure function lowtrim(strIn) result(strOut)
     strOut = trim(to_lower(strIn))
 
 end function lowtrim 
-!------------------------------------------------------------------------------
-
-!------------------------------------------------------------------------------
-pure function firstderiv(timeseries) 
-!< Calculates the first derivative of timeseries, using a compact stencil
-real(kind=dp), intent(in) :: timeseries(:)
-real(kind=dp)             :: firstderiv(size(timeseries,1))
-integer                   :: ntimes
-
-ntimes = size(timeseries, 1)
-firstderiv       = 0
-firstderiv(2:ntimes-1) = (timeseries(3:ntimes) - timeseries(1:ntimes-2)) / 2
-
-end function firstderiv
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------

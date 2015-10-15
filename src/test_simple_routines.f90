@@ -149,7 +149,43 @@ end subroutine test_lowtrim
 
 
 !------------------------------------------------------------------------------
-subroutine test_absreldiff
+subroutine test_absreldiff_sp
+  real(kind=sp)    :: number1, number2, diff
+  
+  ! Test 1: Compare 1 with 0.999
+  number1 = 1
+  number2 = 1 + 1d-03
+  
+  diff = absreldiff(number1, number2)
+  call assert_comparable(diff, 1e-03, 1e-03, '1: Relative difference is computed correctly')
+  
+  ! Test 2: Compare random number with itself times 0.999
+  call random_number(number1)
+  number2 = number1 - 1e-03*number1
+
+  diff = absreldiff(number1, number2)
+  call assert_comparable(diff, 1e-03, 1e-03, '2: Relative difference is computed correctly')
+  
+  ! Test 3: Compare negative random number with itself times 0.999
+  call random_number(number1)
+  number1 = - number1              
+  number2 =  number1 - 1e-03*number1
+
+  diff = absreldiff(number1, number2)
+  call assert_comparable(diff, 1e-03, 1e-03, '3: Relative difference is computed correctly')
+  
+  ! Test 3: Compare number with itself
+  call random_number(number1)
+  number2 = number1
+
+  diff = absreldiff(number1, number2)
+  call assert_comparable(diff, 0e0, 1e-20, '4: Relative difference is computed correctly')
+
+end subroutine test_absreldiff_sp
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_absreldiff_dp
   real(kind=dp)    :: number1, number2, diff
   
   ! Test 1: Compare 1 with 0.999999999999999999
@@ -181,11 +217,101 @@ subroutine test_absreldiff
   diff = absreldiff(number1, number2)
   call assert_comparable(diff, 0d0, 1d-20, '4: Relative difference is computed correctly')
 
-end subroutine test_absreldiff
+end subroutine test_absreldiff_dp
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-subroutine test_cross
+subroutine test_absreldiff_qp
+  real(kind=qp)    :: number1, number2, diff
+  
+  ! Test 1: Compare 1 with 0.999999999999999999
+  number1 = 1
+  number2 = 1 + 1d-10
+  
+  diff = absreldiff(number1, number2)
+  call assert_comparable(real(diff, kind=dp), 1d-10, 1d-06, &
+                         '1: Relative difference is computed correctly')
+  
+  ! Test 2: Compare random number with itself times 0.9999999999 
+  call random_number(number1)
+  number2 = number1 - 1d-10*number1
+
+  diff = absreldiff(number1, number2)
+  call assert_comparable(real(diff, kind=dp), 1d-10, 1d-06, &
+                         '2: Relative difference is computed correctly')
+  
+  ! Test 3: Compare negative random number with itself times 0.9999999999 
+  call random_number(number1)
+  number1 = - number1              
+  number2 =  number1 - 1d-07*number1
+
+  diff = absreldiff(number1, number2)
+  call assert_comparable(real(diff, kind=dp), 1d-07, 1d-06, &
+                         '3: Relative difference is computed correctly')
+  
+  ! Test 3: Compare number with itself
+  call random_number(number1)
+  number2 = number1
+
+  diff = absreldiff(number1, number2)
+  call assert_comparable(real(diff, kind=dp), 0d0, 1d-20, &
+                         '4: Relative difference is computed correctly')
+
+end subroutine test_absreldiff_qp
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_cross_sp
+  real(kind=sp), dimension(3) :: v1, v2, prod, prod_ref
+
+  ! Test 1: Cross product of pre-defined vectors
+  v1 = [3, -2, 9]
+  v2 = [-1, 8, 2]
+
+  prod = cross(v1, v2)
+  prod_ref =  [-76, -15, 22]
+
+  call assert_comparable(prod, prod_ref, 1e-7, 'Cross product correct')
+
+  ! Test 2: Cross product of random vector with parallel one
+  call random_number(v1)
+  v2 = 2 * v1
+
+  prod = cross(v1, v2)
+  prod_ref = [0, 0, 0]
+  call assert_comparable(prod, prod_ref, 1e-7, 'Cross product of parallel vectors is zero')
+                
+  
+  ! Test 3: Cross product of random 2D vector with orthogonal one
+  call random_number(v1)
+  v1(3) = 0
+
+  v2(1) = v1(2)
+  v2(2) = -v1(1)
+  v2(3) = 0
+
+  prod = cross(v1, v2)
+
+  call assert_comparable(norm2(prod), norm2(v1)*norm2(v2), 1e-7, &
+                         'Length of cross product of orthogonal vectors is product of their length')
+
+
+  ! Test 4: Cross product of random vectors to check whether v1xv2 is orthogonal to v1,v2
+  
+  call random_number(v1)
+  call random_number(v2)
+
+  prod = cross(v1, v2)
+
+  call assert_comparable(1+dot_product(v1, prod), 1e0, 1e-10, &
+                         'Cross product is orthogonal to vector 1')
+  call assert_comparable(1+dot_product(v2, prod), 1e0, 1e-10, &
+                         'Cross product is orthogonal to vector 2')
+end subroutine test_cross_sp
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_cross_dp
   real(kind=dp), dimension(3) :: v1, v2, prod, prod_ref
 
   ! Test 1: Cross product of pre-defined vectors
@@ -227,9 +353,61 @@ subroutine test_cross
 
   prod = cross(v1, v2)
 
-  call assert_comparable(1+dot_product(v1, prod), 1d0, 1d-10, 'Cross product is orthogonal to vector 1')
-  call assert_comparable(1+dot_product(v2, prod), 1d0, 1d-10, 'Cross product is orthogonal to vector 2')
-end subroutine test_cross
+  call assert_comparable(1+dot_product(v1, prod), 1d0, 1d-10, &
+                         'Cross product is orthogonal to vector 1')
+  call assert_comparable(1+dot_product(v2, prod), 1d0, 1d-10, &
+                         'Cross product is orthogonal to vector 2')
+end subroutine test_cross_dp
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_cross_qp
+  real(kind=qp), dimension(3) :: v1, v2
+  real(kind=dp), dimension(3) :: prod, prod_ref
+
+  ! Test 1: Cross product of pre-defined vectors
+  v1 = [3, -2, 9]
+  v2 = [-1, 8, 2]
+
+  prod = cross(v1, v2)
+  prod_ref =  [-76, -15, 22]
+
+  call assert_comparable(prod, prod_ref, 1d-7, 'Cross product correct')
+
+  ! Test 2: Cross product of random vector with parallel one
+  call random_number(v1)
+  v2 = 2 * v1
+
+  prod = cross(v1, v2)
+  prod_ref = [0, 0, 0]
+  call assert_comparable(prod, prod_ref, 1d-7, 'Cross product of parallel vectors is zero')
+                
+  
+  ! Test 3: Cross product of random 2D vector with orthogonal one
+  call random_number(v1)
+  v1(3) = 0
+
+  v2(1) = v1(2)
+  v2(2) = -v1(1)
+  v2(3) = 0
+
+  prod = cross(v1, v2)
+
+  call assert_comparable(norm2(prod), norm2(real(v1, kind=dp))*norm2(real(v2, kind=dp)), 1d-15, &
+                         'Length of cross product of orthogonal vectors is product of their length')
+
+  ! Test 4: Cross product of random vectors to check whether v1xv2 is orthogonal to v1,v2
+  
+  call random_number(v1)
+  call random_number(v2)
+
+  prod = cross(v1, v2)
+
+  call assert_comparable(real(1+dot_product(v1, prod), kind=dp), 1d0, 1d-15, &
+                         'Cross product is orthogonal to vector 1')
+  call assert_comparable(real(1+dot_product(v2, prod), kind=dp), 1d0, 1d-15, &
+                         'Cross product is orthogonal to vector 2')
+end subroutine test_cross_qp
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
@@ -703,7 +881,6 @@ subroutine test_checklim_3d
 
 end subroutine test_checklim_3d
 !------------------------------------------------------------------------------
-
 
 !------------------------------------------------------------------------------
 subroutine test_cumsum_trapezoidal_1d
