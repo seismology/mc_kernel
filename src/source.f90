@@ -27,7 +27,6 @@ module source_class
         real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
         contains
            procedure, pass                   :: init
-           procedure, pass                   :: read_cmtsolution
            procedure, pass                   :: def_rot_matrix
            procedure, pass                   :: set_shift_time_sample
            procedure, pass                   :: read_stf
@@ -89,79 +88,6 @@ end subroutine init
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-!> This routine initializes the source object
-subroutine read_cmtsolution(this, fname)
-   class(src_param_type)      :: this
-
-   character(len=*), intent(in), optional :: fname
-   integer                    :: lu_cmtsolution, ioerr
-   character(len=256)         :: cmtsolution_file, junk
-   real(kind=dp)              :: mij_dyncm(6)
-
-   if (present(fname)) then
-      cmtsolution_file = trim(fname)
-   else
-      cmtsolution_file = 'CMTSOLUTION'
-   endif
-
-   open(newunit=lu_cmtsolution, file=trim(cmtsolution_file), status='old', &
-        action='read', iostat=ioerr)
-
-   if (ioerr /= 0) then
-      print *, 'ERROR: Check input file ''', trim(cmtsolution_file), '''! Is it still there?' 
-      call pabort
-   end if
-
-   read(lu_cmtsolution,*) junk ! first crap line
-   read(lu_cmtsolution,*) junk ! event name
-   read(lu_cmtsolution,*) junk, junk, this%shift_time
-   read(lu_cmtsolution,*) junk ! half duration
-   read(lu_cmtsolution,*) junk, this%latd
-   read(lu_cmtsolution,*) junk, this%lond
-   read(lu_cmtsolution,*) junk, this%depth
-
-   this%colatd = 90 - this%latd
-
-   this%colat  = this%colatd * deg2rad
-   this%lon    = this%lond   * deg2rad
-   this%lat    = this%latd   * deg2rad
-
-   !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
-   this%radius = 6371 - this%depth
-
-   this%r(1) = cos(this%lat) * cos(this%lon) * this%radius * 1d3
-   this%r(2) = cos(this%lat) * sin(this%lon) * this%radius * 1d3
-   this%r(3) = sin(this%lat)                 * this%radius * 1d3
-
-
-   read(lu_cmtsolution,*) junk, mij_dyncm(1)
-   read(lu_cmtsolution,*) junk, mij_dyncm(2)
-   read(lu_cmtsolution,*) junk, mij_dyncm(3)
-   read(lu_cmtsolution,*) junk, mij_dyncm(4)
-   read(lu_cmtsolution,*) junk, mij_dyncm(5)
-   read(lu_cmtsolution,*) junk, mij_dyncm(6)
-
-   this%mij = mij_dyncm / 1e7 ! dyn cm -> Nm
-
-   ! CMTSOLUTION : Mrr Mtt Mpp Mrt Mrp Mtp
-   ! voigt in tpr: Mtt Mpp Mrr Mrp Mrt Mtp
-   this%mij_voigt(1) = this%mij(2)
-   this%mij_voigt(2) = this%mij(3)
-   this%mij_voigt(3) = this%mij(1)
-   this%mij_voigt(4) = this%mij(5)
-   this%mij_voigt(5) = this%mij(4)
-   this%mij_voigt(6) = this%mij(6)
-
-   call this%def_rot_matrix()
-
-   this%have_stf = .false.
-
-   close(lu_cmtsolution)
-
-end subroutine
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
 !>  This function defines the rotation matrix to rotate coordinates to the 
 !!  forward source system. Taken from AxiSEM solver.
 subroutine def_rot_matrix(this)
@@ -213,18 +139,14 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_stf(this, filename) !, dt)
+!> Read STF from input file 'filename'
+subroutine read_stf(this, filename)
    use lanczos,             only   : lanczos_resample
    class(src_param_type)          :: this
    character(len=*)               :: filename  ! file from which to read the STF
-   !real(kind=dp), intent(in)      :: dt        ! dt to which to resample the STF
-
-   !real(kind=dp), allocatable     :: time_orig(:), time_new(:)
-   !real(kind=dp)                  :: dt_orig
    integer                        :: nsamp_orig
    integer                        :: lu_stf, isamp, ioerr
 
-   ! Read STF from input file 'filename'
    open(newunit=lu_stf, file=trim(filename), status='old', &
         action='read', iostat=ioerr)
 
@@ -239,10 +161,6 @@ subroutine read_stf(this, filename) !, dt)
      read(lu_stf,*) this%stf(isamp)
    end do
    close(lu_stf)
-
-   !this%stf_dt_resampled = dt
-
-   !this%stf_resampled = lanczos_resample(this%stf, this%stf_dt, dt, a=8)
 
    this%have_stf = .true.
 
