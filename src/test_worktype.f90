@@ -4,6 +4,7 @@ module test_worktype
   use global_parameters
   use work_type_mod
   use ftnunit
+  use commpi
 # ifndef include_mpi
   use mpi
 # endif
@@ -32,6 +33,7 @@ subroutine test_init_work_type
   integer           :: ndim = 6
   real              :: dt = 1d-3
 
+  call ppinit()
 
   call init_work_type(nkernel                  = nkernel                  , &
                       nelems_per_task          = nelems_per_task          , &
@@ -89,6 +91,7 @@ subroutine test_init_work_type
 
   call free_work_type()                 
 
+  call ppend()
                     
 end subroutine test_init_work_type
 !------------------------------------------------------------------------------

@@ -10,7 +10,7 @@ module commpi
 # ifndef include_mpi
   use mpi
 # endif
-  use global_parameters, only: dp, master, myrank, nproc, firstslave
+  use global_parameters, only: dp, master, myrank, nproc, firstslave, testing
   implicit none
 
 # ifdef include_mpi
@@ -47,7 +47,9 @@ subroutine ppinit
   if (myrank == 0) then
       call set_master(.true.)
       call set_firstslave(.false.)
-      call set_lu_out(6)
+      if (.not.testing) then
+        call set_lu_out(6)
+      end if
   else
       call set_master(.false.)
       if (myrank == 1) then
@@ -55,10 +57,11 @@ subroutine ppinit
       else
         call set_firstslave(.false.)
       end if
-
-      write(fnam,"('OUTPUT_', I4.4)") myrank
-      open(newunit=lu_out_loc, file=fnam, status='replace')
-      call set_lu_out(lu_out_loc)
+      if (.not.testing) then
+        write(fnam,"('OUTPUT_', I4.4)") myrank
+        open(newunit=lu_out_loc, file=fnam, status='replace')
+        call set_lu_out(lu_out_loc)
+      end if
   end if
 
   

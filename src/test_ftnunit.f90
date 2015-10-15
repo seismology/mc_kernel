@@ -25,6 +25,7 @@ module unit_tests
   use test_type_parameter
   use test_master_queue
   use test_master_helper
+  use test_worktype
 
   implicit none
 
@@ -285,6 +286,9 @@ subroutine test_all
   call test(test_buffer_retrieval_3d, 'get 3d data back from the buffer')
   call test(test_buffer_retrieval_4d, 'get 4d data back from the buffer')
   call test(test_buffer_overwrite, 'buffer gets overwritten after time')
+
+  ! Test work type
+  call test(test_init_work_type, 'work type initialization')
 
   ! Test master queue
   ! @TODO: Test does not work, should be checked
