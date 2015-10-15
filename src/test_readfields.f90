@@ -555,7 +555,7 @@ end subroutine compare_seismograms
 !-----------------------------------------------------------------------------------------
 subroutine test_readfields_load_model_coeffs
    use type_parameter, only    : parameter_type
-   use backgroundmodel, only   : backgroundmodel_type
+   use background_model, only  : backgroundmodel_type
    use global_parameters, only : pi, sp, dp
    type(parameter_type)       :: parameters
    type(semdata_type)         :: sem_data
@@ -675,7 +675,7 @@ end subroutine test_dampen_field
 !-----------------------------------------------------------------------------------------
 !> The wicked PREM subroutine from background_models.f90 in the AxiSEM MESHER
 function prem_ani_sub(r0, idom) result(model)
-  use backgroundmodel, only     : backgroundmodel_type
+  use background_model, only  : backgroundmodel_type
   real(kind=dp), intent(in)    :: r0
   integer, intent(in)          :: idom
   type(backgroundmodel_type)   :: model

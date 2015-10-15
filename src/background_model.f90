@@ -1,5 +1,5 @@
 !=========================================================================================
-module backgroundmodel
+module background_model
   use global_parameters, only: sp, dp
 
   implicit none
@@ -234,5 +234,5 @@ function weight(this, weights) result(all_coeffs)
 end function weight
 !-----------------------------------------------------------------------------------------
 
-end module backgroundmodel
+end module background_model
 !=========================================================================================

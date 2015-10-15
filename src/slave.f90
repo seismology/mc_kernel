@@ -247,9 +247,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   use type_parameter,              only: parameter_type
   use fft,                         only: rfft_type, taperandzeropad
   use filtering,                   only: timeshift_type
-  use montecarlo,                  only: integrated_type, allallconverged, allisconverged
+  use mc_integration,              only: integrated_type, allallconverged, allisconverged
   use kernel,                      only: calc_basekernel, calc_physical_kernels
-  use backgroundmodel,             only: backgroundmodel_type, nmodel_parameters
+  use background_model,            only: backgroundmodel_type, nmodel_parameters
   use heterogeneities,             only: hetero_type, nmodel_parameters_hetero         
   use clocks_mod,                  only: tick, get_clock, reset_clock
   use simple_routines,             only: mult3d_1d, cumsum_trapezoidal
@@ -744,8 +744,8 @@ function integrate_1d_model(sem_data, inv_mesh, ielement) result(int_model)
   use global_parameters,                     only: sp, dp
   use readfields,                            only: semdata_type
   use inversion_mesh,                        only: inversion_mesh_data_type
-  use backgroundmodel,                       only: backgroundmodel_type, nmodel_parameters
-  use montecarlo,                            only: integrated_type, allallconverged, allisconverged
+  use background_model,                      only: backgroundmodel_type, nmodel_parameters
+  use mc_integration,                        only: integrated_type, allallconverged, allisconverged
 
   type(semdata_type),   intent(in)              :: sem_data
   type(inversion_mesh_data_type), intent(in)    :: inv_mesh
@@ -803,7 +803,7 @@ function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
   use global_parameters,                     only: sp, dp
   use inversion_mesh,                        only: inversion_mesh_data_type
   use heterogeneities,                       only: hetero_type, nmodel_parameters_hetero         
-  use montecarlo,                            only: integrated_type, allallconverged
+  use mc_integration,                        only: integrated_type, allallconverged
 
   type(hetero_type),    intent(in)              :: het_model
   type(inversion_mesh_data_type), intent(in)    :: inv_mesh

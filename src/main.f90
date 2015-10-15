@@ -17,7 +17,7 @@ program kerner_code
     use slave_mod,                   only: do_slave
     use master_module,               only: do_master
     use work_type_mod,               only: init_work_type
-    use backgroundmodel,             only: nmodel_parameters
+    use background_model,            only: nmodel_parameters
     use heterogeneities,             only: nmodel_parameters_hetero
 
     implicit none

@@ -155,7 +155,7 @@ function get_hetparam_index(model_parameter)
   integer           :: get_hetparam_index      
   integer           :: iparam
 
-  ! Determine the index of the model parameter in the list defined in backgroundmodel.f90
+  ! Determine the index of the model parameter in the list defined in background_model.f90
   do iparam = 1, nmodel_parameters_hetero
     if (model_parameter == parameter_name_het(iparam)) then
       get_hetparam_index = iparam

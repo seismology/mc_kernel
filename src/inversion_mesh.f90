@@ -3,7 +3,7 @@ module inversion_mesh
 
   use global_parameters, only: sp, dp, lu_out
 
-  use tetrahedra,        only: get_volume_tet,                  &
+  use polytopes,         only: get_volume_tet,                  &
                                get_volume_poly,                 &
                                get_center_tet,                  &
                                get_center_tri,                  &
@@ -429,7 +429,7 @@ end function get_model_coeff
 
 !-----------------------------------------------------------------------------------------
 function point_in_element_onepoint(this, ielem, point) 
-  use tetrahedra, only           : point_in_tetrahedron, point_in_triangle_3d
+  use polytopes,  only           : point_in_tetrahedron, point_in_triangle_3d
   use voxel,      only           : point_in_voxel
   class(inversion_mesh_type)    :: this
   integer, intent(in)           :: ielem
@@ -462,7 +462,7 @@ end function point_in_element_onepoint
 
 !-----------------------------------------------------------------------------------------
 function point_in_element_npoints(this, ielem, points)
-  use tetrahedra, only           : point_in_tetrahedron, point_in_triangle_3d
+  use polytopes,  only           : point_in_tetrahedron, point_in_triangle_3d
   use voxel,      only           : point_in_voxel
   class(inversion_mesh_type)    :: this
   integer, intent(in)           :: ielem
@@ -492,7 +492,7 @@ function weights(this, ielem, ivertex, points)
   !< Calculates the weight that a value at location "points" has on a kernel on vertex 
   !! "ivertex" of element "ielement". Quadrature rules come in here   
   !! Based on Nolet, Breviary, 12.2, p.225
-  use tetrahedra, only            : point_in_tetrahedron
+  use polytopes,  only            : point_in_tetrahedron
   class(inversion_mesh_type)     :: this
   integer, intent(in)            :: ielem, ivertex
   real(kind=dp), intent(in)      :: points(:,:)

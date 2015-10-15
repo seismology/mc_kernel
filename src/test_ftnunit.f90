@@ -4,11 +4,11 @@ module unit_tests
   use ftnunit, only: test
   use global_parameters, only: lu_out, verbose, set_master, set_master
   use test_source
-  use test_montecarlo
+  use test_mc_integration
   use test_halton_sequence
   use test_lanczos
   use test_fft_type
-  use test_tetrahedra
+  use test_polytopes 
   use test_voxel
   use test_inversion_mesh
   use test_buffer
@@ -16,7 +16,7 @@ module unit_tests
   use test_kernel
   use test_nc_routines
   use test_readfields
-  use test_background_models
+  use test_background_model
   use test_rotations
   use test_finite_elem_mapping
   use test_spectral_basis
@@ -119,9 +119,9 @@ subroutine test_all
 
   ! test_background_models
   write(6,'(/,a)') 'TEST BACKGROUND_MODELS MODULE'
-  call test(test_background_models_combine, 'Combine model parameters')
-  call test(test_background_models_weight,  'Weight model parameters')
-  call test(test_background_models_get_parameter_names, 'Get model parameter names')
+  call test(test_background_model_combine, 'Combine model parameters')
+  call test(test_background_model_weight,  'Weight model parameters')
+  call test(test_background_model_get_parameter_names, 'Get model parameter names')
 
   ! test_nc_routines
   write(6,'(/,a)') 'TEST NC_ROUTINES MODULE'
@@ -168,8 +168,8 @@ subroutine test_all
   call test(test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_1d, 'symm tensor rotation xyz earth to src - 1d')
   call test(test_rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d, 'symm tensor rotation xyz earth to src - 2d')
    
-  ! test_montecarlo
-  write(6,'(/,a)') 'TEST MONTECARLO MODULE'
+  ! test_mc_integration
+  write(6,'(/,a)') 'TEST MC_INTEGRATION MODULE'
   call test(test_mc_meanandvariance, 'MC mean and variance')
   call test(test_mc_unit_hexagon, 'MC unit hexagon')
   call test(test_mc_sphere_in_tetrahedron, 'MC sphere in tetrahedron')
@@ -215,8 +215,8 @@ subroutine test_all
   write(6,'(/,a)') 'TEST TYPE_PARAMETER MODULE'
   call test(test_parameter_reading, 'Reading in all parameters')
 
-  ! test_tetrahedra
-  write(6,'(/,a)') 'TEST TETRAHEDRON MODULE'
+  ! test_polytopes
+  write(6,'(/,a)') 'TEST POLYTOPES MODULE'
   call test(test_generate_random_point_poly_3, 'Random points in Triangle')
   call test(test_generate_random_point_poly_4, 'Random points in Quadrilateral')
   call test(test_generate_random_point_tet, 'Random points in Tetrahedra')

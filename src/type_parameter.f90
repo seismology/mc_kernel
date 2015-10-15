@@ -77,7 +77,7 @@ contains
 
 !-----------------------------------------------------------------------------------------
 subroutine read_parameters(this, input_file_in)
-   use backgroundmodel, only        : backgroundmodel_type
+   use background_model, only       : backgroundmodel_type
    class(parameter_type)           :: this
    character(len=*), intent(in), optional :: input_file_in
    character(len=256)              :: input_file

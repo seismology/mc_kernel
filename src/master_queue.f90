@@ -7,7 +7,7 @@ module master_queue
   use nc_routines,                 only: nc_create_file, nc_close_file, &
                                          nc_putvar_by_name, nc_getvar_by_name, &
                                          nc_open_for_read
-  use backgroundmodel,             only: nmodel_parameters, parameter_name
+  use background_model,            only: nmodel_parameters, parameter_name
   use heterogeneities,             only: nmodel_parameters_hetero,parameter_name_het, &
                                          parameter_name_het_store
   use master_helper,               only: create_tasks

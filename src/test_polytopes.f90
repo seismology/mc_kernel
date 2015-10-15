@@ -1,8 +1,8 @@
 !=========================================================================================
-module test_tetrahedra
+module test_polytopes
 
   use global_parameters
-  use tetrahedra
+  use polytopes
   use inversion_mesh, only: plane_exp_pro2
   use halton_sequence, only: free_halton
   use ftnunit
@@ -388,7 +388,6 @@ end subroutine test_generate_random_point_poly_4_quasi
 
 !-----------------------------------------------------------------------------------------
 subroutine test_generate_random_point_tet_quasi
-  use tetrahedra, only               : point_in_tetrahedron
 
   integer, parameter                    :: npoints = 10000
   real(kind=dp), dimension(3,npoints)   :: points

@@ -1,45 +1,46 @@
+!=========================================================================================
 module nc_routines
-    use global_parameters, only: sp, dp, lu_out, verbose, myrank
-    use commpi,            only: pabort    
-    use simple_routines,   only: check_limits
-    use netcdf
-    implicit none
+  use global_parameters, only: sp, dp, lu_out, verbose, myrank
+  use commpi,            only: pabort    
+  use simple_routines,   only: check_limits
+  use netcdf
+  implicit none
 
-    interface nc_getvar_by_name
-      module procedure  :: nc_getvar_by_name_1d
-      module procedure  :: nc_getvar_by_name_2d
-      module procedure  :: nc_getvar_by_name_3d
-      module procedure  :: nc_getvar_by_name_1d_int
-      module procedure  :: nc_getvar_by_name_2d_int
-      module procedure  :: nc_getvar_by_name_3d_int
-    end interface nc_getvar_by_name
+  interface nc_getvar_by_name
+    module procedure  :: nc_getvar_by_name_1d
+    module procedure  :: nc_getvar_by_name_2d
+    module procedure  :: nc_getvar_by_name_3d
+    module procedure  :: nc_getvar_by_name_1d_int
+    module procedure  :: nc_getvar_by_name_2d_int
+    module procedure  :: nc_getvar_by_name_3d_int
+  end interface nc_getvar_by_name
 
-    interface nc_putvar_by_name
-      module procedure  :: nc_putvar_by_name_1d
-      module procedure  :: nc_putvar_by_name_2d
-      module procedure  :: nc_putvar_by_name_3d
-      module procedure  :: nc_putvar_by_name_1d_into_nd
-      module procedure  :: nc_putvar_by_name_1d_int
-      module procedure  :: nc_putvar_by_name_2d_int
-      module procedure  :: nc_putvar_by_name_3d_int
-      module procedure  :: nc_putvar_by_name_1d_into_nd_int
-    end interface nc_putvar_by_name
+  interface nc_putvar_by_name
+    module procedure  :: nc_putvar_by_name_1d
+    module procedure  :: nc_putvar_by_name_2d
+    module procedure  :: nc_putvar_by_name_3d
+    module procedure  :: nc_putvar_by_name_1d_into_nd
+    module procedure  :: nc_putvar_by_name_1d_int
+    module procedure  :: nc_putvar_by_name_2d_int
+    module procedure  :: nc_putvar_by_name_3d_int
+    module procedure  :: nc_putvar_by_name_1d_into_nd_int
+  end interface nc_putvar_by_name
 
-    interface nc_getvar
-      module procedure  :: getvar_real1d
-      module procedure  :: getvar_real1d_dble
-      module procedure  :: getvar_int1d
-      module procedure  :: getvar_real2d
-      module procedure  :: getvar_int2d
-      module procedure  :: getvar_real3d
-      module procedure  :: getvar_int3d
-    end interface nc_getvar
+  interface nc_getvar
+    module procedure  :: getvar_real1d
+    module procedure  :: getvar_real1d_dble
+    module procedure  :: getvar_int1d
+    module procedure  :: getvar_real2d
+    module procedure  :: getvar_int2d
+    module procedure  :: getvar_real3d
+    module procedure  :: getvar_int3d
+  end interface nc_getvar
 
-    interface nc_putvar
-      module procedure  :: putvar_real1d
-      module procedure  :: putvar_real2d
-      module procedure  :: putvar_real3d
-    end interface nc_putvar
+  interface nc_putvar
+    module procedure  :: putvar_real1d
+    module procedure  :: putvar_real2d
+    module procedure  :: putvar_real3d
+  end interface nc_putvar
 
 contains
 
@@ -2768,3 +2769,4 @@ end subroutine check
 !-----------------------------------------------------------------------------------------
 
 end module nc_routines
+!=========================================================================================

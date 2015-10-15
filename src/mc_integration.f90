@@ -1,4 +1,5 @@
-module montecarlo
+!=========================================================================================
+module mc_integration
     
     use global_parameters
     use commpi, only                              : pabort
@@ -285,4 +286,6 @@ function allisconverged(int_object, ikernel)
 
 end function
 !-------------------------------------------------------------------------------
-end module
+
+end module mc_integration
+!=========================================================================================

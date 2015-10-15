@@ -1,15 +1,15 @@
 !=========================================================================================
-module test_background_models
+module test_background_model
 
   use global_parameters
-  use backgroundmodel
+  use background_model
   use ftnunit
 
   implicit none
   public
 contains
 !-----------------------------------------------------------------------------------------
-subroutine test_background_models_combine
+subroutine test_background_model_combine
   type(backgroundmodel_type) :: bm
   real(kind=sp), allocatable :: coeffs(:,:)
   real(kind=sp)              :: ref_vs (1)
@@ -121,11 +121,11 @@ subroutine test_background_models_combine
   call assert_comparable(bm%c_lam(1), ref_lam(1), 1e-7, 'Lambda correct')
   call assert_comparable(bm%c_mu(1),  ref_mu(1),  1e-7, 'Mu correct')
   
-end subroutine test_background_models_combine
+end subroutine test_background_model_combine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_background_models_weight
+subroutine test_background_model_weight
   type(backgroundmodel_type) :: bm
   real(kind=sp), allocatable :: coeffs(:,:)
   real(kind=dp), allocatable :: params(:,:)
@@ -183,11 +183,11 @@ subroutine test_background_models_weight
   call assert_comparable(params( 9,2), 3.d0*ref_phi(1), 1d-7, 'Phi correct')
   call assert_comparable(params(10,2), 3.d0*ref_xi(1),  1d-7, 'Xi correct')
 
-end subroutine test_background_models_weight
+end subroutine test_background_model_weight
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine test_background_models_get_parameter_names()
+subroutine test_background_model_get_parameter_names()
   type(backgroundmodel_type)    :: bg_model
   character(len=3)              :: parameter_names(12)
   character(len=3), parameter   :: parameter_names_ref(12) =            &
@@ -198,8 +198,8 @@ subroutine test_background_models_get_parameter_names()
 
   call assert_true(parameter_names==parameter_names_ref, 'Model parameter names are correct')
 
-end subroutine test_background_models_get_parameter_names
+end subroutine test_background_model_get_parameter_names
 !-----------------------------------------------------------------------------------------
 
-end module test_background_models
+end module test_background_model
 !=========================================================================================

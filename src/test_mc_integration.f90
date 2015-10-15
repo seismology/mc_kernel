@@ -1,9 +1,9 @@
 !=========================================================================================
-module test_montecarlo
+module test_mc_integration
 
   use global_parameters
-  use montecarlo, only: integrated_type
-  use ftnunit,    only: test, assert_comparable_real1d
+  use mc_integration, only: integrated_type
+  use ftnunit,        only: test, assert_comparable_real1d
   implicit none
   public
 
@@ -97,7 +97,7 @@ end subroutine test_mc_unit_hexagon
 
 !-----------------------------------------------------------------------------------------
 subroutine test_mc_sphere_in_tetrahedron
-    use tetrahedra, only                        : generate_random_points_tet
+    use polytopes,  only                        : generate_random_points_tet
     type(integrated_type)                      :: mc_integral 
     integer                                    :: iiter
     real(kind=dp), dimension(100,3)            :: coords

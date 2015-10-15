@@ -1140,7 +1140,7 @@ end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 function load_fw_points(this, coordinates, source_params, model)
     use finite_elem_mapping, only      : inside_element
-    use backgroundmodel, only          : backgroundmodel_type
+    use background_model, only         : backgroundmodel_type
     use simple_routines, only          : check_NaN
     use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest
 
@@ -1421,7 +1421,7 @@ end function load_fw_points
 !-----------------------------------------------------------------------------------------
 !> Loads the model coefficients for a selected coordinate 
 function load_model_coeffs(this, coordinates_xyz) result(model)
-   use backgroundmodel, only          : backgroundmodel_type
+   use background_model, only         : backgroundmodel_type
    use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest
 
    class(semdata_type)               :: this

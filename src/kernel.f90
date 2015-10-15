@@ -68,7 +68,7 @@ contains
 !-------------------------------------------------------------------------------
 subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
                 seis, dt, timeshift_fwd, deconv_stf, write_smgr)
-   use backgroundmodel, only                : get_parameter_index
+   use background_model, only               : get_parameter_index
    use heterogeneities, only                : get_hetparam_index
               
    class(kernelspec_type)                  :: this
@@ -604,7 +604,7 @@ function calc_physical_kernels_scalar(model_param, base_kernel, bg_model, &
                                       relative_kernel)  &
                                       result(physical_kernel)
 
-  use backgroundmodel, only               :  backgroundmodel_type
+  use background_model, only              :  backgroundmodel_type
   character(len=*), intent(in)           :: model_param
   real(kind=dp),    intent(in)           :: base_kernel(:,:)
   real(kind=dp), allocatable             :: temp_in(:,:,:)
@@ -636,7 +636,7 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
                                            relative_kernel)  &
                                            result(physical_kernel)
 
-  use backgroundmodel, only               :  backgroundmodel_type
+  use background_model, only              :  backgroundmodel_type
   character(len=*), intent(in)           :: model_param
   real(kind=dp),    intent(in)           :: base_kernel(:,:,:)
   type(backgroundmodel_type), intent(in) :: bg_model

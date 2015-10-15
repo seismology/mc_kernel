@@ -1771,7 +1771,7 @@ end subroutine test_point_in_element_tetrahedral_mesh
 
 !-----------------------------------------------------------------------------------------
 subroutine test_random_points_triangle_mesh
-  use tetrahedra, only        : point_in_triangle_3d
+  use polytopes, only         : point_in_triangle_3d
   use halton_sequence, only   : free_halton
   type(inversion_mesh_type)  :: inv_mesh
   integer, parameter         :: ndim = 3, nvertices = 4
@@ -2031,7 +2031,7 @@ end subroutine test_weight_large
 !-----------------------------------------------------------------------------------------
 subroutine test_integration_in_tetrahedron
   use netcdf
-  use montecarlo,                  only: integrated_type, allallconverged, allisconverged
+  use mc_integration,              only: integrated_type, allallconverged, allisconverged
   type(integrated_type)             :: int_test
   type(inversion_mesh_data_type)    :: inv_mesh
   integer, parameter                :: nptperstep = 10000
