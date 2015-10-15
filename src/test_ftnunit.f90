@@ -17,6 +17,7 @@ module unit_tests
   use test_nc_routines
   use test_readfields
   use test_background_model
+  use test_heterogeneities
   use test_rotations
   use test_finite_elem_mapping
   use test_spectral_basis
@@ -127,6 +128,10 @@ subroutine test_all
   call test(test_background_model_combine, 'Combine model parameters')
   call test(test_background_model_weight,  'Weight model parameters')
   call test(test_background_model_get_parameter_names, 'Get model parameter names')
+
+  ! test_heterogeneities
+  write(6,'(/,a)') 'TEST HETEROGENEITIES MODULE'
+  call test(test_load_het_rtpv, 'Load RTPV file')
 
   ! test_nc_routines
   write(6,'(/,a)') 'TEST NC_ROUTINES MODULE'

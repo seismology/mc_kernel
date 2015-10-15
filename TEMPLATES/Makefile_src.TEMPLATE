@@ -13,12 +13,13 @@ SRCS =	commpi.F90 background_model.f90 buffer.f90 clocks.f90 fft.f90 \
 	simple_routines.f90 slave.f90 source.f90 spectral_basis.f90 \
 	test_background_model.f90 test_buffer.f90 test_fft_type.f90 \
 	test_filter.f90 test_finite_elem_mapping.f90 test_ftnunit.f90 \
-	test_halton.f90 test_inv_mesh.f90 test_kernel.f90 test_lanczos.f90 \
-	test_master_helper.f90 test_master_queue.f90 test_mc_integration.f90 \
-	test_nc_routines.f90 test_polytopes.f90 test_readfields.f90 \
-	test_rotations.f90 test_sem_derivatives.f90 test_simple_routines.f90 \
-	test_source.f90 test_spectral_basis.f90 test_type_parameter.f90 \
-	test_voxel.f90 test_worktype.f90 type_parameter.f90 work_type.f90
+	test_halton.f90 test_heterogeneities.f90 test_inv_mesh.f90 \
+	test_kernel.f90 test_lanczos.f90 test_master_helper.f90 \
+	test_master_queue.f90 test_mc_integration.f90 test_nc_routines.f90 \
+	test_polytopes.f90 test_readfields.f90 test_rotations.f90 \
+	test_sem_derivatives.f90 test_simple_routines.f90 test_source.f90 \
+	test_spectral_basis.f90 test_type_parameter.f90 test_voxel.f90 \
+	test_worktype.f90 type_parameter.f90 work_type.f90
 
 OBJS =	commpi.o background_model.o buffer.o clocks.o fft.o filtering.o \
 	finite_elem_mapping.o ftnunit.o global_parameters.o halton_sequence.o \
@@ -29,12 +30,12 @@ OBJS =	commpi.o background_model.o buffer.o clocks.o fft.o filtering.o \
 	sem_derivatives.o simple_routines.o slave.o source.o spectral_basis.o \
 	test_background_model.o test_buffer.o test_fft_type.o test_filter.o \
 	test_finite_elem_mapping.o test_ftnunit.o test_halton.o \
-	test_inv_mesh.o test_kernel.o test_lanczos.o test_master_helper.o \
-	test_master_queue.o test_mc_integration.o test_nc_routines.o \
-	test_polytopes.o test_readfields.o test_rotations.o \
-	test_sem_derivatives.o test_simple_routines.o test_source.o \
-	test_spectral_basis.o test_type_parameter.o test_voxel.o \
-	test_worktype.o type_parameter.o work_type.o
+	test_heterogeneities.o test_inv_mesh.o test_kernel.o test_lanczos.o \
+	test_master_helper.o test_master_queue.o test_mc_integration.o \
+	test_nc_routines.o test_polytopes.o test_readfields.o \
+	test_rotations.o test_sem_derivatives.o test_simple_routines.o \
+	test_source.o test_spectral_basis.o test_type_parameter.o \
+	test_voxel.o test_worktype.o type_parameter.o work_type.o
 
 # Handle NetCDF and other library paths
 ifdef NETCDF_PATH
@@ -121,13 +122,15 @@ test_finite_elem_mapping.o: finite_elem_mapping.o ftnunit.o \
 	global_parameters.o Makefile ../make_mc_kernel.macros 
 test_ftnunit.o: ftnunit.o global_parameters.o test_background_model.o \
 	test_buffer.o test_fft_type.o test_filter.o \
-	test_finite_elem_mapping.o test_halton.o test_inv_mesh.o \
-	test_kernel.o test_lanczos.o test_master_helper.o test_master_queue.o \
-	test_mc_integration.o test_nc_routines.o test_polytopes.o \
-	test_readfields.o test_rotations.o test_sem_derivatives.o \
-	test_simple_routines.o test_source.o test_spectral_basis.o \
-	test_type_parameter.o test_voxel.o Makefile ../make_mc_kernel.macros 
+	test_finite_elem_mapping.o test_halton.o test_heterogeneities.o \
+	test_inv_mesh.o test_kernel.o test_lanczos.o test_master_helper.o \
+	test_master_queue.o test_mc_integration.o test_nc_routines.o \
+	test_polytopes.o test_readfields.o test_rotations.o \
+	test_sem_derivatives.o test_simple_routines.o test_source.o \
+	test_spectral_basis.o test_type_parameter.o test_voxel.o \
+	test_worktype.o Makefile ../make_mc_kernel.macros 
 test_halton.o: ftnunit.o global_parameters.o halton_sequence.o Makefile ../make_mc_kernel.macros 
+test_heterogeneities.o: ftnunit.o global_parameters.o heterogeneities.o Makefile ../make_mc_kernel.macros 
 test_inv_mesh.o: ftnunit.o global_parameters.o halton_sequence.o \
 	inversion_mesh.o mc_integration.o nc_routines.o polytopes.o Makefile ../make_mc_kernel.macros 
 test_kernel.o: fft.o ftnunit.o global_parameters.o kernel.o Makefile ../make_mc_kernel.macros 
@@ -150,7 +153,7 @@ test_spectral_basis.o: ftnunit.o global_parameters.o spectral_basis.o Makefile .
 test_type_parameter.o: fft.o ftnunit.o global_parameters.o readfields.o \
 	type_parameter.o Makefile ../make_mc_kernel.macros 
 test_voxel.o: ftnunit.o global_parameters.o inversion_mesh.o random_voxel.o Makefile ../make_mc_kernel.macros 
-test_worktype.o: ftnunit.o global_parameters.o work_type.o Makefile ../make_mc_kernel.macros 
+test_worktype.o: commpi.o ftnunit.o global_parameters.o work_type.o Makefile ../make_mc_kernel.macros 
 type_parameter.o: background_model.o commpi.o filtering.o global_parameters.o \
 	kernel.o readfields.o receiver.o simple_routines.o source.o Makefile ../make_mc_kernel.macros 
 work_type.o: global_parameters.o Makefile ../make_mc_kernel.macros 

@@ -1,3 +1,4 @@
+!=========================================================================================
 module heterogeneities
 
   use global_parameters
@@ -38,7 +39,7 @@ contains
 subroutine load_het_rtpv(this, het_file)
 
   use voxel, only : spherical_to_cartesian_point 
-  character(len=512), intent(in) :: het_file
+  character(len=*), intent(in)   :: het_file
   class(hetero_type)             :: this
 
   integer :: iinput_hetero
@@ -49,7 +50,12 @@ subroutine load_het_rtpv(this, het_file)
   real(kind=dp) :: car(3) ! car point in x,y,z format
 
   open(newunit=iinput_hetero, file=trim(het_file), status='old', &
-    action='read', iostat=ierr)
+       action='read', iostat=ierr)
+
+  if (ierr.ne.0) then
+    print "('Heterogeneity file ', A, ' is missing')", trim(het_file)
+    stop
+  end if
 
   read(iinput_hetero,*) this%nhet
   allocate(this%coords(3,this%nhet))
@@ -60,8 +66,8 @@ subroutine load_het_rtpv(this, het_file)
     ! r t p dlnvp dlnvs dlnrho
     read(iinput_hetero,*) r,t,p,this%dlnhet(:,i)
     sph(1) = r * 1000.d0 ! convert to [m]
-    sph(2) = (90.d0 - p) * deg2rad ! convert to colatitude and rad
-    sph(3) = t * deg2rad ! convert to rad
+    sph(2) = (90.d0 - t) * deg2rad ! convert to colatitude and rad
+    sph(3) = p * deg2rad ! convert to rad
     ! routine takes r[m],phi[rad],theta[rad]         
     call spherical_to_cartesian_point(sph,car)
     this%coords(1,i)=car(1) ! x
@@ -173,6 +179,5 @@ function get_hetparam_index(model_parameter)
 end function get_hetparam_index
 !-----------------------------------------------------------------------------------------
 
-
-
 end module heterogeneities
+!=========================================================================================
