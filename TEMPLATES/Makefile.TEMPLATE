@@ -7,11 +7,11 @@ mc_kernel:
 	@cd src; $(MAKE) $(MFLAGS)
 
 clean:
-	cd src; rm -f *.o *.M *.mod *.d *.il core *.gcda *.gcno; cd ..
+	cd src; rm -f *.o *.M *.mod *.d *.il core *.html *.gcda *.gcno; cd ..
 	rm -f bin/mc_kernel
 
 .PHONY: check
-check: $(mc_kernel)
+check: mc_kernel
 	@cd tests; ./runtests.sh ../bin/mc_kernel
 	@#@echo "Failed tests:"
 	@#@grep "assertion failed" tests/mckernel_tests.log
