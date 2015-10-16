@@ -111,11 +111,21 @@ def read_receiver_dat(rec_file):
             #       (rec_name, rec_lat, rec_lon, nkernel)
             for ikernel in range(0, nkernel):
                 str_line = f.readline()
-                # kernel_name = str_line.split()[0]
+                kernel_name = str_line.split()[0]
                 # filter_name = str_line.split()[1]
                 # misfit_name = str_line.split()[2]
-                # time_window_start = float(str_line.split()[3])
-                # time_window_stop = float(str_line.split()[4])
+                time_window_start = float(str_line.split()[3])
+                time_window_stop = float(str_line.split()[4])
+                # Check whether kernel time windows run into taper at the end of
+                # the wavefield time series.
+                if time_window_stop > dt_fwd * ndumps_fwd * 0.95:
+                    errmsg = 'Time window for kernel %s, (%7.1fs, %7.1fs) ' + \
+                             'exceeds safe length (0.95 * sim. len. = %7.1f s)'
+                    raise RuntimeError(errmsg %
+                                       (kernel_name,
+                                        time_window_start, time_window_stop,
+                                        0.95 * dt_fwd * ndumps_fwd))
+
                 model_param = str_line.split()[5]
                 if model_param in ('vs', 'rho', 'vsh', 'vsv',
                                    'eta', 'phi', 'xi', 'mu'):
@@ -509,11 +519,6 @@ for key, value in vars(args).iteritems():
 
     params[key_out] = value_out
 
-# Read receiver file and get number of receivers, kernels and whether the
-# full strain has to be read for any kernel (increases the memory footprint
-# of the buffers by factor of 6)
-nrec, nkernel, full_strain = read_receiver_dat(args.rec_file)
-
 # Check for AxiSEM wavefield files to get mesh size
 fwd_path = os.path.join(os.path.realpath(params['FWD_DIR']),
                         'MZZ', 'Data', 'ordered_output.nc4')
@@ -524,6 +529,7 @@ if os.path.exists(fwd_path):
     npoints_fwd = getattr(nc_fwd, "npoints")
     nelems_fwd = getattr(nc_fwd, "nelem_kwf_global")
     ndumps_fwd = getattr(nc_fwd, "number of strain dumps")
+    dt_fwd = getattr(nc_fwd, "strain dump sampling rate in sec")
     nc_fwd.close()
 else:
     errmsg = 'Could not find a wavefield file in the fwd_dir %s\n%s' % \
@@ -535,29 +541,17 @@ if os.path.exists(bwd_path):
     npoints_bwd = getattr(nc_bwd, "npoints")
     nelems_bwd = getattr(nc_bwd, "nelem_kwf_global")
     ndumps_bwd = getattr(nc_bwd, "number of strain dumps")
+    dt_bwd = getattr(nc_bwd, "strain dump sampling rate in sec")
     nc_bwd.close()
 else:
     errmsg = 'Could not find a wavefield file in the bwd_dir %s' % \
              params['FWD_DIR']
     raise IOError(errmsg)
 
-
-# Define buffer sizes based on available memory
-if args.available_memory:
-    params['STRAIN_BUFFER_SIZE'], params['DISPL_BUFFER_SIZE'] = \
-        auto_buffer_size(args.available_memory*2**20)
-    # print params['STRAIN_BUFFER_SIZE'], params['DISPL_BUFFER_SIZE']
-
-
-# Sanity check, whether fwd and bwd mesh have the same sizes and the same number
-# of wavefield time steps.
-if (npoints_fwd != npoints_bwd or
-   nelems_fwd != nelems_bwd or
-   ndumps_fwd != ndumps_bwd):
-    raise RuntimeError('Forward and backward run did not use' +
-                       'the same parameters')
-
-params_out = {}
+# Read receiver file and get number of receivers, kernels and whether the
+# full strain has to be read for any kernel (increases the memory footprint
+# of the buffers by factor of 6)
+nrec, nkernel, full_strain = read_receiver_dat(args.rec_file)
 
 # Get mpirun and runs_directory from make_mckernel.macros
 with open('make_mc_kernel.macros') as f:
@@ -576,7 +570,27 @@ if os.path.isabs(args.job_name):
 else:
     run_dir = os.path.join(runs_directory, args.job_name)
 
+if os.path.exists(run_dir):
+    raise RuntimeError('Run directory \n %s \n already exists' % run_dir)
+
 os.mkdir(run_dir)
+
+# Sanity check, whether fwd and bwd mesh have the same sizes and the same number
+# of wavefield time steps.
+if (npoints_fwd != npoints_bwd or
+   nelems_fwd != nelems_bwd or
+   ndumps_fwd != ndumps_bwd):
+    raise RuntimeError('Forward and backward run did not use' +
+                       'the same parameters')
+
+# Define buffer sizes based on available memory
+if args.available_memory:
+    params['STRAIN_BUFFER_SIZE'], params['DISPL_BUFFER_SIZE'] = \
+        auto_buffer_size(args.available_memory*2**20)
+
+
+params_out = {}
+
 
 # Copy necessary files to rundir
 for key, value in params.iteritems():
