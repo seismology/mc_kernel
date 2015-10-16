@@ -65,6 +65,13 @@ subroutine load_het_rtpv(this, het_file)
   do i=1,this%nhet
     ! r t p dlnvp dlnvs dlnrho
     read(iinput_hetero,*) r,t,p,this%dlnhet(:,i)
+
+    if (abs(t)>90.0d0) then
+      print "('ERROR in heterogeneity file ', A, ', l: ', I8)", trim(het_file), i
+      print "('Value for theta (col. 2) is outside limits (-90,90): F9.2')", t
+      stop
+    end if
+
     sph(1) = r * 1000.d0 ! convert to [m]
     sph(2) = (90.d0 - t) * deg2rad ! convert to colatitude and rad
     sph(3) = p * deg2rad ! convert to rad
