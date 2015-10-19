@@ -134,6 +134,12 @@ function load_model_coeffs(this, coordinates_xyz, weights) result(weighted_coeff
     call pabort()
   end if
 
+  if (size(weights,1).ne.size(coordinates_xyz,2)) then
+    print *, 'ERROR in load_model_coeffs: Number of weights is not equal number of points'
+    print *, 'size(weights,1)         : ', size(weights,1)
+    print *, 'size(coordinates_xyz,2) : ', size(coordinates_xyz,2)
+  end if
+
   ! nextpoint has to be allocatable in kdtree module
   allocate(nextpoint(nnext_points))      
   npoints = size(coordinates_xyz, 2)
@@ -151,11 +157,8 @@ function load_model_coeffs(this, coordinates_xyz, weights) result(weighted_coeff
   end do ! ipoint
 
   ! apply weights
-  weighted_coeffs(1, :) = coeffs(1, :) 
-  weighted_coeffs(2, :) = coeffs(2, :) 
-  weighted_coeffs(3, :) = coeffs(3, :)       
   do ipoint = 1, npoints
-    weighted_coeffs(:, ipoint) = weighted_coeffs(:, ipoint) * weights(ipoint)
+    weighted_coeffs(:, ipoint) = coeffs(:, ipoint) * weights(ipoint)
   end do
 
 end function load_model_coeffs
