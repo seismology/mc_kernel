@@ -1867,9 +1867,10 @@ subroutine test_weight
   use halton_sequence, only          : free_halton
   type(inversion_mesh_data_type)    :: inv_mesh
   integer, parameter                :: nrandom = 10
-  real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4)
+  real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4), point(3,1)
+  real(kind=dp)                     :: weight_point(1), vertices(3,4)
   real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
-  integer                           :: ielement, ivertex
+  integer                           :: ielement, ivertex, istep, ivertex1, ivertex2
  
 
 
@@ -1885,6 +1886,30 @@ subroutine test_weight
       weight_ref = 0
       weight_ref(ivertex) = 1
       call assert_comparable(weight, weight_ref, 1d-10, 'Weight at vertex is one')
+    end do
+  end do
+
+  ! Weight should be one at each of the vertices for the respective parameter and 
+  ! zero at the next and decrease/increase linearly in between
+  do ielement = 1, inv_mesh%get_nelements()
+    vertices = inv_mesh%get_element(ielement)
+
+    do ivertex1 = 1, 4
+      do ivertex2 = 1, 4
+        if (ivertex1==ivertex2) cycle
+        do istep = 1, 100
+
+          point(:,1) =  vertices(:,ivertex1) + & 
+                       (vertices(:,ivertex2) - vertices(:,ivertex1))*(istep*0.01d0)
+          weight_point = inv_mesh%weights(ielement, ivertex1, point)
+          call assert_comparable(weight_point(1), 1d0-(istep*0.01d0), 1d-10, &
+                                 'Weight decreases along the line between two points')
+          weight_point = inv_mesh%weights(ielement, ivertex2, point)
+          call assert_comparable(weight_point(1), (istep*0.01d0), 1d-10, &
+                                 'Weight increases along the line between two points')
+
+        end do
+      end do
     end do
   end do
 
