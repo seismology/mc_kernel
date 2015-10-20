@@ -1870,6 +1870,7 @@ subroutine test_weight
   real(kind=dp)                     :: points(3,4), weight(4), weight_ref(4), point(3,1)
   real(kind=dp)                     :: weight_point(1), vertices(3,4)
   real(kind=dp)                     :: random_points(3,nrandom), weight_random(nrandom)
+  real(kind=dp)                     :: weights_random(4,nrandom), weightsum_ref(nrandom)
   integer                           :: ielement, ivertex, istep, ivertex1, ivertex2
  
 
@@ -1913,28 +1914,38 @@ subroutine test_weight
     end do
   end do
 
-  ! Weight should be between one and zero everywhere (inside the element)
+  ! Weight should be between one and zero everywhere (inside the element), 
+  ! and weights w.r.t. vertices should sum to one. Pseudorandom version
+  weightsum_ref = 1.d0
   do ielement = 1, inv_mesh%get_nelements()
     random_points = inv_mesh%generate_random_points( ielement, nrandom, .false. )
     do ivertex = 1, 4 ! Tetrahedral mesh
       weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      weights_random(ivertex,:) = weight_random
       call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
       call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
     end do
+    call assert_comparable(sum(weights_random,1), weightsum_ref, 1d-10, &
+                           'Weights sum to one')
   end do
 
-  ! Test with quasi-random numbers
-  
+  ! Same Test with quasi-random numbers
   ! Reset Halton number generator (may have been used in earlier tests)
   call free_halton()
 
+  ! Weight should be between one and zero everywhere (inside the element),  
+  ! and weights w.r.t. vertices should sum to one. Quasirandom version
+  weightsum_ref = 1.d0
   do ielement = 1, inv_mesh%get_nelements()
     random_points = inv_mesh%generate_random_points( ielement, nrandom, .true. )
     do ivertex = 1, 4 ! Tetrahedral mesh
       weight_random = inv_mesh%weights(ielement, ivertex, random_points)
+      weights_random(ivertex,:) = weight_random
       call assert_true(all(weight_random<1.d0), 'Weight is below one everywhere')
       call assert_true(all(weight_random>0.d0), 'Weight is above zero everywhere')
     end do
+    call assert_comparable(sum(weights_random,1), weightsum_ref, 1d-10, &
+                           'Weights sum to one')
   end do
 
 end subroutine test_weight
