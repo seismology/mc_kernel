@@ -7,6 +7,8 @@ fort.*
 *.tmp
 *.gcda
 *.gcno
+*.html
+*.OLD
 CMTSOLUTION
 Makefile
 inparam_basic
