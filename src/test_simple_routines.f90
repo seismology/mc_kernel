@@ -271,7 +271,7 @@ subroutine test_cross_sp
   prod = cross(v1, v2)
   prod_ref =  [-76, -15, 22]
 
-  call assert_comparable(prod, prod_ref, 1e-7, 'Cross product correct')
+  call assert_comparable(prod, prod_ref, 1e-6, 'Cross product correct')
 
   ! Test 2: Cross product of random vector with parallel one
   call random_number(v1)
@@ -279,7 +279,7 @@ subroutine test_cross_sp
 
   prod = cross(v1, v2)
   prod_ref = [0, 0, 0]
-  call assert_comparable(prod, prod_ref, 1e-7, 'Cross product of parallel vectors is zero')
+  call assert_comparable(prod, prod_ref, 1e-6, 'Cross product of parallel vectors is zero')
                 
   
   ! Test 3: Cross product of random 2D vector with orthogonal one
@@ -292,7 +292,7 @@ subroutine test_cross_sp
 
   prod = cross(v1, v2)
 
-  call assert_comparable(norm2(prod), norm2(v1)*norm2(v2), 1e-7, &
+  call assert_comparable(norm2(prod), norm2(v1)*norm2(v2), 1e-6, &
                          'Length of cross product of orthogonal vectors is product of their length')
 
 
@@ -303,9 +303,9 @@ subroutine test_cross_sp
 
   prod = cross(v1, v2)
 
-  call assert_comparable(1+dot_product(v1, prod), 1e0, 1e-10, &
+  call assert_comparable(1+dot_product(v1, prod), 1e0, 1e-6, &
                          'Cross product is orthogonal to vector 1')
-  call assert_comparable(1+dot_product(v2, prod), 1e0, 1e-10, &
+  call assert_comparable(1+dot_product(v2, prod), 1e0, 1e-6, &
                          'Cross product is orthogonal to vector 2')
 end subroutine test_cross_sp
 !------------------------------------------------------------------------------
