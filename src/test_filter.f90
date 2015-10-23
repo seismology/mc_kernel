@@ -90,14 +90,22 @@ subroutine test_filter_gabor_response
 
    type(filter_type)             :: gabor
    type(rfft_type)               :: fft_data
-   integer, parameter            :: ntimes = 1000, npoints = 1
-   integer                       :: ntimes_ft, nomega
+   integer, parameter            :: ntimes = 1000, npoints = 1, ntests = 12
+   integer                       :: ntimes_ft, nomega, itest, i
    real(kind=dp)                 :: data_in(ntimes,1)
-   real(kind=dp), allocatable    :: data_filtered_ref(:,:), data_filtered(:,:), tf(:,:), tf_ref(:,:)
+   real(kind=dp), allocatable    :: data_filtered_ref(:,:), data_filtered(:,:), tf(:,:)
    complex(kind=dp), allocatable :: data_fd(:,:)
    real(kind=dp)                 :: df
    real(kind=dp), parameter      :: dt = 0.1d0
-   character(len=32)             :: filtername, filterclass
+   character(len=32)             :: filtername, filterclass, filename_ref
+   character(len=64)             :: assert_text
+   ! Filter settings
+   real(kind=dp)                 :: pmax(ntests), tshift(ntests), sigmaIfc(ntests)
+
+   ! Center periods, time shifts and sigmas for all reference files
+   pmax =     [2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
+   tshift =   [0.0, 2.5, 0.0, 2.5, 0.0, 2.5, 0.0, 5.0, 0.0, 5.0, 0.0, 5.0]
+   sigmaIfc = [0.3, 0.3, 0.5, 0.5, 0.7, 0.7, 0.3, 0.3, 0.5, 0.5, 0.7, 0.7]
 
    call fft_data%init(ntimes, 1, npoints, dt)
    ntimes_ft = fft_data%get_ntimes()
@@ -111,74 +119,49 @@ subroutine test_filter_gabor_response
    close(100)
 
    allocate(data_filtered(ntimes_ft,1))
-   allocate(data_filtered_ref(ntimes_ft, 2))
+   allocate(data_filtered_ref(ntimes_ft, 1))
    allocate(data_fd(nomega,1))
    allocate(tf(nomega, 3))
-   allocate(tf_ref(nomega,2))
 
-   open(100, file='./gaborresponse.txt')
-   read(100,*) data_filtered_ref
-   close(100)
+   do itest = 1, ntests
+     write(filename_ref,'("./gaborresponse_", I2.2, ".txt")') itest
+     open(100, file=trim(filename_ref))
+     read(100,*) data_filtered_ref
+     close(100)
    
-   open(100, file='./gabortransferfunction.txt')
-   read(100,*) tf_ref(1:1024,1)
-   read(100,*) tf_ref(1:1024,2)
-   close(100)
+     filterclass = 'Gabor'
+     filtername  = 'Gabor test'
+     call gabor%create(filtername, df, nomega, filterclass, &
+                       [pmax(itest), sigmaIfc(itest), tshift(itest), 0d0])
+
+     call assert_true(gabor%isinitialized(), 'filter is initialized after creation')
+
+     tf = gabor%get_transferfunction() 
+     
+     call assert_comparable_real(real(tf(2,1)-tf(1,1)), real(df), 1e-10, &
+                                 'df returned by filter equal to df')
 
 
-   ! Test filter with 5s period
-   filterclass = 'Gabor'
-   filtername  = 'Gabor test'
-   call gabor%create(filtername, df, nomega, filterclass, [5.0d0, 0.5d0, 0.d0, 0.d0])
+     call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
+     data_fd = gabor%apply_2d(data_fd, kind='def')
+     call fft_data%irfft(data_fd, data_filtered)
 
-   call assert_true(gabor%isinitialized(), 'filter is initialized after creation')
+     write(filename_ref,'("./gaboroutput_", I2.2, ".txt")') itest
+     open(100, file=trim(filename_ref), action='write')
+     do i=1, size(data_filtered_ref)
+       write(100,*), data_filtered_ref(i,1)
+     end do
+     close(100)
 
-   tf = gabor%get_transferfunction() 
-   
-  
-   call assert_comparable_real(real(tf(2,1)-tf(1,1)), real(df), 1e-10, &
-                               'df returned by filter equal to df')
+     write(assert_text, '("Gabor filter with (", 3(F8.3),")")') pmax(itest), &
+             sigmaIfc(itest), tshift(itest)
+     call assert_comparable(1e0+real(data_filtered(:,1)), &
+                            1e0+real(data_filtered_ref(:,1)), 1e-06, &
+                            assert_text)
 
-   call assert_comparable_real1d(real(tf_ref(1:1024,1)), real(tf(1:1024,2)), 1e-5, &
-                                 ' real part of transfer function is correct')
+     call gabor%deleteme()
+   end do
 
-   call assert_comparable_real(real(sum(tf(:,3))), 0.0, 1e-10, &
-                               'complex part of transfer function is zero')
-
-   call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   data_fd = gabor%apply_2d(data_fd, kind='def')
-   call fft_data%irfft(data_fd, data_filtered)
-
-   call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
-                                 real(data_filtered_ref(:,1) + 0.1d0), 1e-7, &
-                                 'Gabor filter with 5s center period')
-
-   call gabor%deleteme()
-
-   call assert_true(.not.gabor%isinitialized(), 'filter is not initialized after deletion')
-
-   ! Test filter with 2.5s period
-   filterclass = 'Gabor'
-   filtername  = 'Gabor test'
-   call gabor%create(filtername, df, nomega, filterclass, [2.5d0, 0.5d0, 0.d0, 0.d0])
-
-   tf = gabor%get_transferfunction() 
-   
-   call assert_comparable_real1d(real(tf_ref(1:1024,2)), real(tf(1:1024,2)), 1e-5, &
-                                 ' real part of transfer function is correct')
-
-   call assert_comparable_real(real(sum(tf(:,3))), 0.0, 1e-10, &
-                               'complex part of transfer function is zero')
-
-   call fft_data%rfft(taperandzeropad(data_in, ntimes_ft), data_fd)
-   data_fd = gabor%apply_2d(data_fd, kind='def')
-   call fft_data%irfft(data_fd, data_filtered)
-
-   call assert_comparable_real1d(real(data_filtered(:,1) + 0.1d0), &
-                                 real(data_filtered_ref(:,2) + 0.1d0), 1e-7, &
-                                 'Gabor filter with 5s center period')
-
-   call gabor%deleteme()
    call fft_data%freeme()
 end subroutine
 !-----------------------------------------------------------------------------------------

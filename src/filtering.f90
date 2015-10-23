@@ -91,7 +91,11 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        this%transferfunction = ident(this%f)
 
     case('Gabor')
-       this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2))
+       ! For the gabor filter, the three parameters are 
+       ! 1. center period
+       ! 2. sigma divided by the center period
+       ! 3. time shift in seconds
+       this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2), frequencies(3))
 
     case('Butterw_LP_O2')
        this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 2)
@@ -647,7 +651,7 @@ end function ident
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by K. Sigloch
+function loggabor(f, p_c, sigma, tshift)             !< Log-Gabor filter as employed by K. Sigloch
 
     real(kind=dp), intent(in)   :: f(:)  !< Frequency array
     real(kind=dp), intent(in)   :: p_c   !< Center period of the filter
@@ -658,13 +662,27 @@ function loggabor(f, p_c, sigma)             !< Log-Gabor filter as employed by 
                                          !! center frequency.  Hence larger sigmaIfc means
                                          !! narrower bandwidth sigmaIfc = .5 means the
                                          !! one-sigma interval i equals one octave
+    real(kind=dp), intent(in)   :: tshift !< Adds a time shift to the impulse response 
+                                         !! Useful to avoid wrap around on tsin that start at
+                                         !! or near zero. Choose tshift on the order of
+                                         !! p_c, where p_c is the center period.
+                                         !! Defined in seconds
 
     complex(kind=dp)            :: loggabor(size(f))
     real(kind=dp)               :: f_c
+    complex(kind=dp)            :: phase_shift(size(f))
 
     f_c = 1 / p_c
     loggabor = 0
+    
+    ! Calculate phase shift operator
+    phase_shift = exp(cmplx(0d0, -2d0*pi) * f * tshift)
+
+    ! Calculate filter itself
     where (f>0.0d0) loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )
+
+    ! Combine filter and phase shift  
+    loggabor = loggabor * phase_shift  
     ! G(f,k) = exp( -(ln(f/f_k))^2 / (2*ln(sigmaIfc)^2)  )
 
 end function loggabor
