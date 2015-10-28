@@ -19,11 +19,13 @@ module commpi
 
   private 
 
+  integer, protected    :: MPI_COMM_NODE
+
   public  :: pbroadcast_dble, pbroadcast_dble_arr
   public  :: pbroadcast_char, pbroadcast_char_arr
   public  :: pbroadcast_int, pbroadcast_int_arr
-  public  :: ppinit, pbarrier, ppend, pabort
   public  :: pbroadcast_log
+  public  :: ppinit, pbarrier, pbarrier_node, ppend, pabort, ppsplit
 
 contains
 
@@ -69,12 +71,61 @@ subroutine ppinit
       end if
   end if
 
+  print *, 'I have rank ', myrank
+
   
 end subroutine ppinit
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pbroadcast_char(input_char,input_proc)
+!> Uses MPI_Comm_split to create new communicators spanning only one node. It assumes that 
+!! the master uses one node on its own and then assigns NSLAVES_PER_NODE slaves to each
+!! node. 
+subroutine ppsplit(nslaves_per_node)
+  use global_parameters, only    : myrank, myrank_node, nproc_node, &
+                                   set_myrank_node, set_nproc_node, &
+                                   set_firstslave, set_ioworker,    &
+                                   lu_out
+
+  integer, intent(in)           :: nslaves_per_node
+  integer                       :: mynode, myrank_node_loc, nproc_node_loc, ierror
+
+  if (myrank==0) then
+    ! I am the master, I have a node on my own.
+    mynode = 0
+
+  else
+    ! I am not the master, I have to share a node
+    mynode = int((myrank-1)/nslaves_per_node) + 1
+
+  end if
+
+  ! Create new communicator MPI_COMM_NODE, which contains all slaves on this node
+  call MPI_COMM_SPLIT(MPI_COMM_WORLD, mynode, myrank, MPI_COMM_NODE, ierror)
+  call MPI_COMM_RANK(MPI_COMM_NODE, myrank_node_loc, ierror )
+  call MPI_COMM_SIZE(MPI_COMM_NODE, nproc_node_loc, ierror )
+
+  call set_myrank_node(myrank_node_loc)
+  call set_nproc_node(nproc_node_loc)
+
+  print *, 'I am rank ', myrank, ' on node ', mynode, ', myrank_node: ', myrank_node, ', nproc_node', nproc_node
+  call pbarrier()
+
+  if (myrank>0.and.myrank_node==0) then
+    write(lu_out,*) ' RANK: ', myrank, ' is a IO-worker for this run'
+    call set_ioworker(.true.)
+  elseif (myrank_node==1) then
+    call set_firstslave(.true.)
+    call set_ioworker(.false.)
+  else
+    call set_ioworker(.false.)
+  end if
+
+end subroutine ppsplit
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine pbroadcast_char(input_char, input_proc)
 
   integer, intent(in)          :: input_proc
   character(*), intent(inout)  :: input_char
@@ -220,7 +271,7 @@ end subroutine pbroadcast_dble_arr
 
 !-----------------------------------------------------------------------------------------
 subroutine pbarrier
-  integer :: ierror
+  integer                      :: ierror
   logical                      :: isinitialized
 
   call MPI_Initialized(isinitialized, ierror)
@@ -230,6 +281,20 @@ subroutine pbarrier
   end if
 
 end subroutine pbarrier
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine pbarrier_node
+  integer                      :: ierror
+  logical                      :: isinitialized
+
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (isinitialized) then
+     CALL MPI_BARRIER(MPI_COMM_NODE, ierror)
+  end if
+
+end subroutine pbarrier_node
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

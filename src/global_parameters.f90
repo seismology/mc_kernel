@@ -18,12 +18,13 @@ module global_parameters
   integer, parameter         :: WORKTAG = 1
   integer, parameter         :: DIETAG  = 2
   
-  logical, protected         :: master, firstslave
+  logical, protected         :: master, firstslave, ioworker=.false.
+  logical, protected         :: dist_io = .false.
   logical                    :: testing = .false. !< Set to true only for unit test, 
                                                   !! because some routines require action
                                                   !! from master or slave, which would not 
                                                   !! be tested otherwise
-  integer, protected         :: myrank, nproc
+  integer, protected         :: myrank, nproc, myrank_node, nproc_node
   integer, protected         :: lu_out !< Logical unit for output. 
                                        !! 6 (Screen) for master
                                        !! File 'OUTPUT_#rank' for slaves
@@ -84,11 +85,26 @@ end subroutine
 !----------------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------------
+subroutine set_myrank_node(myrank_value)
+  integer, intent(in)   :: myrank_value
+
+  myrank_node = myrank_value
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_nproc_node(nproc_value)
+  integer, intent(in)   :: nproc_value
+
+  nproc_node = nproc_value
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
 subroutine set_nproc(nproc_value)
   integer, intent(in)   :: nproc_value
 
   nproc = nproc_value
-
 end subroutine
 !----------------------------------------------------------------------------------------
 
@@ -97,6 +113,24 @@ subroutine set_lu_out(lu_out_value)
   integer, intent(in)   :: lu_out_value
 
   lu_out = lu_out_value
+
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_ioworker(ioworker_value)
+  logical, intent(in)   :: ioworker_value
+
+  ioworker = ioworker_value
+
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_dist_io(dist_io_value)
+  logical, intent(in)   :: dist_io_value
+
+  dist_io = dist_io_value
 
 end subroutine
 !----------------------------------------------------------------------------------------
