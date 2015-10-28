@@ -33,7 +33,7 @@ subroutine ppinit
 !! nproc and each processor with its local number mynum=0,...,nproc-1.
 
   use global_parameters, only  : set_lu_out, set_myrank, set_nproc, & 
-                                 set_master, set_firstslave
+                                 set_master, set_firstslave, testing
   integer                     :: ierror, lu_out_loc, myrank_loc, nproc_loc
   character(len=11)           :: fnam
   
@@ -43,6 +43,11 @@ subroutine ppinit
 
   call set_myrank(myrank_loc)
   call set_nproc(nproc_loc)
+
+  if ((nproc_loc < 2).and. (.not. testing)) then
+    print "('ERROR: Number of CPUs has to be larger one, is:', I5)", nproc_loc
+    stop
+  end if
 
   if (myrank == 0) then
       call set_master(.true.)
