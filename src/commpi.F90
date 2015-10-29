@@ -26,6 +26,7 @@ module commpi
   public  :: pbroadcast_int, pbroadcast_int_arr
   public  :: pbroadcast_log
   public  :: ppinit, pbarrier, pbarrier_node, ppend, pabort, ppsplit
+  public  :: MPI_COMM_NODE
 
 contains
 
@@ -114,9 +115,7 @@ subroutine ppsplit(nslaves_per_node)
   if (myrank>0.and.myrank_node==0) then
     write(lu_out,*) ' RANK: ', myrank, ' is a IO-worker for this run'
     call set_ioworker(.true.)
-  elseif (myrank_node==1) then
     call set_firstslave(.true.)
-    call set_ioworker(.false.)
   else
     call set_ioworker(.false.)
   end if
