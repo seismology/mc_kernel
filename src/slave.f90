@@ -31,7 +31,7 @@ module slave_mod
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine do_slave() 
+subroutine do_slave(mpi_communicator) 
   use global_parameters,           only: DIETAG, id_mpi, id_read_params, id_init_fft, id_int_hetero
   use inversion_mesh,              only: inversion_mesh_data_type
   use readfields,                  only: semdata_type
@@ -41,6 +41,9 @@ subroutine do_slave()
   use clocks_mod,                  only: tick
 
   implicit none
+  integer                             :: mpi_communicator  ! The MPI communicator that engulfs
+                                                           ! the master and all the slaves
+
   type(parameter_type)                :: parameters
   type(inversion_mesh_data_type)      :: inv_mesh
   type(semdata_type)                  :: sem_data
@@ -155,7 +158,7 @@ subroutine do_slave()
 
     ! Receive a message from the master
     iclockold = tick()
-    call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
+    call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, mpi_communicator, mpistatus, ierror)
 
     ! Check the tag of the received message. If no more work to do, exit loop
     ! and return to main program
@@ -190,7 +193,7 @@ subroutine do_slave()
 
     ! Send the result back
     iclockold = tick()
-    call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
+    call MPI_Send(wt, 1, wt%mpitype, 0, 0, mpi_communicator, ierror)
     iclockold = tick(id=id_mpi, since=iclockold)
 
   end do receive_tasks

@@ -4,9 +4,11 @@ program kerner_code
     use mpi
 #endif
     use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier,&
-                                           pbroadcast_log, ppsplit
+                                           pbroadcast_log, ppsplit, MPI_COMM_MASTER_SLAVES
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           master, ioworker, lu_out, myrank, set_dist_io
+                                           master, ioworker, lu_out, myrank, set_dist_io, &
+                                           dist_io
+
     use simple_routines,             only: lowtrim
 
     use inversion_mesh,              only: inversion_mesh_data_type
@@ -148,11 +150,23 @@ program kerner_code
     write(lu_out,*) ' Master and slave part ways'
     write(lu_out,*) '***************************************************************'
     if (master) then
-       call do_master()
+      if (dist_io) then
+        ! If some slaves are in fact IO workers, the MPI communicator should not 
+        ! engulf them
+        call do_master(MPI_COMM_MASTER_SLAVES)
+      else
+        call do_master(MPI_COMM_WORLD)
+      end if
     elseif (ioworker) then
        call do_ioworker()
     else
-       call do_slave()
+      if (dist_io) then
+        ! If some slaves are in fact IO workers, the MPI communicator should not 
+        ! engulf them
+        call do_slave(MPI_COMM_MASTER_SLAVES)
+      else
+        call do_slave(MPI_COMM_WORLD)
+      end if
     endif
 
     call end_clock()   

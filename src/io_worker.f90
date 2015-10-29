@@ -121,6 +121,9 @@ subroutine do_ioworker()
 
   iclockold = tick(id=id_read_params, since=iclockold)
 
+  write(lu_out, *) "Starting my job as an IO worker"
+  flush(lu_out)
+
   call loop_ioworker(sem_data)
 
 end subroutine do_ioworker
@@ -142,11 +145,15 @@ subroutine loop_ioworker(fields)
   
   type(semdata_type), intent(in)    :: fields
   integer                           :: mpistatus(MPI_STATUS_SIZE)
-  integer                           :: pointid, rank_sender, field_tag, ierror
+  integer                           :: pointid, rank_sender, field_tag, ierror, myrank_loc
   real(kind=sp)                     :: u(fields%ndumps, 3)
   logical                           :: alldone(nproc_node) 
   
   alldone(:) = .false.
+
+  call MPI_COMM_RANK( MPI_COMM_NODE, myrank_loc, ierror )
+  write(lu_out,*) 'Expecting requests on rank ', myrank_loc, ' on node: ', MPI_COMM_NODE
+  flush(lu_out)
 
   receive_io_requests: do 
 
@@ -155,14 +162,15 @@ subroutine loop_ioworker(fields)
                   1,                & ! one data item
                   MPI_INTEGER,      & ! data item is an integer
                   MPI_ANY_SOURCE,   & ! receive from any sender
-                  field_tag,        & ! any type of message
+                  MPI_ANY_TAG,      & ! any type of message
                   MPI_COMM_NODE,    & ! communicator for this node
                   mpistatus,        & ! info about the received message
                   ierror)
 
     rank_sender = mpistatus(MPI_SOURCE)
+    field_tag = mpistatus(MPI_TAG)
 
-    print *, 'Rank ', rank_sender, ' requested point', pointid
+    write(lu_out,*) 'Rank ', rank_sender, ' requested point', pointid
 
     select case(field_tag)
     case(1,2,3,4)

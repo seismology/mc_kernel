@@ -25,6 +25,7 @@ module global_parameters
                                                   !! from master or slave, which would not 
                                                   !! be tested otherwise
   integer, protected         :: myrank, nproc, myrank_node, nproc_node
+  integer, protected         :: myrank_master_slaves, nproc_master_slaves
   integer, protected         :: lu_out !< Logical unit for output. 
                                        !! 6 (Screen) for master
                                        !! File 'OUTPUT_#rank' for slaves
@@ -93,10 +94,10 @@ end subroutine
 !----------------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------------
-subroutine set_nproc_node(nproc_value)
-  integer, intent(in)   :: nproc_value
+subroutine set_myrank_master_slaves(myrank_value)
+  integer, intent(in)   :: myrank_value
 
-  nproc_node = nproc_value
+  myrank_master_slaves = myrank_value
 end subroutine
 !----------------------------------------------------------------------------------------
 
@@ -105,6 +106,22 @@ subroutine set_nproc(nproc_value)
   integer, intent(in)   :: nproc_value
 
   nproc = nproc_value
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_nproc_node(nproc_value)
+  integer, intent(in)   :: nproc_value
+
+  nproc_node = nproc_value
+end subroutine
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_nproc_master_slaves(nproc_value)
+  integer, intent(in)   :: nproc_value
+
+  nproc_master_slaves = nproc_value
 end subroutine
 !----------------------------------------------------------------------------------------
 

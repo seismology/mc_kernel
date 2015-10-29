@@ -8,7 +8,7 @@ module master_module
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine do_master()
+subroutine do_master(mpi_communicator)
 # ifndef include_mpi
   use mpi
 # endif
@@ -20,6 +20,8 @@ subroutine do_master()
   include 'mpif.h'
 #endif
 
+  integer               :: mpi_communicator  ! The MPI communicator that engulfs
+                                             ! the master and all the slaves
   integer               :: nslaves, rank, ierror
   integer, allocatable  :: output(:,:), sendrequest(:), work_done(:)
   integer               :: mpistatus(MPI_STATUS_SIZE)
@@ -34,7 +36,7 @@ subroutine do_master()
   output = -1
   
   ! Find out how many processes there are in the default communicator
-  call MPI_COMM_SIZE(MPI_COMM_WORLD, nslaves, ierror)
+  call MPI_COMM_SIZE(mpi_communicator, nslaves, ierror)
   nslaves = nslaves - 1 ! the master does not work
   allocate(sendrequest(nslaves))
 
@@ -71,7 +73,7 @@ subroutine do_master()
                   wt%mpitype,        & ! data item is an integer
                   rank,              & ! destination process rank
                   WORKTAG,           & ! user chosen message tag
-                  MPI_COMM_WORLD,    & ! default communicator
+                  mpi_communicator,  & ! default communicator
                   sendrequest(rank), &
                   ierror)
   enddo
@@ -87,7 +89,7 @@ subroutine do_master()
                   wt%mpitype,       & ! data item is an integer
                   MPI_ANY_SOURCE,   & ! receive from any sender
                   MPI_ANY_TAG,      & ! any type of message
-                  MPI_COMM_WORLD,   & ! default communicator
+                  mpi_communicator, & ! default communicator
                   mpistatus,        & ! info about the received message
                   ierror)
 
@@ -103,7 +105,7 @@ subroutine do_master()
                   wt%mpitype,       & ! data item is an integer
                   mpistatus(MPI_SOURCE), & ! to who we just received from
                   WORKTAG,          & ! user chosen message tag
-                  MPI_COMM_WORLD,   & ! default communicator
+                  mpi_communicator, & ! default communicator
                   sendrequest(mpistatus(MPI_SOURCE)), &
                   ierror)
 
@@ -135,7 +137,7 @@ subroutine do_master()
                   wt%mpitype,      & ! data item is an integer
                   MPI_ANY_SOURCE,  & ! receive from any sender
                   MPI_ANY_TAG,     & ! any type of message
-                  MPI_COMM_WORLD,  & ! default communicator
+                  mpi_communicator,& ! default communicator
                   mpistatus,       & ! info about the received message
                   ierror)
     
@@ -147,7 +149,7 @@ subroutine do_master()
                   MPI_INTEGER,     & !
                   mpistatus(MPI_SOURCE), & ! to who we just received from
                   DIETAG,          & ! the tag conatains the actual information
-                  MPI_COMM_WORLD,  & ! default communicator
+                  mpi_communicator,& ! default communicator
                   sendrequest(mpistatus(MPI_SOURCE)), &
                   ierror)
     
@@ -161,19 +163,6 @@ subroutine do_master()
     write(6, fmtstring) work_done, sum(work_done), real(sum(work_done)) / real(ntasks) * 100., time
 
   enddo
-
-
-  !! Tell all the slaves to exit by sending an empty message with the DIETAG.
-  !do rank=1, nslaves
-  !  call MPI_Send(0,               & !
-  !                0,               & ! empty message
-  !                MPI_INTEGER,     & !
-  !                rank,            & ! destination
-  !                DIETAG,          & ! the tag conatains the actual information
-  !                MPI_COMM_WORLD,  & ! default communicator
-  !                sendrequest(rank), &
-  !                ierror)
-  !enddo
 
   call finalize()
 

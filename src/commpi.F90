@@ -19,14 +19,14 @@ module commpi
 
   private 
 
-  integer, protected    :: MPI_COMM_NODE
+  integer, protected    :: MPI_COMM_NODE, MPI_COMM_MASTER_SLAVES
 
   public  :: pbroadcast_dble, pbroadcast_dble_arr
   public  :: pbroadcast_char, pbroadcast_char_arr
   public  :: pbroadcast_int, pbroadcast_int_arr
   public  :: pbroadcast_log
   public  :: ppinit, pbarrier, pbarrier_node, ppend, pabort, ppsplit
-  public  :: MPI_COMM_NODE
+  public  :: MPI_COMM_NODE, MPI_COMM_MASTER_SLAVES
 
 contains
 
@@ -85,11 +85,15 @@ end subroutine ppinit
 subroutine ppsplit(nslaves_per_node)
   use global_parameters, only    : myrank, myrank_node, nproc_node, &
                                    set_myrank_node, set_nproc_node, &
+                                   set_myrank_master_slaves, set_nproc_master_slaves, &
                                    set_firstslave, set_ioworker,    &
-                                   lu_out
+                                   lu_out, ioworker
 
   integer, intent(in)           :: nslaves_per_node
   integer                       :: mynode, myrank_node_loc, nproc_node_loc, ierror
+  integer                       :: master_or_slave !< 0 if this rank is an IO worker (no real slave
+                                                   !! 1 if it is the master or a non-IO slave
+  integer                       :: myrank_master_slaves_loc, nproc_master_slaves_loc
 
   if (myrank==0) then
     ! I am the master, I have a node on my own.
@@ -119,6 +123,22 @@ subroutine ppsplit(nslaves_per_node)
   else
     call set_ioworker(.false.)
   end if
+
+  ! Create a new communicator MPI_COMM_MASTER_SLAVES, which contains the master and
+  ! all slaves that are not IO workers. This is used to send tasks around (the IO
+  ! workers should not receive any tasks)
+  if (ioworker) then
+    master_or_slave = 0
+  else
+    master_or_slave = 1
+  end if
+
+  call MPI_COMM_SPLIT(MPI_COMM_WORLD, master_or_slave, myrank, &
+                      MPI_COMM_MASTER_SLAVES, ierror)
+  call MPI_COMM_RANK(MPI_COMM_MASTER_SLAVES, myrank_master_slaves_loc, ierror )
+  call MPI_COMM_SIZE(MPI_COMM_MASTER_SLAVES, nproc_master_slaves_loc, ierror )
+  call set_myrank_master_slaves(myrank_master_slaves_loc)
+  call set_nproc_master_slaves(nproc_master_slaves_loc)
 
 end subroutine ppsplit
 !-----------------------------------------------------------------------------------------

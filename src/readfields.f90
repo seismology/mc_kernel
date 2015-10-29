@@ -2869,20 +2869,21 @@ function io_worker_single_point_from_file(sem_obj, pointid) result(u_out)
 
   type(ncparamtype)         :: sem_obj
   integer, intent(in)       :: pointid
+  integer                   :: mpistatus(MPI_STATUS_SIZE)
   real(kind=sp)             :: u_out(sem_obj%ndumps, 3)
 
-  integer                   :: ierror, fieldtag
+  integer                   :: ierror, field_tag
 
   ! Find out which file we actually want to read
-  fieldtag = sem_obj%file_index
+  field_tag = sem_obj%file_index
 
-  print *, 'Requesting point', pointid 
+  !print *, 'Requesting point', pointid, ' on comm', MPI_COMM_NODE
   ! Send request to rank 0 of this node (MPI_COMM_NODE)
   call MPI_Send(pointid,          & ! message buffer
-                1,                & ! three dimensions per time step
-                MPI_INTEGER,      & ! data item is a single-precision float
-                0,                & ! to rank zero, the io worker
-                fieldtag,         & ! user chosen message tag
+                1,                & ! One point ID
+                MPI_INTEGER,      & ! data item is a integer
+                0,                & ! to rank zero, the io-worker
+                field_tag,        & ! user chosen message tag
                 MPI_COMM_NODE,    & ! default communicator
                 ierror)
 
@@ -2890,9 +2891,10 @@ function io_worker_single_point_from_file(sem_obj, pointid) result(u_out)
   call MPI_Recv(u_out,            & ! message buffer
                 3*sem_obj%ndumps, & ! three dimensions per time step
                 MPI_REAL,         & ! data item is a single-precision float
-                0,                & ! to who we just received from
-                fieldtag,         & ! user chosen message tag
+                0,                & ! from the io-worker
+                field_tag,        & ! user chosen message tag
                 MPI_COMM_NODE,    & ! communicator for this node
+                mpistatus,        & ! info about the received message
                 ierror)
 
 
