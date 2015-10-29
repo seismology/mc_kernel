@@ -393,16 +393,6 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
        end do
        close(10)
        
-       !! Contains the derivatives of STFs after FFTs
-27     !format('./Filters/stf_deriv_', A, 2('_', F0.3))
-28     !format(3(E16.8))
-       !write(fnam,27) trim(this%filterclass), this%frequencies(1:2)
-
-       !open(10, file=trim(fnam), action='write')
-       !do i = 1, size(stf_sem_fwd)
-       !  write(10,28) t(i), stf_sem_d_td(i,1), stf_src_d_td(i,1)
-       !end do
-       !close(10)
     end if   
 
     if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then

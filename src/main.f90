@@ -4,9 +4,9 @@ program kerner_code
     use mpi
 #endif
     use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier,&
-                                           pbroadcast_log
+                                           pbroadcast_log, ppsplit
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           master, lu_out, myrank
+                                           master, ioworker, lu_out, myrank, set_dist_io
     use simple_routines,             only: lowtrim
 
     use inversion_mesh,              only: inversion_mesh_data_type
@@ -16,6 +16,7 @@ program kerner_code
     use unit_tests,                  only: test_all
     use slave_mod,                   only: do_slave
     use master_module,               only: do_master
+    use ioworker_mod,                only: do_ioworker
     use work_type_mod,               only: init_work_type
     use background_model,            only: nmodel_parameters
     use heterogeneities,             only: nmodel_parameters_hetero
@@ -34,23 +35,34 @@ program kerner_code
     integer                             :: nvertices_per_task
     integer                             :: nbasisfuncs_per_elem
     integer                             :: nbasisfuncs_per_task
+    integer                             :: nslaves_per_node
     logical                             :: plot_wavefields
     integer                             :: ndim
     integer                             :: ndumps
+    integer                             :: narg
     real(kind=sp)                       :: dt
+    character(len=16)                   :: nslaves_per_node_char
 
     verbose = 0
 
     call init_random_seed()
 
-    call runtests_init
+    call runtests_init()
     call runtests( test_all )
-    call runtests_final
+    call runtests_final()
 
     verbose = 1
 
+    call ppinit()
 
-    call ppinit
+    narg = command_argument_count()
+    if (narg>1) then
+      call get_command_argument(2, nslaves_per_node_char)
+      read(nslaves_per_node_char, *) nslaves_per_node
+      call ppsplit(nslaves_per_node)
+      call set_dist_io(.true.)
+    end if
+
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' MPI communication initialized, I have rank', myrank
     write(lu_out,*) '***************************************************************'
@@ -64,9 +76,6 @@ program kerner_code
     call parameters%read_parameters()
     call parameters%read_source()
     call parameters%read_receiver()
-    
-
-
 
     if (master) then
         ! Get type of mesh and number of vertices per element
@@ -120,19 +129,19 @@ program kerner_code
     write(lu_out,*) ' Initialize MPI work type'
     write(lu_out,*) '***************************************************************'
 
-
-    call init_work_type(nkernel                  = parameters%nkernel,          &
-                        nelems_per_task          = parameters%nelems_per_task,  &
-                        nvertices                = nvertices_per_task,          &
-                        nvertices_per_elem       = nvertices_per_elem,          &
-                        nbasisfuncs_per_elem     = nbasisfuncs_per_elem,        &
-                        nmodel_parameters        = nmodel_parameters,           &
-                        nmodel_parameters_hetero = nmodel_parameters_hetero,    &
-                        plot_wavefields          = plot_wavefields,             &
-                        ndumps                   = ndumps,                      &
-                        ndim                     = ndim,                        &
-                        dt                       = dt                          )
-
+    if (.not.ioworker) then
+      call init_work_type(nkernel                  = parameters%nkernel,          &
+                          nelems_per_task          = parameters%nelems_per_task,  &
+                          nvertices                = nvertices_per_task,          &
+                          nvertices_per_elem       = nvertices_per_elem,          &
+                          nbasisfuncs_per_elem     = nbasisfuncs_per_elem,        &
+                          nmodel_parameters        = nmodel_parameters,           &
+                          nmodel_parameters_hetero = nmodel_parameters_hetero,    &
+                          plot_wavefields          = plot_wavefields,             &
+                          ndumps                   = ndumps,                      &
+                          ndim                     = ndim,                        &
+                          dt                       = dt                          )
+    end if
     
 
     write(lu_out,*) '***************************************************************'
@@ -140,6 +149,8 @@ program kerner_code
     write(lu_out,*) '***************************************************************'
     if (master) then
        call do_master()
+    elseif (ioworker) then
+       call do_ioworker()
     else
        call do_slave()
     endif

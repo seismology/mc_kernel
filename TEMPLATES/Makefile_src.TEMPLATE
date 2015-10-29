@@ -5,8 +5,8 @@ include ../make_mc_kernel.macros
 SRCS =	commpi.F90 background_model.f90 buffer.f90 clocks.f90 fft.f90 \
 	filtering.f90 finite_elem_mapping.f90 ftnunit.f90 \
 	global_parameters.f90 halton_sequence.f90 heterogeneities.f90 \
-	interpolate_mesh.f90 inversion_mesh.f90 kdtree2.f90 kernel.f90 \
-	lanczos.f90 main.f90 master_helper.f90 master_mod.f90 \
+	interpolate_mesh.f90 inversion_mesh.f90 io_worker.f90 kdtree2.f90 \
+	kernel.f90 lanczos.f90 main.f90 master_helper.f90 master_mod.f90 \
 	master_queue.f90 master_slave_parameters.f90 mc_integration.f90 \
 	nc_routines.f90 polytopes.f90 random_voxel.f90 readfields.f90 \
 	receiver.f90 receivers_rdbm.f90 rotations.f90 sem_derivatives.f90 \
@@ -23,12 +23,13 @@ SRCS =	commpi.F90 background_model.f90 buffer.f90 clocks.f90 fft.f90 \
 
 OBJS =	commpi.o background_model.o buffer.o clocks.o fft.o filtering.o \
 	finite_elem_mapping.o ftnunit.o global_parameters.o halton_sequence.o \
-	heterogeneities.o interpolate_mesh.o inversion_mesh.o kdtree2.o \
-	kernel.o lanczos.o main.o master_helper.o master_mod.o master_queue.o \
-	master_slave_parameters.o mc_integration.o nc_routines.o polytopes.o \
-	random_voxel.o readfields.o receiver.o receivers_rdbm.o rotations.o \
-	sem_derivatives.o simple_routines.o slave.o source.o spectral_basis.o \
-	test_background_model.o test_buffer.o test_fft_type.o test_filter.o \
+	heterogeneities.o interpolate_mesh.o inversion_mesh.o io_worker.o \
+	kdtree2.o kernel.o lanczos.o main.o master_helper.o master_mod.o \
+	master_queue.o master_slave_parameters.o mc_integration.o \
+	nc_routines.o polytopes.o random_voxel.o readfields.o receiver.o \
+	receivers_rdbm.o rotations.o sem_derivatives.o simple_routines.o \
+	slave.o source.o spectral_basis.o test_background_model.o \
+	test_buffer.o test_fft_type.o test_filter.o \
 	test_finite_elem_mapping.o test_ftnunit.o test_halton.o \
 	test_heterogeneities.o test_inv_mesh.o test_kernel.o test_lanczos.o \
 	test_master_helper.o test_master_queue.o test_mc_integration.o \
@@ -84,12 +85,15 @@ heterogeneities.o: commpi.o global_parameters.o kdtree2.o random_voxel.o Makefil
 interpolate_mesh.o: global_parameters.o kdtree2.o Makefile ../make_mc_kernel.macros 
 inversion_mesh.o: commpi.o global_parameters.o kdtree2.o nc_routines.o \
 	polytopes.o random_voxel.o Makefile ../make_mc_kernel.macros 
+io_worker.o: clocks.o commpi.o fft.o global_parameters.o heterogeneities.o \
+	inversion_mesh.o readfields.o type_parameter.o Makefile ../make_mc_kernel.macros 
 kernel.o: background_model.o commpi.o fft.o filtering.o global_parameters.o \
 	heterogeneities.o simple_routines.o Makefile ../make_mc_kernel.macros 
 lanczos.o: global_parameters.o Makefile ../make_mc_kernel.macros 
 main.o: background_model.o clocks.o commpi.o ftnunit.o global_parameters.o \
-	heterogeneities.o inversion_mesh.o master_mod.o readfields.o \
-	simple_routines.o slave.o test_ftnunit.o type_parameter.o work_type.o Makefile ../make_mc_kernel.macros 
+	heterogeneities.o inversion_mesh.o io_worker.o master_mod.o \
+	readfields.o simple_routines.o slave.o test_ftnunit.o \
+	type_parameter.o work_type.o Makefile ../make_mc_kernel.macros 
 master_helper.o: global_parameters.o Makefile ../make_mc_kernel.macros 
 master_mod.o: master_queue.o master_slave_parameters.o work_type.o Makefile ../make_mc_kernel.macros 
 master_queue.o: background_model.o clocks.o global_parameters.o \

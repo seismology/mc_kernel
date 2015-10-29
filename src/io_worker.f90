@@ -1,0 +1,198 @@
+!=========================================================================================
+module ioworker_mod
+
+  use global_parameters,           only: sp, dp, long, pi, deg2rad, &
+                                         init_random_seed, myrank, lu_out
+  implicit none
+  private
+
+  public                               :: do_ioworker
+
+contains
+
+!-----------------------------------------------------------------------------------------
+subroutine do_ioworker()
+  use global_parameters,           only: DIETAG, id_mpi, id_read_params, id_init_fft, id_int_hetero
+  use inversion_mesh,              only: inversion_mesh_data_type
+  use readfields,                  only: semdata_type
+  use heterogeneities,             only: hetero_type
+  use type_parameter,              only: parameter_type
+  use fft,                         only: rfft_type, taperandzeropad
+  use clocks_mod,                  only: tick
+
+  implicit none
+  type(parameter_type)                :: parameters
+  type(inversion_mesh_data_type)      :: inv_mesh
+  type(semdata_type)                  :: sem_data
+  type(rfft_type)                     :: fft_data
+  type(hetero_type)                   :: het_model
+
+  integer                             :: ndumps, ntimes, nomega
+  integer                             :: ikernel, ierror
+  integer(kind=long)                  :: iclockold
+  real(kind=dp)                       :: df
+  integer                             :: itask
+  character(len=255)                  :: fmtstring
+  integer                             :: nptperstep
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  iclockold = tick()
+
+  call parameters%read_parameters()
+  call parameters%read_source()
+  call parameters%read_receiver()
+
+  nptperstep = parameters%npoints_per_step
+
+  ! Master and slave part ways here for some time. 
+  ! Master reads in the inversion mesh, slaves initialize the FFT
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Initialize and open AxiSEM wavefield files'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  call sem_data%set_params(parameters%fwd_dir,     &
+                           parameters%bwd_dir,     &
+                           parameters%strain_buffer_size, & 
+                           parameters%displ_buffer_size, & 
+                           parameters%strain_type_fwd,    &
+                           parameters%source%depth)
+
+  call sem_data%open_files()
+  call sem_data%read_meshes()
+
+  call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+
+  ndumps = sem_data%ndumps
+
+  iclockold = tick(id=id_read_params, since=iclockold)
+
+  if (parameters%int_over_hetero) then
+    write(lu_out,'(A)') '***************************************************************'
+    write(lu_out,'(A)') ' Initialize heterogeneity structure'
+    write(lu_out,'(A)') '***************************************************************'
+    call flush(lu_out)
+
+    call het_model%load_het_rtpv(parameters%hetero_file)
+    call het_model%build_hetero_kdtree()
+
+    iclockold = tick(id=id_int_hetero, since=iclockold)
+  end if
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Initialize FFT'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  call fft_data%init(ndumps, sem_data%get_ndim(), nptperstep, sem_data%dt, &
+                     fftw_plan=parameters%fftw_plan)
+
+  ntimes = fft_data%get_ntimes()
+  nomega = fft_data%get_nomega()
+  df     = fft_data%get_df()
+  fmtstring = '(A, I8, A, I8)'
+  write(lu_out,fmtstring) '  ntimes: ',  ntimes,     '  , nfreq: ', nomega
+  fmtstring = '(A, F8.3, A, F8.3, A)'
+  write(lu_out,fmtstring) '  dt:     ', sem_data%dt, ' s, df:    ', df*1000, ' mHz'
+
+  iclockold = tick(id=id_init_fft, since=iclockold)
+
+  ! Master and slave synchronize again
+
+  iclockold = tick()
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Define filters'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  call parameters%read_filter(nomega, df)
+
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Define kernels'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+
+  call parameters%read_kernel(sem_data, parameters%filter)
+
+  iclockold = tick(id=id_read_params, since=iclockold)
+
+  call loop_ioworker(sem_data)
+
+end subroutine do_ioworker
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine loop_ioworker(fields)
+
+  use commpi,            only        : MPI_COMM_NODE
+  use global_parameters, only        : nproc_node
+  use readfields,        only        : semdata_type, load_single_point_from_file
+# ifndef include_mpi
+  use mpi
+# endif
+# ifdef include_mpi
+  include 'mpif.h'
+# endif
+
+  
+  type(semdata_type), intent(in)    :: fields
+  integer                           :: mpistatus(MPI_STATUS_SIZE)
+  integer                           :: pointid, rank_sender, field_tag, ierror
+  real(kind=sp)                     :: u(fields%ndumps, 3)
+  logical                           :: alldone(nproc_node) 
+  
+  alldone(:) = .false.
+
+  receive_io_requests: do 
+
+    ! Receive request from any of the other workers in MPI communicator MPI_COMM_NODE
+    call MPI_Recv(pointid,          & ! message buffer
+                  1,                & ! one data item
+                  MPI_INTEGER,      & ! data item is an integer
+                  MPI_ANY_SOURCE,   & ! receive from any sender
+                  field_tag,        & ! any type of message
+                  MPI_COMM_NODE,    & ! communicator for this node
+                  mpistatus,        & ! info about the received message
+                  ierror)
+
+    rank_sender = mpistatus(MPI_SOURCE)
+
+    print *, 'Rank ', rank_sender, ' requested point', pointid
+
+    select case(field_tag)
+    case(1,2,3,4)
+      u(:, :) = load_single_point_from_file(fields%fwd(field_tag), pointid)
+    case(5,6,7,8)
+      u(:, :) = load_single_point_from_file(fields%bwd(field_tag-4), pointid)
+    case(-1) ! the DIETAG
+      alldone(rank_sender) = .true.
+    case default
+      print *, 'Invalid field tag: ', field_tag
+      stop
+    end select
+
+    if (field_tag.ne.-1) then
+      ! Send the same worker the loaded time series (blocking)
+      call MPI_Send(u,                & ! message buffer
+                    3*fields%ndumps,  & ! three dimensions per time step
+                    MPI_REAL,         & ! data item is a single-precision float
+                    rank_sender,      & ! to who we just received from
+                    field_tag,        & ! user chosen message tag
+                    MPI_COMM_NODE,    & ! communicator for this node
+                    ierror)
+    else ! This worker is finished, check whether all are
+      if (all(alldone)) exit
+    end if
+
+  end do receive_io_requests
+
+end subroutine loop_ioworker
+!-----------------------------------------------------------------------------------------
+
+end module ioworker_mod
+!=========================================================================================
