@@ -2783,27 +2783,28 @@ function load_single_point_from_file(sem_obj, pointid) result(u_out)
 
   use simple_routines, only        : check_limits
 
-  type(ncparamtype), intent(in)   :: sem_obj
-  integer, intent(in)       :: pointid
+  type(ncparamtype)               :: sem_obj
+  integer, intent(in)             :: pointid
   real(kind=sp)                   :: u_out(sem_obj%ndumps, 3)
   
-  integer(kind=long)        :: iclockold
-  integer                   :: idisplvar, status
-  integer                   :: start_chunk, iread, gll_to_read
+  integer(kind=long)              :: iclockold
+  integer                         :: idisplvar, status
+  integer                         :: start_chunk, iread, gll_to_read
   real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
   real(kind=sp), allocatable      :: ubuff(:,:)
   logical                         :: strain_nan
+
+  allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
+  utemp_chunk = 0
+  allocate(ubuff(sem_obj%ndumps, 3))
+  ubuff = 0
+
 
   iclockold = tick()
   status = sem_obj%buffer_disp%get(pointid, ubuff(:,:))
   iclockold = tick(id=id_buffer, since=iclockold)
 
   if (status.ne.0) then
-
-      allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
-      utemp_chunk = 0
-      allocate(ubuff(sem_obj%ndumps, 3))
-      ubuff = 0
 
 
      call get_chunk_bounds(pointid     = pointid,              &
