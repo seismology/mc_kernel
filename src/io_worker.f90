@@ -149,7 +149,8 @@ subroutine loop_ioworker(fields)
   integer                           :: rank_sender, field_tag, ierror, myrank_loc
   real(kind=sp)                     :: u(fields%ndumps, fields%npol+1, fields%npol+1, 3)
   logical                           :: alldone(nproc_node) 
-  integer                           :: npts
+  integer                           :: npts, iproc
+  logical                           :: youvegotmail
 
   alldone(:) = .false.
 
@@ -163,20 +164,38 @@ subroutine loop_ioworker(fields)
 
   receive_io_requests: do 
 
+    probe_slaves: do 
+      iproc = iproc + 1
+      if (iproc > nproc_node-1) iproc = 1
+
+      ! Non-blocking MPI_probe. Checks whether rank 'iproc' requested data
+      call MPI_IProbe(iproc,             &
+                      MPI_ANY_TAG,       &
+                      MPI_COMM_NODE,     &
+                      youvegotmail,      &
+                      MPI_STATUS_IGNORE, &
+                      ierror)
+      if (youvegotmail) exit
+    enddo probe_slaves
+
     ! Receive request from any of the other workers in MPI communicator MPI_COMM_NODE
     call MPI_Recv(pointids,         & ! message buffer
                   npts,             & ! one data item
                   MPI_INTEGER,      & ! data item is an integer
-                  MPI_ANY_SOURCE,   & ! receive from any sender
+                  iproc,            & ! receive from rank 'iproc'
                   MPI_ANY_TAG,      & ! any type of message
                   MPI_COMM_NODE,    & ! communicator for this node
                   mpistatus,        & ! info about the received message
                   ierror)
 
+
+    if (ierror.ne.MPI_SUCCESS) then
+      print *, 'MPI_Recv error on IO worker: ', ierror
+    end if
     rank_sender = mpistatus(MPI_SOURCE)
     field_tag = mpistatus(MPI_TAG)
 
-    write(lu_out,*) 'Rank ', rank_sender, ' requested point' !, pointid
+    !write(lu_out,*) 'Rank ', rank_sender, ' requested point' !, pointid
 
     select case(field_tag)
     case(1,2,3,4)
@@ -192,13 +211,18 @@ subroutine loop_ioworker(fields)
 
     if (field_tag.ne.-1) then
       ! Send the same worker the loaded time series (blocking)
-      call MPI_Send(u,                     & ! message buffer
-                    3*fields%ndumps*npts,  & ! three dimensions per time step
-                    MPI_REAL,              & ! data item is a single-precision float
-                    rank_sender,           & ! to who we just received from
-                    field_tag,             & ! user chosen message tag
-                    MPI_COMM_NODE,         & ! communicator for this node
-                    ierror)
+      call MPI_RSend(u,                     & ! message buffer
+                     3*fields%ndumps*npts,  & ! three dimensions per time step
+                     MPI_REAL,              & ! data item is a single-precision float
+                     rank_sender,           & ! to who we just received from
+                     field_tag,             & ! user chosen message tag
+                     MPI_COMM_NODE,         & ! communicator for this node
+                     ierror)
+
+       if (ierror.ne.MPI_SUCCESS) then
+         print *, 'MPI_RSend error on IO worker: ', ierror
+       end if
+
     else ! This worker is finished, check whether all are
       if (all(alldone)) exit
     end if

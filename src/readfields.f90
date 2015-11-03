@@ -2899,13 +2899,17 @@ function io_worker_single_point_from_file(sem_obj, pointids) result(u_out)
 
   !print *, 'Requesting point', pointid, ' on comm', MPI_COMM_NODE
   ! Send request to rank 0 of this node (MPI_COMM_NODE)
-  call MPI_Send(pointids,              & ! message buffer
-                npts,                  & ! One point ID
-                MPI_INTEGER,           & ! data item is a integer
-                0,                     & ! to rank zero, the io-worker
-                field_tag,             & ! user chosen message tag
-                MPI_COMM_NODE,         & ! default communicator
-                ierror)
+  call MPI_SSend(pointids,              & ! message buffer
+                 npts,                  & ! One point ID
+                 MPI_INTEGER,           & ! data item is a integer
+                 0,                     & ! to rank zero, the io-worker
+                 field_tag,             & ! user chosen message tag
+                 MPI_COMM_NODE,         & ! default communicator
+                 ierror)
+
+  if (ierror.ne.MPI_SUCCESS) then
+    print *, 'MPI_SSend error on rank ', myrank, ': ', ierror
+  end if
 
   ! Wait for answer from the IO worker at rank 0 of this node
   call MPI_Recv(u_out,                 & ! message buffer
@@ -2914,8 +2918,12 @@ function io_worker_single_point_from_file(sem_obj, pointids) result(u_out)
                 0,                     & ! from the io-worker
                 field_tag,             & ! user chosen message tag
                 MPI_COMM_NODE,         & ! communicator for this node
-                mpistatus,             & ! info about the received message
+                MPI_STATUS_IGNORE,     & ! info about the received message is ignored
                 ierror)
+
+  if (ierror.ne.MPI_SUCCESS) then
+    print *, 'MPI_Recv error on rank ', myrank, ': ', ierror
+  end if
 
 
 end function io_worker_single_point_from_file
