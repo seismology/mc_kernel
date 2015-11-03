@@ -775,7 +775,8 @@ elif args.queue == 'SuperMUC':
         text_out += "module load netcdf/4.2 \n"
         text_out += "module load fftw \n"
         text_out += "module load mkl \n"
-        text_out += "poe ./mc_kernel inparam 2>&1  > OUTPUT_0000\n"
+        text_out += "poe ./mc_kernel inparam %d 2>&1  > OUTPUT_0000\n" % \
+                    (tasks_per_node) 
         f.write(text_out)
     print 'Submitting to SuperMUC loadleveler queue'
     subprocess.call(['llsubmit', job_script])
