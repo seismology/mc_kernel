@@ -698,7 +698,8 @@ subroutine open_files(this)
     select case(trim(this%dump_type))
     case('displ_only')
        do isim = 1, this%nsim_fwd
-          status = this%fwd(isim)%buffer_disp%init(this%displ_buffer_size, this%fwd(isim)%ndumps, 3)
+          status = this%fwd(isim)%buffer_disp%init(this%displ_buffer_size, &
+                                                   this%fwd(isim)%ndumps, 3)
           select case(this%strain_type)
           case('straintensor_trace')
             status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
@@ -716,7 +717,8 @@ subroutine open_files(this)
        end do
 
        do isim = 1, this%nsim_bwd
-          status = this%bwd(isim)%buffer_disp%init(this%displ_buffer_size, this%bwd(isim)%ndumps, 3)
+          status = this%bwd(isim)%buffer_disp%init(this%displ_buffer_size, &
+                                                   this%bwd(isim)%ndumps, 3)
           select case(this%strain_type)
           case('straintensor_trace')
             status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
@@ -2678,18 +2680,24 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
     if (status.ne.0) then
 
       ! load displacements from all GLL points
-      do ipol = 0, sem_obj%npol
-         do jpol = 0, sem_obj%npol
+      distributed_io: if (dist_io) then
+        utemp = io_worker_single_point_from_file(sem_obj, pointids)
+      else
+        utemp = load_single_point_from_file(sem_obj, pointids)
+      endif distributed_io
 
-            distributed_io: if (dist_io) then
-              utemp(:, ipol, jpol, :) = io_worker_single_point_from_file(sem_obj,             &
-                                                                         pointids(ipol,jpol))
-            else
-              utemp(:, ipol, jpol, :) = load_single_point_from_file(sem_obj,             &
-                                                                    pointids(ipol,jpol))
-            endif distributed_io
-         enddo ! jpol
-      enddo ! ipol
+      !do ipol = 0, sem_obj%npol
+      !   do jpol = 0, sem_obj%npol
+
+      !      distributed_io: if (dist_io) then
+      !        utemp(:, ipol, jpol, :) = io_worker_single_point_from_file(sem_obj,             &
+      !                                                                   pointids(ipol,jpol))
+      !      else
+      !        utemp(:, ipol, jpol, :) = load_single_point_from_file(sem_obj,             &
+      !                                                              pointids(ipol,jpol))
+      !      endif distributed_io
+      !   enddo ! jpol
+      !enddo ! ipol
 
       iclockold = tick()
       select case(strain_type)
@@ -2779,17 +2787,19 @@ end function load_strain_point_interp
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_single_point_from_file(sem_obj, pointid) result(u_out)
+function load_single_point_from_file(sem_obj, pointids) result(u_out)
 
   use simple_routines, only        : check_limits
 
   type(ncparamtype)               :: sem_obj
-  integer, intent(in)             :: pointid
-  real(kind=sp)                   :: u_out(sem_obj%ndumps, 3)
+  integer, intent(in)             :: pointids(0:sem_obj%npol, 0:sem_obj%npol)
+  real(kind=sp)                   :: u_out(sem_obj%ndumps,                 &
+                                           0:sem_obj%npol, 0:sem_obj%npol, &
+                                           3)
   
   integer(kind=long)              :: iclockold
-  integer                         :: idisplvar, status
-  integer                         :: start_chunk, iread, gll_to_read
+  integer                         :: idisplvar, status, pointid
+  integer                         :: start_chunk, iread, gll_to_read, ipol, jpol
   real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
   real(kind=sp), allocatable      :: ubuff(:,:)
   logical                         :: strain_nan
@@ -2799,65 +2809,71 @@ function load_single_point_from_file(sem_obj, pointid) result(u_out)
   allocate(ubuff(sem_obj%ndumps, 3))
   ubuff = 0
 
+  do ipol = 0, sem_obj%npol
+    do jpol = 0, sem_obj%npol
+      pointid = pointids(ipol, jpol)
 
-  iclockold = tick()
-  status = sem_obj%buffer_disp%get(pointid, ubuff(:,:))
-  iclockold = tick(id=id_buffer, since=iclockold)
+      iclockold = tick()
+      status = sem_obj%buffer_disp%get(pointid, ubuff(:,:))
+      iclockold = tick(id=id_buffer, since=iclockold)
 
-  if (status.ne.0) then
+      if (status.ne.0) then
+         ! Point not found in buffer
+         call get_chunk_bounds(pointid     = pointid,              &
+                               chunksize   = sem_obj%chunk_gll,    &
+                               npoints     = sem_obj%ngll,         &
+                               start_chunk = start_chunk,          &   
+                               count_chunk = gll_to_read )
 
+         do idisplvar = 1, 3
 
-     call get_chunk_bounds(pointid     = pointid,              &
-                           chunksize   = sem_obj%chunk_gll,    &
-                           npoints     = sem_obj%ngll,         &
-                           start_chunk = start_chunk,          &   
-                           count_chunk = gll_to_read )
+             if (sem_obj%displvarid(idisplvar).eq.-1) then
+                 u_out(:, ipol, jpol, idisplvar) = 0
+                 cycle ! For monopole source which does not have this component.
+             endif
 
-     do idisplvar = 1, 3
+             iclockold = tick()
+             !print *, 'Trying to read data!'
+             !print *, 'pointid:      ', pointids(ipol, jpol)
+             !print *, 'start_chunk:  ', start_chunk
+             !print *, 'gll_to_read:  ', gll_to_read
+             !print *, 'last_element: ', start_chunk + gll_to_read - 1
+             !call flush(6)
 
-         if (sem_obj%displvarid(idisplvar).eq.-1) then
-             u_out(:, idisplvar) = 0
-             cycle ! For monopole source which does not have this component.
-         endif
+             call nc_getvar( ncid   = sem_obj%snap,                  & 
+                             varid  = sem_obj%displvarid(idisplvar), &
+                             start  = [start_chunk, 1],              &
+                             count  = [gll_to_read, sem_obj%ndumps], &
+                             values = utemp_chunk(1:gll_to_read, :, idisplvar))
 
-         iclockold = tick()
-         !print *, 'Trying to read data!'
-         !print *, 'pointid:      ', pointids(ipol, jpol)
-         !print *, 'start_chunk:  ', start_chunk
-         !print *, 'gll_to_read:  ', gll_to_read
-         !print *, 'last_element: ', start_chunk + gll_to_read - 1
-         !call flush(6)
+             strain_nan = check_limits(utemp_chunk(1:gll_to_read,:,idisplvar), &
+                                       array_name='strain')
 
-         call nc_getvar( ncid   = sem_obj%snap,                  & 
-                         varid  = sem_obj%displvarid(idisplvar), &
-                         start  = [start_chunk, 1],              &
-                         count  = [gll_to_read, sem_obj%ndumps], &
-                         values = utemp_chunk(1:gll_to_read, :, idisplvar))
+             ! Set NaNs in utemp_chunk to zero
+             where (utemp_chunk.ne.utemp_chunk) utemp_chunk=0.0
 
-         strain_nan = check_limits(utemp_chunk(1:gll_to_read,:,idisplvar), &
-                                   array_name='strain')
+             !print *, 'suceeded'
+             !call flush(6)
+             iclockold = tick(id=id_netcdf, since=iclockold)
+             u_out(:, ipol, jpol, idisplvar) = utemp_chunk(pointid - start_chunk + 1, &
+                                                           :, idisplvar)
+         enddo
 
-         ! Set NaNs in utemp_chunk to zero
-         where (utemp_chunk.ne.utemp_chunk) utemp_chunk=0.0
-
-         !print *, 'suceeded'
-         !call flush(6)
-         iclockold = tick(id=id_netcdf, since=iclockold)
-         u_out(:, idisplvar) = utemp_chunk(pointid - start_chunk + 1,:,idisplvar)
-     enddo
-
-     do iread = 0, sem_obj%chunk_gll - 1
-         status = sem_obj%buffer_disp%put(start_chunk + iread, &
-                                          utemp_chunk(iread+1,:,:) )
-     end do
-  else
-     u_out(:, :) = real(ubuff(:,:), kind=dp)
-  endif
+         do iread = 0, sem_obj%chunk_gll - 1
+             status = sem_obj%buffer_disp%put(start_chunk + iread, &
+                                              utemp_chunk(iread+1,:,:) )
+         end do
+      else
+         ! Point found in buffer
+         u_out(:, ipol, jpol, :) = ubuff(:,:)
+      endif
+    end do ! jpol
+  end do ! ipol
 end function load_single_point_from_file
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function io_worker_single_point_from_file(sem_obj, pointid) result(u_out)
+function io_worker_single_point_from_file(sem_obj, pointids) result(u_out)
   use commpi, only           : MPI_COMM_NODE
 
 # ifndef include_mpi
@@ -2868,33 +2884,37 @@ function io_worker_single_point_from_file(sem_obj, pointid) result(u_out)
 # endif
 
   type(ncparamtype)         :: sem_obj
-  integer, intent(in)       :: pointid
+  integer, intent(in)       :: pointids(0:sem_obj%npol, 0:sem_obj%npol)
   integer                   :: mpistatus(MPI_STATUS_SIZE)
-  real(kind=sp)             :: u_out(sem_obj%ndumps, 3)
+  real(kind=sp)             :: u_out(sem_obj%ndumps, 0:sem_obj%npol, &
+                                     0:sem_obj%npol, 3)
 
-  integer                   :: ierror, field_tag
+  integer                   :: ierror, field_tag, npts
 
   ! Find out which file we actually want to read
   field_tag = sem_obj%file_index
+  
+  ! Number of points to read
+  npts = (sem_obj%npol+1)**2
 
   !print *, 'Requesting point', pointid, ' on comm', MPI_COMM_NODE
   ! Send request to rank 0 of this node (MPI_COMM_NODE)
-  call MPI_Send(pointid,          & ! message buffer
-                1,                & ! One point ID
-                MPI_INTEGER,      & ! data item is a integer
-                0,                & ! to rank zero, the io-worker
-                field_tag,        & ! user chosen message tag
-                MPI_COMM_NODE,    & ! default communicator
+  call MPI_Send(pointids,              & ! message buffer
+                npts,                  & ! One point ID
+                MPI_INTEGER,           & ! data item is a integer
+                0,                     & ! to rank zero, the io-worker
+                field_tag,             & ! user chosen message tag
+                MPI_COMM_NODE,         & ! default communicator
                 ierror)
 
   ! Wait for answer from the IO worker at rank 0 of this node
-  call MPI_Recv(u_out,            & ! message buffer
-                3*sem_obj%ndumps, & ! three dimensions per time step
-                MPI_REAL,         & ! data item is a single-precision float
-                0,                & ! from the io-worker
-                field_tag,        & ! user chosen message tag
-                MPI_COMM_NODE,    & ! communicator for this node
-                mpistatus,        & ! info about the received message
+  call MPI_Recv(u_out,                 & ! message buffer
+                3*sem_obj%ndumps*npts, & ! three dimensions per time step
+                MPI_REAL,              & ! data item is a single-precision float
+                0,                     & ! from the io-worker
+                field_tag,             & ! user chosen message tag
+                MPI_COMM_NODE,         & ! communicator for this node
+                mpistatus,             & ! info about the received message
                 ierror)
 
 

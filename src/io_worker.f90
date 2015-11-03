@@ -145,21 +145,27 @@ subroutine loop_ioworker(fields)
   
   type(semdata_type), intent(in)    :: fields
   integer                           :: mpistatus(MPI_STATUS_SIZE)
-  integer                           :: pointid, rank_sender, field_tag, ierror, myrank_loc
-  real(kind=sp)                     :: u(fields%ndumps, 3)
+  integer                           :: pointids(0:fields%npol, 0:fields%npol)
+  integer                           :: rank_sender, field_tag, ierror, myrank_loc
+  real(kind=sp)                     :: u(fields%ndumps, fields%npol+1, fields%npol+1, 3)
   logical                           :: alldone(nproc_node) 
-  
+  integer                           :: npts
+
   alldone(:) = .false.
 
   call MPI_COMM_RANK( MPI_COMM_NODE, myrank_loc, ierror )
   write(lu_out,*) 'Expecting requests on rank ', myrank_loc, ' on node: ', MPI_COMM_NODE
   flush(lu_out)
 
+
+  ! Number of points to read
+  npts = (fields%npol+1)**2
+
   receive_io_requests: do 
 
     ! Receive request from any of the other workers in MPI communicator MPI_COMM_NODE
-    call MPI_Recv(pointid,          & ! message buffer
-                  1,                & ! one data item
+    call MPI_Recv(pointids,         & ! message buffer
+                  npts,             & ! one data item
                   MPI_INTEGER,      & ! data item is an integer
                   MPI_ANY_SOURCE,   & ! receive from any sender
                   MPI_ANY_TAG,      & ! any type of message
@@ -170,13 +176,13 @@ subroutine loop_ioworker(fields)
     rank_sender = mpistatus(MPI_SOURCE)
     field_tag = mpistatus(MPI_TAG)
 
-    write(lu_out,*) 'Rank ', rank_sender, ' requested point', pointid
+    write(lu_out,*) 'Rank ', rank_sender, ' requested point' !, pointid
 
     select case(field_tag)
     case(1,2,3,4)
-      u(:, :) = load_single_point_from_file(fields%fwd(field_tag), pointid)
+      u = load_single_point_from_file(fields%fwd(field_tag), pointids)
     case(5,6,7,8)
-      u(:, :) = load_single_point_from_file(fields%bwd(field_tag-4), pointid)
+      u = load_single_point_from_file(fields%bwd(field_tag-4), pointids)
     case(-1) ! the DIETAG
       alldone(rank_sender) = .true.
     case default
@@ -186,12 +192,12 @@ subroutine loop_ioworker(fields)
 
     if (field_tag.ne.-1) then
       ! Send the same worker the loaded time series (blocking)
-      call MPI_Send(u,                & ! message buffer
-                    3*fields%ndumps,  & ! three dimensions per time step
-                    MPI_REAL,         & ! data item is a single-precision float
-                    rank_sender,      & ! to who we just received from
-                    field_tag,        & ! user chosen message tag
-                    MPI_COMM_NODE,    & ! communicator for this node
+      call MPI_Send(u,                     & ! message buffer
+                    3*fields%ndumps*npts,  & ! three dimensions per time step
+                    MPI_REAL,              & ! data item is a single-precision float
+                    rank_sender,           & ! to who we just received from
+                    field_tag,             & ! user chosen message tag
+                    MPI_COMM_NODE,         & ! communicator for this node
                     ierror)
     else ! This worker is finished, check whether all are
       if (all(alldone)) exit
