@@ -195,8 +195,6 @@ subroutine loop_ioworker(fields)
     rank_sender = mpistatus(MPI_SOURCE)
     field_tag = mpistatus(MPI_TAG)
 
-    !write(lu_out,*) 'Rank ', rank_sender, ' requested point' !, pointid
-
     select case(field_tag)
     case(1,2,3,4)
       u = load_single_point_from_file(fields%fwd(field_tag), pointids)

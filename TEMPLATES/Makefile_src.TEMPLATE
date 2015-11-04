@@ -8,28 +8,28 @@ SRCS =	commpi.F90 background_model.f90 buffer.f90 clocks.f90 fft.f90 \
 	interpolate_mesh.f90 inversion_mesh.f90 io_worker.f90 kdtree2.f90 \
 	kernel.f90 lanczos.f90 main.f90 master_helper.f90 master_mod.f90 \
 	master_queue.f90 master_slave_parameters.f90 mc_integration.f90 \
-	nc_routines.f90 polytopes.f90 random_voxel.f90 readfields.f90 \
-	receiver.f90 receivers_rdbm.f90 rotations.f90 sem_derivatives.f90 \
-	simple_routines.f90 slave.f90 source.f90 spectral_basis.f90 \
-	test_background_model.f90 test_buffer.f90 test_fft_type.f90 \
-	test_filter.f90 test_finite_elem_mapping.f90 test_ftnunit.f90 \
-	test_halton.f90 test_heterogeneities.f90 test_inv_mesh.f90 \
-	test_kernel.f90 test_lanczos.f90 test_master_helper.f90 \
-	test_master_queue.f90 test_mc_integration.f90 test_nc_routines.f90 \
-	test_polytopes.f90 test_readfields.f90 test_rotations.f90 \
-	test_sem_derivatives.f90 test_simple_routines.f90 test_source.f90 \
-	test_spectral_basis.f90 test_type_parameter.f90 test_voxel.f90 \
-	test_worktype.f90 type_parameter.f90 work_type.f90
+	mpi_nc_routines.f90 nc_routines.f90 polytopes.f90 random_voxel.f90 \
+	readfields.f90 receiver.f90 receivers_rdbm.f90 rotations.f90 \
+	sem_derivatives.f90 simple_routines.f90 slave.f90 source.f90 \
+	spectral_basis.f90 test_background_model.f90 test_buffer.f90 \
+	test_fft_type.f90 test_filter.f90 test_finite_elem_mapping.f90 \
+	test_ftnunit.f90 test_halton.f90 test_heterogeneities.f90 \
+	test_inv_mesh.f90 test_kernel.f90 test_lanczos.f90 \
+	test_master_helper.f90 test_master_queue.f90 test_mc_integration.f90 \
+	test_nc_routines.f90 test_polytopes.f90 test_readfields.f90 \
+	test_rotations.f90 test_sem_derivatives.f90 test_simple_routines.f90 \
+	test_source.f90 test_spectral_basis.f90 test_type_parameter.f90 \
+	test_voxel.f90 test_worktype.f90 type_parameter.f90 work_type.f90
 
 OBJS =	commpi.o background_model.o buffer.o clocks.o fft.o filtering.o \
 	finite_elem_mapping.o ftnunit.o global_parameters.o halton_sequence.o \
 	heterogeneities.o interpolate_mesh.o inversion_mesh.o io_worker.o \
 	kdtree2.o kernel.o lanczos.o main.o master_helper.o master_mod.o \
 	master_queue.o master_slave_parameters.o mc_integration.o \
-	nc_routines.o polytopes.o random_voxel.o readfields.o receiver.o \
-	receivers_rdbm.o rotations.o sem_derivatives.o simple_routines.o \
-	slave.o source.o spectral_basis.o test_background_model.o \
-	test_buffer.o test_fft_type.o test_filter.o \
+	mpi_nc_routines.o nc_routines.o polytopes.o random_voxel.o \
+	readfields.o receiver.o receivers_rdbm.o rotations.o \
+	sem_derivatives.o simple_routines.o slave.o source.o spectral_basis.o \
+	test_background_model.o test_buffer.o test_fft_type.o test_filter.o \
 	test_finite_elem_mapping.o test_ftnunit.o test_halton.o \
 	test_heterogeneities.o test_inv_mesh.o test_kernel.o test_lanczos.o \
 	test_master_helper.o test_master_queue.o test_mc_integration.o \
@@ -101,13 +101,15 @@ master_queue.o: background_model.o clocks.o global_parameters.o \
 	simple_routines.o type_parameter.o work_type.o Makefile ../make_mc_kernel.macros 
 master_slave_parameters.o:  Makefile ../make_mc_kernel.macros 
 mc_integration.o: commpi.o global_parameters.o Makefile ../make_mc_kernel.macros 
+mpi_nc_routines.o: commpi.o global_parameters.o nc_routines.o Makefile ../make_mc_kernel.macros 
 nc_routines.o: commpi.o global_parameters.o simple_routines.o Makefile ../make_mc_kernel.macros 
 polytopes.o: global_parameters.o halton_sequence.o simple_routines.o Makefile ../make_mc_kernel.macros 
 random_voxel.o: global_parameters.o Makefile ../make_mc_kernel.macros 
 readfields.o: background_model.o buffer.o clocks.o commpi.o \
 	finite_elem_mapping.o global_parameters.o interpolate_mesh.o \
-	kdtree2.o nc_routines.o receiver.o receivers_rdbm.o rotations.o \
-	sem_derivatives.o simple_routines.o source.o spectral_basis.o Makefile ../make_mc_kernel.macros 
+	kdtree2.o mpi_nc_routines.o nc_routines.o receiver.o receivers_rdbm.o \
+	rotations.o sem_derivatives.o simple_routines.o source.o \
+	spectral_basis.o Makefile ../make_mc_kernel.macros 
 receiver.o: global_parameters.o kernel.o Makefile ../make_mc_kernel.macros 
 receivers_rdbm.o: commpi.o global_parameters.o receiver.o source.o Makefile ../make_mc_kernel.macros 
 rotations.o: commpi.o global_parameters.o Makefile ../make_mc_kernel.macros 

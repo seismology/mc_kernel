@@ -47,7 +47,6 @@ module readfields
         integer, allocatable               :: isaxis(:)             !< Is this point at the axis?
         integer, allocatable               :: gll_point_ids(:,:,:)  !< IDs of GLL points for this element
         integer                            :: npoints, nelem
-        real(kind=sp), allocatable         :: theta(:)              !< colatitude of surface elements
     end type
 
     type ncparamtype
@@ -3020,69 +3019,50 @@ end subroutine build_kdtree
 
 !-----------------------------------------------------------------------------------------
 subroutine read_meshes(this)
-    use netcdf
+   use netcdf
 
-    class(semdata_type)        :: this
-    integer                    :: isim
+   class(semdata_type)        :: this
+   integer                    :: isim
    
-    if (.not.this%files_open) then
-        print *, 'ERROR in read_meshes(): Files have not been opened!'
-        print *, 'Call open_files() before read_meshes()'
-        call pabort
-    end if
+   if (.not.this%files_open) then
+       print *, 'ERROR in read_meshes(): Files have not been opened!'
+       print *, 'Call open_files() before read_meshes()'
+       call pabort
+   end if
 
-    ! Forward SEM mesh
-    write(lu_out,*) '  Read SEM mesh from first forward simulation'
-    
-    call nc_read_att_int(this%fwdmesh%npoints, 'npoints', this%fwd(1))
-    if (trim(this%dump_type) == 'displ_only') then
-      call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
-      write(lu_out, *) 'Mesh has ', this%fwdmesh%npoints, ' points, ', &
-                                    this%fwdmesh%nelem, ' elements'
-    end if
-    
-    do isim = 1, this%nsim_fwd
-       this%fwd(isim)%ngll = this%fwdmesh%npoints
-    end do
-
-    call cache_mesh(this%fwd(1)%mesh, this%fwdmesh, this%dump_type) 
+   ! Forward SEM mesh
+   write(lu_out,*) '  Read SEM mesh from first forward simulation'
    
-    ! Read colatitudes of surface elements (aka theta) for forward mesh
-    call nc_getvar_by_name(ncid = this%fwd(1)%surf,      &
-                           varname = 'elem_theta',          &
-                           values = this%fwdmesh%theta,  &
-                           limits = [0., 180.] )
+   call nc_read_att_int(this%fwdmesh%npoints, 'npoints', this%fwd(1))
+   if (trim(this%dump_type) == 'displ_only') then
+     call nc_read_att_int(this%fwdmesh%nelem, 'nelem_kwf_global', this%fwd(1))
+     write(lu_out, *) 'Mesh has ', this%fwdmesh%npoints, ' points, ', &
+                                   this%fwdmesh%nelem, ' elements'
+   end if
+   
+   do isim = 1, this%nsim_fwd
+      this%fwd(isim)%ngll = this%fwdmesh%npoints
+   end do
 
+   call cache_mesh(this%fwd(1)%mesh, this%fwdmesh, this%dump_type) 
+   
+   ! Backward SEM mesh                     
+   write(lu_out,*) 'Read SEM mesh from first backward simulation'
+   
+   call nc_read_att_int(this%bwdmesh%npoints, 'npoints', this%bwd(1))
 
-    ! Backward SEM mesh                     
-    if (this%nsim_bwd > 0) then
-      write(lu_out,*) 'Read SEM mesh from first backward simulation'
-      
-      call nc_read_att_int(this%bwdmesh%npoints, 'npoints', this%bwd(1))
+   if (trim(this%dump_type) == 'displ_only') then
+     call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%bwd(1))
+     write(lu_out, *) 'Mesh has ', this%fwdmesh%npoints, ' points, ', &
+                                   this%fwdmesh%nelem, ' elements'
+   end if
+   
+   do isim = 1, this%nsim_bwd
+      this%bwd(isim)%ngll = this%bwdmesh%npoints
+   end do
+   
+   call cache_mesh(this%bwd(1)%mesh, this%bwdmesh, this%dump_type) 
 
-      if (trim(this%dump_type) == 'displ_only') then
-        call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%bwd(1))
-        write(lu_out, *) 'Mesh has ', this%fwdmesh%npoints, ' points, ', &
-                                      this%fwdmesh%nelem, ' elements'
-      end if
-      
-      do isim = 1, this%nsim_bwd
-         this%bwd(isim)%ngll = this%bwdmesh%npoints
-      end do
-    
-      call cache_mesh(this%bwd(1)%mesh, this%bwdmesh, this%dump_type) 
-
-      ! Read colatitudes of surface elements (aka theta) for backward mesh
-      if (this%nsim_bwd > 0) then
-         call nc_getvar_by_name(ncid = this%bwd(1)%surf,      &
-                                varname = 'elem_theta',          &
-                                values = this%bwdmesh%theta,  &
-                                limits = [0., 180.] )
-
-    end if !nsim_bwd>0
-
-   end if !dump_type == displ_only 
-                             
    ! define terms needed to compute gradient
    if (trim(this%dump_type) == 'displ_only') then
       call calc_gradient_terms(this)
@@ -3113,6 +3093,8 @@ end subroutine read_meshes
 !-----------------------------------------------------------------------------------------
 !> Read and cache mesh variables
 subroutine cache_mesh(ncid, mesh, dump_type)
+  use mpi_nc_routines,      only : mpi_getvar_by_name
+  use commpi,               only : MPI_COMM_NODE
   integer, intent(in)           :: ncid
   type(meshtype)                :: mesh
   character(len=*), intent(in)  :: dump_type
@@ -3120,59 +3102,67 @@ subroutine cache_mesh(ncid, mesh, dump_type)
   write(lu_out, '(A)', advance='no') 'Reading mesh parameters...'
   call flush(lu_out)
 
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_S',      &
-                         limits = [0., 1e9],     & 
-                         values = mesh%s   )
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                         varname = 'mesh_S',      &
+                         limits  = [0., 1e9],     & 
+                         comm    = MPI_COMM_NODE, &
+                         values  = mesh%s   )
 
-  write(lu_out,*) 'sizeof mesh%s: ', sizeof(mesh%s)
+  !write(lu_out,*) 'sizeof mesh%s: ', sizeof(mesh%s)
 
               
-  call nc_getvar_by_name(ncid   = ncid,          &
+  call mpi_getvar_by_name(ncid   = ncid,          &
                          varname   = 'mesh_Z',      &
                          limits = [-1e9, 1e9],   & 
+                         comm      = MPI_COMM_NODE,    &
                          values = mesh%z   )
 
-  write(lu_out,*) 'sizeof mesh%s: ', sizeof(mesh%s)
+  !write(lu_out,*) 'sizeof mesh%s: ', sizeof(mesh%s)
               
 
   if (trim(dump_type) == 'displ_only') then
       
-      call nc_getvar_by_name(ncid   = ncid,         &
+      call mpi_getvar_by_name(ncid   = ncid,         &
                              varname   = 'eltype',     &
                              limits = [0, 3],       &
+                             comm      = MPI_COMM_NODE,    &
                              values = mesh%eltype)
-      write(lu_out,*) 'sizeof mesh%eltype: ', sizeof(mesh%eltype)
+      !write(lu_out,*) 'sizeof mesh%eltype: ', sizeof(mesh%eltype)
 
-      call nc_getvar_by_name(ncid   = ncid,         &
+      call mpi_getvar_by_name(ncid   = ncid,         &
                              varname   = 'axis',       &
                              limits = [0, 1],       &
+                             comm      = MPI_COMM_NODE,    &
                              values = mesh%isaxis)
-      write(lu_out,*) 'sizeof mesh%isaxis: ', sizeof(mesh%isaxis)
+      !write(lu_out,*) 'sizeof mesh%isaxis: ', sizeof(mesh%isaxis)
 
-      call nc_getvar_by_name(ncid   = ncid,         &
+      call mpi_getvar_by_name(ncid   = ncid,         &
                              varname   = 'mp_mesh_S',  &
                              limits = [0., 1e9],    & 
+                             comm      = MPI_COMM_NODE,    &
                              values = mesh%s_mp )
-      write(lu_out,*) 'sizeof mesh%s_mp: ', sizeof(mesh%s_mp)
+      !write(lu_out,*) 'sizeof mesh%s_mp: ', sizeof(mesh%s_mp)
                   
-      call nc_getvar_by_name(ncid   = ncid,         &
+      call mpi_getvar_by_name(ncid   = ncid,         &
                              varname   = 'mp_mesh_Z',  &
                              limits = [-1e9, 1e9],  & 
+                             comm      = MPI_COMM_NODE,    &
                              values = mesh%z_mp )
-      write(lu_out,*) 'sizeof mesh%z_mp: ', sizeof(mesh%z_mp)
+      !write(lu_out,*) 'sizeof mesh%z_mp: ', sizeof(mesh%z_mp)
 
-      call nc_getvar_by_name(ncid   = ncid,         &
+      call mpi_getvar_by_name(ncid   = ncid,         &
                              varname   = 'fem_mesh',   &
                              limits = [0, size(mesh%s)-1], &
+                             comm      = MPI_COMM_NODE,    &
                              values = mesh%corner_point_ids )
-      write(lu_out,*) 'sizeof mesh%corner_point_ids: ', sizeof(mesh%corner_point_ids)
+      !write(lu_out,*) 'sizeof mesh%corner_point_ids: ', sizeof(mesh%corner_point_ids)
 
-      call nc_getvar_by_name(ncid   = ncid,         &
+      call mpi_getvar_by_name(ncid   = ncid,         &
                              varname   = 'sem_mesh',   &
                              limits = [0, size(mesh%s)-1], &
+                             comm      = MPI_COMM_NODE,    &
                              values = mesh%gll_point_ids)
-      write(lu_out,*) 'sizeof mesh%gll_point_ids: ', sizeof(mesh%gll_point_ids)
+      !write(lu_out,*) 'sizeof mesh%gll_point_ids: ', sizeof(mesh%gll_point_ids)
 
   endif
 
@@ -3183,67 +3173,76 @@ end subroutine cache_mesh
 
 !-----------------------------------------------------------------------------------------
 subroutine load_model_parameter(ncid, mesh, tree, radius)
+  use mpi_nc_routines,   only : mpi_getvar_by_name
+  use commpi, only            : MPI_COMM_NODE
   use interpolate_mesh, only  : create_interpolator
-  use nc_routines,      only  : nc_getvar_by_name
   type(meshtype)             :: mesh
   integer, intent(in)        :: ncid
   real(kind=dp), intent(in)  :: radius
   type(kdtree2), pointer     :: tree
   real(kind=sp), allocatable :: param_tmp(:)
 
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_vp',     &
-                         limits = [0.0, 2e4],    & 
-                         values = param_tmp  )
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                          varname   = 'mesh_vp',     &
+                          limits = [0.0, 2e4],    & 
+                          comm   = MPI_COMM_NODE, &
+                          values = param_tmp  )
   mesh%vp = create_interpolator(param_tmp, tree, radius)
   deallocate(param_tmp)
               
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_vs',     &
-                         limits = [0.0, 2e4],    & 
-                         values = param_tmp)
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                          varname   = 'mesh_vs',     &
+                          limits = [0.0, 2e4],    & 
+                          comm   = MPI_COMM_NODE, &
+                          values = param_tmp)
   mesh%vs = create_interpolator(param_tmp, tree, radius)
   deallocate(param_tmp)
               
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_rho',    &
-                         limits = [0.0, 2e4],    & 
-                         values = param_tmp)
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                          varname   = 'mesh_rho',    &
+                          limits = [0.0, 2e4],    & 
+                          comm   = MPI_COMM_NODE, &
+                          values = param_tmp)
   mesh%rho = create_interpolator(param_tmp, tree, radius)
   deallocate(param_tmp)
               
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_lambda', &
-                         limits = [1e9, 1e15],   & 
-                         values = param_tmp)
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                          varname   = 'mesh_lambda', &
+                          limits = [1e9, 1e15],   & 
+                          comm   = MPI_COMM_NODE, &
+                          values = param_tmp)
   mesh%lambda = create_interpolator(param_tmp, tree, radius)
   deallocate(param_tmp)
               
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_mu',     &
-                         limits = [0.0, 1e12],   & 
-                         values = param_tmp)
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                          varname   = 'mesh_mu',     &
+                          limits = [0.0, 1e12],   & 
+                          comm   = MPI_COMM_NODE, &
+                          values = param_tmp)
   mesh%mu = create_interpolator(param_tmp, tree, radius)
   deallocate(param_tmp)
               
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_phi',    &
-                         limits = [0.0, 3.0],    & 
-                         values = param_tmp)
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                          varname   = 'mesh_phi',    &
+                          limits = [0.0, 3.0],    & 
+                          comm   = MPI_COMM_NODE, &
+                          values = param_tmp)
   mesh%phi = create_interpolator(param_tmp, tree, radius)
   deallocate(param_tmp)
               
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_xi',  &
-                         limits = [0.0, 3.0],    & 
-                         values = param_tmp)
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                          varname   = 'mesh_xi',  &
+                          limits = [0.0, 3.0],    & 
+                          comm   = MPI_COMM_NODE, &
+                          values = param_tmp)
   mesh%xi = create_interpolator(param_tmp, tree, radius)
   deallocate(param_tmp)
               
-  call nc_getvar_by_name(ncid   = ncid,          &
-                         varname   = 'mesh_eta',    &
-                         limits = [0.0, 1e12],   & 
-                         values = param_tmp)
+  call mpi_getvar_by_name(ncid   = ncid,          &
+                          varname   = 'mesh_eta',    &
+                          limits = [0.0, 1e12],   & 
+                          comm   = MPI_COMM_NODE, &
+                          values = param_tmp)
   mesh%eta = create_interpolator(param_tmp, tree, radius)
   deallocate(param_tmp)
 

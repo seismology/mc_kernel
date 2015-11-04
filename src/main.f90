@@ -4,10 +4,10 @@ program kerner_code
     use mpi
 #endif
     use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier,&
-                                           pbroadcast_log, ppsplit, MPI_COMM_MASTER_SLAVES
+                                           pbroadcast_log, ppsplit, MPI_COMM_MASTER_SLAVES, MPI_COMM_NODE
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
                                            master, ioworker, lu_out, myrank, set_dist_io, &
-                                           dist_io
+                                           dist_io, firstslave
 
     use simple_routines,             only: lowtrim
 
@@ -61,9 +61,17 @@ program kerner_code
     if (narg>1) then
       call get_command_argument(2, nslaves_per_node_char)
       read(nslaves_per_node_char, *) nslaves_per_node
-      call ppsplit(nslaves_per_node)
       call set_dist_io(.true.)
+      call ppsplit(nslaves_per_node)
+    else
+      call set_dist_io(.false.)
+      call ppsplit()
     end if
+
+    if (master) print *, 'Rank: ', myrank, ' is master!', MPI_COMM_NODE
+    if (ioworker) print *, 'Rank: ', myrank, ' is IO worker!', MPI_COMM_NODE
+    if (firstslave) print *, 'Rank: ', myrank, ' is first slave!', MPI_COMM_NODE
+    if (.not.(master.or.ioworker.or.firstslave)) print *, 'Rank: ', myrank, ' is a slave!', MPI_COMM_NODE
 
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' MPI communication initialized, I have rank', myrank

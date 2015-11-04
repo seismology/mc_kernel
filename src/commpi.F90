@@ -2,7 +2,6 @@
 module commpi
   
   ! Wrapper routines to invoke the MPI library. 
-  ! This routine is the sole place for parallel interactions. 
   ! in case you have problems with the mpi module, you might try to use the
   ! include below, in which case you will have to specify the location in the 
   ! Makefile or copy to the build directory!
@@ -10,7 +9,7 @@ module commpi
 # ifndef include_mpi
   use mpi
 # endif
-  use global_parameters, only: dp, master, myrank, nproc, firstslave, testing
+  use global_parameters, only: sp, dp, master, myrank, nproc, firstslave, testing
   implicit none
 
 # ifdef include_mpi
@@ -21,6 +20,20 @@ module commpi
 
   integer, protected    :: MPI_COMM_NODE, MPI_COMM_MASTER_SLAVES
 
+  interface pbroadcast
+    module procedure pbroadcast_float
+    module procedure pbroadcast_float_arr
+    module procedure pbroadcast_dble
+    module procedure pbroadcast_dble_arr
+    module procedure pbroadcast_char
+    module procedure pbroadcast_char_arr
+    module procedure pbroadcast_int
+    module procedure pbroadcast_int_arr
+    module procedure pbroadcast_log
+  end interface pbroadcast
+
+  public  :: pbroadcast
+  public  :: pbroadcast_float, pbroadcast_float_arr
   public  :: pbroadcast_dble, pbroadcast_dble_arr
   public  :: pbroadcast_char, pbroadcast_char_arr
   public  :: pbroadcast_int, pbroadcast_int_arr
@@ -60,11 +73,11 @@ subroutine ppinit
       end if
   else
       call set_master(.false.)
-      if (myrank == 1) then
-        call set_firstslave(.true.)
-      else
-        call set_firstslave(.false.)
-      end if
+      !if (myrank == 1) then
+      !  call set_firstslave(.true.)
+      !else
+      !  call set_firstslave(.false.)
+      !end if
       if (.not.testing) then
         write(fnam,"('OUTPUT_', I4.4)") myrank
         open(newunit=lu_out_loc, file=fnam, status='replace')
@@ -82,18 +95,28 @@ end subroutine ppinit
 !> Uses MPI_Comm_split to create new communicators spanning only one node. It assumes that 
 !! the master uses one node on its own and then assigns NSLAVES_PER_NODE slaves to each
 !! node. 
-subroutine ppsplit(nslaves_per_node)
+subroutine ppsplit(nslaves_per_node_in)
   use global_parameters, only    : myrank, myrank_node, nproc_node, &
                                    set_myrank_node, set_nproc_node, &
                                    set_myrank_master_slaves, set_nproc_master_slaves, &
                                    set_firstslave, set_ioworker,    &
-                                   lu_out, ioworker
+                                   lu_out, ioworker, dist_io
 
-  integer, intent(in)           :: nslaves_per_node
+  integer, intent(in), optional :: nslaves_per_node_in !< How many slaves per node?
+                                                       !! If this argument is missing, no slave
+                                                       !! gets the IOworker flag and we only create
+                                                       !! a MPI communicator for all slaves.
+  integer                       :: nslaves_per_node
   integer                       :: mynode, myrank_node_loc, nproc_node_loc, ierror
   integer                       :: master_or_slave !< 0 if this rank is an IO worker (no real slave
                                                    !! 1 if it is the master or a non-IO slave
   integer                       :: myrank_master_slaves_loc, nproc_master_slaves_loc
+
+  if (present(nslaves_per_node_in)) then
+    nslaves_per_node = nslaves_per_node_in
+  else
+    nslaves_per_node = nproc - 1
+  end if
 
   if (myrank==0) then
     ! I am the master, I have a node on my own.
@@ -116,12 +139,19 @@ subroutine ppsplit(nslaves_per_node)
   print *, 'I am rank ', myrank, ' on node ', mynode, ', myrank_node: ', myrank_node, ', nproc_node', nproc_node
   call pbarrier()
 
-  if (myrank>0.and.myrank_node==0) then
+  if ((myrank>0.and.myrank_node==0).and.(dist_io)) then
     write(lu_out,*) ' RANK: ', myrank, ' is a IO-worker for this run'
     call set_ioworker(.true.)
     call set_firstslave(.true.)
-  else
+
+  elseif (myrank>0.and.myrank_node==0) then
+    call set_firstslave(.true.)
     call set_ioworker(.false.)
+
+  else
+    call set_firstslave(.false.)
+    call set_ioworker(.false.)
+
   end if
 
   ! Create a new communicator MPI_COMM_MASTER_SLAVES, which contains the master and
@@ -144,148 +174,262 @@ end subroutine ppsplit
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pbroadcast_char(input_char, input_proc)
+subroutine pbroadcast_char(input_char, input_proc, comm)
 
-  integer, intent(in)          :: input_proc
-  character(*), intent(inout)  :: input_char
-  integer                      :: ierror
-  logical                      :: isinitialized
+  integer, intent(in)           :: input_proc
+  character(*), intent(inout)   :: input_char
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
+  integer                       :: ierror
+  logical                       :: isinitialized
 
   call MPI_Initialized(isinitialized, ierror)
 
-  if (isinitialized) then
-     call mpi_bcast(input_char, len(input_char), MPI_CHARACTER, input_proc, &
-                    MPI_COMM_WORLD, ierror)
-     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  if (present(comm)) then
+    mpi_comm = comm
   else
-     input_char = input_char
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
+  if (isinitialized) then
+    call mpi_bcast(input_char, len(input_char), MPI_CHARACTER, input_proc, &
+                   mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
+  else
+    input_char = input_char
   end if
 
 end subroutine pbroadcast_char
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pbroadcast_char_arr(input_char,input_proc)
+subroutine pbroadcast_char_arr(input_char, input_proc, comm)
 
   integer, intent(in)          :: input_proc
   character(*), intent(inout)  :: input_char(:)
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
   integer                      :: ierror
   logical                      :: isinitialized
 
   call MPI_Initialized(isinitialized, ierror)
 
-  if (isinitialized) then
-     call mpi_bcast(input_char, size(input_char), MPI_CHARACTER, input_proc, &
-                    MPI_COMM_WORLD, ierror)
-     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  if (present(comm)) then
+    mpi_comm = comm
   else
-     input_char = input_char
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
+  if (isinitialized) then
+    call mpi_bcast(input_char, size(input_char), MPI_CHARACTER, input_proc, &
+                   mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
+  else
+    input_char = input_char
   end if
 
 end subroutine pbroadcast_char_arr
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pbroadcast_log(input_log,input_proc)
+subroutine pbroadcast_log(input_log, input_proc, comm)
 
   integer, intent(in)          :: input_proc
   logical, intent(inout)       :: input_log
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
   integer                      :: ierror
   logical                      :: isinitialized
 
   call MPI_Initialized(isinitialized, ierror)
 
-  if (isinitialized) then
-     call mpi_bcast(input_log, 1, MPI_LOGICAL, input_proc, MPI_COMM_WORLD, ierror)
-     call mpi_barrier(MPI_COMM_WORLD, ierror)
+  if (present(comm)) then
+    mpi_comm = comm
   else
-     input_log = input_log
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
+  if (isinitialized) then
+    call mpi_bcast(input_log, 1, MPI_LOGICAL, input_proc, mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
+  else
+    input_log = input_log
   end if
 
 end subroutine pbroadcast_log
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pbroadcast_int(input_int,input_proc)
+subroutine pbroadcast_int(input_int, input_proc, comm)
 
   integer, intent(in)          :: input_proc
   integer, intent(inout)       :: input_int
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
   integer                      :: ierror
   logical                      :: isinitialized
 
   call MPI_Initialized(isinitialized, ierror)
 
+  if (present(comm)) then
+    mpi_comm = comm
+  else
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
   if (isinitialized) then
-     call mpi_bcast(input_int, 1, MPI_INTEGER, input_proc, MPI_COMM_WORLD, ierror)
-     call mpi_barrier(MPI_COMM_WORLD, ierror)
+    call mpi_bcast(input_int, 1, MPI_INTEGER, input_proc, mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
   else 
-     input_int = input_int
+    input_int = input_int
   end if
 
 end subroutine pbroadcast_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pbroadcast_int_arr(input_int, input_proc)
+subroutine pbroadcast_int_arr(input_int, input_proc, comm)
 
   integer, intent(in)          :: input_proc
   integer, intent(inout)       :: input_int(:)
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
   integer                      :: ierror
   logical                      :: isinitialized
 
   call MPI_Initialized(isinitialized, ierror)
 
+  if (present(comm)) then
+    mpi_comm = comm
+  else
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
   if (isinitialized) then
-     call mpi_bcast(input_int, size(input_int), MPI_INTEGER, input_proc, &
-                    MPI_COMM_WORLD, ierror)
-     call mpi_barrier(MPI_COMM_WORLD, ierror)
+    call mpi_bcast(input_int, size(input_int), MPI_INTEGER, input_proc, &
+                   mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
   else 
-     input_int = input_int
+    input_int = input_int
   end if
 
 end subroutine pbroadcast_int_arr
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pbroadcast_dble(input_dble,input_proc)
+subroutine pbroadcast_dble(input_dble, input_proc, comm)
 
   integer, intent(in)          :: input_proc
   real(kind=dp), intent(inout) :: input_dble
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
   integer                      :: ierror
   logical                      :: isinitialized
 
   call MPI_Initialized(isinitialized, ierror)
 
+  if (present(comm)) then
+    mpi_comm = comm
+  else
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
   if (isinitialized) then
-     call mpi_bcast(input_dble, 1, MPI_DOUBLE_PRECISION, input_proc, &
-                    MPI_COMM_WORLD, ierror)
-     call mpi_barrier(MPI_COMM_WORLD, ierror)
+    call mpi_bcast(input_dble, 1, MPI_DOUBLE_PRECISION, input_proc, &
+                   mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
   else 
-     input_dble = input_dble
+    input_dble = input_dble
   end if
 
 end subroutine pbroadcast_dble
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine pbroadcast_dble_arr(input_dble,input_proc)
+subroutine pbroadcast_dble_arr(input_dble, input_proc, comm)
 
   integer, intent(in)          :: input_proc
   real(kind=dp), intent(inout) :: input_dble(:)
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
   integer                      :: ierror
   logical                      :: isinitialized
 
   call MPI_Initialized(isinitialized, ierror)
 
+  if (present(comm)) then
+    mpi_comm = comm
+  else
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
   if (isinitialized) then
-     call mpi_bcast(input_dble, size(input_dble), MPI_DOUBLE_PRECISION, &
-                    input_proc, MPI_COMM_WORLD, ierror)
-     call mpi_barrier(MPI_COMM_WORLD, ierror)
+    call mpi_bcast(input_dble, size(input_dble), MPI_DOUBLE_PRECISION, &
+                   input_proc, mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
   else 
-     input_dble = input_dble
+    input_dble = input_dble
   end if
 
 end subroutine pbroadcast_dble_arr
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine pbroadcast_float(input_float, input_proc, comm)
+
+  integer, intent(in)          :: input_proc
+  real(kind=sp), intent(inout) :: input_float
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
+  integer                      :: ierror
+  logical                      :: isinitialized
+
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (present(comm)) then
+    mpi_comm = comm
+  else
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
+  if (isinitialized) then
+    call mpi_bcast(input_float, 1, MPI_REAL, input_proc, &
+                   mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
+  else 
+    input_float = input_float
+  end if
+
+end subroutine pbroadcast_float
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine pbroadcast_float_arr(input_float, input_proc, comm)
+
+  integer, intent(in)          :: input_proc
+  real(kind=sp), intent(inout) :: input_float(:)
+  integer, intent(in), optional :: comm
+  integer                       :: mpi_comm
+  integer                      :: ierror
+  logical                      :: isinitialized
+
+  call MPI_Initialized(isinitialized, ierror)
+
+  if (present(comm)) then
+    mpi_comm = comm
+  else
+    mpi_comm = MPI_COMM_WORLD
+  end if
+
+  if (isinitialized) then
+    call mpi_bcast(input_float, size(input_float), MPI_REAL, &
+                   input_proc, mpi_comm, ierror)
+    call mpi_barrier(mpi_comm, ierror)
+  else 
+    input_float = input_float
+  end if
+
+end subroutine pbroadcast_float_arr
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
