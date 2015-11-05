@@ -36,6 +36,8 @@ module readfields
                                                                              !! case. Will increase
                                                                              !! for attenuation
 
+    real(kind=sp), allocatable             :: utemp_chunk(:,:,:), ubuff(:,:)
+
     type meshtype
         real(kind=sp), allocatable         :: s(:), z(:)            !< Coordinates of all GLL points
         real(kind=sp), allocatable         :: s_mp(:), z_mp(:)      !< Coordinates of element midpoints
@@ -318,6 +320,7 @@ end subroutine set_params
 
 !-----------------------------------------------------------------------------------------
 subroutine open_files(this)
+    use global_parameters, only       : dist_io
     use netcdf, only                  : nf90_inq_varid, nf90_inquire_variable, &
                                         nf90_get_var, NF90_NOERR
 
@@ -746,8 +749,8 @@ subroutine open_files(this)
        call pabort()
     end select
 
-
     call flush(lu_out)
+
 
 end subroutine open_files
 !-----------------------------------------------------------------------------------------
@@ -1144,6 +1147,12 @@ subroutine check_consistency(this)
 
     call flush(lu_out)
 
+    ! Allocate temporary variables for loading wavefields
+    allocate(utemp_chunk(this%fwd(1)%chunk_gll, ndumps_agreed, 3))
+    utemp_chunk = 0
+    allocate(ubuff(ndumps_agreed, 3))
+    ubuff = 0
+
 end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 
@@ -1177,7 +1186,7 @@ function load_fw_points(this, coordinates, source_params, model)
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2)), rotmesh_s_buff
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
-    real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
+    real(kind=sp)                     :: utemp(this%ndumps, this%ndim)
     real(kind=sp), allocatable        :: coeffs(:,:)
     real(kind=dp)                     :: xi, eta
 
@@ -2282,12 +2291,12 @@ function load_strain_point(sem_obj, pointid, strain_type)
     character(len=*), intent(in)    :: strain_type
     real(kind=dp), allocatable      :: load_strain_point(:,:)
     real(kind=dp), allocatable      :: strain_buff(:,:)
+    real(kind=sp), allocatable      :: utemp_chunk_loc(:,:,:)
+    real(kind=sp), allocatable      :: utemp(:,:)
 
     integer                         :: start_chunk, iread, gll_to_read
     integer(kind=long)              :: iclockold, iclockold_total
     integer                         :: status, istrainvar
-    real(kind=sp), allocatable      :: utemp(:,:)
-    real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
     logical                         :: strain_nan
 
     if (trim(sem_obj%dump_type) /= 'fullfields') then
@@ -2314,30 +2323,30 @@ function load_strain_point(sem_obj, pointid, strain_type)
                                   npoints     = sem_obj%ngll,         &
                                   start_chunk = start_chunk,          &   
                                   count_chunk = gll_to_read )
-           allocate(utemp_chunk(gll_to_read, sem_obj%ndumps, 1))
+           allocate(utemp_chunk_loc(gll_to_read, sem_obj%ndumps, 1))
 
            iclockold = tick()
            call nc_getvar( ncid   = sem_obj%snap,           & 
                            varid  = sem_obj%strainvarid(6), &
                            start  = [start_chunk, 1],       &
                            count  = [gll_to_read, sem_obj%ndumps], &
-                           values = utemp_chunk(:, :, 1)) 
+                           values = utemp_chunk_loc(:, :, 1)) 
 
-           strain_nan = check_limits(utemp_chunk, &
+           strain_nan = check_limits(utemp_chunk_loc, &
                                      array_name='straintrace')
 
-           ! Set NaNs in utemp_chunk to zero
-           where (utemp_chunk.ne.utemp_chunk) utemp_chunk=0
+           ! Set NaNs in utemp_chunk_loc to zero
+           where (utemp_chunk_loc.ne.utemp_chunk_loc) utemp_chunk_loc=0
 
            iclockold = tick(id=id_netcdf, since=iclockold)
 
            do iread = 0, sem_obj%chunk_gll - 1
-               status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
+               status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk_loc(iread+1,:,:))
            end do
 
            iclockold = tick(id=id_buffer, since=iclockold)
 
-           load_strain_point(:,1) = real(utemp_chunk(pointid-start_chunk+1,:,1), kind=dp)
+           load_strain_point(:,1) = real(utemp_chunk_loc(pointid-start_chunk+1,:,1), kind=dp)
         else
            load_strain_point(:,1) = real(utemp(:,1), kind=dp)
         end if
@@ -2353,12 +2362,12 @@ function load_strain_point(sem_obj, pointid, strain_type)
                                   npoints     = sem_obj%ngll,         &
                                   start_chunk = start_chunk,          &   
                                   count_chunk = gll_to_read )
-            allocate(utemp_chunk(gll_to_read, sem_obj%ndumps, 6))
+            allocate(utemp_chunk_loc(gll_to_read, sem_obj%ndumps, 6))
 
             do istrainvar = 1, 6
 
                 if (sem_obj%strainvarid(istrainvar).eq.-1) then
-                    utemp_chunk(:, :, istrainvar) = 0
+                    utemp_chunk_loc(:, :, istrainvar) = 0
                     cycle ! For monopole source which does not have this component.
                 endif
 
@@ -2368,21 +2377,21 @@ function load_strain_point(sem_obj, pointid, strain_type)
                                 varid  = sem_obj%strainvarid(istrainvar), &
                                 start  = [start_chunk, 1],       &
                                 count  = [gll_to_read, sem_obj%ndumps], &
-                                values = utemp_chunk(:, :, istrainvar)) 
+                                values = utemp_chunk_loc(:, :, istrainvar)) 
 
                 iclockold = tick(id=id_netcdf, since=iclockold)
 
             end do
 
-            strain_nan = check_limits(utemp_chunk, array_name='strain')
+            strain_nan = check_limits(utemp_chunk_loc, array_name='strain')
 
             !Set NaNs in utemp_chunk to zero
-            where (utemp_chunk.ne.utemp_chunk) utemp_chunk=0
+            where (utemp_chunk_loc.ne.utemp_chunk_loc) utemp_chunk_loc=0
 
-            strain_buff(:,:) = real(utemp_chunk(pointid-start_chunk+1, :, :), kind=dp)
+            strain_buff(:,:) = real(utemp_chunk_loc(pointid-start_chunk+1, :, :), kind=dp)
 
             do iread = 0, gll_to_read - 1
-                status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk(iread+1,:,:))
+                status = sem_obj%buffer%put(start_chunk + iread, utemp_chunk_loc(iread+1,:,:))
             end do
         else
            strain_buff(:,:) = real(utemp, kind=dp)
@@ -2435,7 +2444,6 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
 
     integer                         :: start_chunk, gll_to_read
     integer                         :: idisplvar
-    real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
     real(kind=dp)                   :: utemp(1:sem_obj%ndumps, &
                                              0:sem_obj%npol,   &
                                              0:sem_obj%npol,   &
@@ -2471,8 +2479,6 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
         col_points_eta = sem_obj%gll_points
     endif 
 
-
-      allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
 
       ! load displacements from all GLL points
       do ipol = 0, sem_obj%npol
@@ -2512,13 +2518,6 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
                         = utemp_chunk(pointids(ipol,jpol) - start_chunk + 1,:,idisplvar)
                enddo
 
-!               do iread = 0, sem_obj%chunk_gll - 1
-!                   status = sem_obj%buffer_disp%put(start_chunk + iread, &
-!                                                    utemp_chunk(iread+1,:,:) )
-!               end do
-!            else
-!               utemp(:,ipol,jpol,:) = real(ubuff(:,:), kind=dp)
-!            endif
          enddo
       enddo
 
@@ -2617,6 +2616,10 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
                                              0:sem_obj%npol,   &
                                              0:sem_obj%npol,   &
                                              3)
+    real(kind=sp)                   :: utemp_sp(1:sem_obj%ndumps, &
+                                                0:sem_obj%npol,   &
+                                                0:sem_obj%npol,   &
+                                                3)
     real(kind=sp)                   :: strain(1:sem_obj%ndumps, &
                                               0:sem_obj%npol,   &
                                               0:sem_obj%npol,   &
@@ -2680,23 +2683,11 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
 
       ! load displacements from all GLL points
       distributed_io: if (dist_io) then
-        utemp = io_worker_single_point_from_file(sem_obj, pointids)
+        call io_worker_single_point_from_file(sem_obj, pointids, utemp_sp)
       else
-        utemp = load_single_point_from_file(sem_obj, pointids)
+        call load_single_point_from_file(sem_obj, pointids, utemp_sp)
       endif distributed_io
-
-      !do ipol = 0, sem_obj%npol
-      !   do jpol = 0, sem_obj%npol
-
-      !      distributed_io: if (dist_io) then
-      !        utemp(:, ipol, jpol, :) = io_worker_single_point_from_file(sem_obj,             &
-      !                                                                   pointids(ipol,jpol))
-      !      else
-      !        utemp(:, ipol, jpol, :) = load_single_point_from_file(sem_obj,             &
-      !                                                              pointids(ipol,jpol))
-      !      endif distributed_io
-      !   enddo ! jpol
-      !enddo ! ipol
+      utemp = real(utemp_sp, kind=dp)
 
       iclockold = tick()
       select case(strain_type)
@@ -2786,7 +2777,7 @@ end function load_strain_point_interp
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_single_point_from_file(sem_obj, pointids) result(u_out)
+subroutine load_single_point_from_file(sem_obj, pointids, u_out)
 
   use simple_routines, only        : check_limits
 
@@ -2799,14 +2790,7 @@ function load_single_point_from_file(sem_obj, pointids) result(u_out)
   integer(kind=long)              :: iclockold
   integer                         :: idisplvar, status, pointid
   integer                         :: start_chunk, iread, gll_to_read, ipol, jpol
-  real(kind=sp), allocatable      :: utemp_chunk(:,:,:)
-  real(kind=sp), allocatable      :: ubuff(:,:)
   logical                         :: strain_nan
-
-  allocate(utemp_chunk(sem_obj%chunk_gll, sem_obj%ndumps, 3))
-  utemp_chunk = 0
-  allocate(ubuff(sem_obj%ndumps, 3))
-  ubuff = 0
 
   do ipol = 0, sem_obj%npol
     do jpol = 0, sem_obj%npol
@@ -2868,11 +2852,11 @@ function load_single_point_from_file(sem_obj, pointids) result(u_out)
       endif
     end do ! jpol
   end do ! ipol
-end function load_single_point_from_file
+end subroutine load_single_point_from_file
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function io_worker_single_point_from_file(sem_obj, pointids) result(u_out)
+subroutine io_worker_single_point_from_file(sem_obj, pointids, u_out)
   use commpi, only           : MPI_COMM_NODE
 
 # ifndef include_mpi
@@ -2885,8 +2869,9 @@ function io_worker_single_point_from_file(sem_obj, pointids) result(u_out)
   type(ncparamtype)         :: sem_obj
   integer, intent(in)       :: pointids(0:sem_obj%npol, 0:sem_obj%npol)
   integer                   :: mpistatus(MPI_STATUS_SIZE)
-  real(kind=sp)             :: u_out(sem_obj%ndumps, 0:sem_obj%npol, &
-                                     0:sem_obj%npol, 3)
+  real(kind=sp)             :: u_out(:,:,:,:)
+  !real(kind=sp)             :: u_out(sem_obj%ndumps, 0:sem_obj%npol, &
+  !                                   0:sem_obj%npol, 3)
 
   integer                   :: ierror, field_tag, npts
 
@@ -2925,7 +2910,7 @@ function io_worker_single_point_from_file(sem_obj, pointids) result(u_out)
   end if
 
 
-end function io_worker_single_point_from_file
+end subroutine io_worker_single_point_from_file
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -2951,9 +2936,8 @@ subroutine build_kdtree(this)
     end if
 
     allocate(mesh(2, this%fwdmesh%npoints))
-    mesh = transpose(reshape([this%fwdmesh%s, this%fwdmesh%z],       &
-                             [this%fwdmesh%npoints, 2]))
-
+    mesh(1,:) = this%fwdmesh%s
+    mesh(2,:) = this%fwdmesh%z
 
     write(lu_out,*) ' Building forward KD-Tree'
     call flush(lu_out)
@@ -2968,8 +2952,8 @@ subroutine build_kdtree(this)
     write(lu_out,*) ' Building forward midpoint-only KD-Tree'
     if (trim(this%dump_type) == 'displ_only') then
         allocate(mesh(2, this%fwdmesh%nelem)) ! midpoints only
-        mesh = transpose(reshape([this%fwdmesh%s_mp, this%fwdmesh%z_mp], &
-                                 [this%fwdmesh%nelem, 2]))
+        mesh(1,:) = this%fwdmesh%s_mp
+        mesh(2,:) = this%fwdmesh%z_mp
         ! KDtree in forward field
         this%fwdtree_mp => kdtree2_create(mesh,              &
                                           dim = 2,           &
@@ -2984,8 +2968,8 @@ subroutine build_kdtree(this)
     if (this%nsim_bwd > 0) then
 
         allocate(mesh(2, this%bwdmesh%npoints))
-        mesh = transpose(reshape([this%bwdmesh%s, this%bwdmesh%z],       &
-                                 [this%bwdmesh%npoints, 2]))
+        mesh(1,:) = this%bwdmesh%s
+        mesh(2,:) = this%bwdmesh%z
 
         write(lu_out,*) ' Building backward KD-Tree'
         call flush(lu_out)
@@ -2998,8 +2982,8 @@ subroutine build_kdtree(this)
         write(lu_out,*) ' Building backward midpoint-only KD-Tree'
         if (trim(this%dump_type) == 'displ_only') then
             allocate(mesh(2, this%bwdmesh%nelem)) ! midpoints only
-            mesh = transpose(reshape([this%bwdmesh%s_mp, this%bwdmesh%z_mp], &
-                                     [this%bwdmesh%nelem, 2]))
+            mesh(1,:) = this%bwdmesh%s_mp
+            mesh(2,:) = this%bwdmesh%z_mp
             ! KDtree in forward field
             this%bwdtree_mp => kdtree2_create(mesh,              &
                                               dim = 2,           &

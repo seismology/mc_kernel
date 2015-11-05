@@ -197,9 +197,9 @@ subroutine loop_ioworker(fields)
 
     select case(field_tag)
     case(1,2,3,4)
-      u = load_single_point_from_file(fields%fwd(field_tag), pointids)
+      call load_single_point_from_file(fields%fwd(field_tag), pointids, u)
     case(5,6,7,8)
-      u = load_single_point_from_file(fields%bwd(field_tag-4), pointids)
+      call load_single_point_from_file(fields%bwd(field_tag-4), pointids, u)
     case(-1) ! the DIETAG
       alldone(rank_sender) = .true.
     case default
