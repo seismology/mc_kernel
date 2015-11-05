@@ -19,7 +19,8 @@ subroutine test_mult2d_1d
   call random_number(vect_1d) 
   call random_number(vect_2d)
 
-  vect_res = mult2d_1d(vect_2d, vect_1d)
+  vect_res = vect_2d
+  call mult2d_1d(vect_res, vect_1d)
 
   do idim2 = 1, ndim2
      vect_ref(:, idim2) = vect_1d(:) * vect_2d(:, idim2)
@@ -40,7 +41,8 @@ subroutine test_mult3d_1d
   call random_number(vect_1d) 
   call random_number(vect_3d)
 
-  vect_res = mult3d_1d(vect_3d, vect_1d)
+  vect_res = vect_3d
+  call mult3d_1d(vect_res, vect_1d)
 
   do idim2 = 1, ndim2
      do idim3 = 1, ndim3
@@ -72,7 +74,8 @@ subroutine test_mult2d_1d_complex
   vect_2d = cmplx(vect_2d_real, vect_2d_imag, kind=dp)
   vect_1d = cmplx(vect_1d_real, vect_1d_imag, kind=dp)
 
-  vect_res = mult2d_1d(vect_2d, vect_1d)
+  vect_res = vect_2d
+  call mult2d_1d(vect_res, vect_1d)
 
   do idim2 = 1, ndim2
      vect_ref(:, idim2) = vect_1d(:) * vect_2d(:, idim2)
@@ -102,7 +105,8 @@ subroutine test_mult3d_1d_complex
   vect_3d = cmplx(vect_3d_real, vect_3d_imag, kind=dp)
   vect_1d = cmplx(vect_1d_real, vect_1d_imag, kind=dp)
 
-  vect_res = mult3d_1d(vect_3d, vect_1d)
+  vect_res = vect_3d
+  call mult3d_1d(vect_res, vect_1d)
 
   do idim2 = 1, ndim2
      do idim3 = 1, ndim3

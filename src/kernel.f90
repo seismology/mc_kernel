@@ -283,7 +283,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    this%ntimes_ft = this%fft_data%get_ntimes()
    this%nomega    = this%fft_data%get_nomega()
 
-   allocate(this%datat(this%ntimes,1))
+   allocate(this%datat(this%ntimes_ft,1))
    allocate(this%dataf(this%nomega,1))
    allocate(this%seis_disp_cut_fd(this%nomega,1))
    allocate(this%seis_velo_cut_fd(this%nomega,1))
@@ -948,17 +948,13 @@ function integrate_parseval_both_real(this, a, b) result(integrate)
     real(kind=dp)                                 :: integrate
     complex(kind=dp), dimension(this%nomega,1)    :: af, bf, atimesb
 
-    this%datat(:,1) = a
-    call this%fft_data%rfft(taperandzeropad(array = this%datat,      &
-                                            ntimes = this%ntimes_ft, &
-                                            ntaper = 0 ),            &
-                            af)
+    this%datat(:,1) = 0
+    this%datat(1:size(a),1) = a
+    call this%fft_data%rfft(this%datat, af)
     
-    this%datat(:,1) = b
-    call this%fft_data%rfft(taperandzeropad(array = this%datat,      &
-                                            ntimes = this%ntimes_ft, &
-                                            ntaper = 0 ),            &
-                            bf)
+    this%datat(:,1) = 0
+    this%datat(1:size(b),1) = b
+    call this%fft_data%rfft(this%datat, bf)
 
     atimesb = af * conjg(bf)                      
 
@@ -979,11 +975,9 @@ function integrate_parseval_b_complex(this, a, bf) result(integrate)
     real(kind=dp)                                 :: integrate
     complex(kind=dp), dimension(this%nomega,1)    :: af, atimesb
 
-    this%datat(:,1) = a
-    call this%fft_data%rfft(taperandzeropad(array = this%datat,      &
-                                            ntimes = this%ntimes_ft, &
-                                            ntaper = 0 ),            &
-                            af)
+    this%datat(:,1) = 0
+    this%datat(1:size(a),1) = a
+    call this%fft_data%rfft(this%datat, af)
     
     atimesb = af * conjg(bf)                      
 
