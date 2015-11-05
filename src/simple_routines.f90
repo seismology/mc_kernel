@@ -57,10 +57,13 @@ module simple_routines
 !------------------------------------------------------------------------------
 pure function mult2d_1d_dble(A, B) result(C)
 ! Multiply 1D array B along first dimension of 3D array A
-   real(kind=dp), intent(in) :: A(:,:), B(:)
-   real(kind=dp)             :: C(size(A,1), size(A,2))
+   real(kind=dp), intent(in)    :: A(:,:), B(:)
+   real(kind=dp)                :: C(size(A,1), size(A,2))
+   integer                      :: i
 
-   C = A * spread(B, 2, size(A,2))
+   do i = 1, size(A,1)
+     C(i,:) = A(i,:) * B(i)
+   end do
 end function mult2d_1d_dble
 !------------------------------------------------------------------------------
 
@@ -69,8 +72,11 @@ pure function mult2d_1d_cmplx(A, B) result(C)
 ! Multiply 1D array B along first dimension of 3D array A
    complex(kind=dp), intent(in) :: A(:,:), B(:)
    complex(kind=dp)             :: C(size(A,1), size(A,2))
+   integer                      :: i
 
-   C = A * spread(B, 2, size(A,2))
+   do i = 1, size(A,1)
+     C(i,:) = A(i,:) * B(i)
+   end do
 end function mult2d_1d_cmplx
 !------------------------------------------------------------------------------
 
@@ -78,10 +84,13 @@ end function mult2d_1d_cmplx
 !------------------------------------------------------------------------------
 pure function mult3d_1d_dble(A, B) result(C)
 ! Multiply 1D array B along first dimension of 3D array A
-   real(kind=dp), intent(in) :: A(:,:,:), B(:)
-   real(kind=dp)             :: C(size(A,1), size(A,2), size(A,3))
+   real(kind=dp), intent(in)    :: A(:,:,:), B(:)
+   real(kind=dp)                :: C(size(A,1), size(A,2), size(A,3))
+   integer                      :: i
 
-   C = A * spread(spread(B, 2, size(A,2)), 3, size(A,3))
+   do i = 1, size(A,1)
+     C(i,:,:) = A(i,:,:) * B(i)
+   end do
 end function mult3d_1d_dble
 !------------------------------------------------------------------------------
 
@@ -90,8 +99,11 @@ pure function mult3d_1d_cmplx(A, B) result(C)
 ! Multiply 1D array B along first dimension of 3D array A
    complex(kind=dp), intent(in) :: A(:,:,:), B(:)
    complex(kind=dp)             :: C(size(A,1), size(A,2), size(A,3))
+   integer                      :: i
 
-   C = A * spread(spread(B, 2, size(A,2)), 3, size(A,3))
+   do i = 1, size(A,1)
+     C(i,:,:) = A(i,:,:) * B(i)
+   end do
 end function mult3d_1d_cmplx
 !------------------------------------------------------------------------------
 
