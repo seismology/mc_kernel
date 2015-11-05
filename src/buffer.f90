@@ -326,8 +326,8 @@ function put_1d(this, iindex, values)
     class(buffer_type)        :: this
     integer, intent(in)       :: iindex      !< Index under which the values can later
                                              !! be accessed
-    real(kind=sp), intent(in) :: values(this%nvalues_dim1) !< Values to store
-    integer                   :: put_1d    !< Return value, 0=Success
+    real(kind=sp), intent(in) :: values(:)   !< Values to store
+    integer                   :: put_1d      !< Return value, 0=Success
     real(kind=dp)             :: randtemp
     integer                   :: ibuffer
 
@@ -365,8 +365,8 @@ function put_2d(this, iindex, values)
     class(buffer_type)        :: this
     integer, intent(in)       :: iindex      !< Index under which the values can later
                                              !! be accessed
-    real(kind=sp), intent(in) :: values(this%nvalues_dim1, this%nvalues_dim2) !< Values to store
-    integer                   :: put_2d    !< Return value, 0=Success
+    real(kind=sp), intent(in) :: values(:,:) !< Values to store
+    integer                   :: put_2d      !< Return value, 0=Success
     real(kind=dp)             :: randtemp
     integer                   :: ibuffer
 
@@ -402,11 +402,10 @@ end function
 function put_3d(this, iindex, values)
 
     class(buffer_type)        :: this
-    integer, intent(in)       :: iindex      !< Index under which the values can later
-                                             !! be accessed
-    real(kind=sp), intent(in) :: values(this%nvalues_dim1, this%nvalues_dim2, &
-                                        this%nvalues_dim3) !< Values to store
-    integer                   :: put_3d    !< Return value, 0=Success
+    integer, intent(in)       :: iindex        !< Index under which the values can later
+                                               !! be accessed
+    real(kind=sp), intent(in) :: values(:,:,:) !< Values to store
+    integer                   :: put_3d        !< Return value, 0=Success
     real(kind=dp)             :: randtemp
     integer                   :: ibuffer
 
@@ -442,11 +441,10 @@ end function
 function put_4d(this, iindex, values)
 
     class(buffer_type)        :: this
-    integer, intent(in)       :: iindex      !< Index under which the values can later
-                                             !! be accessed
-    real(kind=sp), intent(in) :: values(this%nvalues_dim1, this%nvalues_dim2, &
-                                        this%nvalues_dim3, this%nvalues_dim4) !< Values to store
-    integer                   :: put_4d    !< Return value, 0=Success
+    integer, intent(in)       :: iindex          !< Index under which the values can later
+                                                 !! be accessed
+    real(kind=sp), intent(in) :: values(:,:,:,:) !< Values to store
+    integer                   :: put_4d          !< Return value, 0=Success
     real(kind=dp)             :: randtemp
     integer                   :: ibuffer
 
