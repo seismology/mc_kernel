@@ -18,7 +18,7 @@ program kerner_code
     use unit_tests,                  only: test_all
     use slave_mod,                   only: do_slave
     use master_module,               only: do_master
-    use ioworker_mod,                only: do_ioworker
+    use ioworker_mod,                only: do_ioworker, stop_ioworker
     use work_type_mod,               only: init_work_type
     use background_model,            only: nmodel_parameters
     use heterogeneities,             only: nmodel_parameters_hetero
@@ -165,13 +165,16 @@ program kerner_code
       else
         call do_master(MPI_COMM_WORLD)
       end if
+
     elseif (ioworker) then
        call do_ioworker()
+
     else
       if (dist_io) then
         ! If some slaves are in fact IO workers, the MPI communicator should not 
         ! engulf them
         call do_slave(MPI_COMM_MASTER_SLAVES)
+        call stop_ioworker()
       else
         call do_slave(MPI_COMM_WORLD)
       end if

@@ -6,7 +6,9 @@ module ioworker_mod
   implicit none
   private
 
-  public                               :: do_ioworker
+  integer, parameter                   :: DIETAG = 999
+
+  public                               :: do_ioworker, stop_ioworker
 
 contains
 
@@ -121,17 +123,24 @@ subroutine do_ioworker()
 
   iclockold = tick(id=id_read_params, since=iclockold)
 
-  write(lu_out, *) "Starting my job as an IO worker"
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') 'Starting my job as an IO worker'
+  write(lu_out,'(A)') '***************************************************************'
   flush(lu_out)
-
   call loop_ioworker(sem_data)
+
+  write(lu_out,'(A)')
+  write(lu_out,'(A)') '***************************************************************'
+  write(lu_out,'(A)') ' Close AxiSEM wavefield files'
+  write(lu_out,'(A)') '***************************************************************'
+  call flush(lu_out)
+  call sem_data%close_files()
 
 end subroutine do_ioworker
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine loop_ioworker(fields)
-
   use commpi,            only        : MPI_COMM_NODE
   use global_parameters, only        : nproc_node
   use readfields,        only        : semdata_type, load_single_point_from_file
@@ -148,6 +157,7 @@ subroutine loop_ioworker(fields)
   integer                           :: pointids(0:fields%npol, 0:fields%npol)
   integer                           :: rank_sender, field_tag, ierror, myrank_loc
   real(kind=sp)                     :: u(fields%ndumps, fields%npol+1, fields%npol+1, 3)
+  integer                           :: t2, t1, ticks_per_sec
   logical                           :: alldone(nproc_node) 
   integer                           :: npts, iproc
   logical                           :: youvegotmail
@@ -188,7 +198,9 @@ subroutine loop_ioworker(fields)
                   mpistatus,        & ! info about the received message
                   ierror)
 
+    write(lu_out, '(A,I2,A,I3)', advance='no') 'Received tag', field_tag, ' from rank:', rank_sender
 
+    !call system_clock( t1, ticks_per_sec)
     if (ierror.ne.MPI_SUCCESS) then
       print *, 'MPI_Recv error on IO worker: ', ierror
     end if
@@ -200,14 +212,17 @@ subroutine loop_ioworker(fields)
       call load_single_point_from_file(fields%fwd(field_tag), pointids, u)
     case(5,6,7,8)
       call load_single_point_from_file(fields%bwd(field_tag-4), pointids, u)
-    case(-1) ! the DIETAG
+    case(DIETAG) ! the DIETAG
       alldone(rank_sender) = .true.
+      write(lu_out, *) 'Received die tag from rank:', rank_sender, alldone
     case default
       print *, 'Invalid field tag: ', field_tag
       stop
     end select
+    !call system_clock( t2, ticks_per_sec)
+    !write(lu_out,'(A, F8.6, A)'), ', took ', 1.e3/real(ticks_per_sec)*(t2-t1), ' ms to answer'
 
-    if (field_tag.ne.-1) then
+    if (field_tag.ne.DIETAG) then
       ! Send the same worker the loaded time series (blocking)
       call MPI_RSend(u,                     & ! message buffer
                      3*fields%ndumps*npts,  & ! three dimensions per time step
@@ -228,6 +243,34 @@ subroutine loop_ioworker(fields)
   end do receive_io_requests
 
 end subroutine loop_ioworker
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> This routine is called by all slaves after they are done to send the IO worker the 
+!! DIE tag (-1). If he has received the DIE tag once by all slaves, he shuts himself down.
+subroutine stop_ioworker()
+  use commpi, only   : MPI_COMM_NODE
+# ifndef include_mpi
+  use mpi
+# endif
+# ifdef include_mpi
+  include 'mpif.h'
+# endif
+  integer           :: ierror
+  integer           :: tmp(1)
+
+  tmp = 1
+
+  ! Tell IO worker to stop waiting for tasks (unless we're the IO worker)
+  call MPI_SSend(tmp(1),                & ! message buffer
+                 1,                     & ! One point ID
+                 MPI_INTEGER,           & ! data item is a integer
+                 0,                     & ! to rank zero, the io-worker
+                 DIETAG,                & ! The DIE tag
+                 MPI_COMM_NODE,         & ! Node communicator
+                 ierror)
+
+end subroutine stop_ioworker
 !-----------------------------------------------------------------------------------------
 
 end module ioworker_mod
