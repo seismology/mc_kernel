@@ -198,7 +198,7 @@ subroutine loop_ioworker(fields)
                   mpistatus,        & ! info about the received message
                   ierror)
 
-    write(lu_out, '(A,I2,A,I3)', advance='no') 'Received tag', field_tag, ' from rank:', rank_sender
+    !write(lu_out, '(A,I2,A,I3)', advance='no') 'Received tag', field_tag, ' from rank:', rank_sender
 
     !call system_clock( t1, ticks_per_sec)
     if (ierror.ne.MPI_SUCCESS) then
@@ -220,7 +220,7 @@ subroutine loop_ioworker(fields)
       stop
     end select
     !call system_clock( t2, ticks_per_sec)
-    !write(lu_out,'(A, F8.6, A)'), ', took ', 1.e3/real(ticks_per_sec)*(t2-t1), ' ms to answer'
+    !write(lu_out,'(A, F8.4, A)'), ', took ', 1.e3/real(ticks_per_sec)*real(t2-t1), ' ms to answer'
 
     if (field_tag.ne.DIETAG) then
       ! Send the same worker the loaded time series (blocking)
