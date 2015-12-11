@@ -523,13 +523,14 @@ function apply_3d(this, freq_series, kind)
       call pabort
    end if
 
+   apply_3d = freq_series
    select case(kind)
    case('fwd')
-     apply_3d = mult3d_1d(freq_series, this%transferfunction_fwd)
+     call mult3d_1d(apply_3d, this%transferfunction_fwd)
    case('bwd')
-     apply_3d = mult3d_1d(freq_series, this%transferfunction_bwd)
+     call mult3d_1d(apply_3d, this%transferfunction_bwd)
    case default
-     apply_3d = mult3d_1d(freq_series, this%transferfunction)
+     call mult3d_1d(apply_3d, this%transferfunction)
    end select
 
 end function apply_3d
@@ -588,7 +589,7 @@ subroutine timeshift_md(this, field)
                                                    !! time shift on. 
                                                    !! Dimension: nfreq x ndim x ntraces
    if (this%isinitialized) then
-     field(:,:,:) = mult3d_1d(field, this%shift_fd)
+     call mult3d_1d(field, this%shift_fd)
    else
      write(*,*) 'Timeshift is not initialized yet!'
      call pabort()
@@ -605,7 +606,7 @@ subroutine timeshift_1d(this, field)
                                                    !! time shift on. 
                                                    !! Dimension: nfreq x ntraces
    if (this%isinitialized) then
-     field(:,:) = mult2d_1d(field, this%shift_fd)
+     call mult2d_1d(field, this%shift_fd)
    else
      write(*,*) 'Timeshift is not initialized yet!'
      call pabort()

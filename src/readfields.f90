@@ -134,7 +134,6 @@ module readfields
             procedure, pass                :: get_mesh 
             procedure, pass                :: set_params
             procedure, pass                :: open_files
-            procedure, pass                :: reopen_files
             procedure, pass                :: close_files
             procedure, pass                :: check_consistency
             procedure, pass                :: read_meshes
@@ -765,64 +764,6 @@ subroutine open_files(this)
 
 
 end subroutine open_files
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-!> This routine closes the NetCDF files and directy opens them again. Meant as a workaround
-!! to the library crashes for long runs. Since the variable IDs are a property of the file,
-!! they do not have to be read again. Only the group IDs (which are Root ID + Group ID in 
-!! file) are read again, just to be sure.
-subroutine reopen_files(this)
-  use nc_routines, only             : nc_close_file, nc_open_for_read
-  class(semdata_type)              :: this
-  integer                          :: isim
-  character(len=200)               :: format20, filename
-
-  format20 = "('  Trying to reopen NetCDF file ', A, ' on CPU ', I5)"
-  do isim = 1, this%nsim_fwd
-     if (verbose>0) write(lu_out,format20) trim(filename), myrank
-     call nc_close_file(this%fwd(isim)%ncid)
-     filename=trim(this%fwd(isim)%meshdir)//'/Data/ordered_output.nc4'
-     
-     call nc_open_for_read(filename = filename,              &
-                           ncid     = this%fwd(isim)%ncid) 
-          
-     call getgrpid(ncid     = this%fwd(isim)%ncid,   &
-                   name     = "Snapshots",           &
-                   grp_ncid = this%fwd(isim)%snap)
-
-     call getgrpid(ncid      = this%fwd(isim)%ncid,   &
-                   name      = "Surface",             &
-                   grp_ncid  = this%fwd(isim)%surf)
-
-     call getgrpid(ncid      = this%fwd(isim)%ncid,   &
-                   name      = "Mesh",                &
-                   grp_ncid  = this%fwd(isim)%mesh)
-  end do
-
-  do isim = 1, this%nsim_bwd
-     if (verbose>0) write(lu_out,format20) trim(filename), myrank
-     call nc_close_file(this%fwd(isim)%ncid)
-     filename=trim(this%bwd(isim)%meshdir)//'/Data/ordered_output.nc4'
-     
-     if (verbose>0) write(lu_out,format20) trim(filename), myrank
-     call nc_open_for_read(filename = filename,              &
-                           ncid     = this%bwd(isim)%ncid) 
-          
-     call getgrpid(ncid     = this%bwd(isim)%ncid,   &
-                   name     = "Snapshots",           &
-                   grp_ncid = this%bwd(isim)%snap)
-
-     call getgrpid(ncid      = this%bwd(isim)%ncid,   &
-                   name      = "Surface",             &
-                   grp_ncid  = this%bwd(isim)%surf)
-
-     call getgrpid(ncid      = this%bwd(isim)%ncid,   &
-                   name      = "Mesh",                &
-                   grp_ncid  = this%bwd(isim)%mesh)
-  end do
-
-end subroutine reopen_files
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -1604,7 +1545,7 @@ function load_bw_points(this, coordinates, receiver)
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2)), rotmesh_s_buff
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
-    real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
+    real(kind=sp)                     :: utemp(this%ndumps, this%ndim)
     real(kind=dp)                     :: xi, eta
 
     
@@ -2491,7 +2432,7 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
         do i = 1, 6
             load_strain_point_interp_seismogram(:, i) &
                 = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
-                                          real(strain(:,:,:,i), kind=dp), xi, eta)
+                                          strain(:,:,:,i), xi, eta)
         enddo
 
         iclockold = tick(id=id_lagrange, since=iclockold)
@@ -2620,19 +2561,22 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
       case('straintensor_trace')
           ! compute straintrace
           if (sem_obj%excitation_type == 'monopole') then
-              straintrace = straintrace_monopole(utemp, G, GT, col_points_xi, &
+              straintrace = straintrace_monopole(utemp, G, GT, col_points_xi,  &
                                                  col_points_eta, sem_obj%npol, &
-                                                 sem_obj%ndumps, nodes, element_type, axis)
+                                                 sem_obj%ndumps, nodes,        &
+                                                 element_type, axis)
 
           elseif (sem_obj%excitation_type == 'dipole') then
-              straintrace = straintrace_dipole(utemp, G, GT, col_points_xi, &
-                                               col_points_eta, sem_obj%npol, sem_obj%ndumps, &
-                                               nodes, element_type, axis)
+              straintrace = straintrace_dipole(utemp, G, GT, col_points_xi,  &
+                                               col_points_eta, sem_obj%npol, &
+                                               sem_obj%ndumps, nodes,        &
+                                               element_type, axis)
 
           elseif (sem_obj%excitation_type == 'quadpole') then
-              straintrace = straintrace_quadpole(utemp, G, GT, col_points_xi, &
+              straintrace = straintrace_quadpole(utemp, G, GT, col_points_xi,  &
                                                  col_points_eta, sem_obj%npol, &
-                                                 sem_obj%ndumps, nodes, element_type, axis)
+                                                 sem_obj%ndumps, nodes,        &
+                                                 element_type, axis)
           else
               print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
               call pabort
@@ -2677,7 +2621,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
         allocate(load_strain_point_interp(sem_obj%ndumps, 1))
         load_strain_point_interp(:, 1) &
             = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
-                                      real(straintrace(:,:,:), kind=dp), xi, eta)
+                                      straintrace(:,:,:), xi, eta)
 
         iclockold = tick(id=id_lagrange, since=iclockold)
 
@@ -2686,7 +2630,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
         do i = 1, 6
             load_strain_point_interp(:, i) &
                 = lagrange_interpol_2D_td(col_points_xi, col_points_eta, &
-                                          real(strain(:,:,:,i), kind=dp), xi, eta)
+                                          strain(:,:,:,i), xi, eta)
         enddo
 
         iclockold = tick(id=id_lagrange, since=iclockold)

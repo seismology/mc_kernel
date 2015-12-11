@@ -3,7 +3,7 @@ module simple_routines
    use global_parameters, only: sp, dp, qp, verbose
 
    implicit none
-   private
+   !private
    public mult2d_1d, mult3d_1d, absreldiff, check_NaN, cross
    public to_lower, lowtrim, check_limits
    public cumsum_trapezoidal
@@ -55,44 +55,55 @@ module simple_routines
    contains
 
 !------------------------------------------------------------------------------
-pure function mult2d_1d_dble(A, B) result(C)
+pure subroutine mult2d_1d_dble(A, B) 
 ! Multiply 1D array B along first dimension of 3D array A
-   real(kind=dp), intent(in) :: A(:,:), B(:)
-   real(kind=dp)             :: C(size(A,1), size(A,2))
+   real(kind=dp), intent(inout)    :: A(:,:)
+   real(kind=dp), intent(in)       :: B(:)
+   integer                         :: i
 
-   C = A * spread(B, 2, size(A,2))
-end function mult2d_1d_dble
+   do i = 1, size(A,1)
+     A(i,:) = A(i,:) * B(i)
+   end do
+end subroutine mult2d_1d_dble
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-pure function mult2d_1d_cmplx(A, B) result(C)
+pure subroutine mult2d_1d_cmplx(A, B) 
 ! Multiply 1D array B along first dimension of 3D array A
-   complex(kind=dp), intent(in) :: A(:,:), B(:)
-   complex(kind=dp)             :: C(size(A,1), size(A,2))
+   complex(kind=dp), intent(inout)  :: A(:,:)
+   complex(kind=dp), intent(in)     :: B(:)
+   integer                          :: i
 
-   C = A * spread(B, 2, size(A,2))
-end function mult2d_1d_cmplx
+   do i = 1, size(A,1)
+     A(i,:) = A(i,:) * B(i)
+   end do
+end subroutine mult2d_1d_cmplx
 !------------------------------------------------------------------------------
 
-
 !------------------------------------------------------------------------------
-pure function mult3d_1d_dble(A, B) result(C)
+pure subroutine mult3d_1d_dble(A, B) 
 ! Multiply 1D array B along first dimension of 3D array A
-   real(kind=dp), intent(in) :: A(:,:,:), B(:)
-   real(kind=dp)             :: C(size(A,1), size(A,2), size(A,3))
+   real(kind=dp), intent(inout)     :: A(:,:,:)
+   real(kind=dp), intent(in)        :: B(:)
+   integer                          :: i
 
-   C = A * spread(spread(B, 2, size(A,2)), 3, size(A,3))
-end function mult3d_1d_dble
+   do i = 1, size(A,1)
+     A(i,:,:) = A(i,:,:) * B(i)
+   end do
+end subroutine mult3d_1d_dble
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------
-pure function mult3d_1d_cmplx(A, B) result(C)
+pure subroutine mult3d_1d_cmplx(A, B) 
 ! Multiply 1D array B along first dimension of 3D array A
-   complex(kind=dp), intent(in) :: A(:,:,:), B(:)
-   complex(kind=dp)             :: C(size(A,1), size(A,2), size(A,3))
+   complex(kind=dp), intent(inout)  :: A(:,:,:)
+   complex(kind=dp), intent(in)     :: B(:)
+   integer                          :: i
 
-   C = A * spread(spread(B, 2, size(A,2)), 3, size(A,3))
-end function mult3d_1d_cmplx
+   do i = 1, size(A,1)
+     A(i,:,:) = A(i,:,:) * B(i)
+   end do
+end subroutine mult3d_1d_cmplx
 !------------------------------------------------------------------------------
 
 !------------------------------------------------------------------------------

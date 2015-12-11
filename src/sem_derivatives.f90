@@ -1,6 +1,6 @@
 !=========================================================================================
 module sem_derivatives
-  use global_parameters,      only : dp
+  use global_parameters,      only : dp, sp
   use commpi,                 only : pabort
   use finite_elem_mapping,    only : inv_jacobian
 
@@ -94,7 +94,7 @@ function strain_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type,
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: strain_monopole_td(1:nsamp,0:npol,0:npol,6)
+  real(kind=sp)                 :: strain_monopole_td(1:nsamp,0:npol,0:npol,6)
   
   real(kind=dp)                 :: grad_buff1(1:nsamp,0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff2(1:nsamp,0:npol,0:npol,2)
@@ -134,7 +134,7 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: strain_monopole(0:npol,0:npol,6)
+  real(kind=sp)                 :: strain_monopole(0:npol,0:npol,6)
   
   real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff2(0:npol,0:npol,2)
@@ -173,7 +173,7 @@ function straintrace_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: straintrace_monopole_td(1:nsamp,0:npol,0:npol)
+  real(kind=sp)                 :: straintrace_monopole_td(1:nsamp,0:npol,0:npol)
   
   real(kind=dp)                 :: grad_buff1(1:nsamp,0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff2(1:nsamp,0:npol,0:npol,2)
@@ -210,7 +210,7 @@ function straintrace_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axia
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: straintrace_monopole(0:npol,0:npol)
+  real(kind=sp)                 :: straintrace_monopole(0:npol,0:npol)
   
   real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff2(0:npol,0:npol,2)
@@ -247,7 +247,7 @@ function strain_dipole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, a
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: strain_dipole_td(1:nsamp,0:npol,0:npol,6)
+  real(kind=sp)                 :: strain_dipole_td(1:nsamp,0:npol,0:npol,6)
   
   real(kind=dp)                 :: grad_buff1(1:nsamp,0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff2(1:nsamp,0:npol,0:npol,2)
@@ -296,7 +296,7 @@ function strain_dipole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: strain_dipole(0:npol,0:npol,6)
+  real(kind=sp)                 :: strain_dipole(0:npol,0:npol,6)
   
   real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff2(0:npol,0:npol,2)
@@ -343,7 +343,7 @@ function straintrace_dipole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_ty
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: straintrace_dipole_td(1:nsamp,0:npol,0:npol)
+  real(kind=sp)                 :: straintrace_dipole_td(1:nsamp,0:npol,0:npol)
   
   real(kind=dp)                 :: grad_buff1(1:nsamp,0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff3(1:nsamp,0:npol,0:npol,2)
@@ -379,7 +379,7 @@ function straintrace_dipole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: straintrace_dipole(0:npol,0:npol)
+  real(kind=sp)                 :: straintrace_dipole(0:npol,0:npol)
   
   real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff3(0:npol,0:npol,2)
@@ -417,7 +417,7 @@ function strain_quadpole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type,
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: strain_quadpole_td(1:nsamp,0:npol,0:npol,6)
+  real(kind=sp)                 :: strain_quadpole_td(1:nsamp,0:npol,0:npol,6)
   
   real(kind=dp)                 :: grad_buff1(1:nsamp,0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff2(1:nsamp,0:npol,0:npol,2)
@@ -466,7 +466,7 @@ function strain_quadpole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: strain_quadpole(0:npol,0:npol,6)
+  real(kind=sp)                 :: strain_quadpole(0:npol,0:npol,6)
   
   real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff2(0:npol,0:npol,2)
@@ -512,7 +512,7 @@ function straintrace_quadpole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: straintrace_quadpole_td(1:nsamp,0:npol,0:npol)
+  real(kind=sp)                 :: straintrace_quadpole_td(1:nsamp,0:npol,0:npol)
   
   real(kind=dp)                 :: grad_buff1(1:nsamp,0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff3(1:nsamp,0:npol,0:npol,2)
@@ -550,7 +550,7 @@ function straintrace_quadpole(u, G, GT, xi, eta, npol, nodes, element_type, axia
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: straintrace_quadpole(0:npol,0:npol)
+  real(kind=sp)                 :: straintrace_quadpole(0:npol,0:npol)
   
   real(kind=dp)                 :: grad_buff1(0:npol,0:npol,2)
   real(kind=dp)                 :: grad_buff3(0:npol,0:npol,2)

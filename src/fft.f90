@@ -274,7 +274,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine rfft_1d(this, datat, dataf)
   class(rfft_type) :: this
-  real(kind=dp), intent(in)        :: datat(:,:)
+  real(kind=dp), intent(in), contiguous       :: datat(:,:)
   complex(kind=dp), intent(out)    :: dataf(:,:)
 
   if (.not. this%initialized) then
@@ -493,10 +493,12 @@ function taperandzeropad_1d(array, ntimes, ntaper, end_only)
 
 
   taperandzeropad_1d(:,:) = 0
+  taperandzeropad_1d(1:size(array,1),:) = array(:,:)
+     
+  allocate(win(ntimes_in))
+  win = 1
 
   if (ntaper_loc > 0) then
-     allocate(win(ntimes_in))
-     win = 1
      
      if (.not. end_only_loc) then
         do i = 1, ntaper_loc
@@ -508,10 +510,8 @@ function taperandzeropad_1d(array, ntimes, ntaper, end_only)
         win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
      end do
 
-     taperandzeropad_1d(1:size(array,1),:) = mult2d_1d(array, win)
-  else
-     taperandzeropad_1d(1:size(array,1),:) = array(:,:)
   endif
+  call mult2d_1d(taperandzeropad_1d(1:size(array,1),:), win)
   
 end function taperandzeropad_1d
 !-----------------------------------------------------------------------------------------
@@ -553,9 +553,12 @@ function taperandzeropad_md(array, ntimes, ntaper, end_only)
   endif
 
   taperandzeropad_md(:,:,:) = 0
+  taperandzeropad_md(1:size(array,1), :, :) = array(:,:,:)
+
+  allocate(win(ntimes_in))
+  win = 1
+
   if (ntaper_loc > 0) then
-     allocate(win(ntimes_in))
-     win = 1
 
      if (.not. end_only_loc) then
         do i = 1, ntaper_loc
@@ -567,11 +570,9 @@ function taperandzeropad_md(array, ntimes, ntaper, end_only)
         win(ntimes_in - i) = exp( -(D * (ntaper_loc-i) / ntaper_loc)**2 )
      end do
 
-     taperandzeropad_md(1:size(array,1), :, :) = mult3d_1d(array, win)
-  else
-     taperandzeropad_md(1:size(array,1), :, :) = array(:,:,:)
   endif
 
+  call mult3d_1d(taperandzeropad_md(1:size(array,1), :, :), win)
   
 end function taperandzeropad_md
 !-----------------------------------------------------------------------------------------

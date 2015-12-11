@@ -277,7 +277,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   real(kind=dp),    allocatable       :: random_points(:,:) 
   real(kind=dp),    allocatable       :: weights(:)
   real(kind=dp),    allocatable       :: kernelvalue_basekers(:,:,:)
-  real(kind=dp),    allocatable       :: kernelvalue_weighted(:,:,:) 
   real(kind=dp),    allocatable       :: kernelvalue_physical(:,:) ! this is linear combs of ...
   integer,          allocatable       :: niterations(:), kernel_list(:)
 
@@ -364,7 +363,6 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   allocate(conv_field_fd_filt(nomega, nptperstep))
 
   allocate(kernelvalue_basekers(nptperstep, parameters%nkernel, nbasekernels))
-  allocate(kernelvalue_weighted(nptperstep, parameters%nkernel, nbasekernels))
   allocate(kernelvalue_physical(nptperstep, parameters%nkernel))
 
   volume = 0.0
@@ -657,7 +655,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           iclockold = tick()
 
           weights = inv_mesh%weights(ielement, ibasisfunc, random_points)                 
-          kernelvalue_weighted = mult3d_1d(kernelvalue_basekers, weights)
+          call mult3d_1d(kernelvalue_basekers, weights)
 
           ! Compute weighted base kernels
           do ikernel = 1, parameters%nkernel
@@ -665,7 +663,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
             ! Compute the kernels for the actual physical parameters of interest
             kernelvalue_physical(:, ikernel) = calc_physical_kernels(        &
               parameters%kernel(ikernel)%model_parameter, &
-              kernelvalue_weighted(:, ikernel, :),        &
+              kernelvalue_basekers(:, ikernel, :),        &
               bg_model = bg_model,                        &
               relative_kernel = parameters%relative_kernel)
 
