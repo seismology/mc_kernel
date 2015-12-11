@@ -142,7 +142,6 @@ module readfields
             procedure, pass                :: load_fw_points_rdbm
             procedure, pass                :: load_bw_points
             procedure, pass                :: load_model_coeffs
-            !!procedure, pass                :: load_seismogram
             procedure, pass                :: load_seismogram_rdbm
 
     end type
@@ -1430,123 +1429,10 @@ function get_model_coeffs(this, r) result(coeffs)
 end function get_model_coeffs
 !-----------------------------------------------------------------------------------------
 
-!!-----------------------------------------------------------------------------------------
-!subroutine load_seismogram(this, receivers, src)
-!!< This function loads a seismogram 
-!   class(semdata_type)      :: this
-!   type(rec_param_type)     :: receivers(:)
-!   type(src_param_type)     :: src
-!   real(kind=dp)            :: seismogram_disp(this%ndumps)
-!   real(kind=dp)            :: seismogram_velo(this%ndumps)
-!   real(kind=sp)            :: utemp(this%ndumps,1,1)
-!   real(kind=dp)            :: Mij_scale(6), mij_prefact(4)
-!   integer                  :: reccomp, isurfelem, irec, isim, nrec
-!
-!   if (.not.this%meshes_read) then
-!       print *, 'ERROR in load_seismogram(): Meshes have not been read yet'
-!       print *, 'Call read_meshes() before load_seismogram!'
-!       call pabort
-!   end if
-!      
-!   nrec = size(receivers)
-!   allocate(this%veloseis(this%ndumps, nrec))
-!   allocate(this%dispseis(this%ndumps, nrec))  
-!
-!   Mij_scale = src%mij / this%fwd(1)%amplitude
-!
-!   write(lu_out, '(A, ES11.3)') '  Forward simulation amplitude: ', this%fwd(1)%amplitude
-! 
-!   do irec = 1, nrec
-!      write(lu_out, '(A,F8.4,A,F8.4)') '  Receiver theta: ', receivers(irec)%theta/deg2rad, &
-!                                       ', phi: ', receivers(irec)%phi/deg2rad
-!      write(lu_out, '(A)')             '                  Mij     Mij_scaled'
-!      write(lu_out, '(A,2(ES11.3))')   '  Mrr:       ', src%mij(1), mij_scale(1) 
-!      write(lu_out, '(A,2(ES11.3))')   '  Mtt:       ', src%mij(2), mij_scale(2)
-!      write(lu_out, '(A,2(ES11.3))')   '  Mpp:       ', src%mij(3), mij_scale(3)
-!      write(lu_out, '(A,2(ES11.3))')   '  Mrt:       ', src%mij(4), mij_scale(4)
-!      write(lu_out, '(A,2(ES11.3))')   '  Mrp:       ', src%mij(5), mij_scale(5)
-!      write(lu_out, '(A,2(ES11.3))')   '  Mtp:       ', src%mij(6), mij_scale(6)
-!
-!
-!      !print '(A,6(F8.5,/))',     'Mij_scale: ', Mij_scale
-!      select case(receivers(irec)%component)
-!      case('Z')
-!         mij_prefact(1) = Mij_scale(1)
-!         mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
-!         mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
-!                          + Mij_scale(5) * sin(receivers(irec)%phi)
-!         mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
-!                          +           2. * Mij_scale(6) * sin(2. * receivers(irec)%phi) 
-!         reccomp = 1
-!      case('T')
-!         mij_prefact(1) = 0.0
-!         mij_prefact(2) = 0.0
-!         mij_prefact(3) = - Mij_scale(4) * sin(receivers(irec)%phi) &
-!                          + Mij_scale(5) * cos(receivers(irec)%phi)
-!         mij_prefact(4) =  (Mij_scale(3) - Mij_scale(2)) * sin(2. * receivers(irec)%phi) &
-!                          +           2. * Mij_scale(6)  * cos(2. * receivers(irec)%phi)
-!         reccomp = 2
-!      case('R')
-!         mij_prefact(1) = Mij_scale(1)
-!         mij_prefact(2) = Mij_scale(2) + Mij_scale(3)
-!         mij_prefact(3) =   Mij_scale(4) * cos(receivers(irec)%phi) &
-!                          + Mij_scale(5) * sin(receivers(irec)%phi)
-!         mij_prefact(4) =  (Mij_scale(2) - Mij_scale(3)) * cos(2. * receivers(irec)%phi)  &
-!                          +           2. * Mij_scale(6)  * sin(2. * receivers(irec)%phi) 
-!         reccomp = 3
-!      case default
-!         print *, 'ERROR: Unknown receiver component: ', receivers(irec)%component
-!         call pabort
-!      end select
-!      
-!      isurfelem = minloc( abs(this%fwdmesh%theta*deg2rad - receivers(irec)%theta), 1 )
-!      write(lu_out,'(A,F8.4,A,I5,A,F8.4)') &
-!                'Receiver with theta ', receivers(irec)%theta/deg2rad, &
-!                                    ' has element ', isurfelem, &
-!                                    ' with theta: ', this%fwdmesh%theta(isurfelem)
-!      
-!      seismogram_disp = 0.0
-!      seismogram_velo = 0.0
-!
-!      write(lu_out,'(A,4(E12.4))') 'Mij prefactors: ', mij_prefact
-!      
-!      do isim = 1, this%nsim_fwd
-!         write(lu_out,'(A,I1,A,I5,A,I2,A,I6)') &
-!                'Sim: ', isim, ' Read element', isurfelem, &
-!                                               ', component: ', reccomp, ', no of samples:', this%ndumps
-!         ! Displacement seismogram
-!         call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-!                         varid  = this%fwd(isim)%seis_disp,   &
-!                         start  = [1, reccomp, isurfelem],    &
-!                         count  = [this%ndumps, 1, 1],        &
-!                         values = utemp) 
-!      
-!         seismogram_disp = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_disp
-!
-!         ! Velocity seismogram
-!         call nc_getvar( ncid   = this%fwd(isim)%surf,        & 
-!                         varid  = this%fwd(isim)%seis_velo,   &
-!                         start  = [1, reccomp, isurfelem],    &
-!                         count  = [this%ndumps, 1, 1],        &
-!                         values = utemp) 
-!      
-!         seismogram_velo = real(utemp(:,1,1), kind=dp) * mij_prefact(isim) + seismogram_velo
-!
-!      end do
-!
-!      this%dispseis(:, irec) = seismogram_disp(1:this%ndumps)
-!      this%veloseis(:, irec) = seismogram_velo(1:this%ndumps)
-!
-!   end do
-!  
-!   call flush(lu_out)
-!
-!
-!end subroutine load_seismogram
-!!-----------------------------------------------------------------------------------------
-
 !-----------------------------------------------------------------------------------------
 subroutine load_seismogram_rdbm(this, rec_in, src_in)
+  use commpi,                     only: pbroadcast, MPI_COMM_NODE
+  use global_parameters,          only: firstslave
 !< This function loads a seismogram via the reciprocity database mode
    class(semdata_type)               :: this
 
@@ -1580,10 +1466,14 @@ subroutine load_seismogram_rdbm(this, rec_in, src_in)
 
    do irec=1,nrec
 
-      seismogram = this%load_fw_points_rdbm(src_rdbm, rec_rdbm%reci_sources(irec), &
-                                            rec_in(irec)%component)
+     if (firstslave) then
+        seismogram = this%load_fw_points_rdbm(src_rdbm, rec_rdbm%reci_sources(irec), &
+                                              rec_in(irec)%component)
+     end if
 
-      this%seis(:, irec) = seismogram(:,1,1)  
+     call pbroadcast(seismogram(:,1,1), 0, MPI_COMM_NODE)
+
+     this%seis(:, irec) = seismogram(:,1,1)  
    
    end do
 
