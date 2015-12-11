@@ -126,6 +126,7 @@ module readfields
         integer                            :: strain_buffer_size
         integer                            :: displ_buffer_size
         character(len=12)                  :: dump_type
+        logical                            :: parallel_read
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
 
@@ -181,12 +182,13 @@ end function get_mesh
 
 !-----------------------------------------------------------------------------------------
 subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_size, &
-                      strain_type, desired_source_depth)
+                      strain_type, desired_source_depth, parallel_read)
     class(semdata_type)            :: this
     character(len=512), intent(in) :: fwd_dir, bwd_dir
     integer,            intent(in) :: strain_buffer_size
     integer,            intent(in) :: displ_buffer_size
     character(len=*),   intent(in) :: strain_type
+    logical,            intent(in) :: parallel_read
     real(kind=dp)                  :: desired_source_depth
     character(len=512)             :: dirnam
     logical                        :: moment=.false., force=.false., single=.false.
@@ -258,8 +260,6 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
        write(*,*) trim(bwd_dir)
        write(*,*) 'does not seem to be an axisem rundirectory'
        call pabort(do_traceback=.false.)
-       !write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
-       !write(lu_out,*) 'continuing anyway, as this is default in db mode'
     end if
 
     allocate( this%fwd(this%nsim_fwd) )
@@ -310,6 +310,8 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
     write(lu_out, *) 'Straintensor output variant: ', trim(this%strain_type), &
                      ', Dimension of wavefields: ', this%ndim
 
+    this%parallel_read = parallel_read
+
     call flush(lu_out)
     this%params_set = .true.
 
@@ -321,6 +323,7 @@ subroutine open_files(this)
     use global_parameters, only       : dist_io
     use netcdf, only                  : nf90_inq_varid, nf90_inquire_variable, &
                                         nf90_get_var, NF90_NOERR
+    use commpi,          only         : MPI_COMM_NODE, mpi_info
 
     class(semdata_type)              :: this
     integer                          :: status, isim, chunks(2), deflev
@@ -353,8 +356,15 @@ subroutine open_files(this)
         filename=trim(this%fwd(isim)%meshdir)//'/Data/ordered_output.nc4'
         
         if (verbose>0) write(lu_out,format20) trim(filename), myrank
-        call nc_open_for_read(    filename = filename,              &
-                                  ncid     = this%fwd(isim)%ncid) 
+        if (this%parallel_read) then
+          call nc_open_for_read(filename = filename,              &
+                                ncid     = this%fwd(isim)%ncid,   &
+                                comm     = MPI_COMM_NODE,         &
+                                info     = mpi_info) 
+        else
+          call nc_open_for_read(filename = filename,              &
+                                ncid     = this%fwd(isim)%ncid) 
+        end if
 
         call nc_read_att_int(this%fwd(isim)%file_version, 'file version', this%fwd(isim))
 
@@ -532,8 +542,15 @@ subroutine open_files(this)
         filename=trim(this%bwd(isim)%meshdir)//'/Data/ordered_output.nc4'
         
         if (verbose>0) write(lu_out,format20) trim(filename), myrank
-        call nc_open_for_read(filename = filename,              &
-                              ncid     = this%bwd(isim)%ncid) 
+        if (this%parallel_read) then
+          call nc_open_for_read(filename = filename,              &
+                                ncid     = this%bwd(isim)%ncid,   &
+                                comm     = MPI_COMM_NODE,         &
+                                info     = mpi_info) 
+        else
+          call nc_open_for_read(filename = filename,              &
+                                ncid     = this%bwd(isim)%ncid) 
+        end if
 
         call nc_read_att_int(this%bwd(isim)%file_version, 'file version', this%bwd(isim))
 
