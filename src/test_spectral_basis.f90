@@ -12,7 +12,8 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine test_lagrange_interpol_1D
 
-  real(dp)              :: points(2), coefficients(2)
+  real(dp)              :: points(2)
+  real(sp)              :: coefficients(2)
   real(dp)              :: x, interpol, interpol_ref
 
   ! automatic allocation
@@ -49,7 +50,7 @@ end subroutine test_lagrange_interpol_1D
 subroutine test_lagrange_interpol_2D
 
   real(dp)              :: points1(2), points2(2)
-  real(dp)              :: coefficients(2,2)
+  real(sp)              :: coefficients(2,2)
   real(dp)              :: x1, x2, interpol, interpol_ref
 
   ! automatic allocation
@@ -92,7 +93,7 @@ end subroutine test_lagrange_interpol_2D
 subroutine test_lagrange_interpol_2D_td
 
   real(dp)              :: points1(2), points2(2)
-  real(dp)              :: coefficients(1,2,2)
+  real(sp)              :: coefficients(1,2,2)
   real(dp)              :: x1, x2, interpol(1), interpol_ref
 
   points1 = [-1, 1]

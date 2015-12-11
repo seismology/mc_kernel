@@ -76,7 +76,7 @@ end function
 pure function lagrange_interpol_1D(points, coefficients, x)
 
   real(dp), intent(in)  :: points(0:)
-  real(dp), intent(in)  :: coefficients(0:size(points)-1)
+  real(sp), intent(in)  :: coefficients(0:size(points)-1)
   real(dp), intent(in)  :: x
   real(dp)              :: lagrange_interpol_1D
   real(dp)              :: l_j
@@ -107,7 +107,7 @@ end function lagrange_interpol_1D
 pure function lagrange_interpol_2D(points1, points2, coefficients, x1, x2)
 
   real(dp), intent(in)  :: points1(0:), points2(0:)
-  real(dp), intent(in)  :: coefficients(0:size(points1)-1, 0:size(points2)-1)
+  real(sp), intent(in)  :: coefficients(0:size(points1)-1, 0:size(points2)-1)
   real(dp), intent(in)  :: x1, x2
   real(dp)              :: lagrange_interpol_2D
   real(dp)              :: l_i(0:size(points1)-1), l_j(0:size(points2)-1)
@@ -151,7 +151,7 @@ end function lagrange_interpol_2D
 pure function lagrange_interpol_2D_td(points1, points2, coefficients, x1, x2)
 
   real(dp), intent(in)  :: points1(0:), points2(0:)
-  real(dp), intent(in)  :: coefficients(:,0:,0:)
+  real(sp), intent(in)  :: coefficients(:,0:,0:)
   real(dp), intent(in)  :: x1, x2
   real(dp)              :: lagrange_interpol_2D_td(size(coefficients,1))
   real(dp)              :: l_i(0:size(points1)-1), l_j(0:size(points2)-1)
