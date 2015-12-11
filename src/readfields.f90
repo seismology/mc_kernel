@@ -319,7 +319,7 @@ end subroutine set_params
 
 !-----------------------------------------------------------------------------------------
 subroutine open_files(this)
-    use global_parameters, only       : dist_io
+    use global_parameters, only       : dist_io, ioworker
     use netcdf, only                  : nf90_inq_varid, nf90_inquire_variable, &
                                         nf90_get_var, NF90_NOERR
 
@@ -696,43 +696,56 @@ subroutine open_files(this)
 
     !@TODO memory could be used more efficient for monopole sources in the buffers
     !Initialize Buffers. 
+    ! In case of distributed IO, the IO worker only needs a displacement buffer, 
+    ! while all other slaves need only a strain buffer.
+    ! In normal mode, all slaves need both buffers.
     select case(trim(this%dump_type))
     case('displ_only')
        do isim = 1, this%nsim_fwd
-          status = this%fwd(isim)%buffer_disp%init(this%displ_buffer_size, &
-                                                   this%fwd(isim)%ndumps, 3)
-          select case(this%strain_type)
-          case('straintensor_trace')
-            status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
-                                                       this%fwd(isim)%ndumps, &
-                                                       this%fwd(isim)%npol+1,   &
-                                                       this%fwd(isim)%npol+1)
-          case('straintensor_full')
-            status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
-                                                       this%fwd(isim)%ndumps, &
-                                                       this%fwd(isim)%npol+1,   &
-                                                       this%fwd(isim)%npol+1,   &
-                                                       6)
-          end select
+          if (ioworker.or.(.not.dist_io)) then
+            status = this%fwd(isim)%buffer_disp%init(this%displ_buffer_size, &
+                                                     this%fwd(isim)%ndumps, 3)
+          end if
+
+          if ((.not.ioworker).or.(.not.dist_io)) then
+            select case(this%strain_type)
+            case('straintensor_trace')
+              status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
+                                                         this%fwd(isim)%ndumps, &
+                                                         this%fwd(isim)%npol+1,   &
+                                                         this%fwd(isim)%npol+1)
+            case('straintensor_full')
+              status = this%fwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
+                                                         this%fwd(isim)%ndumps, &
+                                                         this%fwd(isim)%npol+1,   &
+                                                         this%fwd(isim)%npol+1,   &
+                                                         6)
+            end select
+          end if
           this%fwd(isim)%count_error_pointoutside = 0
        end do
 
        do isim = 1, this%nsim_bwd
-          status = this%bwd(isim)%buffer_disp%init(this%displ_buffer_size, &
-                                                   this%bwd(isim)%ndumps, 3)
-          select case(this%strain_type)
-          case('straintensor_trace')
-            status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
-                                                       this%bwd(isim)%ndumps, &
-                                                       this%bwd(isim)%npol+1,   &
-                                                       this%bwd(isim)%npol+1)
-          case('straintensor_full')
-            status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
-                                                       this%bwd(isim)%ndumps, &
-                                                       this%bwd(isim)%npol+1,   &
-                                                       this%bwd(isim)%npol+1,   &
-                                                       6)
-          end select
+          if (ioworker.or.(.not.dist_io)) then
+            status = this%bwd(isim)%buffer_disp%init(this%displ_buffer_size, &
+                                                     this%bwd(isim)%ndumps, 3)
+          end if
+
+          if ((.not.ioworker).or.(.not.dist_io)) then
+            select case(this%strain_type)
+            case('straintensor_trace')
+              status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
+                                                         this%bwd(isim)%ndumps, &
+                                                         this%bwd(isim)%npol+1,   &
+                                                         this%bwd(isim)%npol+1)
+            case('straintensor_full')
+              status = this%bwd(isim)%buffer_strain%init(this%strain_buffer_size,      &
+                                                         this%bwd(isim)%ndumps, &
+                                                         this%bwd(isim)%npol+1,   &
+                                                         this%bwd(isim)%npol+1,   &
+                                                         6)
+            end select
+          end if
           this%bwd(isim)%count_error_pointoutside = 0
        end do
     case('fullfields')
@@ -814,10 +827,11 @@ end subroutine reopen_files
 
 !-----------------------------------------------------------------------------------------
 subroutine close_files(this)
-    use kdtree2_module, only : kdtree2_destroy
-    use netcdf,         only : nf90_close
-    class(semdata_type)     :: this
-    integer                 :: status, isim
+    use global_parameters, only: dist_io, ioworker
+    use kdtree2_module,   only : kdtree2_destroy
+    use netcdf,           only : nf90_close
+    class(semdata_type)       :: this
+    integer                   :: status, isim
 
     ! Destroy kdtree
     if (this%kdtree_built) then
@@ -853,14 +867,25 @@ subroutine close_files(this)
     case('displ_only')
       do isim = 1, this%nsim_fwd
          status = nf90_close(this%fwd(isim)%ncid)
-         if (verbose>0) then
-            write(lu_out,'(A,I1,A,F9.6)') ' Strain buffer efficiency fwd(', isim, '): ',  &
-                                     this%fwd(isim)%buffer_strain%efficiency()
-            write(lu_out,'(A,I1,A,F9.6)') ' Displ. buffer efficiency fwd(', isim, '): ',  &
-                                     this%fwd(isim)%buffer_disp%efficiency()
+
+         ! Free all buffers and write out efficiency first
+         ! If using distributed IO, IO worker has no displacement buffer
+         if ((.not.ioworker).or.(.not.dist_io)) then
+           if (verbose>0) then
+              write(lu_out,'(A,I1,A,F9.6)') ' Strain buffer efficiency fwd(', isim, '): ',  &
+                                       this%fwd(isim)%buffer_strain%efficiency()
+           end if
+           status = this%fwd(isim)%buffer_strain%freeme()
          end if
-         status = this%fwd(isim)%buffer_strain%freeme()
-         status = this%fwd(isim)%buffer_disp%freeme()
+
+         ! If using distributed IO, only the IO worker has a displacement buffer
+         if (ioworker.or.(.not.dist_io)) then
+           if (verbose>0) then
+              write(lu_out,'(A,I1,A,F9.6)') ' Displ. buffer efficiency fwd(', isim, '): ',  &
+                                       this%fwd(isim)%buffer_disp%efficiency()
+           end if
+           status = this%fwd(isim)%buffer_disp%freeme()
+         end if
       end do
       if (this%nsim_fwd > 0) &
          write(lu_out,'(A,I8)') ' Points outside of element (fwd): ', &
@@ -868,14 +893,25 @@ subroutine close_files(this)
 
       do isim = 1, this%nsim_bwd
          status = nf90_close(this%bwd(isim)%ncid)
-         if (verbose>0) then
-            write(lu_out,'(A,I1,A,F9.6)') ' Strain buffer efficiency bwd(', isim, '): ',  &
-                                     this%bwd(isim)%buffer_strain%efficiency()
-            write(lu_out,'(A,I1,A,F9.6)') ' Displ. buffer efficiency bwd(', isim, '): ',  &
-                                     this%bwd(isim)%buffer_disp%efficiency()
+
+         ! Free all buffers and write out efficiency first
+         ! If using distributed IO, IO worker has no displacement buffer
+         if ((.not.ioworker).or.(.not.dist_io)) then
+           if (verbose>0) then
+              write(lu_out,'(A,I1,A,F9.6)') ' Strain buffer efficiency bwd(', isim, '): ',  &
+                                       this%bwd(isim)%buffer_strain%efficiency()
+           end if
+           status = this%bwd(isim)%buffer_strain%freeme()
          end if
-         status = this%bwd(isim)%buffer_strain%freeme()
-         status = this%bwd(isim)%buffer_disp%freeme()
+
+         ! If using distributed IO, only the IO worker has a displacement buffer
+         if (ioworker.or.(.not.dist_io)) then
+           if (verbose>0) then
+              write(lu_out,'(A,I1,A,F9.6)') ' Displ. buffer efficiency bwd(', isim, '): ',  &
+                                       this%bwd(isim)%buffer_disp%efficiency()
+           end if
+           status = this%bwd(isim)%buffer_disp%freeme()
+         end if
       end do
       if (this%nsim_bwd > 0) &
          write(lu_out,'(A,I8)') ' Points outside of element (bwd): ', &

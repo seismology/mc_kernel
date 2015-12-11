@@ -198,9 +198,9 @@ subroutine loop_ioworker(fields)
                   mpistatus,        & ! info about the received message
                   ierror)
 
-    !write(lu_out, '(A,I2,A,I3)', advance='no') 'Received tag', field_tag, ' from rank:', rank_sender
+    write(lu_out, '(A,I2,A,I3)', advance='no') 'Received tag', field_tag, ' from rank:', rank_sender
 
-    !call system_clock( t1, ticks_per_sec)
+    call system_clock( t1, ticks_per_sec)
     if (ierror.ne.MPI_SUCCESS) then
       print *, 'MPI_Recv error on IO worker: ', ierror
     end if
@@ -219,8 +219,8 @@ subroutine loop_ioworker(fields)
       print *, 'Invalid field tag: ', field_tag
       stop
     end select
-    !call system_clock( t2, ticks_per_sec)
-    !write(lu_out,'(A, F8.4, A)'), ', took ', 1.e3/real(ticks_per_sec)*real(t2-t1), ' ms to answer'
+    call system_clock( t2, ticks_per_sec)
+    write(lu_out,'(A, F10.6, A)'), ', took ', real(t2-t1)/real(ticks_per_sec), ' s to answer'
 
     if (field_tag.ne.DIETAG) then
       ! Send the same worker the loaded time series (blocking)
