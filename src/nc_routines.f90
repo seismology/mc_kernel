@@ -45,15 +45,24 @@ module nc_routines
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_open_for_read(filename, ncid)
+subroutine nc_open_for_read(filename, ncid, comm, info)
    character(len=*), intent(in)  :: filename
    integer, intent(out)          :: ncid
    character(len=512)            :: fmtstring
    integer                       :: status
+   integer, optional             :: comm, info
 
-   status = nf90_open(path     = filename,              &
-                      mode     = NF90_NOWRITE,          &
-                      ncid     = ncid)
+   if (present(comm).and.present(info)) then
+     status = nf90_open(path     = filename,              &
+                        mode     = NF90_NOWRITE,          &
+                        ncid     = ncid,                  &
+                        comm     = comm,                  &
+                        info     = info)
+   else
+     status = nf90_open(path     = filename,              &
+                        mode     = NF90_NOWRITE,          &
+                        ncid     = ncid)
+   end if
 
    if (status.ne.NF90_NOERR) then
       fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', " &

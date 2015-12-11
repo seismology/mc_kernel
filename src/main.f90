@@ -105,12 +105,13 @@ program kerner_code
         end select
 
         ! Get number of wavefield dumps (samples)
-        call sem_data%set_params(parameters%fwd_dir,     &
-                                 parameters%bwd_dir,     &
+        call sem_data%set_params(parameters%fwd_dir,            &
+                                 parameters%bwd_dir,            &
                                  parameters%strain_buffer_size, & 
-                                 parameters%displ_buffer_size, & 
+                                 parameters%displ_buffer_size,  & 
                                  parameters%strain_type_fwd,    &
-                                 parameters%source%depth)
+                                 parameters%source%depth,       &
+                                 .false.)
 
         call sem_data%open_files()
 

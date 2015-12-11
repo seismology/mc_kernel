@@ -102,7 +102,8 @@ subroutine test_readfields_set_params()
                             strain_buffer_size   = 100,                         &
                             displ_buffer_size    = 100,                         &
                             strain_type          = 'straintensor_trace',        &
-                            desired_source_depth = parameters%source%depth)
+                            desired_source_depth = parameters%source%depth,     &
+                            parallel_read        = .false.)
 
    call assert_equal_int(sem_data%nsim_fwd, 4, 'nsim_fwd == 4')
    call assert_equal_int(sem_data%nsim_bwd, 2, 'nsim_bwd == 2')
@@ -124,7 +125,8 @@ subroutine test_readfields_open_files()
                             strain_buffer_size   = 100,                         &
                             displ_buffer_size    = 100,                         &
                             strain_type          = 'straintensor_trace',        &
-                            desired_source_depth = parameters%source%depth)
+                            desired_source_depth = parameters%source%depth,     &
+                            parallel_read        = .false.)
 
    call sem_data%open_files()
 
@@ -162,7 +164,8 @@ subroutine test_readfields_load_fw_points
                             strain_buffer_size   = 100,                         &
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
-                            desired_source_depth = parameters%source%depth)
+                            desired_source_depth = parameters%source%depth,     &
+                            parallel_read        = .false.)
    call sem_data%open_files()
    call sem_data%read_meshes()
    call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
@@ -261,7 +264,8 @@ subroutine test_load_seismograms_rdbm_Z
                             strain_buffer_size   = 100,                         &
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
-                            desired_source_depth = parameters%source%depth)
+                            desired_source_depth = parameters%source%depth,     &
+                            parallel_read        = .false.)
 
    call sem_data%open_files()
    call sem_data%read_meshes()
@@ -320,7 +324,8 @@ subroutine test_load_seismograms_rdbm_R
                             strain_buffer_size   = 100,                         &
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
-                            desired_source_depth = parameters%source%depth)
+                            desired_source_depth = parameters%source%depth,     &
+                            parallel_read        = .false.)
 
    call sem_data%open_files()
    call sem_data%read_meshes()
@@ -379,7 +384,8 @@ subroutine test_load_seismograms_rdbm_T
                             strain_buffer_size   = 100,                         &
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
-                            desired_source_depth = parameters%source%depth)
+                            desired_source_depth = parameters%source%depth,     &
+                            parallel_read        = .false.)
 
    call sem_data%open_files()
    call sem_data%read_meshes()
@@ -563,7 +569,8 @@ subroutine test_readfields_load_model_coeffs
                             strain_buffer_size   = 100,                         &
                             displ_buffer_size    = 100,                         &
                             strain_type          = 'straintensor_trace',        &
-                            desired_source_depth = parameters%source%depth)
+                            desired_source_depth = parameters%source%depth,     &
+                            parallel_read        = .false.)
 
    call sem_data%open_files()
 

@@ -18,7 +18,7 @@ module commpi
 
   private 
 
-  integer, protected    :: MPI_COMM_NODE, MPI_COMM_MASTER_SLAVES
+  integer, protected    :: MPI_COMM_NODE, MPI_COMM_MASTER_SLAVES, MPI_INFO
 
   interface pbroadcast
     module procedure pbroadcast_float
@@ -39,7 +39,7 @@ module commpi
   public  :: pbroadcast_int, pbroadcast_int_arr
   public  :: pbroadcast_log
   public  :: ppinit, pbarrier, pbarrier_node, ppend, pabort, ppsplit
-  public  :: MPI_COMM_NODE, MPI_COMM_MASTER_SLAVES
+  public  :: MPI_COMM_NODE, MPI_COMM_MASTER_SLAVES, mpi_info
 
 contains
 
@@ -56,6 +56,8 @@ subroutine ppinit
   call MPI_INIT( ierror)
   call MPI_COMM_RANK( MPI_COMM_WORLD, myrank_loc, ierror )
   call MPI_COMM_SIZE( MPI_COMM_WORLD, nproc_loc, ierror )
+
+  mpi_info = MPI_INFO_NULL
 
   call set_myrank(myrank_loc)
   call set_nproc(nproc_loc)
@@ -121,11 +123,9 @@ subroutine ppsplit(nslaves_per_node_in)
   if (myrank==0) then
     ! I am the master, I have a node on my own.
     mynode = 0
-
   else
     ! I am not the master, I have to share a node
     mynode = int((myrank-1)/nslaves_per_node) + 1
-
   end if
 
   ! Create new communicator MPI_COMM_NODE, which contains all slaves on this node
