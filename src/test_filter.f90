@@ -149,7 +149,7 @@ subroutine test_filter_gabor_response
      write(filename_ref,'("./gaboroutput_", I2.2, ".txt")') itest
      open(100, file=trim(filename_ref), action='write')
      do i=1, size(data_filtered_ref)
-       write(100,*), data_filtered_ref(i,1)
+       write(100,*) data_filtered_ref(i,1)
      end do
      close(100)
 

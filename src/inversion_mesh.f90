@@ -1303,12 +1303,23 @@ subroutine freeme(this)
 end subroutine freeme
 !-----------------------------------------------------------------------------------------
 
+#if defined(_CRAYFTN)
+!-----------------------------------------------------------------------------------------
+! The cray compiler calls getpid pxfgetpid.
+integer function getpid()
+  integer              :: ierror
+  call pxfgetpid(getpid, ierror)
+end function
+!-----------------------------------------------------------------------------------------
+# endif  
+
 !-----------------------------------------------------------------------------------------
 subroutine init_node_data(this, dt, starttime)
 # if defined(__INTEL_COMPILER)
 use ifport, only: getpid ! For ifort, this module needs to be loaded, 
                          ! for gfortran getpid is a GNU extension
 # endif  
+
   use nc_routines, only                   : nc_create_file, nc_create_group
   class(inversion_mesh_data_type)        :: this
   real(kind=dp), intent(in), optional    :: dt, starttime
