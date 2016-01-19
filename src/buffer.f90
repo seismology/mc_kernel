@@ -15,9 +15,10 @@ module buffer
       real(kind=sp), allocatable  :: val_2d(:,:,:)
       real(kind=sp), allocatable  :: val_3d(:,:,:,:)
       real(kind=sp), allocatable  :: val_4d(:,:,:,:,:)
+      real(kind=sp), allocatable  :: val_5d(:,:,:,:,:,:)
       integer                     :: nbuffer, nput
       integer                     :: ndim,  nvalues_dim1, nvalues_dim2, &
-                                     nvalues_dim3, nvalues_dim4
+                                     nvalues_dim3, nvalues_dim4, nvalues_dim5
       logical                     :: initialized = .false.
       integer                     :: naccess, nhit
 
@@ -30,34 +31,37 @@ module buffer
          procedure, pass, private :: get_2d
          procedure, pass, private :: get_3d
          procedure, pass, private :: get_4d
-         generic, public          :: get => get_1d, get_2d, get_3d, get_4d
+         procedure, pass, private :: get_5d
+         generic, public          :: get => get_1d, get_2d, get_3d, get_4d, get_5d
 
          procedure, pass, private :: put_1d
          procedure, pass, private :: put_2d
          procedure, pass, private :: put_3d
          procedure, pass, private :: put_4d
-         generic, public          :: put => put_1d, put_2d, put_3d, put_4d
+         procedure, pass, private :: put_5d
+         generic, public          :: put => put_1d, put_2d, put_3d, put_4d, put_5d
    end type
     
 
 contains
 
 !-----------------------------------------------------------------------------------------
-function init(this, nbuffer, nvalues_dim1, nvalues_dim2, nvalues_dim3, nvalues_dim4)
+function init(this, nbuffer, nvalues_dim1, nvalues_dim2, nvalues_dim3, &
+              nvalues_dim4, nvalues_dim5)
 
     class(buffer_type)      :: this
     integer, intent(in)     :: nbuffer  !< How many elements should the buffer be 
                                         !! able to store? 
     integer, intent(in)     :: nvalues_dim1  !< How many values should one buffer store
                                         !! i.e. how many samples of a time trace.
-    integer, intent(in), optional :: nvalues_dim2, nvalues_dim3, nvalues_dim4
+    integer, intent(in), optional :: nvalues_dim2, nvalues_dim3, nvalues_dim4, nvalues_dim5
     integer                 :: init     !< Return value, 0=Success
     integer                 :: buffer_size
 
     init = -1
 
     if (.not. present(nvalues_dim2) .and. .not. present(nvalues_dim3) &
-            .and. .not. present(nvalues_dim4)) then
+        .and. .not. present(nvalues_dim4) .and. .not. present(nvalues_dim5)) then
         allocate(this%val_1d(nvalues_dim1, nbuffer))
         this%ndim = 1
         this%nvalues_dim1 = nvalues_dim1
@@ -68,37 +72,54 @@ function init(this, nbuffer, nvalues_dim1, nvalues_dim2, nvalues_dim3, nvalues_d
         buffer_size = nbuffer * nvalues_dim1
 
     elseif (present(nvalues_dim2) .and. .not. present(nvalues_dim3) &
-            .and. .not. present(nvalues_dim4)) then
+            .and. .not. present(nvalues_dim4) .and. .not. present(nvalues_dim5)) then
         allocate(this%val_2d(nvalues_dim1, nvalues_dim2, nbuffer))
         this%ndim = 2
         this%nvalues_dim1 = nvalues_dim1
         this%nvalues_dim2 = nvalues_dim2
         this%nvalues_dim3 = 0
         this%nvalues_dim4 = 0
+        this%nvalues_dim5 = 0
         this%val_2d = 0
         buffer_size = nbuffer * nvalues_dim1 * nvalues_dim2
 
     elseif (present(nvalues_dim2) .and. present(nvalues_dim3) &
-            .and. .not. present(nvalues_dim4)) then
+            .and. .not. present(nvalues_dim4) .and. .not. present(nvalues_dim5)) then
         allocate(this%val_3d(nvalues_dim1, nvalues_dim2, nvalues_dim3, nbuffer))
         this%ndim = 3
         this%nvalues_dim1 = nvalues_dim1
         this%nvalues_dim2 = nvalues_dim2
         this%nvalues_dim3 = nvalues_dim3
         this%nvalues_dim4 = 0
+        this%nvalues_dim5 = 0
         this%val_3d = 0
         buffer_size = nbuffer * nvalues_dim1 * nvalues_dim2 * nvalues_dim3
 
     elseif (present(nvalues_dim2) .and. present(nvalues_dim3) &
-            .and. present(nvalues_dim4)) then
+            .and. present(nvalues_dim4) .and. .not. present(nvalues_dim5)) then
         allocate(this%val_4d(nvalues_dim1, nvalues_dim2, nvalues_dim3, nvalues_dim4, nbuffer))
         this%ndim = 4
         this%nvalues_dim1 = nvalues_dim1
         this%nvalues_dim2 = nvalues_dim2
         this%nvalues_dim3 = nvalues_dim3
         this%nvalues_dim4 = nvalues_dim4
+        this%nvalues_dim5 = 0
         this%val_4d = 0
         buffer_size = nbuffer * nvalues_dim1 * nvalues_dim2 * nvalues_dim3 * nvalues_dim4
+
+    elseif (present(nvalues_dim2) .and. present(nvalues_dim3) &
+            .and. present(nvalues_dim4) .and. present(nvalues_dim5)) then
+        allocate(this%val_5d(nvalues_dim1, nvalues_dim2, nvalues_dim3, nvalues_dim4, &
+                             nvalues_dim5, nbuffer))
+        this%ndim = 5
+        this%nvalues_dim1 = nvalues_dim1
+        this%nvalues_dim2 = nvalues_dim2
+        this%nvalues_dim3 = nvalues_dim3
+        this%nvalues_dim4 = nvalues_dim4
+        this%nvalues_dim5 = nvalues_dim5
+        this%val_5d = 0
+        buffer_size = nbuffer * nvalues_dim1 * nvalues_dim2 * nvalues_dim3 * nvalues_dim4 &
+                      * nvalues_dim5
 
     else
         write(6,*) 'ERROR: illegal combination of optional arguments'
@@ -317,7 +338,50 @@ function get_4d(this, iindex, values)
        exit
     end do
 
-end function
+end function get_4d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_5d(this, iindex, values)
+
+    class(buffer_type)          :: this
+    integer, intent(in)         :: iindex   !< Index under which the value was stored.
+                                            !! E.g. the index of the 
+                                            !! point whose values are stored.
+    real(kind=sp), intent(out)  :: values(this%nvalues_dim1, this%nvalues_dim2, &
+                                          this%nvalues_dim3, this%nvalues_dim4, &
+                                          this%nvalues_dim5)
+    integer                     :: get_5d      !< status value, 0=success
+    integer                     :: ibuffer
+
+    if (.not.this%initialized) then
+       write(*, '(A)') "ERROR: Buffer has not been initialized"
+       call pabort 
+    end if
+    
+    if (this%ndim /= 5) then
+       write(*,*) 'ERROR: wrong rank of argument "values", buffer was initialized with ndim = ', this%ndim
+       call pabort
+    end if
+    
+    if (iindex<0) then
+       write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
+       call pabort
+    end if
+    
+    this%naccess = this%naccess + 1
+    get_5d = -1
+
+    do ibuffer = 1, min(this%nput, this%nbuffer)
+       if (this%idx(ibuffer).ne.iindex) cycle
+
+       values = this%val_5d(:,:,:,:,:,ibuffer)
+       this%nhit = this%nhit + 1
+       get_5d = 0 
+       exit
+    end do
+
+end function get_5d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -475,7 +539,48 @@ function put_4d(this, iindex, values)
        put_4d = 0
     end if
 
-end function
+end function put_4d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function put_5d(this, iindex, values)
+
+    class(buffer_type)        :: this
+    integer, intent(in)       :: iindex      !< Index under which the values can later
+                                             !! be accessed
+    real(kind=sp), intent(in) :: values(this%nvalues_dim1, this%nvalues_dim2, &
+                                        this%nvalues_dim3, this%nvalues_dim4, &
+                                        this%nvalues_dim5) !< Values to store
+    integer                   :: put_5d    !< Return value, 0=Success
+    real(kind=dp)             :: randtemp
+    integer                   :: ibuffer
+
+    if (iindex<0) then
+       write(*,*) 'ERROR: Buffer index must be larger zero, is: ', iindex
+       call pabort
+    end if
+
+    if (this%ndim /= 5) then
+       write(*,*) 'ERROR: wrong rank of argument "values", buffer was initialized with ndim = ', this%ndim
+       call pabort
+    end if
+
+    if (any(this%idx==iindex)) then
+       put_5d = -1
+    else
+       if (this%nput < this%nbuffer) then
+          ibuffer = this%nput + 1
+       else
+          call random_number(randtemp)
+          ibuffer = int(randtemp*this%nbuffer) + 1
+       endif
+       this%idx(ibuffer) = iindex
+       this%val_5d(:,:,:,:,:,ibuffer) = values
+       this%nput = this%nput + 1
+       put_5d = 0
+    end if
+
+end function put_5d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
