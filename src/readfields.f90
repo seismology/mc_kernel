@@ -82,6 +82,8 @@ module readfields
         real(kind=dp), public, allocatable :: G2(:,:), G2T(:,:)
         real(kind=dp), public, allocatable :: G0(:)
         real(kind=dp), public, allocatable :: gll_points(:), glj_points(:)
+        logical                            :: merged = .false.
+        integer                            :: nsim_merged = 0
     end type
 
     type semdata_type
@@ -187,13 +189,19 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
     character(len=*),   intent(in) :: strain_type
     real(kind=dp)                  :: desired_source_depth
     character(len=512)             :: dirnam
-    logical                        :: moment=.false., force=.false., single=.false.
+    logical                        :: moment=.false., force=.false.
+    logical                        :: single=.false., merged=.false.
 
     this%strain_buffer_size = strain_buffer_size
     this%displ_buffer_size = displ_buffer_size
 
     this%desired_source_depth = desired_source_depth
 
+
+    dirnam = trim(fwd_dir)//'merged_instaseis_db.nc4'
+    write(lu_out,*) 'Inquiring: ', trim(dirnam)
+    inquire( file = trim(dirnam), exist = merged)
+    
     dirnam = trim(fwd_dir)//'/MZZ/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = moment)
@@ -205,7 +213,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
     dirnam = trim(fwd_dir)//'/Data/ordered_output.nc4'
     write(lu_out,*) 'Inquiring: ', trim(dirnam)
     inquire( file = trim(dirnam), exist = single)
-
+   
     if (moment) then
        this%nsim_fwd = 4
        write(lu_out,*) 'Forward simulation was ''moment'' source'
@@ -2571,6 +2579,7 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
 
 end function load_strain_point_interp_seismogram
 !-----------------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes, &
                                   element_type, axis, id_elem)
@@ -2820,6 +2829,127 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
     iclockold_total = tick(id=id_load_strain, since=iclockold_total)
 
 end function load_strain_point_interp
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
+                                  element_type, axis, id_elem)
+    type(ncparamtype), intent(in)   :: sem_obj
+    real(kind=dp),     intent(in)   :: xi, eta      !< Coordinates at which to interpolate
+                                                    !! strain
+    character(len=*),  intent(in)   :: strain_type  !< Model parameter (decides on 
+                                                    !! straintrace (vp) or full tensor (vs)
+    real(kind=dp),     intent(in)   :: nodes(4,2)   !< Coordinates of element corner
+                                                    !! points
+    integer,           intent(in)   :: element_type !< Element type in the solver
+    logical,           intent(in)   :: axis         !< Axis element or not 
+    integer, optional, intent(in)   :: id_elem   !< ID of element to interpolate strain in
+                                                 !! Giving this argument activates the
+                                                 !! strain buffer. Omitting it restores
+                                                 !! classic behaviour 
+
+    real(kind=dp),     allocatable  :: load_strain_point_merged(:,:,:)
+
+    real(kind=dp),     allocatable  :: utemp(:,:,:,:)
+
+    iclockold_total = tick()
+
+    if (sem_obj%nsim_merged==4) then
+      ndirection = 10
+    elseif (sem_obj%nsim_merged==2) then
+      ndirection = 5
+    else
+      print *, 'Unknown number of sims: ', sem_obj%nsim_merged
+      stop
+    end if
+    allocate(utemp(ndirection,       &
+                   0:sem_obj%npol,   &
+                   0:sem_obj%npol,   &
+                   1:sem_obj%ndumps ))
+
+    select case(strain_type)
+    case('straintensor_trace')
+      status = sem_obj%buffer_strain%get(id_elem, straintrace)
+    case('straintensor_full')
+      status = sem_obj%buffer_strain%get(id_elem, strain)
+    case default
+      status = - 1
+    end select
+
+    if (status.ne.0) then !If not found in strain buffer
+      ! Try displacement buffer
+      status = sem_obj%buffer_disp%get(id_elem, utemp)
+      if (status.ne.0) then !If not found in displacement buffer
+        call nc_getvar(ncid   = sem_obj%snap,                      & 
+                       varid  = sem_obj%mergedvarid,               &
+                       start  = [1, 1, 1, 1, id_elem],             &
+                       count  = [ndirection, sem_obj%npol,         &
+                                 sem_obj%npol, sem_obj%ndumps, 1], &
+                       values = utemp)
+        status = sem_obj%buffer_disp%put(id_elem, utemp)
+      end if
+
+      select case(strain_type)
+      case('straintensor_trace')
+        ! compute straintrace
+        if (sem_obj%excitation_type == 'monopole') then
+            straintrace = straintrace_monopole(utemp, G, GT, col_points_xi, &
+                                               col_points_eta, sem_obj%npol, &
+                                               sem_obj%ndumps, nodes, element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'dipole') then
+            straintrace = straintrace_dipole(utemp, G, GT, col_points_xi, &
+                                             col_points_eta, sem_obj%npol, &
+                                             sem_obj%ndumps, , element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'quadpole') then
+            straintrace = straintrace_quadpole(utemp, G, GT, col_points_xi, &
+                                               col_points_eta, sem_obj%npol, &
+                                               sem_obj%ndumps, nodes, element_type, axis)
+        else
+            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+            call pabort
+        endif
+
+        iclockold = tick(id=id_calc_strain, since=iclockold)
+        if (use_strainbuffer) & 
+            status = sem_obj%buffer_strain%put(id_elem, straintrace)
+
+      case('straintensor_full')
+        ! compute full strain tensor
+        if (sem_obj%excitation_type == 'monopole') then
+            strain = strain_monopole(utemp, G, GT, col_points_xi, &
+                                     col_points_eta, sem_obj%npol, &
+                                     sem_obj%ndumps, nodes, &
+                                     element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'dipole') then
+            strain = strain_dipole(utemp, G, GT, col_points_xi, &
+                                   col_points_eta, sem_obj%npol, &
+                                   sem_obj%ndumps, nodes, &
+                                   element_type, axis)
+
+        elseif (sem_obj%excitation_type == 'quadpole') then
+            strain = strain_quadpole(utemp, G, GT, col_points_xi, &
+                                     col_points_eta, sem_obj%npol, &
+                                     sem_obj%ndumps, nodes, &
+                                     element_type, axis)
+        else
+            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
+            call pabort
+        endif
+        
+        iclockold = tick(id=id_calc_strain, since=iclockold)
+
+        if (use_strainbuffer) status = sem_obj%buffer_strain%put(id_elem, strain)
+
+      end select
+
+
+    end if
+
+
+end function load_strain_point_merged
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
