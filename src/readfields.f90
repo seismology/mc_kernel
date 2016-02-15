@@ -61,6 +61,7 @@ module readfields
         integer                            :: seis_disp, seis_velo    ! Variable IDs
         integer                            :: stf_varid               ! Variable IDs
         integer                            :: stf_d_varid             ! Variable IDs
+        integer                            :: mergedvarid             ! Variable IDs
         integer                            :: chunk_gll
         integer                            :: count_error_pointoutside
         character(len=200)                 :: meshdir
@@ -106,6 +107,10 @@ module readfields
         integer                            :: ndim     !< Number of dimensions which has to be read to calculate 
                                                        !! Kernel on parameter model_param
 
+        logical, private                   :: merged_fwd, merged_bwd !< Whether this object has 
+                                                                     !! its data stored in a 
+                                                                     !! merged database file
+
         real(kind=dp), public              :: dt
         integer,       public              :: ndumps, decimate_factor
         integer,       public              :: nseis 
@@ -141,7 +146,6 @@ module readfields
             procedure, pass                :: load_fw_points_rdbm
             procedure, pass                :: load_bw_points
             procedure, pass                :: load_model_coeffs
-            !!procedure, pass                :: load_seismogram
             procedure, pass                :: load_seismogram_rdbm
 
     end type
@@ -188,120 +192,20 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
     integer,            intent(in) :: displ_buffer_size
     character(len=*),   intent(in) :: strain_type
     real(kind=dp)                  :: desired_source_depth
-    character(len=512)             :: dirnam
-    logical                        :: moment=.false., force=.false.
-    logical                        :: single=.false., merged=.false.
 
     this%strain_buffer_size = strain_buffer_size
     this%displ_buffer_size = displ_buffer_size
 
     this%desired_source_depth = desired_source_depth
 
+    ! Get simulation type of forward simulation and whether it was stored in 
+    ! separate directories or in one merged file
+    call get_simulation_type(fwd_dir, this%fwd, this%merged_fwd, this%nsim_fwd)
 
-    dirnam = trim(fwd_dir)//'merged_instaseis_db.nc4'
-    write(lu_out,*) 'Inquiring: ', trim(dirnam)
-    inquire( file = trim(dirnam), exist = merged)
-    
-    dirnam = trim(fwd_dir)//'/MZZ/Data/ordered_output.nc4'
-    write(lu_out,*) 'Inquiring: ', trim(dirnam)
-    inquire( file = trim(dirnam), exist = moment)
+    ! Get simulation type of backward simulation and whether it was stored in 
+    ! separate directories or in one merged file
+    call get_simulation_type(bwd_dir, this%bwd, this%merged_bwd, this%nsim_bwd)
 
-    dirnam = trim(fwd_dir)//'/PZ/Data/ordered_output.nc4'
-    write(lu_out,*) 'Inquiring: ', trim(dirnam)
-    inquire( file = trim(dirnam), exist = force)
-
-    dirnam = trim(fwd_dir)//'/Data/ordered_output.nc4'
-    write(lu_out,*) 'Inquiring: ', trim(dirnam)
-    inquire( file = trim(dirnam), exist = single)
-   
-    if (moment) then
-       this%nsim_fwd = 4
-       write(lu_out,*) 'Forward simulation was ''moment'' source'
-    elseif (force) then
-       this%nsim_fwd = 2
-       write(lu_out,*) 'Forward simulation was ''forces'' source'
-    elseif (single) then
-       this%nsim_fwd = 1
-       write(lu_out,*) 'Forward simulation was ''single'' source'
-    else 
-       this%nsim_fwd = 0
-       write(*,*) 'ERROR: Forward run directory (as set in inparam_basic FWD_DIR)'
-       write(*,*) trim(fwd_dir)
-       write(*,*) 'does not seem to be an axisem rundirectory'
-       call pabort(do_traceback=.false.)
-    end if
-
-    moment = .false.
-    force  = .false.
-    single = .false.
-
-    dirnam = trim(bwd_dir)//'/MZZ/Data/ordered_output.nc4'
-    write(lu_out,*) 'Inquiring: ', trim(dirnam)
-    inquire( file = trim(dirnam), exist = moment)
-
-    dirnam = trim(bwd_dir)//'/PZ/Data/ordered_output.nc4'
-    write(lu_out,*) 'Inquiring: ', trim(dirnam)
-    inquire( file = trim(dirnam), exist = force)
-
-    dirnam = trim(bwd_dir)//'/Data/ordered_output.nc4'
-    write(lu_out,*) 'Inquiring: ', trim(dirnam)
-    inquire( file = trim(dirnam), exist = single)
-
-    if (moment) then
-       this%nsim_bwd = 4
-       write(lu_out,*) 'Backward simulation was ''moment'' source'
-       write(lu_out,*) 'This is not implemented yet!'
-       call pabort()
-    elseif (force) then
-       this%nsim_bwd = 2
-       write(lu_out,*) 'Backward simulation was ''forces'' source'
-    elseif (single) then
-       this%nsim_bwd = 1
-       write(lu_out,*) 'Backward simulation was ''single'' source'
-    else 
-       this%nsim_bwd = 0
-       write(*,*) 'ERROR: Backward run directory (as set in inparam_basic FWD_DIR)'
-       write(*,*) trim(bwd_dir)
-       write(*,*) 'does not seem to be an axisem rundirectory'
-       call pabort(do_traceback=.false.)
-       !write(lu_out,*) 'WARNING: Backward rundir does not seem to be an axisem rundirectory'
-       !write(lu_out,*) 'continuing anyway, as this is default in db mode'
-    end if
-
-    allocate( this%fwd(this%nsim_fwd) )
-    allocate( this%bwd(this%nsim_bwd) )
-
-    select case(this%nsim_fwd)
-    case(1)    ! Single
-        this%fwd(1)%meshdir = fwd_dir//'/'
-
-    case(2)    ! Forces
-        this%fwd(1)%meshdir = trim(fwd_dir)//'/PZ/'
-        this%fwd(2)%meshdir = trim(fwd_dir)//'/PX/'
-
-    case(4)    ! Moment
-        this%fwd(1)%meshdir = trim(fwd_dir)//'/MZZ/'
-        this%fwd(2)%meshdir = trim(fwd_dir)//'/MXX_P_MYY/'
-        this%fwd(3)%meshdir = trim(fwd_dir)//'/MXZ_MYZ/'
-        this%fwd(4)%meshdir = trim(fwd_dir)//'/MXY_MXX_M_MYY/'
-    end select
-    
-    select case(this%nsim_bwd)
-    case(1)    ! Single
-        this%bwd(1)%meshdir = bwd_dir//'/'
-
-    case(2)    ! Forces
-        this%bwd(1)%meshdir = trim(bwd_dir)//'/PZ/'
-        this%bwd(2)%meshdir = trim(bwd_dir)//'/PX/'
-
-    case(4)    ! Moment
-        this%bwd(1)%meshdir = trim(bwd_dir)//'/MZZ/'
-        this%bwd(2)%meshdir = trim(bwd_dir)//'/MXX_P_MYY/'
-        this%bwd(3)%meshdir = trim(bwd_dir)//'/MXZ_MYZ/'
-        this%bwd(4)%meshdir = trim(bwd_dir)//'/MXY_MXX_M_MYY/'
-
-    end select
-    
     this%strain_type = strain_type
 
     select case(trim(this%strain_type))
@@ -2834,6 +2738,8 @@ end function load_strain_point_interp
 !-----------------------------------------------------------------------------------------
 function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                   element_type, axis, id_elem)
+    use sem_derivatives
+    use netcdf, only                 : nf90_get_var ! HACK, create 5D wrapper in nc_routines 
     type(ncparamtype), intent(in)   :: sem_obj
     real(kind=dp),     intent(in)   :: xi, eta      !< Coordinates at which to interpolate
                                                     !! strain
@@ -2850,9 +2756,36 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
 
     real(kind=dp),     allocatable  :: load_strain_point_merged(:,:,:)
 
-    real(kind=dp),     allocatable  :: utemp(:,:,:,:)
+    real(kind=sp)                   :: strain(1:sem_obj%ndumps, &
+                                              0:sem_obj%npol,   &
+                                              0:sem_obj%npol,   &
+                                              6,                &
+                                              1:sem_obj%nsim_merged)
+    real(kind=sp)                   :: straintrace(1:sem_obj%ndumps, &
+                                                   0:sem_obj%npol,   &
+                                                   0:sem_obj%npol,   &
+                                                   1:sem_obj%nsim_merged)
+
+    real(kind=dp)                   :: G( 0:sem_obj%npol, 0:sem_obj%npol)
+    real(kind=dp)                   :: GT(0:sem_obj%npol, 0:sem_obj%npol)
+    real(kind=dp)                   :: col_points_xi(0:sem_obj%npol), col_points_eta(0:sem_obj%npol)
+    real(kind=sp),     allocatable  :: utemp(:,:,:,:,:)
+    integer(kind=long)              :: iclockold_total, iclockold
+    integer                         :: status, ndirection
 
     iclockold_total = tick()
+
+    if (axis) then
+        G  = sem_obj%G2
+        GT = sem_obj%G1T
+        col_points_xi  = sem_obj%glj_points
+        col_points_eta = sem_obj%gll_points
+    else
+        G  = sem_obj%G2
+        GT = sem_obj%G2T
+        col_points_xi  = sem_obj%gll_points
+        col_points_eta = sem_obj%gll_points
+    endif 
 
     if (sem_obj%nsim_merged==4) then
       ndirection = 10
@@ -2862,10 +2795,11 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       print *, 'Unknown number of sims: ', sem_obj%nsim_merged
       stop
     end if
-    allocate(utemp(ndirection,       &
+    allocate(utemp(1:ndirection,     &
                    0:sem_obj%npol,   &
                    0:sem_obj%npol,   &
-                   1:sem_obj%ndumps ))
+                   1:sem_obj%ndumps, &
+                   1))
 
     select case(strain_type)
     case('straintensor_trace')
@@ -2880,71 +2814,46 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       ! Try displacement buffer
       status = sem_obj%buffer_disp%get(id_elem, utemp)
       if (status.ne.0) then !If not found in displacement buffer
-        call nc_getvar(ncid   = sem_obj%snap,                      & 
-                       varid  = sem_obj%mergedvarid,               &
-                       start  = [1, 1, 1, 1, id_elem],             &
-                       count  = [ndirection, sem_obj%npol,         &
-                                 sem_obj%npol, sem_obj%ndumps, 1], &
-                       values = utemp)
+        call check(nf90_get_var(ncid   = sem_obj%snap,                      & 
+                          varid  = sem_obj%mergedvarid,               &
+                          start  = [1, 1, 1, 1, id_elem],             &
+                          count  = [sem_obj%npol, sem_obj%npol,       &
+                                    sem_obj%ndumps, ndirection, 1],   &
+                          values = utemp))
         status = sem_obj%buffer_disp%put(id_elem, utemp)
       end if
 
       select case(strain_type)
       case('straintensor_trace')
-        ! compute straintrace
-        if (sem_obj%excitation_type == 'monopole') then
-            straintrace = straintrace_monopole(utemp, G, GT, col_points_xi, &
-                                               col_points_eta, sem_obj%npol, &
-                                               sem_obj%ndumps, nodes, element_type, axis)
-
-        elseif (sem_obj%excitation_type == 'dipole') then
-            straintrace = straintrace_dipole(utemp, G, GT, col_points_xi, &
-                                             col_points_eta, sem_obj%npol, &
-                                             sem_obj%ndumps, , element_type, axis)
-
-        elseif (sem_obj%excitation_type == 'quadpole') then
-            straintrace = straintrace_quadpole(utemp, G, GT, col_points_xi, &
-                                               col_points_eta, sem_obj%npol, &
-                                               sem_obj%ndumps, nodes, element_type, axis)
-        else
-            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
-            call pabort
-        endif
-
+        straintrace = straintrace_merged(u = real(utemp(:,:,:,:,1), kind=dp), &
+                                         G = G, GT = GT,                      &
+                                         xi = col_points_xi,                  &
+                                         eta = col_points_eta,                &
+                                         npol = sem_obj%npol,                 &
+                                         nsamp = sem_obj%ndumps,              &
+                                         nsim = sem_obj%nsim_merged,          &
+                                         nodes = nodes,                       &
+                                         element_type = element_type,         &
+                                         axial = axis)
         iclockold = tick(id=id_calc_strain, since=iclockold)
-        if (use_strainbuffer) & 
-            status = sem_obj%buffer_strain%put(id_elem, straintrace)
+        status = sem_obj%buffer_strain%put(id_elem, straintrace)
 
       case('straintensor_full')
         ! compute full strain tensor
-        if (sem_obj%excitation_type == 'monopole') then
-            strain = strain_monopole(utemp, G, GT, col_points_xi, &
-                                     col_points_eta, sem_obj%npol, &
-                                     sem_obj%ndumps, nodes, &
-                                     element_type, axis)
-
-        elseif (sem_obj%excitation_type == 'dipole') then
-            strain = strain_dipole(utemp, G, GT, col_points_xi, &
-                                   col_points_eta, sem_obj%npol, &
-                                   sem_obj%ndumps, nodes, &
-                                   element_type, axis)
-
-        elseif (sem_obj%excitation_type == 'quadpole') then
-            strain = strain_quadpole(utemp, G, GT, col_points_xi, &
-                                     col_points_eta, sem_obj%npol, &
-                                     sem_obj%ndumps, nodes, &
-                                     element_type, axis)
-        else
-            print *, 'ERROR: unknown excitation_type: ', sem_obj%excitation_type
-            call pabort
-        endif
-        
+        strain = strain_merged(u = real(utemp(:,:,:,:,1), kind=dp),  &
+                                G = G, GT = GT,                      &
+                                xi = col_points_xi,                  &
+                                eta = col_points_eta,                &
+                                npol = sem_obj%npol,                 &
+                                nsamp = sem_obj%ndumps,              &
+                                nsim = sem_obj%nsim_merged,          &
+                                nodes = nodes,                       &
+                                element_type = element_type,         &
+                                axial = axis)
         iclockold = tick(id=id_calc_strain, since=iclockold)
-
-        if (use_strainbuffer) status = sem_obj%buffer_strain%put(id_elem, strain)
+        status = sem_obj%buffer_strain%put(id_elem, strain)
 
       end select
-
 
     end if
 
@@ -3395,6 +3304,102 @@ subroutine dampen_field(field, r_points, r_src_rec, r_max)
   end if
 
 end subroutine dampen_field
+!-----------------------------------------------------------------------------------------
+ 
+!-----------------------------------------------------------------------------------------
+subroutine get_simulation_type(sim_dir, nc_obj, merged, nsim)
+  ! Get simulation type of backward simulation and whether it was stored in 
+  ! separate directories or in one merged file
+  ! Convention for nsim: If merged=false (separate databases for each run of moment source
+  !                      then nsim is equal to the rank of nc_obj
+  !                      If merged=true, rank of nc_obj is always one
+
+  character(len=*), intent(in)   :: sim_dir
+  type(ncparamtype), allocatable :: nc_obj(:)
+  logical, intent(out)           :: merged
+  integer, intent(out)           :: nsim
+  logical                        :: moment=.false., force=.false.
+  logical                        :: single=.false.
+  character(len=512)             :: dirnam
+
+  dirnam = trim(sim_dir)//'merged_instaseis_db.nc4'
+  write(lu_out,*) 'Inquiring: ', trim(dirnam)
+  inquire( file = trim(dirnam), exist = merged)
+  
+  dirnam = trim(sim_dir)//'/MZZ/Data/ordered_output.nc4'
+  write(lu_out,*) 'Inquiring: ', trim(dirnam)
+  inquire( file = trim(dirnam), exist = moment)
+
+  dirnam = trim(sim_dir)//'/PZ/Data/ordered_output.nc4'
+  write(lu_out,*) 'Inquiring: ', trim(dirnam)
+  inquire( file = trim(dirnam), exist = force)
+
+  dirnam = trim(sim_dir)//'/Data/ordered_output.nc4'
+  write(lu_out,*) 'Inquiring: ', trim(dirnam)
+  inquire( file = trim(dirnam), exist = single)
+ 
+  if (moment) then
+     nsim = 4
+     write(lu_out,*) 'Forward simulation was ''moment'' source'
+  elseif (force) then
+     nsim = 2
+     write(lu_out,*) 'Forward simulation was ''forces'' source'
+  elseif (single) then
+     nsim = 1
+     write(lu_out,*) 'Forward simulation was ''single'' source'
+  elseif (merged) then
+     nsim = get_nsim_from_merged_file(trim(sim_dir) &
+                                      //'merged_instaseis_db.nc4')
+     write(lu_out,*) 'Backward simulation in merged file, nsim=', nsim
+  else 
+     nsim = 0
+     write(*,*) 'ERROR: Forward run directory (as set in inparam_basic FWD_DIR)'
+     write(*,*) trim(sim_dir)
+     write(*,*) 'does not seem to be an axisem rundirectory'
+     call pabort(do_traceback=.false.)
+  end if
+
+  if (merged) then
+    allocate(nc_obj(1))
+    nc_obj%meshdir = sim_dir//'/'
+
+  else
+    allocate(nc_obj(nsim))
+    select case(nsim)
+    case(1)    ! Single
+        nc_obj(1)%meshdir = sim_dir//'/'
+
+    case(2)    ! Forces
+        nc_obj(1)%meshdir = trim(sim_dir)//'/PZ/'
+        nc_obj(2)%meshdir = trim(sim_dir)//'/PX/'
+
+    case(4)    ! Moment
+        nc_obj(1)%meshdir = trim(sim_dir)//'/MZZ/'
+        nc_obj(2)%meshdir = trim(sim_dir)//'/MXX_P_MYY/'
+        nc_obj(3)%meshdir = trim(sim_dir)//'/MXZ_MYZ/'
+        nc_obj(4)%meshdir = trim(sim_dir)//'/MXY_MXX_M_MYY/'
+    end select
+
+  end if
+
+
+end subroutine get_simulation_type
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+integer function get_nsim_from_merged_file(filename)
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
+  use nc_routines, only             : nc_close_file, nc_open_for_read
+  
+  character(len=*), intent(in)      :: filename
+  
+  integer                           :: ncid, status
+
+  call nc_open_for_read(filename = filename, ncid     = ncid) 
+  status = nf90_get_att(ncid, NF90_GLOBAL, 'nsim', get_nsim_from_merged_file)
+  call nc_close_file(ncid)
+
+end function get_nsim_from_merged_file
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
