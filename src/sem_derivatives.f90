@@ -7,9 +7,11 @@ module sem_derivatives
   implicit none
   private
 
+  public :: strain_merged
   public :: strain_monopole
   public :: strain_dipole
   public :: strain_quadpole
+  public :: straintrace_merged
   public :: straintrace_monopole
   public :: straintrace_dipole
   public :: straintrace_quadpole
@@ -76,6 +78,98 @@ module sem_derivatives
 
 contains
 
+!--MERGED-------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+function strain_merged(u, G, GT, xi, eta, npol, nsamp, nsim, &
+                       nodes, element_type, axial) result(strain)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol, nsamp, nsim
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, int(nsim*2.5))
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: strain(1:nsamp,0:npol,0:npol,6,nsim)
+
+  select case(nsim)
+  case(4) 
+    ! MZZ
+    strain(:,:,:,:,1) = strain_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
+                                        nsamp, nodes, element_type, axial)
+    ! MXX
+    strain(:,:,:,:,2) = strain_monopole(u(:,:,:,3:4), G, GT, xi, eta, npol, &
+                                        nsamp, nodes, element_type, axial)
+    ! MXZ
+    strain(:,:,:,:,3) = strain_dipole(u(:,:,:,5:7), G, GT, xi, eta, npol, &
+                                      nsamp, nodes, element_type, axial)
+    ! MXY
+    strain(:,:,:,:,4) = strain_quadpole(u(:,:,:,8:10), G, GT, xi, eta, npol, &
+                                        nsamp, nodes, element_type, axial)
+
+  case(2)
+    ! PZ
+    strain(:,:,:,:,1) = strain_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
+                                        nsamp, nodes, element_type, axial)
+    ! PX
+    strain(:,:,:,:,2) = strain_dipole(u(:,:,:,3:5), G, GT, xi, eta, npol, &
+                                      nsamp, nodes, element_type, axial)
+  end select
+
+end function strain_merged
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function straintrace_merged(u, G, GT, xi, eta, npol, nsamp, nsim, nodes, &
+                            element_type, axial) result(straintrace)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol, nsamp, nsim
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, nint(nsim*2.5))
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: straintrace(1:nsamp,0:npol,0:npol,nsim)
+
+  select case(nsim)
+  case(4)
+    ! MZZ
+    straintrace(:,:,:,1) = straintrace_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
+                                                nsamp, nodes, element_type, axial)
+    ! MXX
+    straintrace(:,:,:,2) = straintrace_monopole(u(:,:,:,3:4), G, GT, xi, eta, npol, &
+                                                nsamp, nodes, element_type, axial)
+    ! MXZ
+    straintrace(:,:,:,3) = straintrace_dipole(u(:,:,:,5:7), G, GT, xi, eta, npol, &
+                                              nsamp, nodes, element_type, axial)
+    ! MXY
+    straintrace(:,:,:,4) = straintrace_quadpole(u(:,:,:,8:10), G, GT, xi, eta, npol, &
+                                                nsamp, nodes, element_type, axial)
+  case(2)
+    ! PZ
+    straintrace(:,:,:,1) = straintrace_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
+                                                nsamp, nodes, element_type, axial)
+    ! PX 
+    straintrace(:,:,:,2) = straintrace_dipole(u(:,:,:,3:5), G, GT, xi, eta, npol, &
+                                              nsamp, nodes, element_type, axial)
+  end select
+
+end function straintrace_merged
+!-----------------------------------------------------------------------------------------
+
 !--MONOPOLE-------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -84,7 +178,7 @@ function strain_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type,
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
   integer, intent(in)           :: npol, nsamp
-  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, 3)
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, 2)
   real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
                                                      ! axial elements
@@ -124,7 +218,7 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
   integer, intent(in)           :: npol
-  real(kind=dp), intent(in)     :: u(0:npol,0:npol, 3)
+  real(kind=dp), intent(in)     :: u(0:npol,0:npol, 2)
   real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
                                                      ! axial elements
@@ -163,7 +257,7 @@ function straintrace_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
   integer, intent(in)           :: npol, nsamp
-  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, 3)
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, 2)
   real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
                                                      ! axial elements
@@ -200,7 +294,7 @@ function straintrace_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axia
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
   integer, intent(in)           :: npol
-  real(kind=dp), intent(in)     :: u(0:npol,0:npol, 3)
+  real(kind=dp), intent(in)     :: u(0:npol,0:npol, 2)
   real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
                                                      ! axial elements
