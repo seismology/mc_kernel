@@ -16,6 +16,7 @@ module rotations
     public                                :: rotate_symm_tensor_voigt_xyz_earth_to_xyz_src
     
     public                                :: azim_factor
+    public                                :: azim_factor_nsim
     public                                :: azim_factor_bw
 
     interface rotate_symm_tensor_voigt_src_to_xyz
@@ -39,9 +40,24 @@ module rotations
     end interface
 
 contains
+!-----------------------------------------------------------------------------------------
+pure function azim_factor_nsim(phi, mij, ikind)
+
+    real(kind=dp), intent(in)    :: phi
+    real(kind=dp), intent(in)    :: mij(6)  ! rr, tt, pp, rt, rp, tp
+    integer, intent(in)          :: ikind
+    real(kind=dp)                :: azim_factor_nsim(4)
+
+    azim_factor_nsim(1) = azim_factor(phi, mij, 1, ikind)
+    azim_factor_nsim(2) = azim_factor(phi, mij, 2, ikind)
+    azim_factor_nsim(3) = azim_factor(phi, mij, 3, ikind)
+    azim_factor_nsim(4) = azim_factor(phi, mij, 4, ikind)
+
+end function azim_factor_nsim
+!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function azim_factor(phi, mij, isim, ikind)
+pure function azim_factor(phi, mij, isim, ikind)
 
     real(kind=dp), intent(in)    :: phi
     real(kind=dp), intent(in)    :: mij(6)  ! rr, tt, pp, rt, rp, tp
@@ -81,10 +97,6 @@ function azim_factor(phi, mij, isim, ikind)
                             + Mij(6) * dcos(2.d0 * phi)  
        end if
 
-    case default
-       azim_factor = 0
-       write(6,*) myrank,': unknown number of simulations',isim
-       call pabort
     end select
 
 end function
