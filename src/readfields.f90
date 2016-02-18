@@ -1180,11 +1180,11 @@ function load_fw_points(this, coordinates, source_params, model)
           where(utemp.ne.utemp) utemp = 0.0
           
           iclockold = tick()
+          az_1 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 1) 
 
           do isim = 1, this%nsim_fwd
             load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)          &
-                 + utemp(:, :, isim) * azim_factor(rotmesh_phi(ipoint),        &
-                                                   source_params%mij, isim, 1) 
+                 + utemp(:, :, isim) * az_1(isim)
           end do
           iclockold = tick(id=id_rotate, since=iclockold)
 
@@ -2356,7 +2356,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
                call get_chunk_bounds(pointid     = pointids(ipol, jpol), &
                                      chunksize   = sem_obj%chunk_gll,    &
                                      npoints     = sem_obj%ngll,         &
-                                     start_chunk = start_chunk,          &   
+                                     start_chunk = start_chunk,          &
                                      count_chunk = gll_to_read )
 
                do idisplvar = 1, 3
@@ -2586,8 +2586,8 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
         call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
                                 varid  = sem_obj%mergedvarid,               &
                                 start  = [1, 1, 1, 1, id_elem],             &
-                                count  = [sem_obj%ndumps, sem_obj%npol+1, sem_obj%npol+1,   &
-                                          ndirection, 1],   &
+                                count  = [sem_obj%ndumps, sem_obj%npol+1,   &
+                                          sem_obj%npol+1, ndirection, 1],   &
                                 values = utemp))
         iclockold = tick(id=id_netcdf, since=iclockold)
         status = sem_obj%buffer_disp%put(id_elem, utemp(:,:,:,:,1))

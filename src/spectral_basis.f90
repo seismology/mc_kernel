@@ -151,7 +151,7 @@ end function lagrange_interpol_2D
 pure function lagrange_interpol_2D_td(points1, points2, coefficients, x1, x2)
 
   real(dp), intent(in)  :: points1(0:), points2(0:)
-  real(dp), intent(in)  :: coefficients(:,0:,0:)
+  real(dp), intent(in)  :: coefficients(:,0:,0:) ! ndumps, 0:npol, 0:npol
   real(dp), intent(in)  :: x1, x2
   real(dp)              :: lagrange_interpol_2D_td(size(coefficients,1))
   real(dp)              :: l_i(0:size(points1)-1), l_j(0:size(points2)-1)

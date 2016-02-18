@@ -107,13 +107,6 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
             f_out['Mesh'].variables[name][:] = f_in_1['Mesh'].variables[name][:]
 
         # Copy source time function variables from Surface group
-        #f_out.createGroup('Surface')
-        #for name, dimension in f_in_1['Surface'].dimensions.iteritems():
-        #    if not dimension.isunlimited():
-        #        f_out['Surface'].createDimension(name, len(dimension))
-        #    else:
-        #        f_out['Surface'].createDimension(name, None)
-
         for name, variable in f_in_1['Surface'].variables.iteritems():
             if name in ['stf_dump', 'stf_d_dump']:
                 f_out.createVariable(name, variable.datatype,
@@ -124,7 +117,7 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
         # is the element number, the second and third are the GLL
         # points in both directions, the fourth is the time axis, and the
         # last the displacement axis.
-        npts = f_in_1.getncattr("number of strain dumps")
+        ndumps = f_in_1.getncattr("number of strain dumps")
         number_of_elements = f_in_1.getncattr("nelem_kwf_global")
         npol = f_in_1.getncattr("npol")
 
@@ -177,7 +170,7 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
                                     #             dim_nvars.name),
         print ds_o
 
-        utemp = np.zeros((nvars, npol + 1, npol + 1, npts),
+        utemp = np.zeros((nvars, npol + 1, npol + 1, ndumps),
                          dtype=dtype)
         print utemp.shape
 
@@ -198,8 +191,7 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
                     for ipol in range(npol + 1):
                         for jpol in range(npol + 1):
                             idx = ipol * (npol + 1) + jpol
-                            # ipol, jpol, nsnap, nvar
-                            # ipol, jpol, :,     ivar
+                            # ndumps, ipol, jpol, nvar (Fortran notation)
                             utemp[ivar, jpol, ipol, :] = \
                                 temp[:, np.argwhere(s_ids == ids[idx])[0][0]]
                 ds_o[gll_idx] = utemp
