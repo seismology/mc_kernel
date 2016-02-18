@@ -2562,6 +2562,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                    1:ndirection,     &
                    1))
 
+    iclockold = tick()
     if (use_buffer_loc) then
       select case(strain_type)
       case('straintensor_trace')
@@ -2572,21 +2573,26 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
         status = - 1
       end select
     end if
+    iclockold = tick(id=id_buffer, since=iclockold)
 
     if (status.ne.0) then !If not found in strain buffer
 
       ! Try displacement buffer
+      iclockold = tick()
       status = sem_obj%buffer_disp%get(id_elem, utemp(:,:,:,:,1))
       
       if (status.ne.0) then !If not found in displacement buffer, load from disk
+        iclockold = tick(id=id_buffer, since=iclockold)
         call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
                                 varid  = sem_obj%mergedvarid,               &
                                 start  = [1, 1, 1, 1, id_elem],             &
                                 count  = [sem_obj%ndumps, sem_obj%npol+1, sem_obj%npol+1,   &
                                           ndirection, 1],   &
                                 values = utemp))
+        iclockold = tick(id=id_netcdf, since=iclockold)
         status = sem_obj%buffer_disp%put(id_elem, utemp(:,:,:,:,1))
       end if
+      iclockold = tick(id=id_buffer, since=iclockold)
 
       select case(strain_type)
       case('straintensor_trace')
@@ -2603,6 +2609,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                          axial = axis)
         iclockold = tick(id=id_calc_strain, since=iclockold)
         status = sem_obj%buffer_strain%put(id_elem, straintrace)
+        iclockold = tick(id=id_buffer, since=iclockold)
 
       case('straintensor_full')
         ! compute full strain tensor
@@ -2618,10 +2625,11 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                axial = axis)
         iclockold = tick(id=id_calc_strain, since=iclockold)
         if (use_buffer_loc) status = sem_obj%buffer_strain%put(id_elem, strain)
-
+        iclockold = tick(id=id_buffer, since=iclockold)
       end select
 
     end if
+    iclockold = tick()
 
     select case(strain_type)
     case('straintensor_trace')
