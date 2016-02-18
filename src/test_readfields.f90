@@ -228,7 +228,6 @@ subroutine test_readfields_load_fw_points
    u = sem_data%load_fw_points(coordinates, parameters%source)
    straintrace_fd(:,:) = 0
    straintrace_res_filt(:,:) = 0
-   !straintrace_res(:,1) = cumsum_trapezoidal(u(:, 1, 1), sem_data%dt)
    straintrace_res(:,1) = u(:, 1, 1)
 
    call fft_data%rfft(taperandzeropad(straintrace_res(:,:),             &
@@ -254,9 +253,6 @@ subroutine test_readfields_load_fw_points
    ! in definition of filters compared to instaseis.
    write(message_full, '(A, " (raw):  ", E15.8)') "waveform difference", misfit_straintrace
    call assert_true(misfit_straintrace < 5.0d-1, message_full)
-
-   !call assert_comparable(straintrace_ref, straintrace_res, 1d-7, &
-   !                       'strain trace is equal to reference, point one')
 
    call sem_data%close_files()
 
@@ -438,6 +434,185 @@ subroutine test_load_seismograms_rdbm_T
    end do
 
 end subroutine test_load_seismograms_rdbm_T
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+! SEISMOGRAM TESTS WITH MERGED DATABASE
+!-----------------------------------------------------------------------------------------
+!> Load a seismogram and compare with instaseis, Z-component
+subroutine test_load_seismograms_rdbm_merged_Z
+   use readfields,     only : semdata_type
+   use type_parameter, only : parameter_type
+   use fft,            only: rfft_type, taperandzeropad
+   type(parameter_type)    :: parameters
+   type(semdata_type)      :: sem_data
+   type(rfft_type)         :: fft_data
+   integer                 :: nomega, ntimes, ntimes_reference, ikernel
+   real(kind=dp)           :: df, t
+   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   character(len=128)       :: kernel_name
+   
+   call parameters%read_parameters('./inparam_load_seismogram_merged_Z')
+   call parameters%read_source()
+   call parameters%read_receiver()
+
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = parameters%strain_type_fwd,  &
+                            desired_source_depth = parameters%source%depth)
+
+   call sem_data%open_files()
+   call sem_data%read_meshes()
+   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+
+   ! Initialize FFT - just needed to get df and nomega
+   call fft_data%init(ntimes_in = sem_data%ndumps,     &
+                      ndim      = sem_data%get_ndim(), &
+                      ntraces   = 1,                   &
+                      dt        = sem_data%dt)
+
+   ntimes = fft_data%get_ntimes()
+   nomega = fft_data%get_nomega()
+   df     = fft_data%get_df()
+   call fft_data%freeme()
+
+
+   ! Read filters
+   call parameters%read_filter(nomega=nomega, df=df)
+
+   ! Read Kernels. (Filtered) seismograms are written out here.
+   call parameters%read_kernel(sem_data, parameters%filter)
+
+   call sem_data%close_files()
+
+   do ikernel = 1, parameters%nkernel
+     ! Compare seismograms 
+     kernel_name = parameters%kernel(ikernel)%name
+     call compare_seismograms(stat_name = trim(kernel_name), &
+                              message   = 'Seismograms '//trim(kernel_name)//', misfit: ') 
+   end do
+
+end subroutine test_load_seismograms_rdbm_merged_Z
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Load a seismogram and compare with instaseis, R-component
+subroutine test_load_seismograms_rdbm_merged_R
+   use readfields,     only : semdata_type
+   use type_parameter, only : parameter_type
+   use fft,            only: rfft_type, taperandzeropad
+   type(parameter_type)    :: parameters
+   type(semdata_type)      :: sem_data
+   type(rfft_type)         :: fft_data
+   integer                 :: nomega, ntimes, ntimes_reference, ikernel
+   real(kind=dp)           :: df, t
+   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   character(len=128)       :: kernel_name
+   
+   call parameters%read_parameters('./inparam_load_seismogram_merged_R')
+   call parameters%read_source()
+   call parameters%read_receiver()
+
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = parameters%strain_type_fwd,  &
+                            desired_source_depth = parameters%source%depth)
+
+   call sem_data%open_files()
+   call sem_data%read_meshes()
+   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+
+   ! Initialize FFT - just needed to get df and nomega
+   call fft_data%init(ntimes_in = sem_data%ndumps,     &
+                      ndim      = sem_data%get_ndim(), &
+                      ntraces   = 1,                   &
+                      dt        = sem_data%dt)
+
+   ntimes = fft_data%get_ntimes()
+   nomega = fft_data%get_nomega()
+   df     = fft_data%get_df()
+   call fft_data%freeme()
+
+
+   ! Read filters
+   call parameters%read_filter(nomega=nomega, df=df)
+
+   ! Read Kernels. (Filtered) seismograms are written out here.
+   call parameters%read_kernel(sem_data, parameters%filter)
+
+   call sem_data%close_files()
+
+   do ikernel = 1, parameters%nkernel
+     ! Compare seismograms 
+     kernel_name = parameters%kernel(ikernel)%name
+     call compare_seismograms(stat_name = trim(kernel_name), &
+                              message   = 'Seismograms '//trim(kernel_name)//', misfit: ') 
+   end do
+
+end subroutine test_load_seismograms_rdbm_merged_R
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Load a seismogram and compare with instaseis, R-component
+subroutine test_load_seismograms_rdbm_merged_T
+   use readfields,     only : semdata_type
+   use type_parameter, only : parameter_type
+   use fft,            only: rfft_type, taperandzeropad
+   type(parameter_type)    :: parameters
+   type(semdata_type)      :: sem_data
+   type(rfft_type)         :: fft_data
+   integer                 :: nomega, ntimes, ntimes_reference, ikernel
+   real(kind=dp)           :: df, t
+   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   character(len=128)       :: kernel_name
+   
+   call parameters%read_parameters('./inparam_load_seismogram_merged_T')
+   call parameters%read_source()
+   call parameters%read_receiver()
+
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = parameters%strain_type_fwd,  &
+                            desired_source_depth = parameters%source%depth)
+
+   call sem_data%open_files()
+   call sem_data%read_meshes()
+   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+
+   ! Initialize FFT - just needed to get df and nomega
+   call fft_data%init(ntimes_in = sem_data%ndumps,     &
+                      ndim      = sem_data%get_ndim(), &
+                      ntraces   = 1,                   &
+                      dt        = sem_data%dt)
+
+   ntimes = fft_data%get_ntimes()
+   nomega = fft_data%get_nomega()
+   df     = fft_data%get_df()
+   call fft_data%freeme()
+
+
+   ! Read filters
+   call parameters%read_filter(nomega=nomega, df=df)
+
+   ! Read Kernels. (Filtered) seismograms are written out here.
+   call parameters%read_kernel(sem_data, parameters%filter)
+
+   call sem_data%close_files()
+
+   do ikernel = 1, parameters%nkernel
+     ! Compare seismograms 
+     kernel_name = parameters%kernel(ikernel)%name
+     call compare_seismograms(stat_name = trim(kernel_name), &
+                              message   = 'Seismograms '//trim(kernel_name)//', misfit: ') 
+   end do
+
+end subroutine test_load_seismograms_rdbm_merged_T
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

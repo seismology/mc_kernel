@@ -161,6 +161,9 @@ subroutine test_all
   call test(test_load_seismograms_rdbm_Z, 'Read seismograms (Z-component)')
   call test(test_load_seismograms_rdbm_R, 'Read seismograms (R-component)')
   call test(test_load_seismograms_rdbm_T, 'Read seismograms (T-component)')
+  call test(test_load_seismograms_rdbm_merged_Z, 'Read seismograms from merged db (Z-component)')
+  call test(test_load_seismograms_rdbm_merged_R, 'Read seismograms from merged db (R-component)')
+  call test(test_load_seismograms_rdbm_merged_T, 'Read seismograms from merged db (T-component)')
   call test(test_dampen_field, 'Dampen fields around source')
   call test(test_get_chunk_bounds, 'Get_chunk_bounds')
 
