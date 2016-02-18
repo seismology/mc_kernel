@@ -524,29 +524,41 @@ fwd_path = os.path.join(os.path.realpath(params['FWD_DIR']),
                         'MZZ', 'Data', 'ordered_output.nc4')
 bwd_path = os.path.join(os.path.realpath(params['BWD_DIR']),
                         'PZ', 'Data', 'ordered_output.nc4')
+
+fwd_path_merged = os.path.join(os.path.realpath(params['FWD_DIR']),
+                               'merged_instaseis_db.nc4')
+bwd_path_merged = os.path.join(os.path.realpath(params['BWD_DIR']),
+                               'merged_instaseis_db.nc4')
+
 if os.path.exists(fwd_path):
     nc_fwd = Dataset(fwd_path)
-    npoints_fwd = getattr(nc_fwd, "npoints")
-    nelems_fwd = getattr(nc_fwd, "nelem_kwf_global")
-    ndumps_fwd = getattr(nc_fwd, "number of strain dumps")
-    dt_fwd = getattr(nc_fwd, "strain dump sampling rate in sec")
-    nc_fwd.close()
+elif os.path.exists(fwd_path_merged):
+    nc_fwd = Dataset(fwd_path_merged)
 else:
     errmsg = 'Could not find a wavefield file in the fwd_dir %s\n%s' % \
              (params['FWD_DIR'], fwd_path)
     raise IOError(errmsg)
 
+npoints_fwd = getattr(nc_fwd, "npoints")
+nelems_fwd = getattr(nc_fwd, "nelem_kwf_global")
+ndumps_fwd = getattr(nc_fwd, "number of strain dumps")
+dt_fwd = getattr(nc_fwd, "strain dump sampling rate in sec")
+nc_fwd.close()
+
 if os.path.exists(bwd_path):
     nc_bwd = Dataset(bwd_path)
-    npoints_bwd = getattr(nc_bwd, "npoints")
-    nelems_bwd = getattr(nc_bwd, "nelem_kwf_global")
-    ndumps_bwd = getattr(nc_bwd, "number of strain dumps")
-    dt_bwd = getattr(nc_bwd, "strain dump sampling rate in sec")
-    nc_bwd.close()
+elif os.path.exists(bwd_path_merged):
+    nc_bwd = Dataset(bwd_path_merged)
 else:
     errmsg = 'Could not find a wavefield file in the bwd_dir %s' % \
              params['FWD_DIR']
     raise IOError(errmsg)
+
+npoints_bwd = getattr(nc_bwd, "npoints")
+nelems_bwd = getattr(nc_bwd, "nelem_kwf_global")
+ndumps_bwd = getattr(nc_bwd, "number of strain dumps")
+dt_bwd = getattr(nc_bwd, "strain dump sampling rate in sec")
+nc_bwd.close()
 
 # Read receiver file and get number of receivers, kernels and whether the
 # full strain has to be read for any kernel (increases the memory footprint
