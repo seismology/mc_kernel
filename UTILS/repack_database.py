@@ -192,7 +192,7 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
                         for jpol in range(npol + 1):
                             idx = ipol * (npol + 1) + jpol
                             # ndumps, ipol, jpol, nvar (Fortran notation)
-                            utemp[ivar, jpol, ipol, :] = \
+                            utemp[ivar, ipol, jpol, :] = \
                                 temp[:, np.argwhere(s_ids == ids[idx])[0][0]]
                 ds_o[gll_idx] = utemp
 
