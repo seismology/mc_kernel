@@ -253,7 +253,6 @@ subroutine open_files(this)
         ! Forward wavefield
         if (this%merged_fwd) then
           filename=trim(this%fwd(ifile)%meshdir)//'/merged_instaseis_db.nc4'
-          if (ifile>1) exit
         else
           filename=trim(this%fwd(ifile)%meshdir)//'/Data/ordered_output.nc4'
         end if
@@ -261,14 +260,13 @@ subroutine open_files(this)
         call open_file_read_varids_and_attributes(this%fwd(ifile), &
                                                   filename,       &
                                                   this%merged_fwd)
-        
     end do
         
     call flush(lu_out)
 
     do ifile = 1, this%nfiles_bwd
         ! Backward wavefield
-        if (this%merged_fwd) then
+        if (this%merged_bwd) then
           filename=trim(this%bwd(ifile)%meshdir)//'/merged_instaseis_db.nc4'
         else
           filename=trim(this%bwd(ifile)%meshdir)//'/Data/ordered_output.nc4'
@@ -291,37 +289,37 @@ subroutine open_files(this)
     !Initialize Buffers. 
     select case(trim(this%dump_type))
     case('displ_only')
-      if (this%merged_fwd) then
-        call init_merged_buffer(this%fwd(1), this%displ_buffer_size, &
-                                this%strain_buffer_size, this%strain_type)
-        call init_merged_buffer(this%bwd(1), this%displ_buffer_size, &
-                                this%strain_buffer_size, this%strain_type)
-
-        this%fwd(1)%count_error_pointoutside = 0
-        this%bwd(1)%count_error_pointoutside = 0
-      else
-        do ifile = 1, this%nfiles_fwd
+      do ifile = 1, this%nfiles_fwd
+        if (this%merged_fwd) then
+          call init_merged_buffer(this%fwd(ifile), this%displ_buffer_size, &
+                                  this%strain_buffer_size, this%strain_type)
+        else
           call init_disp_only_buffer(this%fwd(ifile), this%displ_buffer_size, &
                                      this%strain_buffer_size, this%strain_type)
-          this%fwd(ifile)%count_error_pointoutside = 0
-        end do
+        end if
+        this%fwd(ifile)%count_error_pointoutside = 0
+      end do
 
-        do ifile = 1, this%nfiles_bwd
+      do ifile = 1, this%nfiles_bwd
+        if (this%merged_bwd) then
+          call init_merged_buffer(this%bwd(ifile), this%displ_buffer_size, &
+                                  this%strain_buffer_size, this%strain_type)
+        else
           call init_disp_only_buffer(this%bwd(ifile), this%displ_buffer_size, &
                                      this%strain_buffer_size, this%strain_type)
-          this%bwd(ifile)%count_error_pointoutside = 0
-        end do
-      end if
+        end if
+        this%bwd(ifile)%count_error_pointoutside = 0
+      end do
 
     case('fullfields')
       do ifile = 1, this%nfiles_fwd
         status = this%fwd(ifile)%buffer%init(this%strain_buffer_size, &
-                                            this%fwd(ifile)%ndumps, this%ndim)
+                                             this%fwd(ifile)%ndumps, this%ndim)
       end do
 
       do ifile = 1, this%nfiles_bwd
         status = this%bwd(ifile)%buffer%init(this%strain_buffer_size, &
-                                            this%bwd(ifile)%ndumps, this%ndim)
+                                             this%bwd(ifile)%ndumps, this%ndim)
       end do
 
     case default
@@ -343,9 +341,9 @@ subroutine init_merged_buffer(nc_obj, displ_buffer_size, strain_buffer_size, &
   integer                       :: status
 
   status = nc_obj%buffer_disp%init(displ_buffer_size, &
-                                   nc_obj%npol+1,     &
-                                   nc_obj%npol+1,     &
                                    nc_obj%ndumps,     &
+                                   nc_obj%npol+1,     &
+                                   nc_obj%npol+1,     &
                                    nint(nc_obj%nsim_merged*2.5))
   select case(strain_type)
   case('straintensor_trace')
@@ -2558,10 +2556,10 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       print *, 'Unknown number of sims: ', sem_obj%nsim_merged
       stop
     end if
-    allocate(utemp(1:ndirection,     &
+    allocate(utemp(1:sem_obj%ndumps, &
                    0:sem_obj%npol,   &
                    0:sem_obj%npol,   &
-                   1:sem_obj%ndumps, &
+                   1:ndirection,     &
                    1))
 
     if (use_buffer_loc) then
@@ -2576,20 +2574,23 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
     end if
 
     if (status.ne.0) then !If not found in strain buffer
+
       ! Try displacement buffer
       status = sem_obj%buffer_disp%get(id_elem, utemp(:,:,:,:,1))
-      if (status.ne.0) then !If not found in displacement buffer
+      
+      if (status.ne.0) then !If not found in displacement buffer, load from disk
         call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
                                 varid  = sem_obj%mergedvarid,               &
                                 start  = [1, 1, 1, 1, id_elem],             &
-                                count  = [sem_obj%npol+1, sem_obj%npol+1,   &
-                                          sem_obj%ndumps, ndirection, 1],   &
+                                count  = [sem_obj%ndumps, sem_obj%npol+1, sem_obj%npol+1,   &
+                                          ndirection, 1],   &
                                 values = utemp))
         status = sem_obj%buffer_disp%put(id_elem, utemp(:,:,:,:,1))
       end if
 
       select case(strain_type)
       case('straintensor_trace')
+        ! Compute just trace of strain (for vp or lambda kernels)
         straintrace = straintrace_merged(u = real(utemp(:,:,:,:,1), kind=dp), &
                                          G = G, GT = GT,                      &
                                          xi = col_points_xi,                  &
@@ -2606,15 +2607,15 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       case('straintensor_full')
         ! compute full strain tensor
         strain = strain_merged(u = real(utemp(:,:,:,:,1), kind=dp),  &
-                                G = G, GT = GT,                      &
-                                xi = col_points_xi,                  &
-                                eta = col_points_eta,                &
-                                npol = sem_obj%npol,                 &
-                                nsamp = sem_obj%ndumps,              &
-                                nsim = sem_obj%nsim_merged,          &
-                                nodes = nodes,                       &
-                                element_type = element_type,         &
-                                axial = axis)
+                               G = G, GT = GT,                      &
+                               xi = col_points_xi,                  &
+                               eta = col_points_eta,                &
+                               npol = sem_obj%npol,                 &
+                               nsamp = sem_obj%ndumps,              &
+                               nsim = sem_obj%nsim_merged,          &
+                               nodes = nodes,                       &
+                               element_type = element_type,         &
+                               axial = axis)
         iclockold = tick(id=id_calc_strain, since=iclockold)
         if (use_buffer_loc) status = sem_obj%buffer_strain%put(id_elem, strain)
 
