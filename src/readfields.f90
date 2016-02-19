@@ -29,6 +29,7 @@ module readfields
     implicit none
     private
     public                                 :: semdata_type, meshtype, get_chunk_bounds, dampen_field
+    public                                 :: load_strain_point_merged, load_strain_point_interp
 
     integer, parameter                     :: min_file_version = 3
     integer, parameter                     :: nmodel_parameters_sem_file = 6 !< For the anisotropic
@@ -90,7 +91,7 @@ module readfields
 
         integer, public                    :: nsim_fwd, nsim_bwd
         integer, public                    :: nfiles_fwd, nfiles_bwd
-        type(ncparamtype), allocatable     :: fwd(:)
+        type(ncparamtype), allocatable, public     :: fwd(:)
         type(ncparamtype), allocatable     :: bwd(:)
 
         type(kdtree2), pointer, private    :: fwdtree, bwdtree        !< Contain all points
@@ -406,7 +407,7 @@ subroutine open_file_read_varids_and_attributes(nc_obj, filename, merged)
   real(kind=sp)                 :: temp
 
   nc_strain_varnamelist = ['strain_dsus', 'strain_dsuz', 'strain_dpup', &
-                            'strain_dsup', 'strain_dzup', 'straintrace']
+                           'strain_dsup', 'strain_dzup', 'straintrace']
           
   nc_displ_varnamelist  = ['disp_s     ', 'disp_p     ', 'disp_z     ']
 
@@ -1148,6 +1149,15 @@ function load_fw_points(this, coordinates, source_params, model)
             pointid = nextpoint(1)%idx
         end select ! dump_type
     
+        write(1000,*) 'xi           : ', xi
+        write(1000,*) 'eta          : ', eta
+        write(1000,*) 'corner_points: ', corner_points
+        write(1000,*) 'eltype(1)    : ', eltype(1)
+        write(1000,*) 'axis         : ', axis
+        write(1000,*) 'id_elem      : ', id_elem
+        write(1000,*) 'gll_point_ids: ', gll_point_ids
+        call flush()
+
         select case(trim(this%strain_type))
         case('straintensor_trace')    
            
@@ -2200,7 +2210,7 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
 !      case('straintensor_full')
           ! compute full strain tensor
           if (sem_obj%excitation_type == 'monopole') then
-              strain = strain_monopole(utemp, G, GT, col_points_xi, &
+              strain = strain_monopole(utemp(:,:,:,1:3:2), G, GT, col_points_xi, &
                                        col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
                                        element_type, axis)
 
@@ -2316,7 +2326,6 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
 
 
     if (use_strainbuffer) then
-
         if(id_elem<=0) then
             print *, 'id_elem is zero or smaller: ', id_elem
             call pabort()
@@ -2408,7 +2417,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
       case('straintensor_trace')
           ! compute straintrace
           if (sem_obj%excitation_type == 'monopole') then
-              straintrace = straintrace_monopole(utemp, G, GT, col_points_xi, &
+              straintrace = straintrace_monopole(utemp(:,:,:,1:3:2), G, GT, col_points_xi, &
                                                  col_points_eta, sem_obj%npol, &
                                                  sem_obj%ndumps, nodes, element_type, axis)
 
@@ -2433,7 +2442,7 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
       case('straintensor_full')
           ! compute full strain tensor
           if (sem_obj%excitation_type == 'monopole') then
-              strain = strain_monopole(utemp, G, GT, col_points_xi, &
+              strain = strain_monopole(utemp(:,:,:,1:3:2), G, GT, col_points_xi, &
                                        col_points_eta, sem_obj%npol, sem_obj%ndumps, nodes, &
                                        element_type, axis)
 
@@ -2556,6 +2565,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       print *, 'Unknown number of sims: ', sem_obj%nsim_merged
       stop
     end if
+
     allocate(utemp(1:sem_obj%ndumps, &
                    0:sem_obj%npol,   &
                    0:sem_obj%npol,   &

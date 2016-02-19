@@ -85,7 +85,7 @@ subroutine test_strain_monopole_td()
   u(2,:,:,:) = u(1,:,:,:) / 2
   strain_ref(2,:,:,:) = strain_ref(1,:,:,:) / 2
 
-  strain = strain_monopole(u, G2, G1T, glj_points, gll_points, npol, nsamp, nodes, &
+  strain = strain_monopole(u(:,:,:,1:3:2), G2, G1T, glj_points, gll_points, npol, nsamp, nodes, &
                            element_type, axial)
   
   call assert_comparable_real1d(real(reshape(strain, (/(npol+1)**2 * 6 * nsamp/))), &
@@ -128,7 +128,7 @@ subroutine test_strain_monopole_td()
   u(2,:,:,:) = u(1,:,:,:) / 2
   strain_ref(2,:,:,:) = strain_ref(1,:,:,:) / 2
 
-  strain = strain_monopole(u, G2, G1T, glj_points, gll_points, npol, nsamp, nodes, &
+  strain = strain_monopole(u(:,:,:,1:3:2), G2, G1T, glj_points, gll_points, npol, nsamp, nodes, &
                            element_type, axial)
   
   call assert_comparable_real1d(10 + real(reshape(strain, (/(npol+1)**2 * 6 * nsamp/))), &
@@ -208,7 +208,7 @@ subroutine test_strain_monopole()
   strain_ref(:,:,5) = (s**2 + z**2) / 2
   strain_ref(:,:,6) = 0
 
-  strain = strain_monopole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
+  strain = strain_monopole(u(:,:,1:3:2), G2, G1T, glj_points, gll_points, npol, nodes, &
                            element_type, axial)
   
   call assert_comparable_real1d(real(reshape(strain, (/(npol+1)**2 * 6/))), &
@@ -248,7 +248,7 @@ subroutine test_strain_monopole()
   strain_ref(:,:,5) = (s**2 + z**2) / 2
   strain_ref(:,:,6) = 0
 
-  strain = strain_monopole(u, G2, G1T, glj_points, gll_points, npol, nodes, &
+  strain = strain_monopole(u(:,:,1:3:2), G2, G1T, glj_points, gll_points, npol, nodes, &
                            element_type, axial)
   
   call assert_comparable_real1d(10 + real(reshape(strain, (/(npol+1)**2 * 6/))), &

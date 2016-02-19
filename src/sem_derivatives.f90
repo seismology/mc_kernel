@@ -86,7 +86,7 @@ function strain_merged(u, G, GT, xi, eta, npol, nsamp, nsim, &
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
   integer, intent(in)           :: npol, nsamp, nsim
-  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, int(nsim*2.5))
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, nint(nsim*2.5))
   real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
                                                      ! axial elements
@@ -198,7 +198,7 @@ function strain_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type,
                                nodes, element_type)
   
   ! 1: dsuz, 2: dzuz
-  grad_buff2 = axisym_gradient(u(:,:,:,3), G, GT, xi, eta, npol, nsamp, &
+  grad_buff2 = axisym_gradient(u(:,:,:,2), G, GT, xi, eta, npol, nsamp, &
                                nodes, element_type)
 
   strain_monopole_td(:,:,:,1) = grad_buff1(:,:,:,1)
@@ -237,7 +237,7 @@ function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   grad_buff1 = axisym_gradient(u(:,:,1), G, GT, xi, eta, npol, nodes, element_type)
   
   ! 1: dsuz, 2: dzuz
-  grad_buff2 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
+  grad_buff2 = axisym_gradient(u(:,:,2), G, GT, xi, eta, npol, nodes, element_type)
 
   strain_monopole(:,:,1) = grad_buff1(:,:,1)
   strain_monopole(:,:,2) = f_over_s(u(:,:,1), G, GT, xi, eta, npol, nodes, &
@@ -277,7 +277,7 @@ function straintrace_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_
                                nodes, element_type)
   
   ! 1: dsuz, 2: dzuz
-  grad_buff2 = axisym_gradient(u(:,:,:,3), G, GT, xi, eta, npol, nsamp, &
+  grad_buff2 = axisym_gradient(u(:,:,:,2), G, GT, xi, eta, npol, nsamp, &
                                nodes, element_type)
 
   straintrace_monopole_td(:,:,:) &
@@ -313,7 +313,7 @@ function straintrace_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axia
   grad_buff1 = axisym_gradient(u(:,:,1), G, GT, xi, eta, npol, nodes, element_type)
   
   ! 1: dsuz, 2: dzuz
-  grad_buff2 = axisym_gradient(u(:,:,3), G, GT, xi, eta, npol, nodes, element_type)
+  grad_buff2 = axisym_gradient(u(:,:,2), G, GT, xi, eta, npol, nodes, element_type)
 
   straintrace_monopole(:,:) &
         = grad_buff1(:,:,1) &
