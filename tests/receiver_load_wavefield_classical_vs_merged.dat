@@ -1,0 +1,4 @@
+1                               # Nr of receivers
+Z                               # seismogram component
+T001  00.0000   30.0000  1                    # Name, lat, lon, nr of kernels
+P_40s_lam BW_4_50s CC 675.0 735.0  vs         # Kernel name, Filter name, time window begin and end, model parameter
