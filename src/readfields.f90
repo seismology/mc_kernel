@@ -32,6 +32,8 @@ module readfields
     public                                 :: load_strain_point_merged, load_strain_point_interp
 
     integer, parameter                     :: min_file_version = 3
+    integer, parameter                     :: nelem_to_read_max = 4  !< How many elements to read 
+                                                                     !! for the merged database case.
     integer, parameter                     :: nmodel_parameters_sem_file = 6 !< For the anisotropic
                                                                              !! case. Will increase
                                                                              !! for attenuation
@@ -84,6 +86,7 @@ module readfields
         real(kind=dp), public, allocatable :: gll_points(:), glj_points(:)
         logical                            :: merged = .false.
         integer                            :: nsim_merged = 0
+        integer                            :: npoints, nelem
     end type
 
     type semdata_type
@@ -2535,6 +2538,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
     real(kind=sp),     allocatable  :: utemp(:,:,:,:,:)
     integer(kind=long)              :: iclockold_total, iclockold
     integer                         :: status, ndirection, i, isim
+    integer                         :: ielem_read, nelem_to_read
     logical                         :: use_buffer_loc
 
     iclockold_total = tick()
@@ -2570,7 +2574,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                    0:sem_obj%npol,   &
                    0:sem_obj%npol,   &
                    1:ndirection,     &
-                   1))
+                   nelem_to_read_max))
 
     iclockold = tick()
     if (use_buffer_loc) then
@@ -2593,14 +2597,21 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       
       if (status.ne.0) then !If not found in displacement buffer, load from disk
         iclockold = tick(id=id_buffer, since=iclockold)
+        
+        nelem_to_read = min(sem_obj%nelem - id_elem + 1, nelem_to_read_max)
         call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
                                 varid  = sem_obj%mergedvarid,               &
                                 start  = [1, 1, 1, 1, id_elem],             &
                                 count  = [sem_obj%ndumps, sem_obj%npol+1,   &
-                                          sem_obj%npol+1, ndirection, 1],   &
-                                values = utemp))
+                                          sem_obj%npol+1, ndirection,       &
+                                          nelem_to_read],                   &
+                                values = utemp(:,:,:,:,1:nelem_to_read)))
         iclockold = tick(id=id_netcdf, since=iclockold)
-        status = sem_obj%buffer_disp%put(id_elem, utemp(:,:,:,:,1))
+
+        do ielem_read = 1, nelem_to_read
+          status = sem_obj%buffer_disp%put(id_elem + ielem_read - 1, &
+                                           utemp(:,:,:,:,ielem_read))
+        end do
       end if
       iclockold = tick(id=id_buffer, since=iclockold)
 
@@ -2618,7 +2629,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                          element_type = element_type,         &
                                          axial = axis)
         iclockold = tick(id=id_calc_strain, since=iclockold)
-        status = sem_obj%buffer_strain%put(id_elem, straintrace)
+        if (use_buffer_loc) status = sem_obj%buffer_strain%put(id_elem, straintrace)
         iclockold = tick(id=id_buffer, since=iclockold)
 
       case('straintensor_full')
@@ -2787,6 +2798,7 @@ subroutine read_meshes(this)
    
    do isim = 1, this%nfiles_fwd
       this%fwd(isim)%ngll = this%fwdmesh%npoints
+      this%fwd(isim)%nelem = this%fwdmesh%nelem
    end do
 
    call cache_mesh(this%fwd(1)%mesh, this%fwdmesh, this%dump_type) 
@@ -2803,6 +2815,7 @@ subroutine read_meshes(this)
    
      do isim = 1, this%nfiles_bwd
         this%bwd(isim)%ngll = this%bwdmesh%npoints
+        this%bwd(isim)%nelem = this%bwdmesh%nelem
      end do
      
      call cache_mesh(this%bwd(1)%mesh, this%bwdmesh, this%dump_type) 
