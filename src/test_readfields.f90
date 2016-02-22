@@ -842,39 +842,6 @@ subroutine compare_seismograms(stat_name, message)
 
 end subroutine compare_seismograms
 !-----------------------------------------------------------------------------------------
-!
-!!   ! Compare SEM Source Time Function
-!!   ! Load reference STF
-!!   open(newunit=lu_seis, file='./SEM_stf_ref.dat', action='read')
-!!   read(lu_seis,*) ntimes_reference
-!!   allocate(seis_ref(ntimes_reference))
-!!   do isample = 1, ntimes_reference
-!!     read(lu_seis,*) seis_ref(isample)
-!!   end do
-!!   close(lu_seis)
-!!
-!!   ! Retrieve seismograms
-!!   ! 1st one filtered with Butterworth, 6th order at 40s
-!!   open(newunit=lu_seis, file='Filters/stf_out_Butterw_LP_O2_60.000_.000')
-!!   allocate(seis(ntimes_reference))
-!!   do isample = 1, ntimes_reference
-!!     read(lu_seis,*) t, seis(isample)
-!!   end do
-!!   close(lu_seis)
-!!
-!!   open(newunit=lu_seis, file='./output/sem_stf_comparison.txt', action='write')
-!!   do isample = 1, ntimes_reference
-!!     write(lu_seis, *) seis(isample), seis_ref(isample)
-!!   end do
-!!   close(lu_seis)
-!!   ! The threshold is very high.
-!!   call assert_comparable(seis, seis_ref, 5d-4, &  
-!!                          'SEM STF is comparable to reference')
-!!   deallocate(seis_ref, seis) 
-!!
-!
-!end subroutine test_load_seismograms_rdbm_T
-!!-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 subroutine test_readfields_load_model_coeffs
