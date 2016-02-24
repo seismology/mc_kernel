@@ -69,6 +69,10 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
         f_in_1 = netCDF4.Dataset(pz, 'r')
         f_in_2 = netCDF4.Dataset(px, 'r')
 
+    else:
+        print 'Wrong number of simulations: ', len(filenames)
+        assert False
+
     output_filename = os.path.join(output_folder, "merged_instaseis_db.nc4")
     assert not os.path.exists(output_filename)
 
@@ -227,7 +231,7 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
 
 def repack_database(input_folder, output_folder):
     found_filenames = []
-    for root, _, filenames in os.walk(input_folder):
+    for root, _, filenames in os.walk(input_folder, followlinks=True):
         for filename in filenames:
             if filename != "ordered_output.nc4":
                 continue
