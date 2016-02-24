@@ -49,25 +49,33 @@ subroutine nc_open_for_read(filename, ncid, comm, info)
    character(len=*), intent(in)  :: filename
    integer, intent(out)          :: ncid
    character(len=512)            :: fmtstring
-   integer                       :: status
+   integer                       :: status, nmode
    integer, optional             :: comm, info
 
-   if (present(comm).and.present(info)) then
+   nmode = ior(NF90_NOWRITE, NF90_NETCDF4)
+
+   if (present(comm).and.present(info)) then !Parallel NetCDF
+     nmode = ior(nmode, NF90_MPIIO)
+
+     write(lu_out, *) 'Opening ', trim(filename), 'for parallel read'
      status = nf90_open(path     = filename,              &
-                        mode     = NF90_NOWRITE,          &
+                        mode     = nmode,                 &
                         ncid     = ncid,                  &
                         comm     = comm,                  &
                         info     = info)
+
    else
+     write(lu_out, *) 'Opening ', trim(filename), 'for serial read'
      status = nf90_open(path     = filename,              &
-                        mode     = NF90_NOWRITE,          &
+                        mode     = nmode,                 &
                         ncid     = ncid)
    end if
 
    if (status.ne.NF90_NOERR) then
       fmtstring = "('ERROR: CPU ', I4, ' tried to open file ''', A, ''', " &
-                    // "but could not find it')"
+                    // "but could not find it or other error occured')"
       print fmtstring, myrank, trim(filename)
+      print *, nf90_strerror(status)
       call pabort()
    end if
 
