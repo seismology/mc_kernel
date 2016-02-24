@@ -2513,7 +2513,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                                     !! points
     integer,           intent(in)   :: element_type !< Element type in the solver
     logical,           intent(in)   :: axis         !< Axis element or not 
-    integer, optional, intent(in)   :: id_elem   !< ID of element to interpolate strain in
+    integer,           intent(in)   :: id_elem   !< ID of element to interpolate strain in
     logical, optional, intent(in)   :: use_buffer
 
     real(kind=dp),     allocatable  :: load_strain_point_merged(:,:,:)
@@ -2579,9 +2579,9 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
         status = sem_obj%buffer_strain%get(id_elem, straintrace)
       case('straintensor_full')
         status = sem_obj%buffer_strain%get(id_elem, strain)
-      case default
-        status = - 1
       end select
+    else
+      status = - 1
     end if
     iclockold = tick(id=id_buffer, since=iclockold)
 
