@@ -3,6 +3,7 @@ module unit_tests
 
   use ftnunit, only: test
   use global_parameters, only: lu_out, verbose, set_master, set_master
+  use commpi, only: ppinit, ppsplit
   use test_source
   use test_mc_integration
   use test_halton_sequence
@@ -40,6 +41,9 @@ subroutine test_all
   testing = .true.
 
   call init_output()
+
+  call ppinit()
+  call ppsplit(1)
 
   ! test source routines
   !write(6,'(/,a)') 'TEST SOURCE MODULE'

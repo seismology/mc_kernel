@@ -83,7 +83,8 @@ subroutine do_slave()
                            parameters%strain_buffer_size, & 
                            parameters%displ_buffer_size, & 
                            parameters%strain_type_fwd,    &
-                           parameters%source%depth)
+                           parameters%source%depth,     &
+                           parallel_read  = parameters%parallel_read)
 
   call sem_data%open_files()
   call sem_data%read_meshes()

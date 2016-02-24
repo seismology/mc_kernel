@@ -28,8 +28,9 @@ subroutine test_parameter_reading
    ! Check, whether number of receivers is correct
    call assert_equal(parameters%nrec, 2, '2 receivers read in')
 
-   call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100,  &
-                            parameters%strain_type_fwd, parameters%source%depth)
+   call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100,    &
+                            parameters%strain_type_fwd, parameters%source%depth, &
+                            .false.)
    call sem_data%open_files()
    call sem_data%read_meshes()
    call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)

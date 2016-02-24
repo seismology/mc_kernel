@@ -65,6 +65,7 @@ module type_parameter
         logical                              :: sort_mesh_elements   = .false.
         logical                              :: mask_src_rec         = .false.
         logical                              :: create_intermediate  = .false.
+        logical                              :: parallel_read        = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -231,6 +232,9 @@ subroutine read_parameters(this, input_file_in)
         case('CREATE_INTERMEDIATE')
            read(keyvalue, *) this%create_intermediate
 
+        case('PARALLEL_READING')
+           read(keyvalue, *) this%parallel_read
+
         case default
            print *, 'Unknown parameter', trim(keyword)
            stop
@@ -278,6 +282,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%int_type, 0)
   call pbroadcast_char(this%hetero_file, 0)
   call pbroadcast_char(this%int_scheme, 0)
+  call pbroadcast_log(this%parallel_read, 0)
 
   select case(lowtrim(this%mesh_file_type))
   case('abaqus') 

@@ -33,8 +33,6 @@ subroutine test_init_work_type
   integer           :: ndim = 6
   real              :: dt = 1d-3
 
-  call ppinit()
-
   call init_work_type(nkernel                  = nkernel                  , &
                       nelems_per_task          = nelems_per_task          , &
                       nvertices                = nvertices_per_task       , &

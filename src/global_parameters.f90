@@ -18,12 +18,13 @@ module global_parameters
   integer, parameter         :: WORKTAG = 1
   integer, parameter         :: DIETAG  = 2
   
-  logical, protected         :: master, firstslave
+  logical, protected         :: master, firstslave, ioworker=.false.
   logical                    :: testing = .false. !< Set to true only for unit test, 
                                                   !! because some routines require action
                                                   !! from master or slave, which would not 
                                                   !! be tested otherwise
-  integer, protected         :: myrank, nproc
+  integer, protected         :: myrank, nproc, myrank_node, nproc_node
+  integer, protected         :: myrank_master_slaves, nproc_master_slaves
   integer, protected         :: lu_out !< Logical unit for output. 
                                        !! 6 (Screen) for master
                                        !! File 'OUTPUT_#rank' for slaves
@@ -52,11 +53,12 @@ subroutine init_random_seed()
 
    call system_clock(count=clock)
 
-   seed = clock + 37 * (/ (i - 1, i = 1, n) /)
+   seed = clock + 37 * [ (i - 1, i = 1, n) ]
    call random_seed(put = seed)
 
    deallocate(seed)
-end subroutine
+
+end subroutine init_random_seed
 !-----------------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------------
@@ -64,7 +66,8 @@ subroutine set_master(master_value)
   logical, intent(in)   :: master_value
 
   master = master_value
-end subroutine
+
+end subroutine set_master
 !----------------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------------
@@ -72,7 +75,8 @@ subroutine set_firstslave(firstslave_value)
   logical, intent(in)   :: firstslave_value
 
   firstslave = firstslave_value
-end subroutine
+
+end subroutine set_firstslave
 !----------------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------------
@@ -80,7 +84,26 @@ subroutine set_myrank(myrank_value)
   integer, intent(in)   :: myrank_value
 
   myrank = myrank_value
-end subroutine
+
+end subroutine set_myrank
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_myrank_node(myrank_value)
+  integer, intent(in)   :: myrank_value
+
+  myrank_node = myrank_value
+
+end subroutine set_myrank_node
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_myrank_master_slaves(myrank_value)
+  integer, intent(in)   :: myrank_value
+
+  myrank_master_slaves = myrank_value
+
+end subroutine set_myrank_master_slaves
 !----------------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------------
@@ -89,7 +112,25 @@ subroutine set_nproc(nproc_value)
 
   nproc = nproc_value
 
-end subroutine
+end subroutine set_nproc
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_nproc_node(nproc_value)
+  integer, intent(in)   :: nproc_value
+
+  nproc_node = nproc_value
+
+end subroutine set_nproc_node
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_nproc_master_slaves(nproc_value)
+  integer, intent(in)   :: nproc_value
+
+  nproc_master_slaves = nproc_value
+
+end subroutine set_nproc_master_slaves
 !----------------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------------
@@ -98,9 +139,17 @@ subroutine set_lu_out(lu_out_value)
 
   lu_out = lu_out_value
 
-end subroutine
+end subroutine set_lu_out
 !----------------------------------------------------------------------------------------
 
+!----------------------------------------------------------------------------------------
+subroutine set_ioworker(ioworker_value)
+  logical, intent(in)   :: ioworker_value
+
+  ioworker = ioworker_value
+
+end subroutine set_ioworker
+!----------------------------------------------------------------------------------------
 
 end module
 !=========================================================================================

@@ -4,9 +4,10 @@ program kerner_code
     use mpi
 #endif
     use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier,&
-                                           pbroadcast_log
+                                           pbroadcast_log, ppsplit, MPI_COMM_MASTER_SLAVES, MPI_COMM_NODE
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           master, lu_out, myrank
+                                           master, ioworker, lu_out, myrank, firstslave
+
     use simple_routines,             only: lowtrim
 
     use inversion_mesh,              only: inversion_mesh_data_type
@@ -34,9 +35,11 @@ program kerner_code
     integer                             :: nvertices_per_task
     integer                             :: nbasisfuncs_per_elem
     integer                             :: nbasisfuncs_per_task
+    integer                             :: nslaves_per_node
     logical                             :: plot_wavefields
     integer                             :: ndim
     integer                             :: ndumps
+    integer                             :: narg
     real(kind=sp)                       :: dt
 
     verbose = 0
@@ -49,8 +52,13 @@ program kerner_code
 
     verbose = 1
 
+    call ppinit()
 
-    call ppinit
+    call ppsplit()
+    if (master) print *, 'Rank: ', myrank, ' is master!', MPI_COMM_NODE
+    if (firstslave) print *, 'Rank: ', myrank, ' is first slave!', MPI_COMM_NODE
+    if (.not.(master.or.ioworker.or.firstslave)) print *, 'Rank: ', myrank, ' is a slave!', MPI_COMM_NODE
+
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' MPI communication initialized, I have rank', myrank
     write(lu_out,*) '***************************************************************'
@@ -86,12 +94,13 @@ program kerner_code
         end select
 
         ! Get number of wavefield dumps (samples)
-        call sem_data%set_params(parameters%fwd_dir,     &
-                                 parameters%bwd_dir,     &
+        call sem_data%set_params(parameters%fwd_dir,            &
+                                 parameters%bwd_dir,            &
                                  parameters%strain_buffer_size, & 
-                                 parameters%displ_buffer_size, & 
+                                 parameters%displ_buffer_size,  & 
                                  parameters%strain_type_fwd,    &
-                                 parameters%source%depth)
+                                 parameters%source%depth,       &
+                                 .false.)
 
         call sem_data%open_files()
 

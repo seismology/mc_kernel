@@ -34,7 +34,7 @@ chk=1
 until test ! -f ftnunit.lst -a $chk -eq 0 ; do
     chk=0
     #valgrind --tool=memcheck $1 $2 $3 $4 $5 $6 $7 $8 $9 >>runtests.log 2>&1
-    $1 $2 >>mckernel_tests.log 2>&1
+    mpirun -n 1 $1 $2 >>mckernel_tests.log 2>&1
 done
 set -e 
 
