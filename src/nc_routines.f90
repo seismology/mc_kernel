@@ -274,13 +274,14 @@ end subroutine getgrpid
 !-----------------------------------------------------------------------------------------
  
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_1d_int(ncid, varname, values, limits, varid)
+subroutine nc_getvar_by_name_1d_int(ncid, varname, values, limits, varid, collective)
 !< Looks up a 1D variable name and returns the complete variable
   integer, intent(in)                :: ncid
   character(len=*), intent(in)       :: varname
   integer, allocatable, intent(out)  :: values(:)
   integer, intent(in), optional      :: limits(2)
-  integer, intent(out), optional             :: varid
+  integer, intent(out), optional     :: varid
+  logical, intent(in), optional      :: collective
 
   integer                            :: variable_id, dimid(1), npoints, variable_type
   integer                            :: status
@@ -295,6 +296,14 @@ subroutine nc_getvar_by_name_1d_int(ncid, varname, values, limits, varid)
   call getvarid( ncid  = ncid,      &
                  name  = varname,   &
                  varid = variable_id)
+
+  if (present(collective)) then
+    if (collective) then
+      status = nf90_var_par_access(ncid   = ncid,           &
+                                   varid  = variable_id,    &
+                                   access = NF90_COLLECTIVE)
+    end if
+  end if
 
   status = nf90_inquire_variable(ncid   = ncid,           &
                                  varid  = variable_id,    &
@@ -360,13 +369,14 @@ end subroutine nc_getvar_by_name_1d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_1d(ncid, varname, values, limits, varid)
+subroutine nc_getvar_by_name_1d(ncid, varname, values, limits, varid, collective)
 !< Looks up a 1D variable name and returns the complete variable
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
   real(kind=sp), allocatable, intent(inout)  :: values(:)
   real(kind=sp), intent(in), optional        :: limits(2)
   integer, intent(out), optional             :: varid
+  logical, intent(in), optional              :: collective
 
   integer                                    :: variable_id, dimid(1), npoints, variable_type
   integer                                    :: status
@@ -382,6 +392,15 @@ subroutine nc_getvar_by_name_1d(ncid, varname, values, limits, varid)
   call  getvarid( ncid  = ncid,            &
                   name  = varname,   &
                   varid = variable_id)
+
+  ! Set parallel access for this variable to collective mode                 
+  if (present(collective)) then
+    if (collective) then
+      status = nf90_var_par_access(ncid   = ncid,           &
+                                   varid  = variable_id,    &
+                                   access = NF90_COLLECTIVE)
+    end if
+  end if
  
   ! Inquire variable type and dimension ids
   status = nf90_inquire_variable(ncid   = ncid,           &
@@ -435,13 +454,14 @@ end subroutine nc_getvar_by_name_1d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_2d_int(ncid, varname, values, limits, varid)
+subroutine nc_getvar_by_name_2d_int(ncid, varname, values, limits, varid, collective)
 !< Looks up a 2D variable name and returns the complete variable
   integer, intent(in)                :: ncid
   character(len=*), intent(in)       :: varname
   integer, allocatable, intent(out)  :: values(:,:)
   integer, intent(in), optional      :: limits(2)
   integer, intent(out), optional     :: varid
+  logical, intent(in), optional      :: collective
 
   integer                            :: variable_id, dimid(2), len_dim1, len_dim2, variable_type
   integer                            :: status
@@ -457,6 +477,15 @@ subroutine nc_getvar_by_name_2d_int(ncid, varname, values, limits, varid)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! Set parallel access for this variable to collective mode                 
+  if (present(collective)) then
+    if (collective) then
+      status = nf90_var_par_access(ncid   = ncid,           &
+                                   varid  = variable_id,    &
+                                   access = NF90_COLLECTIVE)
+    end if
+  end if
+ 
   status = nf90_inquire_variable(ncid   = ncid,           &
                                  varid  = variable_id,    &
                                  xtype  = variable_type,  &
@@ -524,13 +553,14 @@ end subroutine nc_getvar_by_name_2d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_2d(ncid, varname, values, limits, varid)
+subroutine nc_getvar_by_name_2d(ncid, varname, values, limits, varid, collective)
 !< Looks up a 2D variable name and returns the complete variable
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
   real(kind=sp), allocatable, intent(inout)  :: values(:,:)
   real(kind=sp), intent(in), optional        :: limits(2)
   integer, intent(out), optional             :: varid
+  logical, intent(in), optional              :: collective
 
   integer                                    :: variable_id, dimid(2), len_dim1, len_dim2
   integer                                    :: variable_type
@@ -547,6 +577,15 @@ subroutine nc_getvar_by_name_2d(ncid, varname, values, limits, varid)
                   name  = varname,    &
                   varid = variable_id)
 
+  ! Set parallel access for this variable to collective mode                 
+  if (present(collective)) then
+    if (collective) then
+      status = nf90_var_par_access(ncid   = ncid,           &
+                                   varid  = variable_id,    &
+                                   access = NF90_COLLECTIVE)
+    end if
+  end if
+ 
   status = nf90_inquire_variable(ncid   = ncid,           &
                                  varid  = variable_id,    &
                                  xtype  = variable_type,  &
@@ -600,13 +639,14 @@ end subroutine nc_getvar_by_name_2d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_3d_int(ncid, varname, values, limits, varid)
+subroutine nc_getvar_by_name_3d_int(ncid, varname, values, limits, varid, collective)
 !< Looks up a 3D variable name and returns the complete variable
   integer, intent(in)                :: ncid
   character(len=*), intent(in)       :: varname
   integer, allocatable, intent(out)  :: values(:,:,:)
   integer, intent(in), optional      :: limits(2)
   integer, intent(out), optional     :: varid
+  logical, intent(in), optional      :: collective
 
   integer                            :: variable_id, dimid(3), len_dim(3), variable_type
   integer                            :: status, i_dim
@@ -622,6 +662,15 @@ subroutine nc_getvar_by_name_3d_int(ncid, varname, values, limits, varid)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! Set parallel access for this variable to collective mode                 
+  if (present(collective)) then
+    if (collective) then
+      status = nf90_var_par_access(ncid   = ncid,           &
+                                   varid  = variable_id,    &
+                                   access = NF90_COLLECTIVE)
+    end if
+  end if
+ 
 
   status = nf90_inquire_variable(ncid   = ncid,           &
                                  varid  = variable_id,    &
@@ -690,13 +739,14 @@ end subroutine nc_getvar_by_name_3d_int
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_getvar_by_name_3d(ncid, varname, values, limits, varid)
+subroutine nc_getvar_by_name_3d(ncid, varname, values, limits, varid, collective)
 !< Looks up a 3D variable name and returns the complete variable
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
   real(kind=sp), allocatable, intent(out)    :: values(:,:,:)
   real(kind=sp), intent(in), optional        :: limits(2)
   integer, intent(out), optional             :: varid
+  logical, intent(in), optional              :: collective
 
   integer                                    :: variable_id, dimid(3), len_dim(3), variable_type
   integer                                    :: status, i_dim
@@ -712,6 +762,15 @@ subroutine nc_getvar_by_name_3d(ncid, varname, values, limits, varid)
                   name  = varname,   &
                   varid = variable_id)
 
+  ! Set parallel access for this variable to collective mode                 
+  if (present(collective)) then
+    if (collective) then
+      status = nf90_var_par_access(ncid   = ncid,           &
+                                   varid  = variable_id,    &
+                                   access = NF90_COLLECTIVE)
+    end if
+  end if
+ 
 
   status = nf90_inquire_variable(ncid   = ncid,           &
                                  varid  = variable_id,    &
