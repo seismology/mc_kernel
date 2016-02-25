@@ -17,6 +17,8 @@ module global_parameters
 
   integer, parameter         :: WORKTAG = 1
   integer, parameter         :: DIETAG  = 2
+
+  logical, protected         :: parallel_read = .false.
   
   logical, protected         :: master, firstslave, ioworker=.false.
   logical                    :: testing = .false. !< Set to true only for unit test, 
@@ -149,6 +151,15 @@ subroutine set_ioworker(ioworker_value)
   ioworker = ioworker_value
 
 end subroutine set_ioworker
+!----------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------------
+subroutine set_parallel_read(parallel_read_value)
+  logical, intent(in)   :: parallel_read_value
+
+  parallel_read = parallel_read_value
+
+end subroutine set_parallel_read
 !----------------------------------------------------------------------------------------
 
 end module

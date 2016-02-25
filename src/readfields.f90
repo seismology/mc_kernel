@@ -32,7 +32,7 @@ module readfields
     public                                 :: load_strain_point_merged, load_strain_point_interp
 
     integer, parameter                     :: min_file_version = 3
-    integer, parameter                     :: nelem_to_read_max = 4  !< How many elements to read 
+    integer, parameter                     :: nelem_to_read_max = 16 !< How many elements to read 
                                                                      !! for the merged database case.
     integer, parameter                     :: nmodel_parameters_sem_file = 6 !< For the anisotropic
                                                                              !! case. Will increase
@@ -85,6 +85,7 @@ module readfields
         logical                            :: merged = .false.
         integer                            :: nsim_merged = 0
         integer                            :: npoints, nelem
+        logical                            :: parallel_read
     end type
 
     type semdata_type
@@ -111,6 +112,7 @@ module readfields
         logical, private                   :: merged_fwd, merged_bwd !< Whether this object has 
                                                                      !! its data stored in a 
                                                                      !! merged database file
+        logical, private                   :: parallel_read
 
         real(kind=dp), public              :: dt
         integer,       public              :: ndumps, decimate_factor
@@ -130,7 +132,6 @@ module readfields
         integer                            :: strain_buffer_size
         integer                            :: displ_buffer_size
         character(len=12)                  :: dump_type
-        logical                            :: parallel_read
          
         real(kind=dp), dimension(3,3)      :: rot_mat, trans_rot_mat
 
@@ -290,7 +291,6 @@ subroutine open_files(this)
     call flush(lu_out)
     call this%check_consistency()
 
-    call flush(6) 
     this%files_open = .true.
 
     !@TODO memory could be used more efficient for monopole sources in the buffers
@@ -433,6 +433,8 @@ subroutine open_file_read_varids_and_attributes(nc_obj, filename, merged, parall
                           ncid     = nc_obj%ncid) 
   end if
 
+  nc_obj%parallel_read = parallel_read
+
   call nc_read_att_int(nc_obj%file_version, 'file version', nc_obj)
 
   if (nc_obj%file_version < min_file_version) then
@@ -547,18 +549,20 @@ subroutine open_file_read_varids_and_attributes(nc_obj, filename, merged, parall
   end if
 
   call nc_read_att_int(    nc_obj%ndumps,             &
-                           'number of strain dumps',          &
+                           'number of strain dumps',  &
                            nc_obj)
 
-  call nc_getvar_by_name(  ncid    = stf_grp_id,  &
-                           varname = 'stf_dump',  &
+  call nc_getvar_by_name(  ncid    = stf_grp_id,    &
+                           varname = 'stf_dump',    &
                            limits  = [0., 1e36],    &
-                           values  = nc_obj%stf )
+                           values  = nc_obj%stf,    &
+                           collective = parallel_read)
 
   call nc_getvar_by_name(  ncid    = stf_grp_id,    &
                            varname = 'stf_d_dump',  &
                            limits  = [-1e36, 1e36],    &
-                           values  = nc_obj%stf_d )
+                           values  = nc_obj%stf_d ,    &
+                           collective = parallel_read)
 
   call getgrpid(           ncid      = nc_obj%ncid,   &
                            name      = "Mesh",                &
@@ -969,6 +973,8 @@ subroutine check_consistency(this)
     this%decimate_factor = nseis_agreed / ndumps_agreed
     this%nseis  = ndumps_agreed * this%decimate_factor        
 
+    write(lu_out, '(A)') ' all simulation parameters agree and have been set'
+
     call flush(lu_out)
 
 end subroutine check_consistency
@@ -1148,15 +1154,6 @@ function load_fw_points(this, coordinates, source_params, model)
             pointid = nextpoint(1)%idx
         end select ! dump_type
     
-        write(1000,*) 'xi           : ', xi
-        write(1000,*) 'eta          : ', eta
-        write(1000,*) 'corner_points: ', corner_points
-        write(1000,*) 'eltype(1)    : ', eltype(1)
-        write(1000,*) 'axis         : ', axis
-        write(1000,*) 'id_elem      : ', id_elem
-        write(1000,*) 'gll_point_ids: ', gll_point_ids
-        call flush()
-
         select case(trim(this%strain_type))
         case('straintensor_trace')    
            

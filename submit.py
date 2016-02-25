@@ -72,17 +72,39 @@ def auto_buffer_size(memory_available):
 
     memory_for_buffers = (memory_available - estimate_memory())*0.9
 
+    if merged_db:
+      size_one_strain_element = (4.0 * # 4 Byte per number
+                                 25 *  # Number of GLL points per elem
+                                 ndumps_fwd *  # number of time samples
+                                 ndim *        # number of strain dimensions
+                                 6)            # 6 files (4 fwd, 2 bwd)
+      size_one_disp_element = (4.0 *         # 4 Byte per number
+                               25 *          # Number of GLL points per elem
+                               ndumps_fwd *  # number of time samples
+                               15)           # 15 disp. dimensions 
+                                             # 3 each for the 3 dipole/quadpole
+                                             # 2 each 3 for the monopole
+
+    else:
+      size_one_strain_element = (4.0 *  # 4 Byte per number
+                                 25 *  # Number of GLL points per elem
+                                 ndumps_fwd *  # number of time samples
+                                 ndim *        # number of strain dimensions
+                                 6)            # 6 files (4 fwd, 2 bwd)
+      size_one_disp_element = (4.0 *         # 4 Byte per number
+                               3 *           # 3 dimensions
+                               ndumps_fwd *  # number of time samples
+                               6)            # 6 files (4 fwd, 2 bwd)
+
     # Rule: Strain buffer gets 90% of the available memory, displ. buffer 10%
     size_strain_buffer = int(memory_for_buffers * 0.9 /
-                             (25 * 4 * ndumps_fwd * 6 * ndim))
+                             size_one_strain_element)
     size_disp_buffer = int(memory_for_buffers * 0.1 /
-                           (3 * 4 * ndumps_fwd * 6))
-
-    memory_buffers_strain = (25 * 4 * ndumps_fwd * 6 *
-                             size_strain_buffer * ndim)
+                           size_one_disp_element)
+                           
+    memory_buffers_strain = size_one_strain_element * size_strain_buffer 
     print 'Strain buffer size: %f MB' % (memory_buffers_strain/(2**20))
-    memory_buffers_disp = (3 * 4 * ndumps_fwd * 6 *
-                           size_disp_buffer)
+    memory_buffers_disp = size_one_disp_element *  size_disp_buffer
     print 'Displ. buffer size: %f MB' % (memory_buffers_disp/(2**20))
 
     if memory_for_buffers < 0:
@@ -208,6 +230,9 @@ def define_arguments():
                            help='Job class on SuperMUC')
     hpc_queue.add_argument('--tasks_per_node', type=int,
                            help='Tasks per node on SuperMUC')
+    hpc_queue.add_argument('--parallel_reading', default=False, 
+                           action='store_true',
+                           help='Use parallel NetCDF4 for reading.')
 
     ############################################################################
     # AxiSEM wavefield directories
@@ -532,8 +557,10 @@ bwd_path_merged = os.path.join(os.path.realpath(params['BWD_DIR']),
 
 if os.path.exists(fwd_path):
     nc_fwd = Dataset(fwd_path)
+    merged_db = False
 elif os.path.exists(fwd_path_merged):
     nc_fwd = Dataset(fwd_path_merged)
+    merged_db = True
 else:
     errmsg = 'Could not find a wavefield file in the fwd_dir %s\n%s' % \
              (params['FWD_DIR'], fwd_path)
@@ -637,7 +664,7 @@ for key, value in params.iteritems():
             params_out['MESH_FILE_ABAQUS'] = mesh_file_name
         elif value == 'tetrahedral':
             mesh_vertices_name = os.path.split(params['MESH_FILE_VERTICES'])[1]
-            mesh_facets_name = os.path.split(params['MESH_FILE_FACETS '])[1]
+            mesh_facets_name = os.path.split(params['MESH_FILE_FACETS'])[1]
             shutil.copy(params['MESH_FILE_VERTICES'],
                         os.path.join(run_dir, mesh_vertices_name))
             shutil.copy(params['MESH_FILE_FACETS'],

@@ -2,6 +2,10 @@
 FWD_DIR              './wavefield/fwd/'
 BWD_DIR              './wavefield/bwd/'
 
+# Use Parallel NetCDF4 for reading the wavefield files?
+# Note that you have to link it against a version of netcdf4 with MPI support
+PARALLEL_READING   false
+
 # Paths of parameter files 
 SRC_FILE          'CMTSOLUTION'
 REC_FILE          'receiver.dat'
@@ -76,7 +80,7 @@ ALLOWED_ERROR        1e-4
 ALLOWED_RELATIVE_ERROR 2e-2
 
 # Number of points on which the kernel should be evaluated per MC iteration
-POINTS_PER_MC_STEP   20
+POINTS_PER_MC_STEP   4
 
 # Maximum number of iterations after which to cancel Monte Carlo integration 
 # in one cell, regardless of error.
