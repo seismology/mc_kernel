@@ -43,14 +43,15 @@ ncalls = np.zeros(ntimers)
 for fnam in output_files[1:-1]:
     cmd = ["grep", "CLOCKS", fnam]
     tail_output = subprocess.check_output(cmd, universal_newlines=True)
-    lines = str(tail_output).split("\n")[1:-2]
 
-    for iline in range(0, ntimers):
-        line = lines[iline]
-        timing = line.split()[-4:-1]
-        ncalls[iline] += int(timing[0])
-        t_per_call[iline] += float(timing[1])
-        t_total[iline] += float(timing[2])
+    lines = str(tail_output).split("\n")[1:-2]
+    if len(lines)>0:
+      for iline in range(0, ntimers):
+          line = lines[iline]
+          timing = line.split()[-4:-1]
+          ncalls[iline] += int(timing[0])
+          t_per_call[iline] += float(timing[1])
+          t_total[iline] += float(timing[2])
 
 interesting_timers = np.array([2, 9, 11, 12, 13, 15, 17, 20])
 
