@@ -53,14 +53,22 @@ for fnam in output_files[1:-1]:
           t_per_call[iline] += float(timing[1])
           t_total[iline] += float(timing[2])
 
-interesting_timers = np.array([2, 9, 11, 12, 13, 15, 17, 20])
+interesting_timers = np.array([2, 9, 11, 12, 13, 15, 17])
 
 timer_interesting = []
 t_total_interesting = []
-for i in interesting_timers:
-    timer_interesting.append('%s, %8.1f CPUh' % (timer_name[i],
-                                              t_total[i] / 3600.))
-    t_total_interesting.append(t_total[i])
+t_rest = 0.0
+for i in range(0, ntimers):
+    if i in interesting_timers:
+        timer_interesting.append('%s, \n %8.1f CPUh' % (timer_name[i],
+                                                        t_total[i] / 3600.))
+        t_total_interesting.append(t_total[i])
+    else:
+        t_rest += t_total[i]
+
+#t_total_interesting.append(t_rest)
+#timer_interesting.append('%s, \n %8.1f CPUh' % ('Other',
+#                                                t_rest / 3600.))
 
 # Create pie chart
 # IO colors are reddish, Computation blueish, MPI yellowish
@@ -71,11 +79,14 @@ colors = ['dodgerblue',    # FFT
           'aqua',          # Lagrange
           'cadetblue',     # Filtering
           'darkcyan',      # Integration
-          'yellowgreen']   # MPI
-fig = plt.figure(figsize=(12, 12))
+          'yellowgreen',   # MPI
+          'grey']          # Rest
+fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(111)
 ax.set_aspect(1)
 ax.pie(t_total_interesting,
        labels=timer_interesting,
        colors=colors, autopct='%1.1f%%', shadow=True)
-fig.savefig('Timing.png')
+ax.set_title('Total calculation cost:%8.1f CPUh' % \
+             (np.sum(np.array(t_total_interesting)) / 3600.))
+fig.savefig('Timing.pdf')
