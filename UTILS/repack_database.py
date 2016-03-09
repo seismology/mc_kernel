@@ -27,12 +27,15 @@ def maybe_encode(string, encoding='ascii'):
     except UnicodeEncodeError:
         return string
 
+
 def unroll_and_merge_netcdf4(filenames, output_folder):
     """
     Completely unroll and merge both files.
     """
 
     import netCDF4
+    from scipy.spatial import cKDTree
+
     # Find MZZ, MXX_P_MYY, MXZ_MYZ, MXY_MXX_M_MYY directories
     if len(filenames) == 4:
         filenames = [os.path.normpath(_i) for _i in filenames]
@@ -70,23 +73,27 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
         f_in_2 = netCDF4.Dataset(px, 'r')
 
     else:
-        print 'Wrong number of simulations: ', len(filenames)
+        print('Wrong number of simulations: ', len(filenames))
         assert False
 
     output_filename = os.path.join(output_folder, "merged_instaseis_db.nc4")
-    assert not os.path.exists(output_filename)
 
     assert not os.path.exists(output_filename)
+
+    # Get sorting order
+    r = np.array([f_in_1.groups['Mesh'].variables['mp_mesh_Z'][:],
+                  f_in_1.groups['Mesh'].variables['mp_mesh_S'][:]]).transpose()
+    ctree = cKDTree(r)
+    inds = ctree.indices
 
     try:
+
         f_out = netCDF4.Dataset(output_filename, 'w', format='NETCDF4')
 
         # Copy attributes from the vertical file.
         for name in f_in_1.ncattrs():
-            #value = f_in_1.getncattr(name)
             value = getattr(f_in_1, name)
-            print name, value
-            #f_out.setncattr(name, value)
+            print(name, value)
             setattr(f_out, name, maybe_encode(value))
 
         f_out.setncattr('nsim', len(filenames))
@@ -108,7 +115,22 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
         for name, variable in f_in_1['Mesh'].variables.iteritems():
             f_out['Mesh'].createVariable(name, variable.datatype,
                                          variable.dimensions)
-            f_out['Mesh'].variables[name][:] = f_in_1['Mesh'].variables[name][:]
+
+            if ('elements',) == variable.dimensions:
+                print 'Resorting %s' % name
+                f_out['Mesh'].variables[name][:] = \
+                    f_in_1['Mesh'].variables[name][inds]
+            elif name == 'sem_mesh':
+                print 'Resorting first dim of %s' % name
+                f_out['Mesh'].variables[name][:, :, :] = \
+                    f_in_1['Mesh'].variables[name][inds, :, :]
+            elif name == 'fem_mesh':
+                print 'Resorting first dim of %s' % name
+                f_out['Mesh'].variables[name][:, :] = \
+                    f_in_1['Mesh'].variables[name][inds, :]
+            else:
+                f_out['Mesh'].variables[name][:] = \
+                    f_in_1['Mesh'].variables[name][:]
 
         # Copy source time function variables from Surface group
         for name, variable in f_in_1['Surface'].variables.iteritems():
@@ -128,9 +150,9 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
         # Get datasets and the dtype.
         if len(filenames) == 2:
             meshes = [
-                f_in_1["Snapshots"]["disp_s"], # PZ
+                f_in_1["Snapshots"]["disp_s"],  # PZ
                 f_in_1["Snapshots"]["disp_z"],
-                f_in_2["Snapshots"]["disp_s"], # PX
+                f_in_2["Snapshots"]["disp_s"],  # PX
                 f_in_2["Snapshots"]["disp_p"],
                 f_in_2["Snapshots"]["disp_z"]]
         elif len(filenames) == 4:
@@ -156,8 +178,6 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
         dim_nvars = f_out.createDimension('variables', nvars)
         dim_snaps = f_out.dimensions['snapshots']
 
-        print f_out.dimensions
-
         ds_o = f_out.createVariable(varname="merged_snapshots",
                                     dimensions=(dim_elements.name,
                                                 dim_nvars.name,
@@ -172,11 +192,9 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
                                     #             dim_ipol.name,
                                     #             dim_jpol.name,
                                     #             dim_nvars.name),
-        print ds_o
 
         utemp = np.zeros((nvars, npol + 1, npol + 1, ndumps),
                          dtype=dtype)
-        print utemp.shape
 
         # Now it becomes more interesting and very slow.
         sem_mesh = f_in_1["Mesh"]["sem_mesh"]
@@ -184,7 +202,7 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
                                length=number_of_elements,
                                label="\t  ") as gll_idxs:
             for gll_idx in gll_idxs:
-                gll_point_ids = sem_mesh[gll_idx]
+                gll_point_ids = sem_mesh[inds[gll_idx]]
 
                 # Load displacement from all GLL points.
                 for ivar, var in enumerate(meshes):
