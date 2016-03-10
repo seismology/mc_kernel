@@ -33,7 +33,7 @@ subroutine test_parameter_reading
                             .false.)
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
    ! Initialize FFT - just needed to get df and nomega
    call fft_data%init(ntimes_in = sem_data%ndumps,     &

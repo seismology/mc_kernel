@@ -90,7 +90,7 @@ subroutine do_slave()
   call sem_data%open_files()
   call sem_data%read_meshes()
 
-  call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+  call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
   ndumps = sem_data%ndumps
 

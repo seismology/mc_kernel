@@ -194,7 +194,7 @@ subroutine test_readfields_load_fw_points
                             parallel_read        = .false.)
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
    ! Initialize FFT - just needed to get df and nomega
    call fft_data%init(ntimes_in = sem_data%ndumps,     &
@@ -438,7 +438,7 @@ subroutine test_load_seismograms_rdbm_Z
 
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
    ! Initialize FFT - just needed to get df and nomega
    call fft_data%init(ntimes_in = sem_data%ndumps,     &
@@ -498,7 +498,7 @@ subroutine test_load_seismograms_rdbm_R
 
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
    ! Initialize FFT - just needed to get df and nomega
    call fft_data%init(ntimes_in = sem_data%ndumps,     &
@@ -558,7 +558,7 @@ subroutine test_load_seismograms_rdbm_T
 
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
    ! Initialize FFT - just needed to get df and nomega
    call fft_data%init(ntimes_in = sem_data%ndumps,     &
@@ -620,7 +620,7 @@ subroutine test_load_seismograms_rdbm_merged_Z
 
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
    ! Initialize FFT - just needed to get df and nomega
    call fft_data%init(ntimes_in = sem_data%ndumps,     &
@@ -680,7 +680,7 @@ subroutine test_load_seismograms_rdbm_merged_R
 
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
    ! Initialize FFT - just needed to get df and nomega
    call fft_data%init(ntimes_in = sem_data%ndumps,     &
@@ -740,7 +740,7 @@ subroutine test_load_seismograms_rdbm_merged_T
 
    call sem_data%open_files()
    call sem_data%read_meshes()
-   call sem_data%load_seismogram_rdbm(parameters%receiver, parameters%source)
+   call sem_data%load_seismogram(parameters%receiver, parameters%source)
 
    ! Initialize FFT - just needed to get df and nomega
    call fft_data%init(ntimes_in = sem_data%ndumps,     &
