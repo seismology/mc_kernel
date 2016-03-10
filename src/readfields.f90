@@ -999,7 +999,7 @@ function load_fw_points(this, coordinates, source_params, model)
     type(kdtree2_result), allocatable :: nextpoint(:)
     integer                           :: npoints, nnext_points
     integer                           :: pointid
-    integer                           :: ipoint, inext_point, isim, icp
+    integer                           :: ipoint, inext_point, isim
     integer(kind=long)                :: iclockold
     integer                           :: corner_point_ids(4), eltype(1)
     logical                           :: axis
@@ -1014,6 +1014,7 @@ function load_fw_points(this, coordinates, source_params, model)
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim, this%nsim_fwd)
     real(kind=sp), allocatable        :: coeffs(:,:)
     real(kind=dp)                     :: xi, eta, az_1(4), az_2(4)
+    real(kind=dp)                     :: dist_from_core_square
 
 
     if (.not.this%kdtree_built) then
@@ -1050,95 +1051,29 @@ function load_fw_points(this, coordinates, source_params, model)
     load_fw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
         ! map points from outside earth to the surface:
-        if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%fwd(1)%planet_radius**2) then
-           rotmesh_s_buff = rotmesh_s(ipoint) &
-                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
-                               * this%fwd(1)%planet_radius
+        dist_from_core_square = rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2
+        if (dist_from_core_square > this%fwd(1)%planet_radius**2) then
+           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+                               / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
            rotmesh_z(ipoint) = rotmesh_z(ipoint) &
-                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
-                               * this%fwd(1)%planet_radius
-           rotmesh_s(ipoint) = rotmesh_s_buff
+                               / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
         endif
-
 
         select case(trim(this%dump_type))
         case('displ_only')
 
             ! Find the six closest midpoints first
-            iclockold = tick()
-            call kdtree2_n_nearest( this%fwdtree_mp,                              &
-                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                    nn = nnext_points,                            &
-                                    results = nextpoint )
-            iclockold = tick(id=id_kdtree, since=iclockold)
-            
-            pointid = nextpoint(1)%idx
-
-            ! Check, whether point is in any of the six closest elements
-            do inext_point = 1, nnext_points
-                corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
-                eltype = this%fwdmesh%eltype(nextpoint(inext_point)%idx)
-                
-                do icp = 1, 4
-                    corner_points(icp, 1) = this%fwdmesh%s(corner_point_ids(icp)+1)
-                    corner_points(icp, 2) = this%fwdmesh%z(corner_point_ids(icp)+1)
-                enddo                        
-                ! test point to be inside, if so, exit
-                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
-                                   corner_points, eltype(1), xi=xi, eta=eta, &
-                                   tolerance=1d-3)) then
-                    if (verbose > 1) then
-                       write(6,*) 'coordinates= ', coordinates(:,ipoint)
-                       write(6,*) 's, z       = ', rotmesh_s(ipoint), rotmesh_z(ipoint)
-                       write(6,*) 'eltype     = ', eltype
-                       write(6,*) 'xi, eta    = ', xi, eta
-                       write(6,*) 'element id = ', nextpoint(inext_point)%idx
-                    endif
-                    exit
-                endif
-            enddo
-
-            if (inext_point > nnext_points) then
-               write(6,*) 'ERROR: element not found. (fwd)'
-               write(6,*) '       Probably outside depth/distance range in the netcdf file?'
-               write(6,*) '       Try increasing nnext_points in case this problem persists'
-               write(6,*) 'coordinates= ', coordinates(:,ipoint)
-               write(6,*) 's, z       = ', rotmesh_s(ipoint), rotmesh_z(ipoint)
-               write(6,*) 'radius     = ', norm2([rotmesh_s(ipoint), rotmesh_z(ipoint)])
-               do icp = 1, 4
-                 write(6,*) 'cp: ', icp, ', s: ',   corner_points(icp, 1) 
-                 write(6,*) 'cp: ', icp, ', z: ',   corner_points(icp, 2)
-               enddo                        
-               write(6,*) 'eltype     = ', eltype
-               write(6,*) 'xi, eta    = ', xi, eta
-               call pabort(do_traceback = .false.)
-               this%fwd(1)%count_error_pointoutside = this%fwd(1)%count_error_pointoutside + 1
-               cycle
-            endif
-
-            id_elem = nextpoint(inext_point)%idx
-         
-            ! get gll points of spectral element
-            gll_point_ids = -1
-            if (verbose > 1) &
-                write(6,*) 'element id = ', id_elem !nextpoint(inext_point)%idx
-
-            ! gll_point_ids starts at 0 in NetCDF file
-            gll_point_ids = this%fwdmesh%gll_point_ids(:,:,id_elem) + 1
-            if (verbose > 1) &
-                write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
-
-
-            if (this%fwdmesh%isaxis(id_elem) == 1) then
-               axis = .true.
-            elseif (this%fwdmesh%isaxis(id_elem) == 0) then
-               axis = .false.
-            else
-               call pabort
-            endif
-
-            if (verbose > 1) &
-               write(6,*) 'axis = ', axis
+            call find_element(mesh    = this%fwdmesh, &
+                              tree    = this%fwdtree_mp, &
+                              s       = rotmesh_s(ipoint), &
+                              z       = rotmesh_z(ipoint),  &
+                              xi      = xi,                 &
+                              eta     = eta,                &
+                              corner_points = corner_points, &
+                              gll_point_ids = gll_point_ids, &
+                              id_elem = id_elem,             &
+                              eltype  = eltype(1),              &
+                              axis    = axis  )
 
             iclockold = tick(id=id_find_point_fwd, since=iclockold)
 
@@ -1475,6 +1410,92 @@ end subroutine load_seismogram_rdbm
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine find_element(mesh, tree, s, z, xi, eta, corner_points, id_elem, eltype, &
+                        gll_point_ids, axis)
+  use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest, kdtree2
+  use finite_elem_mapping, only      : inside_element
+  type(meshtype)                    :: mesh
+  type(kdtree2), pointer            :: tree
+  real(kind=dp), intent(inout)      :: s, z
+  real(kind=dp), intent(out)        :: xi, eta, corner_points(4,2)
+  integer,       intent(out)        :: id_elem, eltype, gll_point_ids(0:, 0:)
+  logical,       intent(out)        :: axis
+
+  integer                           :: iclockold, inext_point, icp
+  integer                           :: corner_point_ids(4)
+  integer, parameter                :: nnext_points = 6
+  type(kdtree2_result), allocatable :: nextpoint(:)
+
+  ! Find the six closest midpoints first
+  allocate(nextpoint(nnext_points))
+  call kdtree2_n_nearest( tree,                   &
+                          real([s, z], kind=sp),  &
+                          nn = nnext_points,      &
+                          results = nextpoint )
+
+  ! Check, whether point is in any of the six closest elements
+  do inext_point = 1, nnext_points
+      ! get cornerpoints of finite element
+      corner_point_ids = mesh%corner_point_ids(:, nextpoint(inext_point)%idx)
+      eltype = mesh%eltype(nextpoint(inext_point)%idx)
+      
+      do icp = 1, 4
+          corner_points(icp, 1) = mesh%s(corner_point_ids(icp)+1)
+          corner_points(icp, 2) = mesh%z(corner_point_ids(icp)+1)
+      enddo                        
+
+      ! test point to be inside, if so, exit
+      if (inside_element(s, z, &
+                         corner_points, eltype, xi=xi, eta=eta, &
+                         tolerance=1d-3)) then
+          if (verbose > 1) then
+             write(6,*) 's, z       = ', s, z
+             write(6,*) 'eltype     = ', eltype
+             write(6,*) 'xi, eta    = ', xi, eta
+             write(6,*) 'element id = ', nextpoint(inext_point)%idx
+          endif
+          exit
+      endif
+  enddo
+
+  if (inext_point > nnext_points) then
+     write(6,*) 'ERROR: element not found. (bwd)'
+     write(6,*) '       Probably outside depth/distance range in the netcdf file?'
+     write(6,*) '       Try increasing nnext_points in case this problem persists'
+     write(6,*) 'radius     = ', norm2([s, z])
+     !this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
+     !cycle
+     call pabort(do_traceback = .false.)
+  endif
+
+  id_elem = nextpoint(inext_point)%idx
+
+  ! get gll points of spectral element
+  gll_point_ids = -1
+  if (verbose > 1) &
+      write(6,*) 'element id = ', nextpoint(inext_point)%idx
+  
+  ! gll_point_ids starts at 0 in NetCDF file
+  gll_point_ids = mesh%gll_point_ids(:,:,id_elem) + 1
+  if (verbose > 1) &
+      write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
+
+
+  if (mesh%isaxis(id_elem) == 1) then
+     axis = .true.
+  elseif (mesh%isaxis(id_elem) == 0) then
+     axis = .false.
+  else
+     call pabort
+  endif
+
+  if (verbose > 1) &
+     write(6,*) 'axis = ', axis
+
+end subroutine find_element
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function load_bw_points(this, coordinates, receiver)
     use finite_elem_mapping, only      : inside_element
     use simple_routines, only          : check_NaN
@@ -1491,7 +1512,7 @@ function load_bw_points(this, coordinates, receiver)
     integer                           :: pointid(size(coordinates,2))
     integer                           :: ipoint, inext_point, icp
     integer(kind=long)                :: iclockold
-    integer                           :: corner_point_ids(4), eltype(1)
+    integer                           :: eltype(1)
     integer                           :: nan_loc(2)
     logical                           :: isnan
     logical                           :: axis
@@ -1503,6 +1524,7 @@ function load_bw_points(this, coordinates, receiver)
     real(kind=dp)                     :: utemp_nsim(this%ndumps, this%ndim, this%nsim_bwd)
     real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
     real(kind=dp)                     :: xi, eta, az_1, az_2, az(6)
+    real(kind=dp)                     :: dist_from_core_square
 
     
     if (.not.this%kdtree_built) then
@@ -1533,89 +1555,28 @@ function load_bw_points(this, coordinates, receiver)
     load_bw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
         ! map points from outside earth to the surface:
-        if (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2 > this%bwd(1)%planet_radius**2) then
-
-           rotmesh_s_buff = rotmesh_s(ipoint) &
-                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
-                               * this%bwd(1)%planet_radius
+        dist_from_core_square = rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2
+        if (dist_from_core_square > this%fwd(1)%planet_radius**2) then
+           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+                               / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
            rotmesh_z(ipoint) = rotmesh_z(ipoint) &
-                               / (rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2)**0.5d0 &
-                               * this%bwd(1)%planet_radius
-           rotmesh_s(ipoint) = rotmesh_s_buff
+                               / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
         endif
 
         select case(trim(this%dump_type))
         case('displ_only')
-            ! Find the six closest midpoints first
-            iclockold = tick()
-            call kdtree2_n_nearest( this%bwdtree_mp,                           &
-                                    real([rotmesh_s(ipoint), rotmesh_z(ipoint)], kind=sp), &
-                                    nn = nnext_points,                            &
-                                    results = nextpoint )
-            iclockold = tick(id=id_kdtree, since=iclockold)
-    
-            pointid(ipoint) = nextpoint(1)%idx
-          
-            ! Check, whether point is in any of the six closest elements
-            do inext_point = 1, nnext_points
-                ! get cornerpoints of finite element
-                corner_point_ids = this%bwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
-                eltype = this%bwdmesh%eltype(nextpoint(inext_point)%idx)
-                
-                do icp = 1, 4
-                    corner_points(icp, 1) = this%bwdmesh%s(corner_point_ids(icp)+1)
-                    corner_points(icp, 2) = this%bwdmesh%z(corner_point_ids(icp)+1)
-                enddo                        
 
-                ! test point to be inside, if so, exit
-                if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
-                                   corner_points, eltype(1), xi=xi, eta=eta, &
-                                   tolerance=1d-3)) then
-                    if (verbose > 1) then
-                       write(6,*) 'coordinates= ', coordinates(:,ipoint)
-                       write(6,*) 's, z       = ', rotmesh_s(ipoint), rotmesh_z(ipoint)
-                       write(6,*) 'eltype     = ', eltype
-                       write(6,*) 'xi, eta    = ', xi, eta
-                       write(6,*) 'element id = ', nextpoint(inext_point)%idx
-                    endif
-                    exit
-                endif
-            enddo
-
-            if (inext_point > nnext_points) then
-               write(6,*) 'ERROR: element not found. (bwd)'
-               write(6,*) '       Probably outside depth/distance range in the netcdf file?'
-               write(6,*) '       Try increasing nnext_points in case this problem persists'
-               write(6,*) 'radius     = ', norm2([rotmesh_s(ipoint), rotmesh_z(ipoint)])
-               this%bwd(1)%count_error_pointoutside = this%bwd(1)%count_error_pointoutside + 1
-               cycle
-               call pabort(do_traceback = .false.)
-            endif
-
-            id_elem = nextpoint(inext_point)%idx
-
-            ! get gll points of spectral element
-            gll_point_ids = -1
-            if (verbose > 1) &
-                write(6,*) 'element id = ', nextpoint(inext_point)%idx
-            
-            ! gll_point_ids starts at 0 in NetCDF file
-            gll_point_ids = this%bwdmesh%gll_point_ids(:,:,id_elem) + 1
-            if (verbose > 1) &
-                write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
-
-
-            if (this%bwdmesh%isaxis(id_elem) == 1) then
-               axis = .true.
-            elseif (this%bwdmesh%isaxis(id_elem) == 0) then
-               axis = .false.
-            else
-               call pabort
-            endif
-
-            if (verbose > 1) &
-               write(6,*) 'axis = ', axis
-
+            call find_element(mesh    = this%bwdmesh, &
+                              tree    = this%bwdtree_mp, &
+                              s       = rotmesh_s(ipoint), &
+                              z       = rotmesh_z(ipoint),  &
+                              xi      = xi,                 &
+                              eta     = eta,                &
+                              corner_points = corner_points, &
+                              id_elem = id_elem,             &
+                              gll_point_ids = gll_point_ids, &
+                              eltype  = eltype(1),           &
+                              axis    = axis  )
             iclockold = tick(id=id_find_point_bwd, since=iclockold)
 
         case default  !dump_type not displ_only
@@ -1765,67 +1726,18 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     select case(trim(this%dump_type))
     case('displ_only')
 
-        ! Find the six closest midpoints first
-        call kdtree2_n_nearest( this%fwdtree_mp, &
-                                real([rotmesh_s(ipoint), rotmesh_z(ipoint)]), &
-                                nn = nnext_points, &
-                                results = nextpoint )
-        pointid(ipoint) = nextpoint(1)%idx
+        call find_element(mesh    = this%fwdmesh, &
+                          tree    = this%fwdtree_mp, &
+                          s       = rotmesh_s(ipoint), &
+                          z       = rotmesh_z(ipoint),  &
+                          xi      = xi,                 &
+                          eta     = eta,                &
+                          corner_points = corner_points, &
+                          gll_point_ids = gll_point_ids, &
+                          id_elem = id_elem,             &
+                          eltype  = eltype(1),              &
+                          axis    = axis  )
 
-        do inext_point = 1, nnext_points
-            ! get cornerpoints of finite element
-            corner_point_ids = this%fwdmesh%corner_point_ids(:, nextpoint(inext_point)%idx)
-            eltype = this%fwdmesh%eltype(nextpoint(inext_point)%idx)
-            
-            do icp = 1, 4
-                corner_points(icp, 1) = this%fwdmesh%s(corner_point_ids(icp)+1)
-                corner_points(icp, 2) = this%fwdmesh%z(corner_point_ids(icp)+1)
-            enddo                        
-
-            ! test point to be inside, if so, exit
-            if (inside_element(rotmesh_s(ipoint), rotmesh_z(ipoint), &
-                               corner_points, eltype(1), xi=xi, eta=eta, &
-                               tolerance=1d-3)) then
-                if (verbose > 1) then
-                   write(6,*) 'eltype     = ', eltype
-                   write(6,*) 'xi, eta    = ', xi, eta
-                   write(6,*) 'element id = ', nextpoint(inext_point)%idx
-                endif
-                exit
-            endif
-        enddo
-
-        if (inext_point >= nnext_points) then
-           write(6,*) 'ERROR: element not found. '
-           write(6,*) '       Probably outside depth/distance range in the netcdf file?'
-           write(6,*) '       Try increasing nnext_points in case this problem persists'
-           write(6,*) rotmesh_s(ipoint), rotmesh_z(ipoint)
-           call pabort
-        endif
-
-        id_elem = nextpoint(inext_point)%idx
-
-        ! get gll points of spectral element
-        gll_point_ids = -1
-        if (verbose > 1) &
-            write(6,*) 'element id = ', nextpoint(inext_point)%idx
-
-        ! gll_point_ids starts at 0 in NetCDF file
-        gll_point_ids = this%bwdmesh%gll_point_ids(:,:,id_elem) + 1
-        if (verbose > 1) &
-            write(6,*) 'gll_point_ids = ', gll_point_ids(:,0)
-
-        if (this%fwdmesh%isaxis(id_elem) == 1) then
-           axis = .true.
-        elseif (this%fwdmesh%isaxis(id_elem) == 0) then
-           axis = .false.
-        else
-           call pabort
-        endif
-
-        if (verbose > 1) &
-           write(6,*) 'axis = ', axis
-    
     case default
         ! Find the closest point
         call kdtree2_n_nearest( this%fwdtree, &
