@@ -8,6 +8,7 @@ To download the current developer version, use git clone
 ```
 git clone https://github.com/sstaehler/kerner
 ```
+Please note that the repository is not public as of now. If you are interested in using the code, please send a mail to staehler@geophysik.uni-muenchen.de
 
 ## Prequisites
 MC Kernel needs a recent Fortran compiler (gfortran 4.8 or later), an MPI installation, the NetCDF library for accessing the wavefield files, the FFTW library for Fourier transforms and LAPACK, because we were too lazy to write a matrix inversion routine ourselves. The installation of these libraries can be done by hand on desktop machines or using modules on HPC environments.
@@ -40,7 +41,7 @@ cd kerner
 The file *make_mc_kerner.macros* allows you to modify the compiler name and compiler flags according to your system. To compile, use make
 ```bash
 make 
-make test 
+make check
 ```
 to run a set of tests.
 
