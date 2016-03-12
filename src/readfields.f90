@@ -883,180 +883,6 @@ end subroutine check_consistency
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_fw_points(this, coordinates, source_params, model)
-    use finite_elem_mapping, only      : inside_element
-    use background_model, only         : backgroundmodel_type
-    use simple_routines, only          : check_NaN
-    use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest
-    use rotations, only                : azim_factor_nsim
-
-    class(semdata_type)               :: this
-    real(kind=dp), intent(in)         :: coordinates(:,:)
-    type(src_param_type), intent(in)  :: source_params
-    real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
-                                                        size(coordinates,2))
-
-    type(backgroundmodel_type), intent(out), optional :: model
-
-    type(kdtree2_result), allocatable :: nextpoint(:)
-    integer                           :: npoints, nnext_points
-    integer                           :: ipoint, isim
-    integer(kind=long)                :: iclockold
-    integer                           :: eltype(1)
-    logical                           :: axis
-    integer, allocatable              :: gll_point_ids(:,:)
-    integer                           :: id_elem
-    real(kind=dp)                     :: corner_points(4,2)
-    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
-    real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
-    real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
-    real(kind=dp)                     :: utemp(this%ndumps, this%ndim, this%nsim_fwd)
-    real(kind=sp), allocatable        :: coeffs(:,:)
-    real(kind=dp)                     :: xi, eta, az_1(4), az_2(4)
-    real(kind=dp)                     :: dist_from_core_square
-
-
-    if (.not.this%kdtree_built) then
-       print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
-       call pabort()
-    end if
-    
-    if (size(coordinates,1).ne.3) then
-       write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
-       write(*,*) ' 3 x npoints array'
-       call pabort 
-    end if
-    npoints = size(coordinates,2)
-    
-    nnext_points = 6 ! 6, because this is the maximum valence in the mesh
-    allocate(gll_point_ids(0:this%npol, 0:this%npol))
-
-    allocate(coeffs(6,npoints))
-
-    ! Rotate points to FWD coordinate system
-    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
-                          coordinates,                                  &
-                          source_params%lon, source_params%colat)
-
-    if (present(model)) then
-      coeffs = get_model_coeffs(this, norm2(coordinates, dim=1))
-    end if
-
-    allocate(nextpoint(nnext_points))
-    load_fw_points(:,:,:) = 0.0
-    do ipoint = 1, npoints
-        ! map points from outside earth to the surface:
-        dist_from_core_square = rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2
-        if (dist_from_core_square > this%fwd(1)%planet_radius**2) then
-           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
-                               / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
-           rotmesh_z(ipoint) = rotmesh_z(ipoint) &
-                               / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
-        endif
-
-        ! Find the six closest midpoints first
-        call find_element(mesh    = this%fwdmesh, &
-                          tree    = this%fwdtree_mp, &
-                          s       = rotmesh_s(ipoint), &
-                          z       = rotmesh_z(ipoint),  &
-                          xi      = xi,                 &
-                          eta     = eta,                &
-                          corner_points = corner_points, &
-                          gll_point_ids = gll_point_ids, &
-                          id_elem = id_elem,             &
-                          eltype  = eltype(1),              &
-                          axis    = axis  )
-
-        iclockold = tick(id=id_find_point_fwd, since=iclockold)
-
-        select case(trim(this%strain_type))
-        case('straintensor_trace')    
-           
-          if (this%merged_fwd) then
-            utemp = load_strain_point_merged(this%fwd(1),                    &
-                                             xi, eta, this%strain_type,      &
-                                             corner_points, eltype(1), axis, &
-                                             id_elem = id_elem)              &
-                   / this%fwd(1)%amplitude
-          else
-            do isim = 1, this%nsim_fwd
-              utemp(:,:,isim) = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
-                                                         xi, eta, this%strain_type,      &
-                                                         corner_points, eltype(1), axis, &
-                                                         id_elem = id_elem)              &
-                                / this%fwd(isim)%amplitude
-            end do 
-          end if
-
-          ! Set NaNs to zero
-          where(utemp.ne.utemp) utemp = 0.0
-          
-          iclockold = tick()
-          az_1 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 1) 
-
-          do isim = 1, this%nsim_fwd
-            load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)          &
-                 + utemp(:, :, isim) * az_1(isim)
-          end do
-          iclockold = tick(id=id_rotate, since=iclockold)
-
-        case('straintensor_full')
-
-           if (this%merged_fwd) then
-             utemp = load_strain_point_merged(this%fwd(1),                    &
-                                              xi, eta, this%strain_type,      &
-                                              corner_points, eltype(1), axis, &
-                                              id_elem = id_elem)              &
-                    / this%fwd(1)%amplitude
-           else
-             do isim = 1, this%nsim_fwd
-               utemp(:,:,isim) = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
-                                                          xi, eta, this%strain_type,      &
-                                                          corner_points, eltype(1), axis, &
-                                                          id_elem = id_elem)              &
-                                 / this%fwd(isim)%amplitude
-             end do
-           end if
-
-           iclockold = tick()
-
-           az_1 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 1) 
-           az_2 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 2) 
-
-           do isim = 1, this%nsim_fwd  
-             load_fw_points(:,1,ipoint) = load_fw_points(:,1,ipoint) &
-                   + utemp(:,1,isim) * az_1(isim)               
-             load_fw_points(:,2,ipoint) = load_fw_points(:,2,ipoint) &
-                   + utemp(:,2,isim) * az_1(isim)
-             load_fw_points(:,3,ipoint) = load_fw_points(:,3,ipoint) &
-                   + utemp(:,3,isim) * az_1(isim)
-             load_fw_points(:,4,ipoint) = load_fw_points(:,4,ipoint) &
-                   + utemp(:,4,isim) * az_2(isim)
-             load_fw_points(:,5,ipoint) = load_fw_points(:,5,ipoint) &
-                   + utemp(:,5,isim) * az_1(isim)
-             load_fw_points(:,6,ipoint) = load_fw_points(:,6,ipoint) &
-                   + utemp(:,6,isim) * az_2(isim)
-           end do 
-           iclockold = tick(id=id_rotate, since=iclockold)
-
-           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_src_to_xyz( &
-                                          load_fw_points(:,:,ipoint),        &
-                                          source_params%lon, this%ndumps    )
-
-           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(        &
-                                          load_fw_points(:,:,ipoint),                         &
-                                          source_params%lon, source_params%colat, this%ndumps)
-
-        end select
-
-    end do !ipoint
-
-    if (present(model)) call model%combine(coeffs)
-
-end function load_fw_points
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
 !> Loads the model coefficients for a selected coordinate 
 function load_model_coeffs(this, coordinates_xyz) result(model)
    use background_model, only         : backgroundmodel_type
@@ -1240,6 +1066,180 @@ subroutine find_element(mesh, tree, s, z, xi, eta, corner_points, id_elem, eltyp
      write(6,*) 'axis = ', axis
 
 end subroutine find_element
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function load_fw_points(this, coordinates, source_params, model)
+    use finite_elem_mapping, only      : inside_element
+    use background_model, only         : backgroundmodel_type
+    use simple_routines, only          : check_NaN
+    use kdtree2_module, only           : kdtree2_result, kdtree2_n_nearest
+    use rotations, only                : azim_factor_nsim
+
+    class(semdata_type)               :: this
+    real(kind=dp), intent(in)         :: coordinates(:,:)
+    type(src_param_type), intent(in)  :: source_params
+    real(kind=dp)                     :: load_fw_points(this%ndumps, this%ndim, &
+                                                        size(coordinates,2))
+
+    type(backgroundmodel_type), intent(out), optional :: model
+
+    type(kdtree2_result), allocatable :: nextpoint(:)
+    integer                           :: npoints, nnext_points
+    integer                           :: ipoint, isim
+    integer(kind=long)                :: iclockold
+    integer                           :: eltype(1)
+    logical                           :: axis
+    integer, allocatable              :: gll_point_ids(:,:)
+    integer                           :: id_elem
+    real(kind=dp)                     :: corner_points(4,2)
+    real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
+    real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
+    real(kind=dp)                     :: utemp(this%ndumps, this%ndim, this%nsim_fwd)
+    real(kind=sp), allocatable        :: coeffs(:,:)
+    real(kind=dp)                     :: xi, eta, az_1(4), az_2(4)
+    real(kind=dp)                     :: dist_from_core_square
+
+
+    if (.not.this%kdtree_built) then
+       print *, 'ERROR: KDTree is not built yet. Call build_kdtree before loading points!'
+       call pabort()
+    end if
+    
+    if (size(coordinates,1).ne.3) then
+       write(*,*) ' Error in load_fw_points: input variable coordinates has to be a '
+       write(*,*) ' 3 x npoints array'
+       call pabort 
+    end if
+    npoints = size(coordinates,2)
+    
+    nnext_points = 6 ! 6, because this is the maximum valence in the mesh
+    allocate(gll_point_ids(0:this%npol, 0:this%npol))
+
+    allocate(coeffs(6,npoints))
+
+    ! Rotate points to FWD coordinate system
+    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
+                          coordinates,                                  &
+                          source_params%lon, source_params%colat)
+
+    if (present(model)) then
+      coeffs = get_model_coeffs(this, norm2(coordinates, dim=1))
+    end if
+
+    allocate(nextpoint(nnext_points))
+    load_fw_points(:,:,:) = 0.0
+    do ipoint = 1, npoints
+        ! map points from outside earth to the surface:
+        dist_from_core_square = rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2
+        if (dist_from_core_square > this%fwd(1)%planet_radius**2) then
+           rotmesh_s(ipoint) = rotmesh_s(ipoint) &
+                               / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
+           rotmesh_z(ipoint) = rotmesh_z(ipoint) &
+                               / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
+        endif
+
+        ! Find the six closest midpoints first
+        call find_element(mesh    = this%fwdmesh, &
+                          tree    = this%fwdtree_mp, &
+                          s       = rotmesh_s(ipoint), &
+                          z       = rotmesh_z(ipoint),  &
+                          xi      = xi,                 &
+                          eta     = eta,                &
+                          corner_points = corner_points, &
+                          gll_point_ids = gll_point_ids, &
+                          id_elem = id_elem,             &
+                          eltype  = eltype(1),              &
+                          axis    = axis  )
+
+        iclockold = tick(id=id_find_point_fwd, since=iclockold)
+
+        select case(trim(this%strain_type))
+        case('straintensor_trace')    
+           
+          if (this%merged_fwd) then
+            utemp = load_strain_point_merged(this%fwd(1),                    &
+                                             xi, eta, this%strain_type,      &
+                                             corner_points, eltype(1), axis, &
+                                             id_elem = id_elem)              &
+                   / this%fwd(1)%amplitude
+          else
+            do isim = 1, this%nsim_fwd
+              utemp(:,:,isim) = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
+                                                         xi, eta, this%strain_type,      &
+                                                         corner_points, eltype(1), axis, &
+                                                         id_elem = id_elem)              &
+                                / this%fwd(isim)%amplitude
+            end do 
+          end if
+
+          ! Set NaNs to zero
+          where(utemp.ne.utemp) utemp = 0.0
+          
+          iclockold = tick()
+          az_1 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 1) 
+
+          do isim = 1, this%nsim_fwd
+            load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)          &
+                 + utemp(:, :, isim) * az_1(isim)
+          end do
+          iclockold = tick(id=id_rotate, since=iclockold)
+
+        case('straintensor_full')
+
+           if (this%merged_fwd) then
+             utemp = load_strain_point_merged(this%fwd(1),                    &
+                                              xi, eta, this%strain_type,      &
+                                              corner_points, eltype(1), axis, &
+                                              id_elem = id_elem)              &
+                    / this%fwd(1)%amplitude
+           else
+             do isim = 1, this%nsim_fwd
+               utemp(:,:,isim) = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
+                                                          xi, eta, this%strain_type,      &
+                                                          corner_points, eltype(1), axis, &
+                                                          id_elem = id_elem)              &
+                                 / this%fwd(isim)%amplitude
+             end do
+           end if
+
+           iclockold = tick()
+
+           az_1 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 1) 
+           az_2 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 2) 
+
+           do isim = 1, this%nsim_fwd  
+             load_fw_points(:,1,ipoint) = load_fw_points(:,1,ipoint) &
+                   + utemp(:,1,isim) * az_1(isim)               
+             load_fw_points(:,2,ipoint) = load_fw_points(:,2,ipoint) &
+                   + utemp(:,2,isim) * az_1(isim)
+             load_fw_points(:,3,ipoint) = load_fw_points(:,3,ipoint) &
+                   + utemp(:,3,isim) * az_1(isim)
+             load_fw_points(:,4,ipoint) = load_fw_points(:,4,ipoint) &
+                   + utemp(:,4,isim) * az_2(isim)
+             load_fw_points(:,5,ipoint) = load_fw_points(:,5,ipoint) &
+                   + utemp(:,5,isim) * az_1(isim)
+             load_fw_points(:,6,ipoint) = load_fw_points(:,6,ipoint) &
+                   + utemp(:,6,isim) * az_2(isim)
+           end do 
+           iclockold = tick(id=id_rotate, since=iclockold)
+
+           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_src_to_xyz( &
+                                          load_fw_points(:,:,ipoint),        &
+                                          source_params%lon, this%ndumps    )
+
+           load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(        &
+                                          load_fw_points(:,:,ipoint),                         &
+                                          source_params%lon, source_params%colat, this%ndumps)
+
+        end select
+
+    end do !ipoint
+
+    if (present(model)) call model%combine(coeffs)
+
+end function load_fw_points
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
