@@ -1088,17 +1088,20 @@ function load_fw_points(this, coordinates, source_params, model)
     integer                           :: npoints, nnext_points
     integer                           :: ipoint, isim
     integer(kind=long)                :: iclockold
-    integer                           :: eltype(1)
-    logical                           :: axis
-    integer, allocatable              :: gll_point_ids(:,:)
-    integer                           :: id_elem
-    real(kind=dp)                     :: corner_points(4,2)
+    integer                           :: eltype(size(coordinates,2))
+    logical                           :: axis(size(coordinates,2))
+    integer, allocatable              :: gll_point_ids(:,:,:)
+    integer                           :: id_elem(size(coordinates,2))
+    real(kind=dp)                     :: corner_points(4,2,size(coordinates,2))
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
-    real(kind=dp)                     :: utemp(this%ndumps, this%ndim, this%nsim_fwd)
+    real(kind=dp)                     :: utemp(this%ndumps, this%ndim, &
+                                               this%nsim_fwd, size(coordinates,2))
     real(kind=sp), allocatable        :: coeffs(:,:)
-    real(kind=dp)                     :: xi, eta, az_1(4), az_2(4)
+    real(kind=dp)                     :: xi(size(coordinates,2)), eta(size(coordinates,2))
+    real(kind=dp)                     :: az_1(4, size(coordinates,2))
+    real(kind=dp)                     :: az_2(4, size(coordinates,2))
     real(kind=dp)                     :: dist_from_core_square
 
 
@@ -1115,7 +1118,7 @@ function load_fw_points(this, coordinates, source_params, model)
     npoints = size(coordinates,2)
     
     nnext_points = 6 ! 6, because this is the maximum valence in the mesh
-    allocate(gll_point_ids(0:this%npol, 0:this%npol))
+    allocate(gll_point_ids(0:this%npol, 0:this%npol, npoints))
 
     allocate(coeffs(6,npoints))
 
@@ -1141,87 +1144,79 @@ function load_fw_points(this, coordinates, source_params, model)
         endif
 
         ! Find the six closest midpoints first
-        call find_element(mesh    = this%fwdmesh, &
-                          tree    = this%fwdtree_mp, &
-                          s       = rotmesh_s(ipoint), &
-                          z       = rotmesh_z(ipoint),  &
-                          xi      = xi,                 &
-                          eta     = eta,                &
-                          corner_points = corner_points, &
-                          gll_point_ids = gll_point_ids, &
-                          id_elem = id_elem,             &
-                          eltype  = eltype(1),              &
-                          axis    = axis  )
+        call find_element(mesh    = this%fwdmesh,                    &
+                          tree    = this%fwdtree_mp,                 &
+                          s       = rotmesh_s(ipoint),               &
+                          z       = rotmesh_z(ipoint),               &
+                          xi      = xi(ipoint),                      &
+                          eta     = eta(ipoint),                     &
+                          corner_points = corner_points(:,:,ipoint), &
+                          gll_point_ids = gll_point_ids(:,:,ipoint), &
+                          id_elem = id_elem(ipoint),                 &
+                          eltype  = eltype(ipoint),                  &
+                          axis    = axis(ipoint)  )
+
+    end do
+
+    az_1 = azim_factor_nsim(rotmesh_phi, source_params%mij, 1) 
+    az_2 = azim_factor_nsim(rotmesh_phi, source_params%mij, 2) 
+
+    do ipoint = 1, npoints
 
         iclockold = tick(id=id_find_point_fwd, since=iclockold)
 
+        if (this%merged_fwd) then
+          utemp(:,:,:,ipoint) = load_strain_point_merged(this%fwd(1),                    &
+                                           xi(ipoint), eta(ipoint), this%strain_type,      &
+                                           corner_points(:,:,ipoint), eltype(ipoint),  &
+                                           axis(ipoint), &
+                                           id_elem = id_elem(ipoint))              &
+                 / this%fwd(1)%amplitude
+        else
+          do isim = 1, this%nsim_fwd
+            utemp(:,:,isim,ipoint) = load_strain_point_interp(this%fwd(isim), &
+                                                              gll_point_ids(:,:,ipoint),  &
+                                                              xi(ipoint), eta(ipoint), this%strain_type,      &
+                                                              corner_points(:,:,ipoint), eltype(ipoint), axis(ipoint), &
+                                                              id_elem = id_elem(ipoint))              &
+                              / this%fwd(isim)%amplitude
+          end do 
+        end if
+    end do
+
+    do ipoint = 1, npoints
+
         select case(trim(this%strain_type))
         case('straintensor_trace')    
-           
-          if (this%merged_fwd) then
-            utemp = load_strain_point_merged(this%fwd(1),                    &
-                                             xi, eta, this%strain_type,      &
-                                             corner_points, eltype(1), axis, &
-                                             id_elem = id_elem)              &
-                   / this%fwd(1)%amplitude
-          else
-            do isim = 1, this%nsim_fwd
-              utemp(:,:,isim) = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
-                                                         xi, eta, this%strain_type,      &
-                                                         corner_points, eltype(1), axis, &
-                                                         id_elem = id_elem)              &
-                                / this%fwd(isim)%amplitude
-            end do 
-          end if
 
           ! Set NaNs to zero
           where(utemp.ne.utemp) utemp = 0.0
           
           iclockold = tick()
-          az_1 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 1) 
 
           do isim = 1, this%nsim_fwd
             load_fw_points(:, :, ipoint) = load_fw_points(:,:,ipoint)          &
-                 + utemp(:, :, isim) * az_1(isim)
+                 + utemp(:, :, isim, ipoint) * az_1(isim, ipoint)
           end do
           iclockold = tick(id=id_rotate, since=iclockold)
 
         case('straintensor_full')
 
-           if (this%merged_fwd) then
-             utemp = load_strain_point_merged(this%fwd(1),                    &
-                                              xi, eta, this%strain_type,      &
-                                              corner_points, eltype(1), axis, &
-                                              id_elem = id_elem)              &
-                    / this%fwd(1)%amplitude
-           else
-             do isim = 1, this%nsim_fwd
-               utemp(:,:,isim) = load_strain_point_interp(this%fwd(isim), gll_point_ids,  &
-                                                          xi, eta, this%strain_type,      &
-                                                          corner_points, eltype(1), axis, &
-                                                          id_elem = id_elem)              &
-                                 / this%fwd(isim)%amplitude
-             end do
-           end if
-
            iclockold = tick()
-
-           az_1 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 1) 
-           az_2 = azim_factor_nsim(rotmesh_phi(ipoint), source_params%mij, 2) 
 
            do isim = 1, this%nsim_fwd  
              load_fw_points(:,1,ipoint) = load_fw_points(:,1,ipoint) &
-                   + utemp(:,1,isim) * az_1(isim)               
+                   + utemp(:,1,isim,ipoint) * az_1(isim, ipoint)               
              load_fw_points(:,2,ipoint) = load_fw_points(:,2,ipoint) &
-                   + utemp(:,2,isim) * az_1(isim)
+                   + utemp(:,2,isim,ipoint) * az_1(isim, ipoint)
              load_fw_points(:,3,ipoint) = load_fw_points(:,3,ipoint) &
-                   + utemp(:,3,isim) * az_1(isim)
+                   + utemp(:,3,isim,ipoint) * az_1(isim, ipoint)
              load_fw_points(:,4,ipoint) = load_fw_points(:,4,ipoint) &
-                   + utemp(:,4,isim) * az_2(isim)
+                   + utemp(:,4,isim,ipoint) * az_2(isim, ipoint)
              load_fw_points(:,5,ipoint) = load_fw_points(:,5,ipoint) &
-                   + utemp(:,5,isim) * az_1(isim)
+                   + utemp(:,5,isim,ipoint) * az_1(isim, ipoint)
              load_fw_points(:,6,ipoint) = load_fw_points(:,6,ipoint) &
-                   + utemp(:,6,isim) * az_2(isim)
+                   + utemp(:,6,isim,ipoint) * az_2(isim, ipoint)
            end do 
            iclockold = tick(id=id_rotate, since=iclockold)
 
@@ -1255,19 +1250,21 @@ function load_bw_points(this, coordinates, receiver)
                                                          size(coordinates,2))
 
     type(kdtree2_result), allocatable :: nextpoint(:)
-    integer                           :: npoints, nnext_points, id_elem, isim
+    integer                           :: npoints, nnext_points, isim
     integer                           :: ipoint
     integer(kind=long)                :: iclockold
-    integer                           :: eltype(1)
-    logical                           :: axis
-    integer, allocatable              :: gll_point_ids(:,:)
-    real(kind=dp)                     :: corner_points(4,2)
+    integer                           :: eltype(size(coordinates,2))
+    logical                           :: axis(size(coordinates,2))
+    integer, allocatable              :: gll_point_ids(:,:,:)
+    integer                           :: id_elem(size(coordinates,2))
+    real(kind=dp)                     :: corner_points(4,2,size(coordinates,2))
     real(kind=dp)                     :: rotmesh_s(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_phi(size(coordinates,2))
     real(kind=dp)                     :: rotmesh_z(size(coordinates,2))
     real(kind=dp)                     :: utemp_nsim(this%ndumps, this%ndim, this%nsim_bwd)
-    real(kind=dp)                     :: utemp(this%ndumps, this%ndim)
-    real(kind=dp)                     :: xi, eta, az_1, az_2, az(6)
+    real(kind=dp)                     :: utemp(this%ndumps, this%ndim, size(coordinates,2))
+    real(kind=dp)                     :: xi(size(coordinates,2)), eta(size(coordinates,2))
+    real(kind=dp)                     :: az_1, az_2, az(6, size(coordinates,2))
     real(kind=dp)                     :: dist_from_core_square
 
     
@@ -1284,7 +1281,7 @@ function load_bw_points(this, coordinates, receiver)
     npoints = size(coordinates,2)
 
     nnext_points = 6 ! 6, because this is the maximum valence in the mesh
-    allocate(gll_point_ids(0:this%npol, 0:this%npol))
+    allocate(gll_point_ids(0:this%npol, 0:this%npol, size(coordinates,2)))
 
     ! Rotate points to BWD coordinate system
     call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z,   &
@@ -1305,15 +1302,15 @@ function load_bw_points(this, coordinates, receiver)
 
         call find_element(mesh    = this%bwdmesh, &
                           tree    = this%bwdtree_mp, &
-                          s       = rotmesh_s(ipoint), &
-                          z       = rotmesh_z(ipoint),  &
-                          xi      = xi,                 &
-                          eta     = eta,                &
-                          corner_points = corner_points, &
-                          id_elem = id_elem,             &
-                          gll_point_ids = gll_point_ids, &
-                          eltype  = eltype(1),           &
-                          axis    = axis  )
+                          s       = rotmesh_s(ipoint),               &
+                          z       = rotmesh_z(ipoint),               &
+                          xi      = xi(ipoint),                      &
+                          eta     = eta(ipoint),                     &
+                          corner_points = corner_points(:,:,ipoint), &
+                          gll_point_ids = gll_point_ids(:,:,ipoint), &
+                          id_elem = id_elem(ipoint),                 &
+                          eltype  = eltype(ipoint),                  &
+                          axis    = axis(ipoint)  )
         iclockold = tick(id=id_find_point_bwd, since=iclockold)
 
         select case(receiver%component)
@@ -1325,47 +1322,56 @@ function load_bw_points(this, coordinates, receiver)
           isim = 2
           az_1 = azim_factor_bw(rotmesh_phi(ipoint), [0d0, 1d0, 0d0], isim, 1)
           az_2 = azim_factor_bw(rotmesh_phi(ipoint), [0d0, 1d0, 0d0], isim, 2)
-          az(1) = az_1
-          az(2) = az_1
-          az(3) = az_1
-          az(4) = az_2
-          az(5) = az_1 * 2
-          az(6) = az_2 * 2
+          az(1, ipoint) = az_1
+          az(2, ipoint) = az_1
+          az(3, ipoint) = az_1
+          az(4, ipoint) = az_2
+          az(5, ipoint) = az_1 * 2
+          az(6, ipoint) = az_2 * 2
 
         case('T') 
           isim = 2
           az_1 = azim_factor_bw(rotmesh_phi(ipoint), [0d0, 0d0, 1d0], isim, 1)
           az_2 = azim_factor_bw(rotmesh_phi(ipoint), [0d0, 0d0, 1d0], isim, 2)
-          az(1) = az_1
-          az(2) = az_1
-          az(3) = az_1
-          az(4) = az_2
-          az(5) = az_1 * 2
-          az(6) = az_2 * 2
+          az(1, ipoint) = az_1
+          az(2, ipoint) = az_1
+          az(3, ipoint) = az_1
+          az(4, ipoint) = az_2
+          az(5, ipoint) = az_1 * 2
+          az(6, ipoint) = az_2 * 2
 
         end select
 
+    end do
+
+    do ipoint = 1, npoints
+
         if (this%merged_bwd) then
           utemp_nsim = load_strain_point_merged(this%bwd(1),                    &
-                                                xi, eta, this%strain_type,      &
-                                                corner_points, eltype(1), axis, &
-                                                id_elem = id_elem)
-          utemp = utemp_nsim(:,:,isim) 
+                                           xi(ipoint), eta(ipoint), this%strain_type,      &
+                                           corner_points(:,:,ipoint), eltype(ipoint),  &
+                                           axis(ipoint), id_elem(ipoint))              
+          utemp(:,:,ipoint) = utemp_nsim(:,:,isim) 
         else
-          utemp = load_strain_point_interp(this%bwd(isim), gll_point_ids,  &
-                                           xi, eta, this%strain_type,      &
-                                           corner_points, eltype(1), axis, &
-                                           id_elem = id_elem)
+          utemp(:,:,ipoint) = load_strain_point_interp(this%bwd(isim), &
+                                           gll_point_ids(:,:,ipoint),  &
+                                           xi(ipoint), eta(ipoint), this%strain_type,      &
+                                           corner_points(:,:,ipoint), eltype(ipoint), &
+                                           axis(ipoint), id_elem(ipoint))              
         end if
 
-        load_bw_points(:, 1, ipoint) = utemp(:,1) * az(1)
+    end do
+
+    do ipoint = 1, npoints
+
+        load_bw_points(:, 1, ipoint) = utemp(:,1, ipoint) * az(1, ipoint)
 
         if (this%strain_type.eq.'straintensor_full') then
-          load_bw_points(:, 2, ipoint) = utemp(:,2) * az(2)
-          load_bw_points(:, 3, ipoint) = utemp(:,3) * az(3)
-          load_bw_points(:, 4, ipoint) = utemp(:,4) * az(4)
-          load_bw_points(:, 5, ipoint) = utemp(:,5) * az(5)
-          load_bw_points(:, 6, ipoint) = utemp(:,6) * az(6)
+          load_bw_points(:, 2, ipoint) = utemp(:,2,ipoint) * az(2, ipoint)
+          load_bw_points(:, 3, ipoint) = utemp(:,3,ipoint) * az(3, ipoint)
+          load_bw_points(:, 4, ipoint) = utemp(:,4,ipoint) * az(4, ipoint)
+          load_bw_points(:, 5, ipoint) = utemp(:,5,ipoint) * az(5, ipoint)
+          load_bw_points(:, 6, ipoint) = utemp(:,6,ipoint) * az(6, ipoint)
         end if
         
         load_bw_points(:,:,ipoint) = load_bw_points(:,:,ipoint) &

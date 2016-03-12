@@ -39,6 +39,11 @@ module rotations
       module procedure  :: rotate_symm_tensor_voigt_xyz_earth_to_xyz_src_2d
     end interface
 
+    interface azim_factor_nsim
+      module procedure :: azim_factor_nsim
+      module procedure :: azim_factor_nsim_npoints
+    end interface
+
 contains
 !-----------------------------------------------------------------------------------------
 pure function azim_factor_nsim(phi, mij, ikind)
@@ -63,6 +68,68 @@ pure function azim_factor(phi, mij, isim, ikind)
     real(kind=dp), intent(in)    :: mij(6)  ! rr, tt, pp, rt, rp, tp
     integer, intent(in)          :: isim, ikind
     real(kind=dp)                :: azim_factor
+
+    !@TODO: is isim a robust indicator for the souretype? what about a single
+    !       simulation that is not Mzz? (MvD)
+    select case(isim)
+    case(1) ! Mzz
+       if (ikind==1) then 
+           azim_factor = Mij(1)
+       else
+           azim_factor = 0
+       end if
+       
+    case(2) ! Mxx+Myy
+       if (ikind==1) then 
+           azim_factor = 0.5d0 * (Mij(2) + Mij(3))
+       else
+           azim_factor = 0
+       end if
+       
+    case(3) ! dipole
+       if (ikind==1) then
+           azim_factor =   Mij(4) * dcos(phi) + Mij(5) * dsin(phi)
+       else
+           azim_factor = - Mij(4) * dsin(phi) + Mij(5) * dcos(phi) 
+       end if
+       
+    case(4) ! quadrupole
+       if (ikind==1) then
+           azim_factor =   0.5d0 * (Mij(2) - Mij(3)) * dcos(2.d0 * phi) &
+                            + Mij(6) * dsin(2.d0 * phi)
+       else
+           azim_factor = - 0.5d0 * (Mij(2) - Mij(3)) * dsin(2.d0 * phi) &
+                            + Mij(6) * dcos(2.d0 * phi)  
+       end if
+
+    end select
+
+end function
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function azim_factor_nsim_npoints(phi, mij, ikind)
+
+    real(kind=dp), intent(in)    :: phi(:)
+    real(kind=dp), intent(in)    :: mij(6)  ! rr, tt, pp, rt, rp, tp
+    integer, intent(in)          :: ikind
+    real(kind=dp)                :: azim_factor_nsim_npoints(4, size(phi,1))
+
+    azim_factor_nsim_npoints(1,:) = azim_factor_npoints(phi, mij, 1, ikind)
+    azim_factor_nsim_npoints(2,:) = azim_factor_npoints(phi, mij, 2, ikind)
+    azim_factor_nsim_npoints(3,:) = azim_factor_npoints(phi, mij, 3, ikind)
+    azim_factor_nsim_npoints(4,:) = azim_factor_npoints(phi, mij, 4, ikind)
+
+end function azim_factor_nsim_npoints
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function azim_factor_npoints(phi, mij, isim, ikind) result(azim_factor)
+
+    real(kind=dp), intent(in)    :: phi(:)
+    real(kind=dp), intent(in)    :: mij(6)  ! rr, tt, pp, rt, rp, tp
+    integer, intent(in)          :: isim, ikind
+    real(kind=dp)                :: azim_factor(size(phi,1))
 
     !@TODO: is isim a robust indicator for the souretype? what about a single
     !       simulation that is not Mzz? (MvD)
