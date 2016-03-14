@@ -279,7 +279,7 @@ subroutine test_readfields_load_fw_points_merged
    real(kind=dp)              :: xi, eta, corner_points(8)
    integer                    :: eltype, id_elem, gll_point_ids(25)
    logical                    :: axis
-   real(kind=dp), allocatable :: utemp_classical(:,:,:), utemp_merged(:,:,:)
+   real(kind=dp), allocatable :: utemp_classical(:,:,:), utemp_merged(:,:,:,:)
 
    
    ! Classical database
@@ -329,6 +329,7 @@ subroutine test_readfields_load_fw_points_merged
    straintrace_merged    = u_merged(:, :, 1)
 
    do istraindim = 1, 6
+     print *, istraindim
      write(fnam, '("./output/straintrace_classical_", I1)') istraindim
      open(newunit=lu_resstrain, file=trim(fnam), action='write')
      do i=1, sem_data%ndumps
@@ -343,10 +344,10 @@ subroutine test_readfields_load_fw_points_merged
      end do
      close(lu_resstrain)
      call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                            1d-10, 'Strain from classical and merged db comparable')
+                            1d-10, 'Straintrace from classical and merged db comparable')
    end do
 
-   allocate(utemp_merged(sem_data%ndumps, 6, 4))
+   allocate(utemp_merged(sem_data%ndumps, 6, 4, 1))
    allocate(utemp_classical(sem_data%ndumps, 6, 4))
 
    xi = 3.0114868226377788E-002
@@ -365,12 +366,12 @@ subroutine test_readfields_load_fw_points_merged
                     76822, 76835, 76836, 76837, 76838]
 
    utemp_merged = load_strain_point_merged(sem_data_merged%fwd(1),  &
-                                           xi, eta, &
+                                           [xi], [eta], &
                                            'straintensor_full',   &
-                                           corner_points, &
-                                           eltype,  &
-                                           axis, &
-                                           id_elem = id_elem)              
+                                           reshape(corner_points, [4,2,1]), &
+                                           [eltype],  &
+                                           [axis], &
+                                           [id_elem])              
 
    do isim = 1, 4
      utemp_classical(:,:,isim) = load_strain_point_interp(sem_data%fwd(isim), &
@@ -386,6 +387,7 @@ subroutine test_readfields_load_fw_points_merged
    istraindim = 0
    do isim = 1, 4
      do idim = 1, 6
+       print *, isim, idim
        istraindim = istraindim + 1
        write(fnam, '("./output/strain_classical_", I2.2)') istraindim
        open(newunit=lu_resstrain, file=trim(fnam), action='write')
@@ -397,11 +399,11 @@ subroutine test_readfields_load_fw_points_merged
        write(fnam, '("./output/strain_merged_", I2.2)') istraindim
        open(newunit=lu_resstrain, file=trim(fnam), action='write')
        do i=1, sem_data%ndumps
-         write(lu_resstrain, *) utemp_merged(i, idim, isim)
+         write(lu_resstrain, *) utemp_merged(i, idim, isim, 1)
        end do
        close(lu_resstrain)
      end do
-     call assert_comparable(utemp_classical(:,:,isim), utemp_merged(:,:,isim), &
+     call assert_comparable(utemp_classical(:,:,isim), utemp_merged(:,:,isim,1), &
                             1d-10, 'Strain from classical and merged db comparable')
    end do
 
