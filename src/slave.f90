@@ -166,7 +166,7 @@ subroutine do_slave()
 
     itask = itask + 1
     write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A, I3, A)') ' Received task # ', itask, ', going to work'
+    write(lu_out,'(A, I6, A)') ' Received task # ', itask, ', going to work'
     write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
@@ -198,7 +198,7 @@ subroutine do_slave()
   end do receive_tasks
 
   write(lu_out,'(A)') '***************************************************************'
-  write(lu_out,'(A, I3, A)') ' All work done. Did ', itask, ' tasks in total'
+  write(lu_out,'(A, I6, A)') ' All work done. Did ', itask, ' tasks in total'
   write(lu_out,'(A)') '***************************************************************'
   call flush(lu_out)
 

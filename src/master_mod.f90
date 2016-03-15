@@ -4,6 +4,7 @@ module master_module
   private
   integer, parameter         :: sp = selected_real_kind(6, 37)
   integer, parameter         :: dp = selected_real_kind(15, 307)
+  integer, parameter         :: long = selected_int_kind(15)
   public :: do_master
 contains
 
@@ -23,7 +24,8 @@ subroutine do_master()
   integer               :: nslaves, rank, ierror
   integer, allocatable  :: output(:,:), sendrequest(:), work_done(:)
   integer               :: mpistatus(MPI_STATUS_SIZE)
-  integer               :: itask, ntasks, ioutput, iclock, iclock_ref, ticks_per_sec
+  integer               :: itask, ntasks, ioutput
+  integer(kind=long)    :: iclock, iclock_ref, ticks_per_sec
   integer               :: itask_result
   real(kind=dp)         :: time
   character(len=64)     :: fmtstring
