@@ -57,7 +57,7 @@ module readfields
         real(kind=dp)                      :: planet_radius
         real(kind=dp)                      :: rmin, rmax
         real(kind=dp)                      :: colatmin, colatmax
-        integer                            :: snap, surf, mesh, seis  ! Group IDs
+        integer                            :: snap, mesh, seis        ! Group IDs
         integer                            :: strainvarid(6)          ! Variable IDs
         integer                            :: displvarid(3)           ! Variable IDs
         integer                            :: mergedvarid             ! Variable IDs
@@ -485,11 +485,7 @@ subroutine open_file_read_varids_and_attributes(nc_obj, filename, merged, parall
 
     if (verbose>0) write(lu_out,format21) nc_obj%ncid, nc_obj%snap 
     
-    call getgrpid(           ncid      = nc_obj%ncid,   &
-                             name      = "Surface",             &
-                             grp_ncid  = nc_obj%surf)
-
-    stf_grp_id = nc_obj%surf
+    stf_grp_id = nc_obj%snap
 
   else ! Merged snapshot file
 
@@ -572,10 +568,6 @@ subroutine reopen_files(this)
                    grp_ncid = this%fwd(ifile)%snap)
 
      call getgrpid(ncid      = this%fwd(ifile)%ncid,   &
-                   name      = "Surface",             &
-                   grp_ncid  = this%fwd(ifile)%surf)
-
-     call getgrpid(ncid      = this%fwd(ifile)%ncid,   &
                    name      = "Mesh",                &
                    grp_ncid  = this%fwd(ifile)%mesh)
   end do
@@ -592,10 +584,6 @@ subroutine reopen_files(this)
      call getgrpid(ncid     = this%bwd(ifile)%ncid,   &
                    name     = "Snapshots",           &
                    grp_ncid = this%bwd(ifile)%snap)
-
-     call getgrpid(ncid      = this%bwd(ifile)%ncid,   &
-                   name      = "Surface",             &
-                   grp_ncid  = this%bwd(ifile)%surf)
 
      call getgrpid(ncid      = this%bwd(ifile)%ncid,   &
                    name      = "Mesh",                &
@@ -2205,21 +2193,21 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       load_strain_point_merged(:, 6, :, :) = - load_strain_point_merged(:, 6, :, :) 
     end if
 
-    !if (use_buffer_loc) then
-    !  select case(strain_type)
-    !  case('straintensor_trace')
-    !    do ipoint = 1, npoints
-    !      temp = sem_obj%buffer_strain%put(id_elem(ipoint), &
-    !                                       straintrace(:,:,:,:,ipoint))
-    !    end do
-    !  case('straintensor_full')
-    !    do ipoint = 1, npoints
-    !      temp = sem_obj%buffer_strain%put(id_elem(ipoint), &
-    !                                       strain(:,:,:,:,:,ipoint))
-    !    end do
-    !  end select
-    !  iclockold = tick(id=id_buffer, since=iclockold)
-    !end if
+    if (use_buffer_loc) then
+      select case(strain_type)
+      case('straintensor_trace')
+        do ipoint = 1, npoints
+          temp = sem_obj%buffer_strain%put(id_elem(ipoint), &
+                                           straintrace(:,:,:,:,ipoint))
+        end do
+      case('straintensor_full')
+        do ipoint = 1, npoints
+          temp = sem_obj%buffer_strain%put(id_elem(ipoint), &
+                                           strain(:,:,:,:,:,ipoint))
+        end do
+      end select
+      iclockold = tick(id=id_buffer, since=iclockold)
+    end if
     iclockold_total = tick(id=id_load_strain, since=iclockold_total)
 
 
