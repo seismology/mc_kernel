@@ -96,10 +96,10 @@ def auto_buffer_size(memory_available):
                                ndumps_fwd *  # number of time samples
                                6)            # 6 files (4 fwd, 2 bwd)
 
-    # Rule: Strain buffer gets 90% of the available memory, displ. buffer 10%
-    size_strain_buffer = int(memory_for_buffers * 0.9 /
+    # Rule: Strain buffer gets 60% of the available memory, displ. buffer 40%
+    size_strain_buffer = int(memory_for_buffers * 0.6 /
                              size_one_strain_element)
-    size_disp_buffer = int(memory_for_buffers * 0.1 /
+    size_disp_buffer = int(memory_for_buffers * 0.4 /
                            size_one_disp_element)
                            
     memory_buffers_strain = size_one_strain_element * size_strain_buffer 
@@ -817,7 +817,7 @@ elif args.queue == 'SuperMUC':
         text_out += "poe ./mc_kernel inparam 2>&1  > OUTPUT_0000\n"
         f.write(text_out)
     print 'Submitting to SuperMUC loadleveler queue'
-    subprocess.call(['llsubmit', job_script])
+    #subprocess.call(['llsubmit', job_script])
 
 elif args.queue == 'monch':
     with open(os.path.join(run_dir, 'sbatch.sh'), 'w') as f:
