@@ -1767,24 +1767,24 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
 
 
     if (use_strainbuffer) then
-        if(id_elem<=0) then
-            print *, 'id_elem is zero or smaller: ', id_elem
-            call pabort()
-        end if
+      if(id_elem<=0) then
+          print *, 'id_elem is zero or smaller: ', id_elem
+          call pabort()
+      end if
 
-        iclockold = tick()
+      iclockold = tick()
 
-        select case(strain_type)
-        case('straintensor_trace')
-            status = sem_obj%buffer_strain%get(id_elem, straintrace)
-        case('straintensor_full')
-            status = sem_obj%buffer_strain%get(id_elem, strain)
-        case default
-            status = - 1
-        end select
-        iclockold = tick(id=id_buffer, since=iclockold)
+      select case(strain_type)
+      case('straintensor_trace')
+          status = sem_obj%buffer_strain%get(id_elem, straintrace)
+      case('straintensor_full')
+          status = sem_obj%buffer_strain%get(id_elem, strain)
+      case default
+          status = - 1
+      end select
+      iclockold = tick(id=id_buffer, since=iclockold)
     else
-        status = - 1
+      status = - 1
     end if
 
     if (status.ne.0) then
@@ -1840,7 +1840,10 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
                    !call flush(6)
                    iclockold = tick(id=id_netcdf, since=iclockold)
                    utemp(:,ipol,jpol, idisplvar) &
-                        = utemp_chunk(pointids(ipol,jpol) - start_chunk + 1,:,idisplvar)
+                        = real(utemp_chunk(pointids(ipol,jpol) - start_chunk + 1, &
+                                           :,                                     &
+                                           idisplvar),                            &
+                               kind=dp)
                enddo
 
                do iread = 0, sem_obj%chunk_gll - 1
@@ -1877,8 +1880,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
           endif
 
           iclockold = tick(id=id_calc_strain, since=iclockold)
-          !if (use_strainbuffer) & 
-          !    status = sem_obj%buffer_strain%put(id_elem, straintrace)
+          if (use_strainbuffer) & 
+              status = sem_obj%buffer_strain%put(id_elem, straintrace)
 
       case('straintensor_full')
           ! compute full strain tensor
@@ -1903,8 +1906,8 @@ function load_strain_point_interp(sem_obj, pointids, xi, eta, strain_type, nodes
           
           iclockold = tick(id=id_calc_strain, since=iclockold)
 
-          !if (use_strainbuffer) & 
-          !    status = sem_obj%buffer_strain%put(id_elem, strain)
+          if (use_strainbuffer) & 
+              status = sem_obj%buffer_strain%put(id_elem, strain)
 
       end select
     
@@ -1970,11 +1973,15 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
     real(kind=dp)                   :: col_points_xi(0:sem_obj%npol)
     real(kind=dp)                   :: col_points_eta(0:sem_obj%npol)
     real(kind=sp),     allocatable  :: utemp(:,:,:,:,:)
+    real(kind=sp),     allocatable  :: u_batch(:,:,:,:,:)
     integer(kind=long)              :: iclockold_total, iclockold
     integer                         :: status_strain(size(xi,1)), status_disp
     integer                         :: ndirection, i, isim
     integer                         :: ielem_read, nelem_to_read, temp
     logical                         :: use_buffer_loc
+    logical                         :: to_be_read_from_disk(size(xi,1))
+    integer                         :: ielem_in_batch(size(xi,1))
+    integer                         :: first_elem, last_elem
 
     iclockold_total = tick()
 
@@ -2002,6 +2009,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                    1:ndirection,     &
                    npoints))
                    !nelem_to_read_max))
+    utemp = 0
 
     select case(strain_type)
     case('straintensor_trace')
@@ -2041,40 +2049,67 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
 
     end do
 
-    write(lu_out,*) id_elem
-
-
+    to_be_read_from_disk = .true.
     do ipoint = 1, npoints
-      if (status_strain(ipoint).ne.0) then !If not found in strain buffer
+      ! Try displacement buffer
+      iclockold = tick()
+      status_disp = sem_obj%buffer_disp%get(id_elem(ipoint), &
+                                            utemp(:,:,:,:,ipoint))
+      ! If status was zero (successful), then this does not have to be read
+      to_be_read_from_disk(ipoint) = (status_disp.ne.0)
+    end do
 
-        ! Try displacement buffer
-        iclockold = tick()
-        status_disp = sem_obj%buffer_disp%get(id_elem(ipoint), &
-                                              utemp(:,:,:,:,ipoint))
-        
-        if (status_disp.ne.0) then !If not found in displacement buffer, load from disk
-          iclockold = tick(id=id_buffer, since=iclockold)
-          
-          !nelem_to_read = min(sem_obj%nelem - id_elem + 1, nelem_to_read_max)
-          call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
-                                  varid  = sem_obj%mergedvarid,               &
-                                  start  = [1, 1, 1, 1, id_elem(ipoint)],     &
-                                  count  = [sem_obj%ndumps, sem_obj%npol+1,   &
-                                            sem_obj%npol+1, ndirection,       &
-                                            1], & !nelem_to_read],                   &
-                                  values = utemp(:,:,:,:,ipoint)))
-          iclockold = tick(id=id_netcdf, since=iclockold)
+    if (any(to_be_read_from_disk)) then
+      first_elem = minval(id_elem, mask=to_be_read_from_disk)
+      last_elem  = maxval(id_elem, mask=to_be_read_from_disk) 
+      nelem_to_read = last_elem - first_elem + 1
 
-          where (utemp.ne.utemp) utemp=0.0
-          if (any(utemp.ne.utemp)) print *, 'Found NaN in utemp!'
-          !!status_disp = sem_obj%buffer_disp%put(id_elem(ipoint),  &
-          !!                                      utemp(:,:,:,:,1))
-          !do ielem_read = 1, 1 !nelem_to_read
-          !  status_disp = sem_obj%buffer_disp%put(id_elem(ipoint) + ielem_read - 1, &
-          !                                        utemp(:,:,:,:,ielem_read))
-          !end do
+      write(lu_out, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem
+
+      allocate(u_batch(1:sem_obj%ndumps, &
+                       0:sem_obj%npol,   &
+                       0:sem_obj%npol,   &
+                       1:ndirection,     &
+                       nelem_to_read))
+      u_batch = 0
+      !if (nelem_to_read < 64) then
+      do ipoint = 1, npoints
+        if (to_be_read_from_disk(ipoint)) then
+          ielem_in_batch(ipoint) = id_elem(ipoint) + 1 - first_elem
         end if
-        iclockold = tick(id=id_buffer, since=iclockold)
+      end do
+
+      iclockold = tick()
+      call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
+                              varid  = sem_obj%mergedvarid,               &
+                              start  = [1, 1, 1, 1, first_elem],          &
+                              count  = [sem_obj%ndumps, sem_obj%npol+1,   &
+                                        sem_obj%npol+1, ndirection,       &
+                                        nelem_to_read],                   &
+                              values = u_batch(:,:,:,:,1:nelem_to_read)))
+      iclockold = tick(id=id_netcdf, since=iclockold)
+
+      do ielem_read = 1, nelem_to_read
+        status_disp = sem_obj%buffer_disp%put(first_elem + ielem_read - 1, &
+                                              u_batch(:,:,:,:,ielem_read))
+      end do
+
+      do ipoint = 1, npoints
+        if (to_be_read_from_disk(ipoint)) then
+          utemp(:,:,:,:,ipoint) = u_batch(:,:,:,:,ielem_in_batch(ipoint))
+        end if
+      end do
+
+    else
+      write(lu_out, *) 'nelem: 0, all in buffer'
+    end if
+      
+    if (any(utemp.ne.utemp)) print *, 'Found NaN in utemp!'
+
+    !end if
+
+    calc_strain_npoints: do ipoint = 1, npoints
+      if (status_strain(ipoint).ne.0) then !If not found in strain buffer
 
         if (axis(ipoint)) then
             G  = sem_obj%G2
@@ -2103,11 +2138,6 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                            element_type = element_type(ipoint), &
                                            axial = axis(ipoint))
           iclockold = tick(id=id_calc_strain, since=iclockold)
-          !if (use_buffer_loc) then
-          !  temp = sem_obj%buffer_strain%put(id_elem(ipoint), &
-          !                                     straintrace(:,:,:,:,ipoint))
-          !end if
-          iclockold = tick(id=id_buffer, since=iclockold)
 
         case('straintensor_full')
           ! compute full strain tensor
@@ -2123,22 +2153,21 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                  element_type = element_type(ipoint), &
                                  axial = axis(ipoint))
 
-          if (any(strain.ne.strain)) print *, 'Found NaN!'
-
           iclockold = tick(id=id_calc_strain, since=iclockold)
-          !if (use_buffer_loc) then
-          !  temp = sem_obj%buffer_strain%put(id_elem(ipoint), &
-          !                                   strain(:,:,:,:,:,ipoint))
-          !end if
-          iclockold = tick(id=id_buffer, since=iclockold)
         end select
 
       end if
+
+      select case(strain_type)
+      case('straintensor_trace')
+        if (any(straintrace.ne.straintrace)) print *, 'Found NaN in straintrace, ipoint:', ipoint
+      case('straintensor_full')
+        if (any(strain.ne.strain)) print *, 'Found NaN in strain, ipoint:', ipoint
+      end select
       iclockold = tick()
-    end do
+    end do calc_strain_npoints
 
-    do ipoint = 1, npoints
-
+    interpolate_npoints: do ipoint = 1, npoints
       select case(strain_type)
       case('straintensor_trace')
         do isim = 1, sem_obj%nsim_merged
@@ -2162,13 +2191,13 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
           enddo
         enddo
 
-        if (any(load_strain_point_merged.ne.load_strain_point_merged)) print *, 'Found NaN in lspm!'
+        if (any(load_strain_point_merged.ne.load_strain_point_merged)) print *, 'Found NaN in lspm, ipoint:', ipoint
 
       end select
       iclockold = tick(id=id_lagrange, since=iclockold)
 
 
-    end do ! npoints
+    end do interpolate_npoints
 
     if (trim(strain_type).eq.'straintensor_full') then
       !@TODO for consistency with SOLVER output
@@ -2176,6 +2205,21 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       load_strain_point_merged(:, 6, :, :) = - load_strain_point_merged(:, 6, :, :) 
     end if
 
+    !if (use_buffer_loc) then
+    !  select case(strain_type)
+    !  case('straintensor_trace')
+    !    do ipoint = 1, npoints
+    !      temp = sem_obj%buffer_strain%put(id_elem(ipoint), &
+    !                                       straintrace(:,:,:,:,ipoint))
+    !    end do
+    !  case('straintensor_full')
+    !    do ipoint = 1, npoints
+    !      temp = sem_obj%buffer_strain%put(id_elem(ipoint), &
+    !                                       strain(:,:,:,:,:,ipoint))
+    !    end do
+    !  end select
+    !  iclockold = tick(id=id_buffer, since=iclockold)
+    !end if
     iclockold_total = tick(id=id_load_strain, since=iclockold_total)
 
 
