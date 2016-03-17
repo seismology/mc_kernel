@@ -32,11 +32,12 @@ module readfields
     public                                 :: load_strain_point_merged, load_strain_point_interp
 
     integer, parameter                     :: min_file_version = 3
-    integer, parameter                     :: nelem_to_read_max = 16 !< How many elements to read 
+    integer                                :: nelem_to_read_max      !< How many elements to read 
                                                                      !! for the merged database case.
     integer, parameter                     :: nmodel_parameters_sem_file = 6 !< For the anisotropic
                                                                              !! case. Will increase
                                                                              !! for attenuation
+    real(kind=sp),     allocatable         :: u_batch(:,:,:,:,:)
 
     type meshtype
         real(kind=sp), allocatable         :: s(:), z(:)            !< Coordinates of all GLL points
@@ -231,6 +232,7 @@ subroutine set_params(this, fwd_dir, bwd_dir, strain_buffer_size, displ_buffer_s
                      ', Dimension of wavefields: ', this%ndim
 
     this%parallel_read = parallel_read
+    write(lu_out, *) 'Using Parallel NetCDF4: ', this%parallel_read
 
     call flush(lu_out)
     this%params_set = .true.
@@ -311,7 +313,6 @@ subroutine open_files(this)
       this%bwd(ifile)%count_error_pointoutside = 0
     end do
 
-
     call flush(lu_out)
 
 end subroutine open_files
@@ -331,6 +332,17 @@ subroutine init_merged_buffer(nc_obj, displ_buffer_size, strain_buffer_size, &
                                    nc_obj%npol+1,     &
                                    nc_obj%npol+1,     &
                                    nint(nc_obj%nsim_merged*2.5))
+
+  nelem_to_read_max = int(displ_buffer_size / 4)
+
+  if (.not.allocated(u_batch)) then
+    allocate(u_batch(nc_obj%ndumps,                  &
+                     0:nc_obj%npol,                  &
+                     0:nc_obj%npol,                  &
+                     1:10,                           &
+                     nelem_to_read_max))
+  end if
+
   select case(strain_type)
   case('straintensor_trace')
     status = nc_obj%buffer_strain%init(strain_buffer_size, &
@@ -640,6 +652,8 @@ subroutine close_files(this)
 
     deallocate(this%fwd)
     deallocate(this%bwd)
+
+    if (allocated(u_batch)) deallocate(u_batch)
 
     call flush(lu_out)
 
@@ -1343,10 +1357,10 @@ function load_bw_points(this, coordinates, receiver)
 
 
     if (this%merged_bwd) then
-      utemp_nsim = load_strain_point_merged(this%bwd(1),                    &
-                                       xi, eta, this%strain_type,      &
-                                       corner_points, eltype, &
-                                       axis, id_elem)              
+      utemp_nsim = load_strain_point_merged(this%bwd(1),                &
+                                            xi, eta, this%strain_type,  &
+                                            corner_points, eltype,      &
+                                            axis, id_elem)              
       utemp = utemp_nsim(:,:,isim,:) 
     else
       do ipoint = 1, npoints
@@ -1961,7 +1975,6 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
     real(kind=dp)                   :: col_points_xi(0:sem_obj%npol)
     real(kind=dp)                   :: col_points_eta(0:sem_obj%npol)
     real(kind=sp),     allocatable  :: utemp(:,:,:,:,:)
-    real(kind=sp),     allocatable  :: u_batch(:,:,:,:,:)
     integer(kind=long)              :: iclockold_total, iclockold
     integer                         :: status_strain(size(xi,1)), status_disp
     integer                         :: ndirection, i, isim
@@ -2053,38 +2066,59 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       nelem_to_read = last_elem - first_elem + 1
 
       write(lu_out, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem
-
-      allocate(u_batch(1:sem_obj%ndumps, &
-                       0:sem_obj%npol,   &
-                       0:sem_obj%npol,   &
-                       1:ndirection,     &
-                       nelem_to_read))
       u_batch = 0
-      !if (nelem_to_read < 64) then
-      do ipoint = 1, npoints
-        if (to_be_read_from_disk(ipoint)) then
-          ielem_in_batch(ipoint) = id_elem(ipoint) + 1 - first_elem
-        end if
-      end do
 
-      iclockold = tick()
-      call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
-                              varid  = sem_obj%mergedvarid,               &
-                              start  = [1, 1, 1, 1, first_elem],          &
-                              count  = [sem_obj%ndumps, sem_obj%npol+1,   &
-                                        sem_obj%npol+1, ndirection,       &
-                                        nelem_to_read],                   &
-                              values = u_batch(:,:,:,:,1:nelem_to_read)))
-      iclockold = tick(id=id_netcdf, since=iclockold)
+      nread_larger_max: if (nelem_to_read < nelem_to_read_max) then
+        write(lu_out, *) 'reading all at once'
+        do ipoint = 1, npoints
+          if (to_be_read_from_disk(ipoint)) then
+            ielem_in_batch(ipoint) = id_elem(ipoint) + 1 - first_elem
+          end if
+        end do
+
+        iclockold = tick()
+        call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
+                                varid  = sem_obj%mergedvarid,               &
+                                start  = [1, 1, 1, 1, first_elem],          &
+                                count  = [sem_obj%ndumps, sem_obj%npol+1,   &
+                                          sem_obj%npol+1, ndirection,       &
+                                          nelem_to_read],                   &
+                                values = u_batch(:,:,:,1:ndirection,1:nelem_to_read)))
+        iclockold = tick(id=id_netcdf, since=iclockold)
+
+      else 
+        write(lu_out, *) 'reading one at a time'
+        nelem_to_read = npoints
+        ielem_in_batch(1:npoints) = id_elem(1:npoints)
+
+        do ipoint = 1, npoints
+          call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
+                                  varid  = sem_obj%mergedvarid,               &
+                                  start  = [1, 1, 1, 1, ielem_in_batch(ipoint)], &
+                                  count  = [sem_obj%ndumps, sem_obj%npol+1,   &
+                                            sem_obj%npol+1, ndirection,       &
+                                            1],                               &
+                                  values = u_batch(:,                         &
+                                                   :,                         &
+                                                   :,                         &
+                                                   1:ndirection,              &
+                                                   ielem_in_batch(ipoint))))
+        end do
+
+      end if nread_larger_max
 
       do ielem_read = 1, nelem_to_read
         status_disp = sem_obj%buffer_disp%put(first_elem + ielem_read - 1, &
-                                              u_batch(:,:,:,:,ielem_read))
+                                              u_batch(:,                   &
+                                                      :,                   &
+                                                      :,                   &
+                                                      1:ndirection,        &
+                                                      ielem_read))
       end do
 
       do ipoint = 1, npoints
         if (to_be_read_from_disk(ipoint)) then
-          utemp(:,:,:,:,ipoint) = u_batch(:,:,:,:,ielem_in_batch(ipoint))
+          utemp(:,:,:,:,ipoint) = u_batch(:,:,:,1:ndirection,ielem_in_batch(ipoint))
         end if
       end do
 
@@ -2094,7 +2128,6 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       
     if (any(utemp.ne.utemp)) print *, 'Found NaN in utemp!'
 
-    !end if
 
     calc_strain_npoints: do ipoint = 1, npoints
       if (status_strain(ipoint).ne.0) then !If not found in strain buffer
