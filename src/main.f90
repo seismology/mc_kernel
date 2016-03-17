@@ -55,9 +55,9 @@ program kerner_code
     call ppinit()
 
     call ppsplit()
-    if (master) print *, 'Rank: ', myrank, ' is master!', MPI_COMM_NODE
-    if (firstslave) print *, 'Rank: ', myrank, ' is first slave!', MPI_COMM_NODE
-    if (.not.(master.or.ioworker.or.firstslave)) print *, 'Rank: ', myrank, ' is a slave!', MPI_COMM_NODE
+    !if (master) print *, 'Rank: ', myrank, ' is master!', MPI_COMM_NODE
+    !if (firstslave) print *, 'Rank: ', myrank, ' is first slave!', MPI_COMM_NODE
+    !if (.not.(master.or.ioworker.or.firstslave)) print *, 'Rank: ', myrank, ' is a slave!', MPI_COMM_NODE
 
     write(lu_out,*) '***************************************************************'
     write(lu_out,*) ' MPI communication initialized, I have rank', myrank
@@ -73,9 +73,6 @@ program kerner_code
     call parameters%read_source()
     call parameters%read_receiver()
     
-
-
-
     if (master) then
         ! Get type of mesh and number of vertices per element
         

@@ -1,7 +1,7 @@
 !=========================================================================================
 module type_parameter
-    use global_parameters,  only : sp, dp, pi, deg2rad, verbose, lu_out, master, testing, &
-                                   set_parallel_read
+    use global_parameters,  only : sp, dp, pi, deg2rad, verbose, lu_out, master, testing
+                                   
     use source_class,       only : src_param_type
     use kernel,             only : kernelspec_type
     use receiver_class,     only : rec_param_type
@@ -66,6 +66,7 @@ module type_parameter
         logical                              :: sort_mesh_elements   = .false.
         logical                              :: mask_src_rec         = .false.
         logical                              :: create_intermediate  = .false.
+        logical                              :: parallel_read        = .false.
         contains
            procedure, pass                   :: read_parameters
            procedure, pass                   :: read_receiver
@@ -85,7 +86,8 @@ subroutine read_parameters(this, input_file_in)
    integer                         :: lu_inparam_basic, ioerr, narg
    character(len=256)              :: line
    character(len=256)              :: keyword, keyvalue
-   logical                         :: temp_logical, parallel_read_in
+   logical                         :: temp_logical
+   logical                         :: parallel_read_in = .false.
 
    call pbarrier
 
@@ -233,7 +235,7 @@ subroutine read_parameters(this, input_file_in)
            read(keyvalue, *) this%create_intermediate
 
         case('PARALLEL_READING')
-           read(keyvalue, *) parallel_read_in
+           read(keyvalue, *) this%parallel_read
 
         case default
            print *, 'Unknown parameter', trim(keyword)
@@ -282,9 +284,7 @@ subroutine read_parameters(this, input_file_in)
   call pbroadcast_char(this%int_type, 0)
   call pbroadcast_char(this%hetero_file, 0)
   call pbroadcast_char(this%int_scheme, 0)
-
-  call pbroadcast_log(parallel_read_in, 0)
-  call set_parallel_read(parallel_read_in)
+  call pbroadcast_log(this%parallel_read, 0)
 
   select case(lowtrim(this%mesh_file_type))
   case('abaqus') 

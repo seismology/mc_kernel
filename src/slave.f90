@@ -33,7 +33,7 @@ contains
 !-----------------------------------------------------------------------------------------
 subroutine do_slave() 
   use global_parameters,           only: DIETAG, id_mpi, id_read_params, id_init_fft, &
-                                         id_int_hetero, parallel_read
+                                         id_int_hetero
   use inversion_mesh,              only: inversion_mesh_data_type
   use readfields,                  only: semdata_type
   use heterogeneities,             only: hetero_type
@@ -85,7 +85,7 @@ subroutine do_slave()
                            parameters%displ_buffer_size, & 
                            parameters%strain_type_fwd,    &
                            parameters%source%depth,     &
-                           parallel_read)
+                           parameters%parallel_read)
 
   call sem_data%open_files()
   call sem_data%read_meshes()
