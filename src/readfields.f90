@@ -2086,35 +2086,41 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                 values = u_batch(:,:,:,1:ndirection,1:nelem_to_read)))
         iclockold = tick(id=id_netcdf, since=iclockold)
 
+        do ielem_read = 1, nelem_to_read
+          status_disp = sem_obj%buffer_disp%put(first_elem + ielem_read - 1, &
+                                                u_batch(:,                   &
+                                                        :,                   &
+                                                        :,                   &
+                                                        1:ndirection,        &
+                                                        ielem_read))
+        end do
+
       else 
         write(lu_out, *) 'reading one at a time'
         nelem_to_read = npoints
-        ielem_in_batch(1:npoints) = id_elem(1:npoints)
 
         do ipoint = 1, npoints
+          ielem_in_batch(ipoint) = ipoint
           call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
                                   varid  = sem_obj%mergedvarid,               &
-                                  start  = [1, 1, 1, 1, ielem_in_batch(ipoint)], &
+                                  start  = [1, 1, 1, 1, id_elem(ipoint)],     &
                                   count  = [sem_obj%ndumps, sem_obj%npol+1,   &
                                             sem_obj%npol+1, ndirection,       &
                                             1],                               &
-                                  values = u_batch(:,                         &
-                                                   :,                         &
-                                                   :,                         &
+                                  values = u_batch(1:sem_obj%ndumps,          &
+                                                   0:sem_obj%npol,            &
+                                                   0:sem_obj%npol,            &
                                                    1:ndirection,              &
-                                                   ielem_in_batch(ipoint))))
+                                                   ipoint)))
+          status_disp = sem_obj%buffer_disp%put(id_elem(ipoint),             &
+                                                u_batch(:,                   &
+                                                        :,                   &
+                                                        :,                   &
+                                                        1:ndirection,        &
+                                                        ipoint))
         end do
 
       end if nread_larger_max
-
-      do ielem_read = 1, nelem_to_read
-        status_disp = sem_obj%buffer_disp%put(first_elem + ielem_read - 1, &
-                                              u_batch(:,                   &
-                                                      :,                   &
-                                                      :,                   &
-                                                      1:ndirection,        &
-                                                      ielem_read))
-      end do
 
       do ipoint = 1, npoints
         if (to_be_read_from_disk(ipoint)) then
