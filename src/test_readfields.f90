@@ -265,8 +265,8 @@ end subroutine test_readfields_load_fw_points
 
 !-----------------------------------------------------------------------------------------
 !> Reads straintrace from a coordinate and compare with version from merged databases
-subroutine test_readfields_load_fw_points_merged
-   use readfields,     only    : semdata_type, load_strain_point_merged, load_strain_point_interp
+subroutine test_readfields_load_straintrace_merged
+   use readfields,     only    : semdata_type
    use type_parameter, only    : parameter_type
    implicit none
    type(parameter_type)       :: parameters, parameters_merged
@@ -274,16 +274,13 @@ subroutine test_readfields_load_fw_points_merged
    real(kind=dp), allocatable :: u_classical(:,:,:), u_merged(:,:,:)
    real(kind=dp), allocatable :: straintrace_classical(:,:), straintrace_merged(:,:)
    real(kind=dp)              :: coordinates(3,2), misfit_straintrace
-   integer                    :: ntimes, nomega, i, lu_refstrain, lu_resstrain, istraindim, ivar, idim, isim
+   integer                    :: ntimes, nomega, i, lu_refstrain, lu_resstrain
    character(len=255)         :: message_full, fnam
-   real(kind=dp)              :: xi, eta, corner_points(8)
-   integer                    :: eltype, id_elem, gll_point_ids(25)
-   logical                    :: axis
    real(kind=dp), allocatable :: utemp_classical(:,:,:), utemp_merged(:,:,:,:)
 
    
    ! Classical database
-   call parameters%read_parameters('./inparam_load_wavefield_classical')
+   call parameters%read_parameters('./inparam_load_straintrace_classical')
    call parameters%read_source()
    call parameters%read_receiver()
 
@@ -298,7 +295,7 @@ subroutine test_readfields_load_fw_points_merged
    call sem_data%read_meshes()
 
    ! Merged database
-   call parameters_merged%read_parameters('./inparam_load_wavefield_merged')
+   call parameters_merged%read_parameters('./inparam_load_straintrace_merged')
    call parameters_merged%read_source()
    call parameters_merged%read_receiver()
 
@@ -314,104 +311,322 @@ subroutine test_readfields_load_fw_points_merged
 
 
    ! Read reference strain trace and point coordinates
-   allocate(straintrace_classical(sem_data%ndumps, 6))
-   allocate(straintrace_merged(sem_data%ndumps, 6))
+   allocate(straintrace_classical(sem_data%ndumps, 1))
+   allocate(straintrace_merged(sem_data%ndumps, 1))
+
+   allocate(u_classical(sem_data%ndumps, 1, 2))
+   allocate(u_merged(sem_data%ndumps, 1, 2))
+
+   !----------------------------------------------------
+   ! Forward wavefield
+   coordinates(:,1) = [-1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 2d6, 1d6]
+
+   u_classical(:,:,:)    = sem_data%load_fw_points(coordinates, parameters%source)
+   u_merged(:,:,:)       = sem_data_merged%load_fw_points(coordinates, parameters_merged%source)
+
+   ! Point 1
+   straintrace_classical = u_classical(:, :, 1)
+   straintrace_merged    = u_merged(:, :, 1)
+
+   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                          1d-10, 'Straintrace from classical and merged db comparable (fwd)')
+
+   ! Point 2
+   straintrace_classical = u_classical(:, :, 2)
+   straintrace_merged    = u_merged(:, :, 2)
+
+   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                          1d-10, 'Straintrace from classical and merged db comparable (fwd)')
+
+   ! Test coordinates that result in one IO Access for the two points
+   coordinates(:,1) = [-1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
+
+   u_classical(:,:,:)    = sem_data%load_fw_points(coordinates, parameters%source)
+   u_merged(:,:,:)       = sem_data_merged%load_fw_points(coordinates, parameters_merged%source)
+
+   ! Point 1
+   straintrace_classical = u_classical(:, :, 1)
+   straintrace_merged    = u_merged(:, :, 1)
+
+   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                          1d-10, 'Straintrace from classical and merged db comparable (fwd)')
+
+   ! Point 2
+   straintrace_classical = u_classical(:, :, 2)
+   straintrace_merged    = u_merged(:, :, 2)
+
+   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                          1d-10, 'Straintrace from classical and merged db comparable (fwd)')
+
+   !----------------------------------------------------
+   ! Backward wavefield
+   coordinates(:,1) = [-1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 2d6, 1d6]
+
+   u_classical(:,:,:)    = sem_data%load_bw_points(coordinates, parameters%receiver(1))
+   u_merged(:,:,:)       = sem_data_merged%load_bw_points(coordinates, parameters_merged%receiver(1))
+
+   ! Point 1
+   straintrace_classical = u_classical(:, :, 1)
+   straintrace_merged    = u_merged(:, :, 1)
+
+   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                          1d-10, 'Straintrace from classical and merged db comparable (bwd)')
+
+   ! Point 2
+   straintrace_classical = u_classical(:, :, 2)
+   straintrace_merged    = u_merged(:, :, 2)
+
+   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                          1d-10, 'Straintrace from classical and merged db comparable (bwd)')
+
+   ! Test coordinates that result in one IO Access for the two points
+   coordinates(:,1) = [-1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
+
+   u_classical(:,:,:)    = sem_data%load_bw_points(coordinates, parameters%receiver(1))
+   u_merged(:,:,:)       = sem_data_merged%load_bw_points(coordinates, parameters_merged%receiver(1))
+
+   ! Point 1
+   straintrace_classical = u_classical(:, :, 1)
+   straintrace_merged    = u_merged(:, :, 1)
+
+   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                          1d-10, 'Straintrace from classical and merged db comparable (bwd)')
+
+   ! Point 2
+   straintrace_classical = u_classical(:, :, 2)
+   straintrace_merged    = u_merged(:, :, 2)
+
+   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                          1d-10, 'Straintrace from classical and merged db comparable (bwd)')
+
+   call sem_data%close_files()
+   call sem_data_merged%close_files()
+
+   ! Write out some results
+   !write(fnam, '("./output/straintrace_fwd_classical_")') 
+   !open(newunit=lu_resstrain, file=trim(fnam), action='write')
+   !do i=1, sem_data%ndumps
+   !  write(lu_resstrain, *) straintrace_classical(i, 1)
+   !end do
+   !close(lu_resstrain)
+
+   !write(fnam, '("./output/straintrace_fwd_merged_")') 
+   !open(newunit=lu_resstrain, file=trim(fnam), action='write')
+   !do i=1, sem_data%ndumps
+   !  write(lu_resstrain, *) straintrace_merged(i, 1)
+   !end do
+   !close(lu_resstrain)
+   !
+   !write(fnam, '("./output/straintrace_bwd_classical")') 
+   !open(newunit=lu_resstrain, file=trim(fnam), action='write')
+   !do i=1, sem_data%ndumps
+   !  write(lu_resstrain, *) straintrace_classical(i, 1)
+   !end do
+   !close(lu_resstrain)
+
+   !write(fnam, '("./output/straintrace_bwd_merged")') 
+   !open(newunit=lu_resstrain, file=trim(fnam), action='write')
+   !do i=1, sem_data%ndumps
+   !  write(lu_resstrain, *) straintrace_merged(i, 1)
+   !end do
+   !close(lu_resstrain)
+
+
+end subroutine test_readfields_load_straintrace_merged
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> Reads strain from a coordinate and compare with version from merged databases
+subroutine test_readfields_load_strain_merged
+   use readfields,     only    : semdata_type
+   use type_parameter, only    : parameter_type
+   implicit none
+   type(parameter_type)       :: parameters, parameters_merged
+   type(semdata_type)         :: sem_data, sem_data_merged
+   real(kind=dp), allocatable :: u_classical(:,:,:), u_merged(:,:,:)
+   real(kind=dp), allocatable :: strain_classical(:,:), strain_merged(:,:)
+   real(kind=dp)              :: coordinates(3,2), misfit_straintrace
+   integer                    :: ntimes, nomega, i, lu_refstrain, lu_resstrain, istraindim
+   character(len=255)         :: message_full, fnam
+   real(kind=dp), allocatable :: utemp_classical(:,:,:), utemp_merged(:,:,:,:)
+
+   
+   ! Classical database
+   call parameters%read_parameters('./inparam_load_strain_classical')
+   call parameters%read_source()
+   call parameters%read_receiver()
+
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 100,                         &
+                            displ_buffer_size    = 100,                         &
+                            strain_type          = parameters%strain_type_fwd,  &
+                            desired_source_depth = parameters%source%depth,     &
+                            parallel_read        = .false.)
+   call sem_data%open_files()
+   call sem_data%read_meshes()
+
+   ! Merged database
+   call parameters_merged%read_parameters('./inparam_load_strain_merged')
+   call parameters_merged%read_source()
+   call parameters_merged%read_receiver()
+
+   call sem_data_merged%set_params(fwd_dir              = parameters_merged%fwd_dir,          &
+                                   bwd_dir              = parameters_merged%bwd_dir,          &
+                                   strain_buffer_size   = 100,                         &
+                                   displ_buffer_size    = 100,                         &
+                                   strain_type          = parameters_merged%strain_type_fwd,  &
+                                   desired_source_depth = parameters_merged%source%depth,     &
+                                   parallel_read        = .false.)
+   call sem_data_merged%open_files()
+   call sem_data_merged%read_meshes()
+
+
+   ! Read reference strain trace and point coordinates
+   allocate(strain_classical(sem_data%ndumps, 6))
+   allocate(strain_merged(sem_data%ndumps, 6))
 
    allocate(u_classical(sem_data%ndumps, 6, 2))
    allocate(u_merged(sem_data%ndumps, 6, 2))
 
    coordinates(:,1) = [-1d6, 1d6, 1d6]
-   coordinates(:,1) = [-1d6, 2d6, 1d6]
+   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
+
+   !----------------------------------------------------
+   ! Forward wavefield
+   coordinates(:,1) = [-1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 2d6, 1d6]
 
    u_classical(:,:,:)    = sem_data%load_fw_points(coordinates, parameters%source)
    u_merged(:,:,:)       = sem_data_merged%load_fw_points(coordinates, parameters_merged%source)
-   straintrace_classical = u_classical(:, :, 1)
-   straintrace_merged    = u_merged(:, :, 1)
 
-   do istraindim = 1, 6
-     print *, istraindim
-     write(fnam, '("./output/straintrace_classical_", I1)') istraindim
-     open(newunit=lu_resstrain, file=trim(fnam), action='write')
-     do i=1, sem_data%ndumps
-       write(lu_resstrain, *) straintrace_classical(i, istraindim)
-     end do
-     close(lu_resstrain)
+   ! Point 1
+   strain_classical = u_classical(:, :, 1)
+   strain_merged    = u_merged(:, :, 1)
 
-     write(fnam, '("./output/straintrace_merged", I1)') istraindim
-     open(newunit=lu_resstrain, file=trim(fnam), action='write')
-     do i=1, sem_data%ndumps
-       write(lu_resstrain, *) straintrace_merged(i, istraindim)
-     end do
-     close(lu_resstrain)
-     call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                            1d-10, 'Straintrace from classical and merged db comparable')
-   end do
+   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                          1d-10, 'Strain from classical and merged db comparable (fwd)')
 
-   allocate(utemp_merged(sem_data%ndumps, 6, 4, 1))
-   allocate(utemp_classical(sem_data%ndumps, 6, 4))
+   ! Point 2
+   strain_classical = u_classical(:, :, 2)
+   strain_merged    = u_merged(:, :, 2)
 
-   xi = 3.0114868226377788E-002
-   eta  = -0.93991857519766830     
-   corner_points = [2205656.75, 2255203.50, &
-                    2396723.25, 2344067.50, &    
-                    1054760.875, 944192.6875, &
-                    1003443.1875, 1120949.875]
-   eltype = 0
-   axis = .false.
-   id_elem = 4728
-   gll_point_ids = [77082, 77095, 77096, 77097, 77098, &
-                    77086, 77099, 77100, 77101, 77102, &
-                    77090, 77103, 77104, 77105, 77106, &
-                    77094, 77107, 77108, 77109, 77110, &
-                    76822, 76835, 76836, 76837, 76838]
+   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                          1d-10, 'Strain from classical and merged db comparable (fwd)')
 
-   utemp_merged = load_strain_point_merged(sem_data_merged%fwd(1),  &
-                                           [xi], [eta], &
-                                           'straintensor_full',   &
-                                           reshape(corner_points, [4,2,1]), &
-                                           [eltype],  &
-                                           [axis], &
-                                           [id_elem])              
+   ! Test coordinates that result in one IO Access for the two points
+   coordinates(:,1) = [-1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
 
-   do isim = 1, 4
-     utemp_classical(:,:,isim) = load_strain_point_interp(sem_data%fwd(isim), &
-                                                          gll_point_ids,  &
-                                                          xi, eta, &
-                                                          'straintensor_full',      &
-                                                          corner_points, &
-                                                          eltype, &
-                                                          axis, &
-                                                          id_elem = id_elem)     
-   end do 
+   u_classical(:,:,:)    = sem_data%load_fw_points(coordinates, parameters%source)
+   u_merged(:,:,:)       = sem_data_merged%load_fw_points(coordinates, parameters_merged%source)
 
-   istraindim = 0
-   do isim = 1, 4
-     do idim = 1, 6
-       print *, isim, idim
-       istraindim = istraindim + 1
-       write(fnam, '("./output/strain_classical_", I2.2)') istraindim
-       open(newunit=lu_resstrain, file=trim(fnam), action='write')
-       do i=1, sem_data%ndumps
-         write(lu_resstrain, *) utemp_classical(i, idim, isim)
-       end do
-       close(lu_resstrain)
+   ! Point 1
+   strain_classical = u_classical(:, :, 1)
+   strain_merged    = u_merged(:, :, 1)
 
-       write(fnam, '("./output/strain_merged_", I2.2)') istraindim
-       open(newunit=lu_resstrain, file=trim(fnam), action='write')
-       do i=1, sem_data%ndumps
-         write(lu_resstrain, *) utemp_merged(i, idim, isim, 1)
-       end do
-       close(lu_resstrain)
-     end do
-     call assert_comparable(utemp_classical(:,:,isim), utemp_merged(:,:,isim,1), &
-                            1d-10, 'Strain from classical and merged db comparable')
-   end do
+   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                          1d-10, 'Strain from classical and merged db comparable (fwd)')
 
+   ! Point 2
+   strain_classical = u_classical(:, :, 2)
+   strain_merged    = u_merged(:, :, 2)
+
+   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                          1d-10, 'Strain from classical and merged db comparable (fwd)')
+
+   !----------------------------------------------------
+   ! Backward wavefield
+   coordinates(:,1) = [-1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 2d6, 1d6]
+
+   u_classical(:,:,:)    = sem_data%load_bw_points(coordinates, parameters%receiver(1))
+   u_merged(:,:,:)       = sem_data_merged%load_bw_points(coordinates, parameters_merged%receiver(1))
+
+   ! Point 1
+   strain_classical = u_classical(:, :, 1)
+   strain_merged    = u_merged(:, :, 1)
+
+   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                          1d-10, 'Strain from classical and merged db comparable (bwd)')
+
+   ! Point 2
+   strain_classical = u_classical(:, :, 2)
+   strain_merged    = u_merged(:, :, 2)
+
+   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                          1d-10, 'Strain from classical and merged db comparable (bwd)')
+
+   ! Test coordinates that result in one IO Access for the two points
+   coordinates(:,1) = [-1d6, 1d6, 1d6]
+   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
+
+   u_classical(:,:,:)    = sem_data%load_bw_points(coordinates, parameters%receiver(1))
+   u_merged(:,:,:)       = sem_data_merged%load_bw_points(coordinates, parameters_merged%receiver(1))
+
+   ! Point 1
+   strain_classical = u_classical(:, :, 1)
+   strain_merged    = u_merged(:, :, 1)
+
+   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                          1d-10, 'Strain from classical and merged db comparable (bwd)')
+
+   ! Point 2
+   strain_classical = u_classical(:, :, 2)
+   strain_merged    = u_merged(:, :, 2)
+
+   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                          1d-10, 'Strain from classical and merged db comparable (bwd)')
+   
+                      
    call sem_data%close_files()
    call sem_data_merged%close_files()
 
-end subroutine test_readfields_load_fw_points_merged
+!   Write some strains to disk. Use that in case errors occur
+!   do istraindim = 1, 6
+!     print *, istraindim
+!     write(fnam, '("./output/strain_fwd_classical_", I1)') istraindim
+!     open(newunit=lu_resstrain, file=trim(fnam), action='write')
+!     do i=1, sem_data%ndumps
+!       write(lu_resstrain, *) strain_classical(i, istraindim)
+!     end do
+!     close(lu_resstrain)
+!
+!     write(fnam, '("./output/strain_fwd_merged_", I1)') istraindim
+!     open(newunit=lu_resstrain, file=trim(fnam), action='write')
+!     do i=1, sem_data%ndumps
+!       write(lu_resstrain, *) strain_merged(i, istraindim)
+!     end do
+!     close(lu_resstrain)
+!   end do
+!
+!   ! Backward wavefield
+!   do istraindim = 1, 6
+!     print *, istraindim
+!     write(fnam, '("./output/strain_bwd_classical_", I1)') istraindim
+!     open(newunit=lu_resstrain, file=trim(fnam), action='write')
+!     do i=1, sem_data%ndumps
+!       write(lu_resstrain, *) strain_classical(i, istraindim)
+!     end do
+!     close(lu_resstrain)
+!
+!     write(fnam, '("./output/strain_bwd_merged_", I1)') istraindim
+!     open(newunit=lu_resstrain, file=trim(fnam), action='write')
+!     do i=1, sem_data%ndumps
+!       write(lu_resstrain, *) strain_merged(i, istraindim)
+!     end do
+!     close(lu_resstrain)
+!     call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+!                            1d-10, 'Strain from classical and merged db comparable (bwd)')
+!   end do
+!
+end subroutine test_readfields_load_strain_merged
 !-----------------------------------------------------------------------------------------
+
 !-----------------------------------------------------------------------------------------
 !> Load a seismogram and compare with instaseis, Z-component
 subroutine test_load_seismograms_rdbm_Z
@@ -994,7 +1209,7 @@ function prem_ani_sub(r0, idom) result(model)
   model%c_eta = 1.
 
   IF(idom==1)THEN       ! upper crustal layer
-     model%c_rho  = 2.6
+     model%c_rho = 2.6
      model%c_vpv = 5.8
      model%c_vsv = 3.2
      model%c_vph = model%c_vpv
@@ -1002,7 +1217,7 @@ function prem_ani_sub(r0, idom) result(model)
      Qmu = 600.0
      Qkappa = 57827.0
   ELSEIF(idom==2)THEN   ! lower crustal layer
-     model%c_rho  = 2.9
+     model%c_rho = 2.9
      model%c_vpv = 6.8
      model%c_vsv = 3.9
      model%c_vph = model%c_vpv
@@ -1010,7 +1225,7 @@ function prem_ani_sub(r0, idom) result(model)
      Qmu = 600.0
      Qkappa = 57827.0
   ELSEIF(idom==3)THEN   ! upper mantle
-     model%c_rho   =  2.6910 + 0.6924 * x_prem
+     model%c_rho  =  2.6910 + 0.6924 * x_prem
      model%c_vpv  =  0.8317 + 7.2180 * x_prem
      model%c_vph  =  3.5908 + 4.6172 * x_prem
      model%c_vsv  =  5.8582 - 1.4678 * x_prem
