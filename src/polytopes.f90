@@ -680,7 +680,7 @@ pure function point_in_tetrahedron(r, p)
 
     ! Since all Di are divided by D0, they should all be positive now
     ! Since the D? are normalized 1d-10 is enough to take care of fp inaccuracy
-    if (any([D1, D2, D3, D4] < -1d-10)) then
+    if (any([D1, D2, D3, D4] < -1d-9)) then
       point_in_tetrahedron(ipoint) = .false.
 
     else

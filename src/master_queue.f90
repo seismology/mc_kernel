@@ -755,6 +755,7 @@ subroutine execute_command_line(command, wait, exitstat, cmdmsg)
 
   exitstat = system(command)
   cmdmsg = 'Ifort-specific replacement for execute_command_line, with meaningless output msg'
+  if (wait) continue
 end subroutine execute_command_line
 # endif
 end module

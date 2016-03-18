@@ -1214,7 +1214,7 @@ subroutine test_set_node_time_data_and_dump
   use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
   character(len=NF90_MAX_NAME)      :: variable_names(3)
-  integer                           :: variable_length(3), chunksizes(2), grp_ncid, id
+  integer                           :: variable_length(3), chunksizes(2), grp_ncid
   integer                           :: ncid, nf_status, varid, dimids(2)
   logical                           :: iscontiguous
   character(len=NF90_MAX_NAME)      :: dim_name
@@ -1368,7 +1368,7 @@ subroutine test_set_cell_time_data_and_dump
   use nc_routines
   type(inversion_mesh_data_type)    :: inv_mesh
   character(len=NF90_MAX_NAME)      :: variable_names(3)
-  integer                           :: variable_length(3), chunksizes(2), grp_ncid, id
+  integer                           :: variable_length(3), chunksizes(2), grp_ncid
   integer                           :: ncid, nf_status, varid, dimids(2)
   logical                           :: iscontiguous
   character(len=NF90_MAX_NAME)      :: dim_name

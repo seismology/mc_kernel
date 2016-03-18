@@ -29,7 +29,6 @@ module background_model
     contains 
       procedure, pass          :: init
       procedure, pass          :: combine
-      procedure, pass          :: get_parameter_names
       procedure, pass          :: weight
   end type
 
@@ -171,8 +170,7 @@ end subroutine combine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function get_parameter_names(this)
-  class(backgroundmodel_type) :: this
+function get_parameter_names()
   character(len=3)            :: get_parameter_names(nmodel_parameters)
 
   get_parameter_names = parameter_name

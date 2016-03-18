@@ -116,7 +116,7 @@ subroutine ppsplit(nslaves_per_node_in)
                                    set_myrank_node, set_nproc_node, &
                                    set_myrank_master_slaves, set_nproc_master_slaves, &
                                    set_firstslave, set_ioworker,    &
-                                   lu_out, ioworker
+                                   ioworker
 
   integer, intent(in), optional :: nslaves_per_node_in !< How many slaves per node?
                                                        !! If this argument is missing, no slave

@@ -64,7 +64,6 @@ module inversion_mesh
       procedure, pass :: tree_sort
       procedure, pass :: get_volume
       procedure, pass :: get_center
-      procedure, pass :: get_model_coeff
       procedure, pass :: point_in_element_onepoint
       procedure, pass :: point_in_element_npoints
       generic         :: point_in_element => point_in_element_onepoint, &
@@ -395,36 +394,36 @@ end function get_center
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function get_model_coeff(this, ielement, modelcoeffid, int_type)
-  !< Depending on the int_type (volumetric or vertex based mode) returns
-  ! model coefficient with id modelcoeffid at the center or the vertices of an element
-  class(inversion_mesh_type)        :: this
-  integer, intent(in)               :: ielement
-  character(len=*), intent(in)      :: modelcoeffid
-  character(len=*), intent(in)      :: int_type
-  real(kind=dp), allocatable        :: get_model_coeff(:)
-  real(kind=dp), allocatable        :: vertices(:,:)
-  real(kind=dp)                     :: center(3) 
-  integer                           :: ivertex
-
-  ! @ TODO: This routine is not quite finished but may become useful
-  ! if one wants to export model coefficients for plotting
-
-  select case(trim(int_type))
-  case('onvertices')  
-    allocate(get_model_coeff(this%nvertices))
-    allocate(vertices(3,this%nvertices))
-    vertices = this%get_element(ielement)
-    do ivertex = 1,this%nvertices           
-      get_model_coeff(ivertex) = 0.d0 ! @ TODO: load_coefficient(vertices(:,1),modelcoeffs_id(icoeff))
-    end do
-  case('volumetric')
-    allocate(get_model_coeff(1))
-    center = this%get_center(ielement)
-    get_model_coeff(1) = 0.d0 ! @ TODO: load_coefficient(center,modelcoeffs_id(icoeff))
-  end select
-
-end function get_model_coeff
+!function get_model_coeff(this, ielement, modelcoeffid, int_type)
+!  !< Depending on the int_type (volumetric or vertex based mode) returns
+!  ! model coefficient with id modelcoeffid at the center or the vertices of an element
+!  class(inversion_mesh_type)        :: this
+!  integer, intent(in)               :: ielement
+!  character(len=*), intent(in)      :: modelcoeffid
+!  character(len=*), intent(in)      :: int_type
+!  real(kind=dp), allocatable        :: get_model_coeff(:)
+!  real(kind=dp), allocatable        :: vertices(:,:)
+!  real(kind=dp)                     :: center(3) 
+!  integer                           :: ivertex
+!
+!  ! @ TODO: This routine is not quite finished but may become useful
+!  ! if one wants to export model coefficients for plotting
+!
+!  select case(trim(int_type))
+!  case('onvertices')  
+!    allocate(get_model_coeff(this%nvertices))
+!    allocate(vertices(3,this%nvertices))
+!    vertices = this%get_element(ielement)
+!    do ivertex = 1,this%nvertices           
+!      get_model_coeff(ivertex) = 0.d0 ! @ TODO: load_coefficient(vertices(:,1),modelcoeffs_id(icoeff))
+!    end do
+!  case('volumetric')
+!    allocate(get_model_coeff(1))
+!    center = this%get_center(ielement)
+!    get_model_coeff(1) = 0.d0 ! @ TODO: load_coefficient(center,modelcoeffs_id(icoeff))
+!  end select
+!
+!end function get_model_coeff
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -2107,6 +2106,8 @@ subroutine execute_command_line(command, wait, exitstat, cmdmsg)
 
   exitstat = system(command)
   cmdmsg = 'Ifort-specific replacement for execute_command_line, with meaningless output msg'
+  ! Just to use wait once
+  if (wait) continue
 end subroutine execute_command_line
 # endif
 !-----------------------------------------------------------------------------------------

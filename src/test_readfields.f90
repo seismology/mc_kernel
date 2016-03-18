@@ -92,7 +92,6 @@ subroutine test_readfields_set_params()
    use type_parameter, only : parameter_type
    type(semdata_type)      :: sem_data
    type(parameter_type)    :: parameters
-   character(len=512)      :: fwd_dir, bwd_dir
 
    call parameters%read_parameters('./inparam_test')
    call parameters%read_source()
@@ -273,10 +272,7 @@ subroutine test_readfields_load_straintrace_merged
    type(semdata_type)         :: sem_data, sem_data_merged
    real(kind=dp), allocatable :: u_classical(:,:,:), u_merged(:,:,:)
    real(kind=dp), allocatable :: straintrace_classical(:,:), straintrace_merged(:,:)
-   real(kind=dp)              :: coordinates(3,2), misfit_straintrace
-   integer                    :: ntimes, nomega, i, lu_refstrain, lu_resstrain
-   character(len=255)         :: message_full, fnam
-   real(kind=dp), allocatable :: utemp_classical(:,:,:), utemp_merged(:,:,:,:)
+   real(kind=dp)              :: coordinates(3,2)
 
    
    ! Classical database
@@ -449,10 +445,7 @@ subroutine test_readfields_load_strain_merged
    type(semdata_type)         :: sem_data, sem_data_merged
    real(kind=dp), allocatable :: u_classical(:,:,:), u_merged(:,:,:)
    real(kind=dp), allocatable :: strain_classical(:,:), strain_merged(:,:)
-   real(kind=dp)              :: coordinates(3,2), misfit_straintrace
-   integer                    :: ntimes, nomega, i, lu_refstrain, lu_resstrain, istraindim
-   character(len=255)         :: message_full, fnam
-   real(kind=dp), allocatable :: utemp_classical(:,:,:), utemp_merged(:,:,:,:)
+   real(kind=dp)              :: coordinates(3,2)
 
    
    ! Classical database
@@ -636,9 +629,8 @@ subroutine test_load_seismograms_rdbm_Z
    type(parameter_type)    :: parameters
    type(semdata_type)      :: sem_data
    type(rfft_type)         :: fft_data
-   integer                 :: nomega, ntimes, ntimes_reference, ikernel
-   real(kind=dp)           :: df, t
-   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   integer                 :: nomega, ntimes, ikernel
+   real(kind=dp)           :: df
    character(len=128)       :: kernel_name
    
    call parameters%read_parameters('./inparam_load_seismogram_Z')
@@ -696,9 +688,8 @@ subroutine test_load_seismograms_rdbm_R
    type(parameter_type)    :: parameters
    type(semdata_type)      :: sem_data
    type(rfft_type)         :: fft_data
-   integer                 :: nomega, ntimes, ntimes_reference, ikernel
-   real(kind=dp)           :: df, t
-   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   integer                 :: nomega, ntimes, ikernel
+   real(kind=dp)           :: df
    character(len=128)       :: kernel_name
    
    call parameters%read_parameters('./inparam_load_seismogram_R')
@@ -756,9 +747,8 @@ subroutine test_load_seismograms_rdbm_T
    type(parameter_type)    :: parameters
    type(semdata_type)      :: sem_data
    type(rfft_type)         :: fft_data
-   integer                 :: nomega, ntimes, ntimes_reference, ikernel
-   real(kind=dp)           :: df, t
-   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   integer                 :: nomega, ntimes, ikernel
+   real(kind=dp)           :: df
    character(len=128)       :: kernel_name
    
    call parameters%read_parameters('./inparam_load_seismogram_T')
@@ -818,9 +808,8 @@ subroutine test_load_seismograms_rdbm_merged_Z
    type(parameter_type)    :: parameters
    type(semdata_type)      :: sem_data
    type(rfft_type)         :: fft_data
-   integer                 :: nomega, ntimes, ntimes_reference, ikernel
-   real(kind=dp)           :: df, t
-   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   integer                 :: nomega, ntimes, ikernel
+   real(kind=dp)           :: df
    character(len=128)       :: kernel_name
    
    call parameters%read_parameters('./inparam_load_seismogram_merged_Z')
@@ -878,9 +867,8 @@ subroutine test_load_seismograms_rdbm_merged_R
    type(parameter_type)    :: parameters
    type(semdata_type)      :: sem_data
    type(rfft_type)         :: fft_data
-   integer                 :: nomega, ntimes, ntimes_reference, ikernel
-   real(kind=dp)           :: df, t
-   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   integer                 :: nomega, ntimes, ikernel
+   real(kind=dp)           :: df
    character(len=128)       :: kernel_name
    
    call parameters%read_parameters('./inparam_load_seismogram_merged_R')
@@ -938,9 +926,8 @@ subroutine test_load_seismograms_rdbm_merged_T
    type(parameter_type)    :: parameters
    type(semdata_type)      :: sem_data
    type(rfft_type)         :: fft_data
-   integer                 :: nomega, ntimes, ntimes_reference, ikernel
-   real(kind=dp)           :: df, t
-   real(kind=dp), allocatable :: seis(:), seis_ref(:)
+   integer                 :: nomega, ntimes, ikernel
+   real(kind=dp)           :: df
    character(len=128)       :: kernel_name
    
    call parameters%read_parameters('./inparam_load_seismogram_merged_T')

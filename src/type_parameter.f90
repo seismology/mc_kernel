@@ -87,7 +87,6 @@ subroutine read_parameters(this, input_file_in)
    character(len=256)              :: line
    character(len=256)              :: keyword, keyvalue
    logical                         :: temp_logical
-   logical                         :: parallel_read_in = .false.
 
    call pbarrier
 

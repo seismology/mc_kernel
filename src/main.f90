@@ -4,9 +4,9 @@ program kerner_code
     use mpi
 #endif
     use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier,&
-                                           pbroadcast_log, ppsplit, MPI_COMM_MASTER_SLAVES, MPI_COMM_NODE
+                                           pbroadcast_log, ppsplit
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           master, ioworker, lu_out, myrank, firstslave
+                                           master, lu_out, myrank
 
     use simple_routines,             only: lowtrim
 
@@ -35,11 +35,9 @@ program kerner_code
     integer                             :: nvertices_per_task
     integer                             :: nbasisfuncs_per_elem
     integer                             :: nbasisfuncs_per_task
-    integer                             :: nslaves_per_node
     logical                             :: plot_wavefields
     integer                             :: ndim
     integer                             :: ndumps
-    integer                             :: narg
     real(kind=sp)                       :: dt
 
     verbose = 0

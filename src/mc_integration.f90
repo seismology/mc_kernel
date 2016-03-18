@@ -104,13 +104,12 @@ end subroutine check_montecarlo_integral
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_relerror, int_over_volume)
+subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_relerror)
     class(integrated_type), intent(inout) :: this 
     integer, intent(in)                   :: nfuncs
     real(kind=dp), intent(in)             :: volume
     real(kind=dp), intent(in)             :: allowed_error
     real(kind=dp), intent(in), optional   :: allowed_relerror
-    logical, intent(in), optional         :: int_over_volume
 
     if(allocated(this%fsum)) deallocate(this%fsum)
     if(allocated(this%f2sum)) deallocate(this%f2sum)

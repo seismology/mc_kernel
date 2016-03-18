@@ -299,7 +299,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   integer                             :: nbasisfuncs_per_elem, nkernel
   integer                             :: nbasekernels = 6
   integer(kind=long)                  :: iclockold, iclockold_element
-  integer                             :: ndim, idump
+  integer                             :: ndim
   integer, parameter                  :: taper_length = 10      !< This is the bare minimum. It does 
                                                                 !! not produce artifacts yet, at least 
                                                                 !! no obvious ones

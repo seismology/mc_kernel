@@ -188,13 +188,12 @@ end subroutine test_background_model_weight
 
 !-----------------------------------------------------------------------------------------
 subroutine test_background_model_get_parameter_names()
-  type(backgroundmodel_type)    :: bg_model
   character(len=3)              :: parameter_names(12)
   character(len=3), parameter   :: parameter_names_ref(12) =            &
                                   ['vp ', 'vs ', 'rho', 'vph', 'vpv', 'vsh', &
                                    'vsv', 'eta', 'phi', 'xi ', 'lam', 'mu ']
   
-  parameter_names = bg_model%get_parameter_names()
+  parameter_names = get_parameter_names()
 
   call assert_true(parameter_names==parameter_names_ref, 'Model parameter names are correct')
 

@@ -65,7 +65,7 @@ subroutine mpi_getvar_by_name_sp_2d(ncid, varname, limits, values, comm)
   real(kind=sp), intent(in), optional        :: limits(2)
   integer, intent(in)                        :: comm
 
-  integer                                    :: nelem_1, nelem_2, myrank, ierror, j
+  integer                                    :: nelem_1, nelem_2, myrank, ierror
 
   call MPI_COMM_RANK(comm, myrank, ierror )
 
@@ -135,7 +135,7 @@ subroutine mpi_getvar_by_name_int_2d(ncid, varname, limits, values, comm)
   integer, intent(in), optional              :: limits(2)
   integer, intent(in)                        :: comm
 
-  integer                                    :: nelem_1, nelem_2, myrank, ierror, j
+  integer                                    :: nelem_1, nelem_2, myrank, ierror
 
   call MPI_COMM_RANK(comm, myrank, ierror )
 
@@ -176,7 +176,7 @@ subroutine mpi_getvar_by_name_int_3d(ncid, varname, limits, values, comm)
   integer, intent(in)                        :: comm
 
   integer                                    :: nelem_1, nelem_2, nelem_3
-  integer                                    :: myrank, ierror, j, k
+  integer                                    :: myrank, ierror
 
   call MPI_COMM_RANK(comm, myrank, ierror )
 

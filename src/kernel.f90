@@ -384,8 +384,8 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
    character(len=*), intent(in)            :: int_scheme
    real(kind=dp)                           :: calc_misfit_kernel(size(timeseries,2))
    real(kind=dp), allocatable              :: timeseries_cut(:)
-   integer                                 :: itrace, ntrace, lu_errorlog, it
-   character(len=64)                       :: fmtstring, fnam_errorlog
+   integer                                 :: itrace, ntrace !, lu_errorlog, it
+   !character(len=64)                       :: fmtstring, fnam_errorlog
 
    ntrace = size(timeseries,2)
 
