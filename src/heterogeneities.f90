@@ -77,9 +77,9 @@ subroutine load_het_rtpv(this, het_file)
     sph(3) = p * deg2rad ! convert to rad
     ! routine takes r[m],phi[rad],theta[rad]         
     call spherical_to_cartesian_point(sph,car)
-    this%coords(1,i)=car(1) ! x
-    this%coords(2,i)=car(2) ! y
-    this%coords(3,i)=car(3) ! z
+    this%coords(1,i) = real(car(1), kind=sp) ! x
+    this%coords(2,i) = real(car(2), kind=sp) ! y
+    this%coords(3,i) = real(car(3), kind=sp) ! z
   end do
   close(iinput_hetero)
 

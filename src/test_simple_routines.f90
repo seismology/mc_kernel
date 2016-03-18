@@ -154,7 +154,7 @@ subroutine test_absreldiff_sp
   
   ! Test 1: Compare 1 with 0.999
   number1 = 1
-  number2 = 1 + 1d-03
+  number2 = 1 + 1e-03
   
   diff = absreldiff(number1, number2)
   call assert_comparable(diff, 1e-03, 1e-03, '1: Relative difference is computed correctly')
@@ -369,7 +369,7 @@ subroutine test_cross_qp
   v1 = [3, -2, 9]
   v2 = [-1, 8, 2]
 
-  prod = cross(v1, v2)
+  prod = real(cross(v1, v2), kind=dp)
   prod_ref =  [-76, -15, 22]
 
   call assert_comparable(prod, prod_ref, 1d-7, 'Cross product correct')
@@ -378,7 +378,7 @@ subroutine test_cross_qp
   call random_number(v1)
   v2 = 2 * v1
 
-  prod = cross(v1, v2)
+  prod = real(cross(v1, v2), kind=dp)
   prod_ref = [0, 0, 0]
   call assert_comparable(prod, prod_ref, 1d-7, 'Cross product of parallel vectors is zero')
                 
@@ -391,7 +391,7 @@ subroutine test_cross_qp
   v2(2) = -v1(1)
   v2(3) = 0
 
-  prod = cross(v1, v2)
+  prod = real(cross(v1, v2), kind=dp)
 
   call assert_comparable(norm2(prod), norm2(real(v1, kind=dp))*norm2(real(v2, kind=dp)), 1d-15, &
                          'Length of cross product of orthogonal vectors is product of their length')
@@ -401,7 +401,7 @@ subroutine test_cross_qp
   call random_number(v1)
   call random_number(v2)
 
-  prod = cross(v1, v2)
+  prod = real(cross(v1, v2), kind=dp)
 
   call assert_comparable(real(1+dot_product(v1, prod), kind=dp), 1d0, 1d-15, &
                          'Cross product is orthogonal to vector 1')

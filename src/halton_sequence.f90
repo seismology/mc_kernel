@@ -117,7 +117,7 @@ subroutine get_halton(r)
 
     do while ( any(seed2(:) /= 0) )
       digit(:) = mod(seed2(:), base(i_dim))
-      r(i_dim,:) = r(i_dim,:) + digit(:) * base_inv
+      r(i_dim,:) = r(i_dim,:) + real(digit(:) * base_inv, kind=dp)
       base_inv = base_inv / base(i_dim)
       seed2(:) = seed2(:) / base(i_dim)
     end do

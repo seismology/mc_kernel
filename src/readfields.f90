@@ -1576,7 +1576,7 @@ function load_strain_point_interp_seismogram(sem_obj, pointids, xi, eta, nodes, 
                                              0:sem_obj%npol,   &
                                              0:sem_obj%npol,   &
                                              3)
-    real(kind=sp)                   :: strain(1:sem_obj%ndumps, &
+    real(kind=dp)                   :: strain(1:sem_obj%ndumps, &
                                               0:sem_obj%npol,   &
                                               0:sem_obj%npol,   &
                                               6)

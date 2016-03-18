@@ -666,7 +666,7 @@ function loggabor(f, p_c, sigma, tshift)             !< Log-Gabor filter as empl
     loggabor = 0
     
     ! Calculate phase shift operator
-    phase_shift = exp(cmplx(0d0, -2d0*pi) * f * tshift)
+    phase_shift = exp(cmplx(0d0, -2d0*pi, kind=dp) * f * tshift)
 
     ! Calculate filter itself
     where (f>0.0d0) loggabor = exp( -(log(f/f_c))**2 / ( 2 * log(sigma)**2) )

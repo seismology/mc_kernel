@@ -229,7 +229,7 @@ function get_vertices(this)
     call pabort 
   end if
 
-  get_vertices = this%vertices
+  get_vertices = real(this%vertices, kind=sp)
 end function
 !-----------------------------------------------------------------------------------------
 
@@ -1222,7 +1222,7 @@ subroutine tree_sort(this)
   use kdtree2_module
   class(inversion_mesh_type)        :: this
   type(kdtree2), pointer            :: tree
-  real(kind=sp)                     :: midpoints(3, this%nelements)
+  real(kind=sp)                     :: midpoints(3, this%nelements) !KD-Tree can handle sp only
   integer                           :: connectivity_sorted(this%nvertices_per_elem, this%nelements)
   integer                           :: i
 
@@ -1231,11 +1231,11 @@ subroutine tree_sort(this)
   case('vox')     
      ! our voxel center coords are sometimes (at the poles) not unique, hence ...
      do i = 1, this%nelements
-        midpoints(:,i) = get_unique_vox(this%get_element(i))
+        midpoints(:,i) = real(get_unique_vox(this%get_element(i)), kind=sp)
      enddo
   case default
      do i = 1, this%nelements
-        midpoints(:,i) = this%get_center(i)
+        midpoints(:,i) = real(this%get_center(i), kind=sp)
      enddo     
   end select
 
@@ -2006,7 +2006,7 @@ subroutine dump_data_xdmf(this, filename)
     '<DataItem Name="points" Dimensions="',i10,' 3" NumberType="Float" Format="',A,'">',/&
     '  ', A,/&
     '</DataItem>',/,/&
-    '<DataItem Name="block" Dimensions="',i10'" NumberType="Int" Format="',A,'">',/&
+    '<DataItem Name="block" Dimensions="',i10,'" NumberType="Int" Format="',A,'">',/&
     '  ', A,/&
     '</DataItem>',/,/&
     '<Grid Name="CellsTime" GridType="Collection" CollectionType="Temporal">',/)

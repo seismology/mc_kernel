@@ -36,9 +36,9 @@ module type_parameter
         character(len=512)                   :: output_file = 'kerner'
         character(len=512)                   :: hetero_file
         character(len=1)                     :: component
-        character(len=32)                    :: int_type
-        character(len=32)                    :: int_scheme = 'PARSEVAL'
-        character(len=32)                    :: dump_type 
+        character(len=512)                   :: int_type
+        character(len=512)                   :: int_scheme = 'PARSEVAL'
+        character(len=512)                   :: dump_type 
         character(len=32)                    :: fftw_plan = 'MEASURE'
         character(len=32)                    :: strain_type_fwd
         integer                              :: nsim_fwd, nsim_bwd

@@ -492,7 +492,7 @@ subroutine pabort(do_traceback)
   character(len=512)            :: msg
 
   call flush(6)
-  print *, 'Processor ', myrank, ' has found an error and aborts computation'
+  write(msg,"('Processor ', I5, ' found an error in line:')") myrank
 
   do_traceback_loc = .true.
   if (present(do_traceback)) do_traceback_loc = do_traceback
@@ -500,11 +500,11 @@ subroutine pabort(do_traceback)
   !if (do_traceback_loc) then
 #   if defined(__GFORTRAN__)
 #   if (__GNUC_MINOR__>=8)
+     print *, 'Processor ', myrank, ' has found an error and aborts computation'
      call backtrace
 #   endif
 #   endif
 #   if defined(__INTEL_COMPILER)
-     write(msg,"('Processor ', I5, ' found an error in line:')") myrank
      call flush(6)
      call tracebackqq(string=msg, status=ierror)
 #   endif

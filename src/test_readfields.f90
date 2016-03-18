@@ -1188,7 +1188,7 @@ function prem_ani_sub(r0, idom) result(model)
   real(kind=dp)                :: r,x_prem
   real(kind=dp)                :: eta_aniso, Qmu, Qkappa
 
-  r = r0 / 1000.
+  r = r0 / 1d3
 
   call model%init(1)
   
@@ -1212,74 +1212,74 @@ function prem_ani_sub(r0, idom) result(model)
      Qmu = 600.0
      Qkappa = 57827.0
   ELSEIF(idom==3)THEN   ! upper mantle
-     model%c_rho  =  2.6910 + 0.6924 * x_prem
-     model%c_vpv  =  0.8317 + 7.2180 * x_prem
-     model%c_vph  =  3.5908 + 4.6172 * x_prem
-     model%c_vsv  =  5.8582 - 1.4678 * x_prem
-     model%c_vsh  = -1.0839 + 5.7176 * x_prem
-     eta_aniso =  3.3687 - 2.4778 * x_prem
+     model%c_rho  = real( 2.6910d0 + 0.6924d0 * x_prem, kind=sp)
+     model%c_vpv  = real( 0.8317d0 + 7.2180d0 * x_prem, kind=sp)
+     model%c_vph  = real( 3.5908d0 + 4.6172d0 * x_prem, kind=sp)
+     model%c_vsv  = real( 5.8582d0 - 1.4678d0 * x_prem, kind=sp)
+     model%c_vsh  = real(-1.0839d0 + 5.7176d0 * x_prem, kind=sp)
+     eta_aniso    = real( 3.3687 - 2.4778 * x_prem, kind=sp)
      Qmu = 600.0
      Qkappa = 57827.0
   ELSEIF(idom==4)THEN
-     model%c_rho  =  7.1089 -  3.8045 * x_prem
-     model%c_vpv = 20.3926 - 12.2569 * x_prem
-     model%c_vsv =  8.9496 -  4.4597 * x_prem
+     model%c_rho = real( 7.1089 -  3.8045 * x_prem, kind=sp)
+     model%c_vpv = real(20.3926 - 12.2569 * x_prem, kind=sp)
+     model%c_vsv = real( 8.9496 -  4.4597 * x_prem, kind=sp)
      model%c_vph = model%c_vpv
      model%c_vsh = model%c_vsv
      Qmu = 143.0
      Qkappa = 57827.0
   ELSEIF(idom==5)THEN
-     model%c_rho  = 11.2494 -  8.0298 * x_prem
-     model%c_vpv = 39.7027 - 32.6166 * x_prem
-     model%c_vsv = 22.3512 - 18.5856 * x_prem
+     model%c_rho = real(11.2494 -  8.0298 * x_prem, kind=sp)
+     model%c_vpv = real(39.7027 - 32.6166 * x_prem, kind=sp)
+     model%c_vsv = real(22.3512 - 18.5856 * x_prem, kind=sp)
      model%c_vph = model%c_vpv
      model%c_vsh = model%c_vsv
      Qmu = 143.0
      Qkappa = 57827.0
   ELSEIF(idom==6)THEN
-     model%c_rho  =  5.3197 - 1.4836 * x_prem
-     model%c_vpv = 19.0957 - 9.8672 * x_prem
-     model%c_vsv =  9.9839 - 4.9324 * x_prem
+     model%c_rho = real( 5.3197 - 1.4836 * x_prem, kind=sp)
+     model%c_vpv = real(19.0957 - 9.8672 * x_prem, kind=sp)
+     model%c_vsv = real( 9.9839 - 4.9324 * x_prem, kind=sp)
      model%c_vph = model%c_vpv
      model%c_vsh = model%c_vsv
      Qmu = 143.0
      Qkappa = 57827.0
   ELSEIF(idom==7)THEN   !lower mantle
-     model%c_rho  =  7.9565 - 6.4761 * x_prem + 5.5283 * x_prem**2 - 3.0807 * x_prem**3
-     model%c_vpv = 29.2766 -23.6027 * x_prem + 5.5242 * x_prem**2 - 2.5514 * x_prem**3
-     model%c_vsv = 22.3459 -17.2473 * x_prem - 2.0834 * x_prem**2 + 0.9783 * x_prem**3
+     model%c_rho = real( 7.9565 - 6.4761 * x_prem + 5.5283 * x_prem**2 - 3.0807 * x_prem**3, kind=sp)
+     model%c_vpv = real(29.2766 -23.6027 * x_prem + 5.5242 * x_prem**2 - 2.5514 * x_prem**3, kind=sp)
+     model%c_vsv = real(22.3459 -17.2473 * x_prem - 2.0834 * x_prem**2 + 0.9783 * x_prem**3, kind=sp)
      model%c_vph = model%c_vpv
      model%c_vsh = model%c_vsv
      Qmu = 312.0
      Qkappa = 57827.0
   ELSEIF(idom==8)THEN
-     model%c_rho  =  7.9565 -  6.4761 * x_prem +  5.5283 * x_prem**2 -  3.0807 * x_prem**3
-     model%c_vpv = 24.9520 - 40.4673 * x_prem + 51.4832 * x_prem**2 - 26.6419 * x_prem**3
-     model%c_vsv = 11.1671 - 13.7818 * x_prem + 17.4575 * x_prem**2 -  9.2777 * x_prem**3
+     model%c_rho = real( 7.9565 -  6.4761 * x_prem +  5.5283 * x_prem**2 -  3.0807 * x_prem**3, kind=sp)
+     model%c_vpv = real(24.9520 - 40.4673 * x_prem + 51.4832 * x_prem**2 - 26.6419 * x_prem**3, kind=sp)
+     model%c_vsv = real(11.1671 - 13.7818 * x_prem + 17.4575 * x_prem**2 -  9.2777 * x_prem**3, kind=sp)
      model%c_vph = model%c_vpv
      model%c_vsh = model%c_vsv
      Qmu = 312.0
      Qkappa = 57827.0
   ELSEIF(idom==9)THEN
-     model%c_rho  =  7.9565 - 6.4761 * x_prem + 5.5283 * x_prem**2 - 3.0807 * x_prem**3
-     model%c_vpv = 15.3891 - 5.3181 * x_prem + 5.5242 * x_prem**2 - 2.5514 * x_prem**3
-     model%c_vsv =  6.9254 + 1.4672 * x_prem - 2.0834 * x_prem**2 + 0.9783 * x_prem**3
+     model%c_rho = real( 7.9565 - 6.4761 * x_prem + 5.5283 * x_prem**2 - 3.0807 * x_prem**3, kind=sp)
+     model%c_vpv = real(15.3891 - 5.3181 * x_prem + 5.5242 * x_prem**2 - 2.5514 * x_prem**3, kind=sp)
+     model%c_vsv = real( 6.9254 + 1.4672 * x_prem - 2.0834 * x_prem**2 + 0.9783 * x_prem**3, kind=sp)
      model%c_vph = model%c_vpv
      model%c_vsh = model%c_vsv
      Qmu = 312.0
      Qkappa = 57827.0
   ELSEIF(idom==10)THEN  ! outer core
-     model%c_rho  = 12.5815 - 1.2638 * x_prem - 3.6426 * x_prem**2 -  5.5281 * x_prem**3
-     model%c_vpv = 11.0487 - 4.0362 * x_prem + 4.8023 * x_prem**2 - 13.5732 * x_prem**3
-     model%c_vsv =  0.0
+     model%c_rho = real(12.5815 - 1.2638 * x_prem - 3.6426 * x_prem**2 -  5.5281 * x_prem**3, kind=sp)
+     model%c_vpv = real(11.0487 - 4.0362 * x_prem + 4.8023 * x_prem**2 - 13.5732 * x_prem**3, kind=sp)
+     model%c_vsv = 0.0
      model%c_vph = model%c_vpv
      model%c_vsh = model%c_vsv
      Qmu = 0.0
      Qkappa = 57827.0
   ELSEIF(idom==11)THEN                        ! inner core
-     model%c_rho  = 13.0885 - 8.8381 * x_prem**2
-     model%c_vpv = 11.2622 - 6.3640 * x_prem**2
-     model%c_vsv =  3.6678 - 4.4475 * x_prem**2
+     model%c_rho = real(13.0885 - 8.8381 * x_prem**2, kind=sp)
+     model%c_vpv = real(11.2622 - 6.3640 * x_prem**2, kind=sp)
+     model%c_vsv = real( 3.6678 - 4.4475 * x_prem**2, kind=sp)
      model%c_vph = model%c_vpv
      model%c_vsh = model%c_vsv
      Qmu = 84.6

@@ -246,9 +246,9 @@ subroutine extract_receive_buffer(itask, irank)
         Het_Model(ipoint, :) = Het_Model(ipoint,:) + wt%hetero_model(:, ibasisfunc, iel)  * valence
       end if
       if (parameters%plot_wavefields) then
-        fw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + wt%fw_field(:, :, :, ibasisfunc, iel) * valence 
-        bw_field(ipoint, :, :, :) = bw_field(ipoint, :, :, :) + wt%bw_field(:, :, :, ibasisfunc, iel) * valence 
-        conv_field(ipoint, :, :) = conv_field(ipoint, :, :) + wt%conv_field(:, 1, :, ibasisfunc, iel) * valence 
+        fw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + real(wt%fw_field(:, :, :, ibasisfunc, iel) * valence, kind=sp)
+        bw_field(ipoint, :, :, :) = bw_field(ipoint, :, :, :) + real(wt%bw_field(:, :, :, ibasisfunc, iel) * valence, kind=sp)
+        conv_field(ipoint, :, :)  = conv_field(ipoint, :, :)  + real(wt%conv_field(:, 1, :, ibasisfunc, iel) * valence, kind=sp)
       end if
 
 

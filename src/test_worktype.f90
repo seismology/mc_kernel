@@ -31,7 +31,7 @@ subroutine test_init_work_type
   logical           :: plot_wavefields = .true.
   integer           :: ndumps = 100
   integer           :: ndim = 6
-  real              :: dt = 1d-3
+  real              :: dt = 1e-3
 
   call init_work_type(nkernel                  = nkernel                  , &
                       nelems_per_task          = nelems_per_task          , &

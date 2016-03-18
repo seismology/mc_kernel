@@ -292,6 +292,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
   real(kind=dp)                       :: time_in_element
   real(kind=dp)                       :: volume
+  real(kind=dp)                       :: norm_fields
 
   character(len=256)                  :: fmtstring
   integer                             :: ielement, irec, ikernel, ibasisfunc, ibasekernel
@@ -721,12 +722,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           do ikernel = 1, parameters%nkernel
             ! In case of onvertices basis functions, all basis functions of this element get
             ! the same value, i.e. each vertex gets the same value of the fields.
+            norm_fields = real(niterations(ikernel) * nptperstep * nbasisfuncs_per_elem, kind=dp)
             slave_result%fw_field(:, :, ikernel, ibasisfunc, ielement)   &
-              = fw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
+              = real(fw_field_out(:, :, ikernel) / norm_fields, kind=sp)
             slave_result%bw_field(:, :, ikernel, ibasisfunc, ielement)   &
-              = bw_field_out(:, :, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
+              = real(bw_field_out(:, :, ikernel) / norm_fields, kind=sp)
             slave_result%conv_field(:, 1, ikernel, ibasisfunc, ielement) &
-              = conv_field_out(:, ikernel) / (niterations(ikernel) * nptperstep * nbasisfuncs_per_elem)
+              = real(conv_field_out(:, ikernel)  / norm_fields, kind=sp)
           end do ! ikernel
         end if
         call int_kernel(ibasisfunc)%freeme()
