@@ -2066,10 +2066,12 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       nelem_to_read = last_elem - first_elem + 1
 
       write(lu_out, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem
+      !write(*, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem, ' ids:', id_elem
       u_batch = 0
 
       nread_larger_max: if (nelem_to_read < nelem_to_read_max) then
         write(lu_out, *) 'reading all at once'
+        !write(*, *) 'reading all at once'
         do ipoint = 1, npoints
           if (to_be_read_from_disk(ipoint)) then
             ielem_in_batch(ipoint) = id_elem(ipoint) + 1 - first_elem
@@ -2097,6 +2099,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
 
       else 
         write(lu_out, *) 'reading one at a time'
+        !write(*, *) 'reading one at a time'
         nelem_to_read = npoints
 
         do ipoint = 1, npoints

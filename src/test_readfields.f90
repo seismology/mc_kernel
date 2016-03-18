@@ -226,7 +226,7 @@ subroutine test_readfields_load_fw_points
 
    coordinates(:,2) = [-1d6, 1d6, 1d6]
 
-   print *, coordinates
+   !print *, coordinates
 
    u = sem_data%load_fw_points(coordinates, parameters%source)
    straintrace_fd(:,:) = 0
@@ -272,7 +272,10 @@ subroutine test_readfields_load_straintrace_merged
    type(semdata_type)         :: sem_data, sem_data_merged
    real(kind=dp), allocatable :: u_classical(:,:,:), u_merged(:,:,:)
    real(kind=dp), allocatable :: straintrace_classical(:,:), straintrace_merged(:,:)
-   real(kind=dp)              :: coordinates(3,2)
+   integer, parameter         :: npoints = 5
+   integer                    :: ipoint
+   real(kind=dp)              :: coordinates(3,npoints)
+   character(len=80)          :: err_msg
 
    
    ! Classical database
@@ -305,99 +308,93 @@ subroutine test_readfields_load_straintrace_merged
    call sem_data_merged%open_files()
    call sem_data_merged%read_meshes()
 
-
+20 format('Straintrace from classical and merged db comparable ', A, ', ipoint ', I2)
    ! Read reference strain trace and point coordinates
    allocate(straintrace_classical(sem_data%ndumps, 1))
    allocate(straintrace_merged(sem_data%ndumps, 1))
 
-   allocate(u_classical(sem_data%ndumps, 1, 2))
-   allocate(u_merged(sem_data%ndumps, 1, 2))
+   allocate(u_classical(sem_data%ndumps, 1, npoints))
+   allocate(u_merged(sem_data%ndumps, 1, npoints))
 
    !----------------------------------------------------
    ! Forward wavefield
    coordinates(:,1) = [-1d6, 1d6, 1d6]
    coordinates(:,2) = [-1d6, 2d6, 1d6]
+   coordinates(:,3) = [-1d6, 3d6, 1d6]
+   coordinates(:,4) = [-1d6, 4d6, 1d6]
+   coordinates(:,5) = [-1d6, 0d6, 1d6]
 
    u_classical(:,:,:)    = sem_data%load_fw_points(coordinates, parameters%source)
    u_merged(:,:,:)       = sem_data_merged%load_fw_points(coordinates, parameters_merged%source)
 
-   ! Point 1
-   straintrace_classical = u_classical(:, :, 1)
-   straintrace_merged    = u_merged(:, :, 1)
+   do ipoint = 1, npointS
+     straintrace_classical = u_classical(:, :, ipoint)
+     straintrace_merged    = u_merged(:, :, ipoint)
 
-   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                          1d-10, 'Straintrace from classical and merged db comparable (fwd)')
+     write(err_msg, 20) 'fwd', ipoint
+     call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                            1d-10, err_msg)
 
-   ! Point 2
-   straintrace_classical = u_classical(:, :, 2)
-   straintrace_merged    = u_merged(:, :, 2)
-
-   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                          1d-10, 'Straintrace from classical and merged db comparable (fwd)')
+   end do
 
    ! Test coordinates that result in one IO Access for the two points
-   coordinates(:,1) = [-1d6, 1d6, 1d6]
-   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
+   coordinates(:,1) = [-2d6, 1d6, 2d6]
+   coordinates(:,2) = [-2d6, 1.1d6, 2d6]
+   coordinates(:,3) = [-2d6, 1.101d6, 2.1d6]
+   coordinates(:,4) = [-2d6, 1.05d6, 2d6]
+   coordinates(:,5) = [-2d6, 0.9d6, 2d6]
 
    u_classical(:,:,:)    = sem_data%load_fw_points(coordinates, parameters%source)
    u_merged(:,:,:)       = sem_data_merged%load_fw_points(coordinates, parameters_merged%source)
 
-   ! Point 1
-   straintrace_classical = u_classical(:, :, 1)
-   straintrace_merged    = u_merged(:, :, 1)
+   do ipoint = 1, npoints
+     straintrace_classical = u_classical(:, :, ipoint)
+     straintrace_merged    = u_merged(:, :, ipoint)
 
-   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                          1d-10, 'Straintrace from classical and merged db comparable (fwd)')
+     write(err_msg, 20) 'fwd', ipoint
+     call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                            1d-10, err_msg)
 
-   ! Point 2
-   straintrace_classical = u_classical(:, :, 2)
-   straintrace_merged    = u_merged(:, :, 2)
-
-   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                          1d-10, 'Straintrace from classical and merged db comparable (fwd)')
+   end do
 
    !----------------------------------------------------
    ! Backward wavefield
    coordinates(:,1) = [-1d6, 1d6, 1d6]
    coordinates(:,2) = [-1d6, 2d6, 1d6]
+   coordinates(:,3) = [-1d6, 3d6, 1d6]
+   coordinates(:,4) = [-1d6, 4d6, 1d6]
+   coordinates(:,5) = [-1d6, 0d6, 1d6]
 
    u_classical(:,:,:)    = sem_data%load_bw_points(coordinates, parameters%receiver(1))
    u_merged(:,:,:)       = sem_data_merged%load_bw_points(coordinates, parameters_merged%receiver(1))
 
-   ! Point 1
-   straintrace_classical = u_classical(:, :, 1)
-   straintrace_merged    = u_merged(:, :, 1)
+   do ipoint = 1, npoints
+     straintrace_classical = u_classical(:, :, ipoint)
+     straintrace_merged    = u_merged(:, :, ipoint)
 
-   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                          1d-10, 'Straintrace from classical and merged db comparable (bwd)')
-
-   ! Point 2
-   straintrace_classical = u_classical(:, :, 2)
-   straintrace_merged    = u_merged(:, :, 2)
-
-   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                          1d-10, 'Straintrace from classical and merged db comparable (bwd)')
+     write(err_msg, 20) 'fwd', ipoint
+     call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                            1d-10, err_msg)
+   end do
 
    ! Test coordinates that result in one IO Access for the two points
-   coordinates(:,1) = [-1d6, 1d6, 1d6]
-   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
+   coordinates(:,1) = [-2d6, 1d6, 2d6]
+   coordinates(:,2) = [-2d6, 1.1d6, 2d6]
+   coordinates(:,3) = [-2d6, 1.101d6, 2.1d6]
+   coordinates(:,4) = [-2d6, 1.05d6, 2d6]
+   coordinates(:,5) = [-2d6, 0.9d6, 2d6]
 
    u_classical(:,:,:)    = sem_data%load_bw_points(coordinates, parameters%receiver(1))
    u_merged(:,:,:)       = sem_data_merged%load_bw_points(coordinates, parameters_merged%receiver(1))
 
-   ! Point 1
-   straintrace_classical = u_classical(:, :, 1)
-   straintrace_merged    = u_merged(:, :, 1)
+   do ipoint = 1, npoints
+     straintrace_classical = u_classical(:, :, ipoint)
+     straintrace_merged    = u_merged(:, :, ipoint)
 
-   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                          1d-10, 'Straintrace from classical and merged db comparable (bwd)')
-
-   ! Point 2
-   straintrace_classical = u_classical(:, :, 2)
-   straintrace_merged    = u_merged(:, :, 2)
-
-   call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
-                          1d-10, 'Straintrace from classical and merged db comparable (bwd)')
+     write(err_msg, 20) 'fwd', ipoint
+     call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
+                            1d-10, err_msg)
+   end do
 
    call sem_data%close_files()
    call sem_data_merged%close_files()
@@ -445,7 +442,10 @@ subroutine test_readfields_load_strain_merged
    type(semdata_type)         :: sem_data, sem_data_merged
    real(kind=dp), allocatable :: u_classical(:,:,:), u_merged(:,:,:)
    real(kind=dp), allocatable :: strain_classical(:,:), strain_merged(:,:)
-   real(kind=dp)              :: coordinates(3,2)
+   integer, parameter         :: npoints = 5
+   integer                    :: ipoint
+   real(kind=dp)              :: coordinates(3,npoints)
+   character(len=80)          :: err_msg
 
    
    ! Classical database
@@ -478,103 +478,95 @@ subroutine test_readfields_load_strain_merged
    call sem_data_merged%open_files()
    call sem_data_merged%read_meshes()
 
+20 format('Strain from classical and merged db comparable ', A, ', ipoint ', I2)
 
    ! Read reference strain trace and point coordinates
    allocate(strain_classical(sem_data%ndumps, 6))
    allocate(strain_merged(sem_data%ndumps, 6))
 
-   allocate(u_classical(sem_data%ndumps, 6, 2))
-   allocate(u_merged(sem_data%ndumps, 6, 2))
+   allocate(u_classical(sem_data%ndumps, 6, npointS))
+   allocate(u_merged(sem_data%ndumps, 6, npointS))
 
-   coordinates(:,1) = [-1d6, 1d6, 1d6]
-   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
 
    !----------------------------------------------------
    ! Forward wavefield
    coordinates(:,1) = [-1d6, 1d6, 1d6]
    coordinates(:,2) = [-1d6, 2d6, 1d6]
+   coordinates(:,3) = [-1d6, 3d6, 1d6]
+   coordinates(:,4) = [-1d6, 4d6, 1d6]
+   coordinates(:,5) = [-1d6, 0d6, 1d6]
 
    u_classical(:,:,:)    = sem_data%load_fw_points(coordinates, parameters%source)
    u_merged(:,:,:)       = sem_data_merged%load_fw_points(coordinates, parameters_merged%source)
 
-   ! Point 1
-   strain_classical = u_classical(:, :, 1)
-   strain_merged    = u_merged(:, :, 1)
+   do ipoint = 1, npointS
+     strain_classical = u_classical(:, :, ipoint)
+     strain_merged    = u_merged(:, :, ipoint)
 
-   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
-                          1d-10, 'Strain from classical and merged db comparable (fwd)')
+     write(err_msg, 20) 'fwd', ipoint
+     call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                            1d-10, err_msg)
 
-   ! Point 2
-   strain_classical = u_classical(:, :, 2)
-   strain_merged    = u_merged(:, :, 2)
+   end do
 
-   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
-                          1d-10, 'Strain from classical and merged db comparable (fwd)')
-
-   ! Test coordinates that result in one IO Access for the two points
-   coordinates(:,1) = [-1d6, 1d6, 1d6]
-   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
+   ! Test coordinates that result in several IO accesses
+   coordinates(:,1) = [-2d6, 1d6, 2d6]
+   coordinates(:,2) = [-2d6, 1.1d6, 2d6]
+   coordinates(:,3) = [-2d6, 1.101d6, 2.1d6]
+   coordinates(:,4) = [-2d6, 1.05d6, 2d6]
+   coordinates(:,5) = [-2d6, 0.9d6, 2d6]
 
    u_classical(:,:,:)    = sem_data%load_fw_points(coordinates, parameters%source)
    u_merged(:,:,:)       = sem_data_merged%load_fw_points(coordinates, parameters_merged%source)
 
-   ! Point 1
-   strain_classical = u_classical(:, :, 1)
-   strain_merged    = u_merged(:, :, 1)
+   do ipoint = 1, npoints
+     strain_classical = u_classical(:, :, ipoint)
+     strain_merged    = u_merged(:, :, ipoint)
 
-   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
-                          1d-10, 'Strain from classical and merged db comparable (fwd)')
+     write(err_msg, 20) 'fwd', ipoint
+     call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                            1d-10, err_msg)
 
-   ! Point 2
-   strain_classical = u_classical(:, :, 2)
-   strain_merged    = u_merged(:, :, 2)
-
-   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
-                          1d-10, 'Strain from classical and merged db comparable (fwd)')
+   end do
 
    !----------------------------------------------------
    ! Backward wavefield
    coordinates(:,1) = [-1d6, 1d6, 1d6]
    coordinates(:,2) = [-1d6, 2d6, 1d6]
+   coordinates(:,3) = [-1d6, 3d6, 1d6]
+   coordinates(:,4) = [-1d6, 4d6, 1d6]
+   coordinates(:,5) = [-1d6, 0d6, 1d6]
 
    u_classical(:,:,:)    = sem_data%load_bw_points(coordinates, parameters%receiver(1))
    u_merged(:,:,:)       = sem_data_merged%load_bw_points(coordinates, parameters_merged%receiver(1))
 
-   ! Point 1
-   strain_classical = u_classical(:, :, 1)
-   strain_merged    = u_merged(:, :, 1)
+   do ipoint = 1, npoints
+     strain_classical = u_classical(:, :, ipoint)
+     strain_merged    = u_merged(:, :, ipoint)
 
-   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
-                          1d-10, 'Strain from classical and merged db comparable (bwd)')
-
-   ! Point 2
-   strain_classical = u_classical(:, :, 2)
-   strain_merged    = u_merged(:, :, 2)
-
-   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
-                          1d-10, 'Strain from classical and merged db comparable (bwd)')
+     write(err_msg, 20) 'fwd', ipoint
+     call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                            1d-10, err_msg)
+   end do
 
    ! Test coordinates that result in one IO Access for the two points
-   coordinates(:,1) = [-1d6, 1d6, 1d6]
-   coordinates(:,2) = [-1d6, 1.1d6, 1d6]
+   coordinates(:,1) = [-2d6, 1d6, 2d6]
+   coordinates(:,2) = [-2d6, 1.1d6, 2d6]
+   coordinates(:,3) = [-2d6, 1.101d6, 2.1d6]
+   coordinates(:,4) = [-2d6, 1.05d6, 2d6]
+   coordinates(:,5) = [-2d6, 0.9d6, 2d6]
 
    u_classical(:,:,:)    = sem_data%load_bw_points(coordinates, parameters%receiver(1))
    u_merged(:,:,:)       = sem_data_merged%load_bw_points(coordinates, parameters_merged%receiver(1))
 
-   ! Point 1
-   strain_classical = u_classical(:, :, 1)
-   strain_merged    = u_merged(:, :, 1)
+   do ipoint = 1, npoints
+     strain_classical = u_classical(:, :, ipoint)
+     strain_merged    = u_merged(:, :, ipoint)
 
-   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
-                          1d-10, 'Strain from classical and merged db comparable (bwd)')
-
-   ! Point 2
-   strain_classical = u_classical(:, :, 2)
-   strain_merged    = u_merged(:, :, 2)
-
-   call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
-                          1d-10, 'Strain from classical and merged db comparable (bwd)')
-   
+     write(err_msg, 20) 'fwd', ipoint
+     call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
+                            1d-10, err_msg)
+   end do
                       
    call sem_data%close_files()
    call sem_data_merged%close_files()
