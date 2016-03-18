@@ -25,7 +25,7 @@ function create_interpolator(param_tmp, tree, radius) result(interpolator)
   real(kind=dp), intent(in)         :: radius
   type(parameter_interpolator)      :: interpolator
 
-  real(kind=dp), parameter          :: dz = 0.1d3 ! 100m
+  real(kind=sp), parameter          :: dz = 0.1d3 ! 100m
   real(kind=sp)                     :: coordinates_sz(2)
   real(kind=sp), allocatable        :: values(:)
   integer                           :: idepth, ndepth, pointid
@@ -59,7 +59,7 @@ end function create_interpolator
 subroutine init(this, values, dr)
   class(parameter_interpolator)       :: this 
   real(kind=sp), intent(in)           :: values(:)
-  real(kind=dp)                       :: dr
+  real(kind=sp)                       :: dr
 
   this%ndepth = size(values)
   allocate(this%values(this%ndepth))
@@ -74,7 +74,7 @@ end subroutine init
 pure function get(this, r) result(values)
   class(parameter_interpolator), intent(in)   :: this
   real(kind=dp), intent(in)                   :: r(:)
-  real(kind=dp)                               :: values(size(r))
+  real(kind=sp)                               :: values(size(r))
 
   integer                                     :: idx(size(r))
 
