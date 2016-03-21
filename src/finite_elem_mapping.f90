@@ -147,7 +147,7 @@ end function inv_mapping
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function mapping(xi, eta, nodes, element_type)
+pure function mapping(xi, eta, nodes, element_type)
 
   real(kind=dp), intent(in) :: xi, eta, nodes(4,2)
   integer, intent(in)       :: element_type
@@ -162,16 +162,13 @@ function mapping(xi, eta, nodes, element_type)
         mapping = mapping_semino(xi, eta, nodes)
      case(3)
         mapping = mapping_semiso(xi, eta, nodes)
-     case default
-        write(6,*) 'ERROR: unknown element type: ', element_type
-        stop
   end select
 
 end function mapping
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function jacobian(xi, eta, nodes, element_type)
+pure function jacobian(xi, eta, nodes, element_type)
 
   real(kind=dp), intent(in) :: xi, eta, nodes(4,2)
   integer, intent(in)       :: element_type
@@ -186,16 +183,13 @@ function jacobian(xi, eta, nodes, element_type)
         jacobian = jacobian_semino(xi, eta, nodes)
      case(3)
         jacobian = jacobian_semiso(xi, eta, nodes)
-     case default
-        write(6,*) 'ERROR: unknown element type: ', element_type
-        stop
   end select
 
 end function jacobian
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function inv_jacobian(xi, eta, nodes, element_type)
+pure function inv_jacobian(xi, eta, nodes, element_type)
 
   real(kind=dp), intent(in) :: xi, eta, nodes(4,2)
   integer, intent(in)       :: element_type
@@ -211,8 +205,6 @@ function inv_jacobian(xi, eta, nodes, element_type)
      case(3)
         inv_jacobian = inv_jacobian_semiso(xi, eta, nodes)
      case default
-        write(6,*) 'ERROR: unknown element type: ', element_type
-        stop
   end select
 
 end function inv_jacobian

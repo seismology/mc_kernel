@@ -131,7 +131,7 @@ def read_receiver_dat(rec_file):
             rec_lon = float(str_line.split()[2])
             nkernel = int(str_line.split()[3])
             #print 'Receiver: %s, coordinates: (%f, %f), %d kernels' % \
-                  (rec_name, rec_lat, rec_lon, nkernel)
+                #      (rec_name, rec_lat, rec_lon, nkernel)
             for ikernel in range(0, nkernel):
                 str_line = f.readline()
                 kernel_name = str_line.split()[0]
