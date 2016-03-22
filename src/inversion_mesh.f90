@@ -1214,7 +1214,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine tree_sort(this)
+subroutine tree_sort(this, firstpoints, pointspread)
 !< resorts the mesh such that consecutive elements are more likely to be close to each other
 !  based on a KD-tree traversal, hence does the sorting in a split second for meshes with 
 !  10^5 elements
@@ -1222,9 +1222,16 @@ subroutine tree_sort(this)
   use kdtree2_module
   class(inversion_mesh_type)        :: this
   type(kdtree2), pointer            :: tree
+  type(kdtree2_result), allocatable :: nextpoint(:)
   real(kind=sp)                     :: midpoints(3, this%nelements) !KD-Tree can handle sp only
-  integer                           :: connectivity_sorted(this%nvertices_per_elem, this%nelements)
-  integer                           :: i
+  real(kind=sp), optional           :: firstpoints(:,:) !< coordinates of elements that should 
+                                                        !! be put to the beginning of the list
+  integer, optional                 :: pointspread
+  integer                           :: connectivity_sorted(this%nvertices_per_elem, &
+                                                           this%nelements)
+  integer                           :: connectivity_temp(this%nvertices_per_elem)
+  integer                           :: i, nfirstpoints, ipoint
+  integer, parameter                :: nnext_points = 6
 
   ! compute element midpoints
   select case(this%element_type)
@@ -1246,6 +1253,28 @@ subroutine tree_sort(this)
   do i = 1, this%nelements
      connectivity_sorted(:,i) = this%connectivity(:, tree%ind(i))
   enddo
+
+  ! Sort the elements in which the points described by coordinates 'firstpoints'
+  ! to the beginning of the list, spread by pointspread
+  if (present(firstpoints)) then
+    allocate(nextpoint(nnext_points))
+    nfirstpoints = size(firstpoints, 2)
+    i = 1
+    write(lu_out, *) 'Sorting ', nfirstpoints, ' points to the front'
+    do ipoint = 1, nfirstpoints
+      call kdtree2_n_nearest( tree,                   &
+                              firstpoints(:, ipoint), &
+                              nn = nnext_points,      &
+                              results = nextpoint)
+      write(lu_out, *) 'Elem: ', nextpoint(1)%idx, ', ', i, &
+                       ', co:', firstpoints(:, ipoint)
+      connectivity_temp = connectivity_sorted(:, nextpoint(1)%idx)
+      connectivity_sorted(:, nextpoint(1)%idx) = connectivity_sorted(:, i)
+      connectivity_sorted(:, i) = connectivity_temp
+      i = i + pointspread
+    end do
+  end if
+
 
   ! update connectivity
   this%connectivity(:,:) = connectivity_sorted(:,:)

@@ -42,11 +42,12 @@ subroutine init_queue(ntasks, inparam_file)
   use work_type_mod, only                   : wt
   integer, intent(out)                     :: ntasks
   character(len=*), intent(in), optional   :: inparam_file
-  integer                                  :: nelems, nbasisfuncs
+  integer                                  :: nelems, nbasisfuncs, irec
   integer(kind=long)                       :: iclockold
   character(len=64)                        :: filename
   logical                                  :: intermediate_results_exist
   logical, allocatable                     :: completed(:)
+  real(kind=sp), allocatable               :: co_source_receivers(:,:)
   
   iclockold = tick()
 
@@ -82,7 +83,13 @@ subroutine init_queue(ntasks, inparam_file)
 
   if (parameters%sort_mesh_elements) then
     print *, 'Sorting inversion mesh'
-    call inv_mesh%tree_sort()
+    allocate(co_source_receivers(3, parameters%nrec + 1))
+    co_source_receivers(:,1) = parameters%source%r
+    do irec = 1, parameters%nrec
+      co_source_receivers(:,irec + 1) = parameters%receiver(irec)%r
+    end do
+    call inv_mesh%tree_sort(co_source_receivers, parameters%nelems_per_task)
+
   end if
   
   nelems = inv_mesh%get_nelements()
