@@ -75,6 +75,7 @@ subroutine init(this, lat, lon, mij, depth)
    write(lu_out, '("  Depth:     ", F8.3)')   depth
    write(lu_out, '("  Latitude:  ", F8.3)')   this%latd
    write(lu_out, '("  Longitude: ", F8.3)')   this%lond
+   write(lu_out, '("  R:         ", 3(E9.1))')   this%r
    write(lu_out, '("  M_rr:      ", E15.8)')  this%mij(1)
    write(lu_out, '("  M_tt:      ", E15.8)')  this%mij(2)
    write(lu_out, '("  M_pp:      ", E15.8)')  this%mij(3)
