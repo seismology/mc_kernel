@@ -1,73 +1,31 @@
-!
-!    Copyright 2013, Tarje Nissen-Meyer, Alexandre Fournier, Martin van Driel
-!                    Simon Stähler, Kasra Hosseini, Stefanie Hempel
-!
-!    This file is part of AxiSEM.
-!    It is distributed from the webpage <http://www.axisem.info>
-!
-!    AxiSEM is free software: you can redistribute it and/or modify
-!    it under the terms of the GNU General Public License as published by
-!    the Free Software Foundation, either version 3 of the License, or
-!    (at your option) any later version.
-!
-!    AxiSEM is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-!    GNU General Public License for more details.
-!
-!    You should have received a copy of the GNU General Public License
-!    along with AxiSEM.  If not, see <http://www.gnu.org/licenses/>.
-!
-
 !=======================
 module clocks_mod
 !=======================
-
-!-----------------------------------------------------------------------
-!                  CLOCKS module (for timing code sections)
-!
-! AUTHOR: V. Balaji (vb@gfdl.gov)
-!         SGI/GFDL Princeton University
-!
-! This program is free software; you can redistribute it and/or modify
-! it under the terms of the GNU General Public License as published by
-! the Free Software Foundation; either version 2 of the License, or
-! (at your option) any later version.
-!
-! This program is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-! GNU General Public License for more details.
-!
-! For the full text of the GNU General Public License,
-! write to: Free Software Foundation, Inc.,
-!           675 Mass Ave, Cambridge, MA 02139, USA.  
-!-----------------------------------------------------------------------
 
     use global_parameters, only    : lu_out, sp, dp, int4, long
     implicit none
 
     private
 
-    integer(kind=long), private   :: ticks_per_sec, max_ticks, ref_tick, start_tick, end_tick
-    real(kind=dp), private        :: tick_rate
-    integer, private, parameter   :: max_clocks = 256
-    integer, private              :: clock_num = 0
-    logical, private              :: clocks_initialized = .FALSE.
+    integer(kind=long), private, save :: ticks_per_sec, max_ticks, ref_tick, start_tick, end_tick
+    real(kind=dp), private, save      :: tick_rate
+    integer, private, parameter       :: max_clocks = 256
+    integer, private, save            :: clock_num = 0
+    logical, private, save            :: clocks_initialized = .FALSE.
 
     !clocks are stored in this internal type
-    type, private                 :: clock
-       character(len=32)          :: name
-       integer(kind=long)         :: ticks, calls
+    type, private                     :: clock
+       character(len=32)              :: name
+       integer(kind=long)             :: ticks, calls
     end type clock
 
-    type(clock)                   :: clocks(0:max_clocks)
+    type(clock), save                 :: clocks(0:max_clocks)
 
-    public                        :: clocks_init, clocks_exit, get_clock, reset_clock, &
-                                     clock_id, tick
+    public                            :: clocks_init, clocks_exit, get_clock, reset_clock, &
+                                         clock_id, tick
 
-    character(len=256), private   :: &
-         version = '$Id: clocks.F90,v 2.2 2001/02/14 19:06:12 vb Exp $'
+    character(len=256), private       :: &
+         version = '$Id: clocks.F90,v 4.0 MC Kernel$'
 
   contains
 
