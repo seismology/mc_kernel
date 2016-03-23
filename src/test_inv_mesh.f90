@@ -1576,7 +1576,7 @@ subroutine test_point_in_element_triangle_mesh
 
   itest = 0
 
-  ! Create along each base vector of the tetrahedron points from [-0.1 to 1.1]
+  ! Create along each base vector of the triangle points from [-0.1 to 1.1]
   do ix = -1, nstep + 1
     do iy = -1, nstep - ix + 1
       itest = itest + 1
@@ -1616,6 +1616,13 @@ subroutine test_point_in_element_triangle_mesh
   is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
   call assert_true((is_in_element_npoint .eqv. is_in_element_npoint_ref), &
                    'Points are correctly found to be in element - n points')
+  if (any(is_in_element_npoint .neqv. is_in_element_npoint_ref)) then
+    do itest = 1, ntest_tot
+      print *, 'Is inside ', is_in_element_npoint(itest), &
+               ', should be: ', is_in_element_npoint_ref(itest)
+      print *, 'P: ', testpoint_in(:, itest)
+    end do
+  end if
   call inv_mesh%freeme()
 
 
@@ -1625,7 +1632,7 @@ subroutine test_point_in_element_triangle_mesh
 
   itest = 0
 
-  ! Create along each base vector of the tetrahedron points from [-0.1 to 1.1]
+  ! Create along each base vector of the triangle points from [-0.1 to 1.1]
   do ix = -1, nstep + 1
     do iy = -1, nstep - ix + 1
       itest = itest + 1
@@ -1663,6 +1670,13 @@ subroutine test_point_in_element_triangle_mesh
   is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
   call assert_true((is_in_element_npoint .eqv. is_in_element_npoint_ref), &
                    'Points are correctly found to be in element - n points')
+  if (any(is_in_element_npoint.neqv.is_in_element_npoint_ref)) then
+    do itest = 1, ntest_tot
+      print *, 'Is inside ', is_in_element_npoint(itest), &
+               ', should be: ', is_in_element_npoint_ref(itest)
+      print *, 'P: ', testpoint_in(:, itest)
+    end do
+  end if
   call inv_mesh%freeme()
 
 end subroutine test_point_in_element_triangle_mesh
@@ -1728,6 +1742,13 @@ subroutine test_point_in_element_tetrahedral_mesh
   is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
   call assert_true((is_in_element_npoint .eqv. is_in_element_npoint_ref), &
                    'Points are correctly found to be in element - n points')
+  if (any(is_in_element_npoint .neqv. is_in_element_npoint_ref)) then
+    do itest = 1, ntest_tot
+      print *, 'Is inside ', is_in_element_npoint(itest), &
+               ', should be: ', is_in_element_npoint_ref(itest)
+      print *, 'P: ', testpoint_in(:, itest)
+    end do
+  end if
   call inv_mesh%freeme()
 
   ! Try rotated tetrahedron at arbitrary location
@@ -1764,6 +1785,13 @@ subroutine test_point_in_element_tetrahedral_mesh
 
   is_in_element_npoint = inv_mesh%point_in_element(1, testpoint_in(:, 1:ntest_tot))
   call assert_true(is_in_element_npoint, 'Points are correctly found to be in element - n points')
+  if (any(is_in_element_npoint .neqv. is_in_element_npoint_ref)) then
+    do itest = 1, ntest_tot
+      print *, 'Is inside ', is_in_element_npoint(itest), &
+               ', should be: ', is_in_element_npoint_ref(itest)
+      print *, 'P: ', testpoint_in(:, itest)
+    end do
+  end if
   call inv_mesh%freeme()
 
 end subroutine test_point_in_element_tetrahedral_mesh
@@ -1886,7 +1914,7 @@ subroutine test_weight
       weight = inv_mesh%weights(ielement, ivertex, points)
       weight_ref = 0
       weight_ref(ivertex) = 1
-      call assert_comparable(weight, weight_ref, 1d-10, 'Weight at vertex is one')
+      call assert_comparable(weight+1, weight_ref+1, 1d-10, 'Weight at vertex is one')
     end do
   end do
 
@@ -1903,10 +1931,10 @@ subroutine test_weight
           point(:,1) =  vertices(:,ivertex1) + & 
                        (vertices(:,ivertex2) - vertices(:,ivertex1))*(istep*0.01d0)
           weight_point = inv_mesh%weights(ielement, ivertex1, point)
-          call assert_comparable(weight_point(1), 1d0-(istep*0.01d0), 1d-10, &
+          call assert_comparable(weight_point(1)+1d0, 1d0-(istep*0.01d0)+1d0, 1d-10, &
                                  'Weight decreases along the line between two points')
           weight_point = inv_mesh%weights(ielement, ivertex2, point)
-          call assert_comparable(weight_point(1), (istep*0.01d0), 1d-10, &
+          call assert_comparable(weight_point(1)+1d0, (istep*0.01d0)+1d0, 1d-10, &
                                  'Weight increases along the line between two points')
 
         end do
