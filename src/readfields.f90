@@ -4,7 +4,8 @@ module readfields
                                              myrank, long,                                  &
                                              id_buffer, id_netcdf, id_rotate,               &
                                              id_load_strain, id_kdtree, id_calc_strain,     &
-                                             id_find_point_fwd, id_find_point_bwd, id_lagrange
+                                             id_find_point_fwd, id_find_point_bwd, id_lagrange, &
+                                             id_allocate, id_allocate_2
 
     use source_class,      only            : src_param_type
     use receiver_class,    only            : rec_param_type
@@ -333,7 +334,7 @@ subroutine init_merged_buffer(nc_obj, displ_buffer_size, strain_buffer_size, &
                                    nc_obj%npol+1,     &
                                    nint(nc_obj%nsim_merged*2.5))
 
-  nelem_to_read_max = int(displ_buffer_size / 8)
+  nelem_to_read_max = int(displ_buffer_size / 20)
 
   if (.not.allocated(u_batch)) then
     allocate(u_batch(nc_obj%ndumps,                  &
@@ -1140,6 +1141,7 @@ function load_fw_points(this, coordinates, source_params, model)
 
     allocate(nextpoint(nnext_points))
     load_fw_points(:,:,:) = 0.0
+    iclockold = tick()
     do ipoint = 1, npoints
         ! map points from outside earth to the surface:
         dist_from_core_square = rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2
@@ -1170,16 +1172,17 @@ function load_fw_points(this, coordinates, source_params, model)
     az_2 = azim_factor_nsim(rotmesh_phi, source_params%mij, 2) 
 
     if (this%merged_fwd) then
-      utemp = load_strain_point_merged( &
-                              sem_obj      = this%fwd(1),               &
-                              xi           = xi,                &
-                              eta          = eta,               &
-                              strain_type  = this%strain_type,          &
-                              nodes        = corner_points, &
-                              element_type = eltype,            &
-                              axis         = axis,              &
-                              id_elem      = id_elem)           &
-             / this%fwd(1)%amplitude
+      call load_strain_point_merged( &
+                              sem_obj       = this%fwd(1),               &
+                              xi            = xi,                &
+                              eta           = eta,               &
+                              strain_type   = this%strain_type,          &
+                              nodes         = corner_points, &
+                              element_type  = eltype,            &
+                              axis          = axis,              &
+                              id_elem       = id_elem,           &
+                              strain_result = utemp)
+       utemp = utemp / this%fwd(1)%amplitude
     else
       do ipoint = 1, npoints
         do isim = 1, this%nsim_fwd
@@ -1302,6 +1305,7 @@ function load_bw_points(this, coordinates, receiver)
     allocate(nextpoint(nnext_points))
     load_bw_points(:,:,:) = 0.0
     do ipoint = 1, npoints
+        iclockold = tick()
         ! map points from outside earth to the surface:
         dist_from_core_square = rotmesh_s(ipoint)**2 + rotmesh_z(ipoint)**2
         if (dist_from_core_square > this%fwd(1)%planet_radius**2) then
@@ -1357,10 +1361,11 @@ function load_bw_points(this, coordinates, receiver)
 
 
     if (this%merged_bwd) then
-      utemp_nsim = load_strain_point_merged(this%bwd(1),                &
-                                            xi, eta, this%strain_type,  &
-                                            corner_points, eltype,      &
-                                            axis, id_elem)              
+      call load_strain_point_merged(this%bwd(1),                &
+                                    xi, eta, this%strain_type,  &
+                                    corner_points, eltype,      &
+                                    axis, id_elem,              &
+                                    strain_result = utemp_nsim)              
       utemp = utemp_nsim(:,:,isim,:) 
     else
       do ipoint = 1, npoints
@@ -1492,10 +1497,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
     end select
 
     if (this%merged_bwd) then
-      utemp_nsim = load_strain_point_merged(this%bwd(1),                    &
-                                            [xi], [eta], 'straintensor_full',   &
-                                            corner_points, eltype, [axis], &
-                                            [id_elem], use_buffer=.false.)
+      call load_strain_point_merged(this%bwd(1),                    &
+                                    [xi], [eta], 'straintensor_full',   &
+                                    corner_points, eltype, [axis], &
+                                    [id_elem], use_buffer=.false.,      &
+                                    strain_result = utemp_nsim)
       utemp = utemp_nsim(:,:,isim,1)
     else
       utemp = load_strain_point_interp_seismogram(this%bwd(isim), gll_point_ids, &
@@ -1946,10 +1952,11 @@ end function load_strain_point_interp
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
-                                  element_type, axis, id_elem, use_buffer)
+subroutine load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
+                                  element_type, axis, id_elem, use_buffer, strain_result)
     use spectral_basis, only         : lagrange_interpol_2D_td
-    use sem_derivatives, only        : straintrace_merged, strain_merged
+    use sem_derivatives, only        : straintrace_merged_fwd, strain_merged_fwd
+    use sem_derivatives, only        : straintrace_merged_bwd, strain_merged_bwd
     use netcdf, only                 : nf90_get_var ! HACK, create 5D wrapper in nc_routines 
     type(ncparamtype), intent(in)   :: sem_obj
     real(kind=dp),     intent(in)   :: xi(:), eta(:)      !< Coordinates at which to interpolate
@@ -1962,9 +1969,9 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
     logical,           intent(in)   :: axis(:)         !< Axis element or not 
     integer,           intent(in)   :: id_elem(:)      !< ID of element to interpolate strain in
     logical, optional, intent(in)   :: use_buffer
+    real(kind=dp),     intent(out)  :: strain_result(:,:,:,:)
 
     integer                         :: ipoint, npoints
-    real(kind=dp),     allocatable  :: load_strain_point_merged(:,:,:,:)
 
     real(kind=dp), allocatable      :: strain(:,:,:,:,:,:)
 
@@ -1974,7 +1981,11 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
     real(kind=dp)                   :: GT(0:sem_obj%npol, 0:sem_obj%npol, size(xi,1))
     real(kind=dp)                   :: col_points_xi(0:sem_obj%npol, size(xi,1))
     real(kind=dp)                   :: col_points_eta(0:sem_obj%npol, size(xi,1))
-    real(kind=sp),     allocatable  :: utemp(:,:,:,:,:)
+    real(kind=sp)                   :: utemp(1:sem_obj%ndumps, &
+                                             0:sem_obj%npol,   &
+                                             0:sem_obj%npol,   &
+                                             1:nint(sem_obj%nsim_merged*2.5),     &
+                                             size(xi,1)) 
     integer(kind=long)              :: iclockold_total, iclockold
     integer                         :: status_strain(size(xi,1))
     integer                         :: status_disp = -1
@@ -1986,6 +1997,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
     integer                         :: first_elem, last_elem
 
     iclockold_total = tick()
+    iclockold = tick()
 
     npoints = size(xi,1)
     status_strain = -1
@@ -2001,21 +2013,11 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       ndirection = 10
     elseif (sem_obj%nsim_merged==2) then
       ndirection = 5
-    else
-      print *, 'Unknown number of sims: ', sem_obj%nsim_merged
-      stop
     end if
 
-    allocate(utemp(1:sem_obj%ndumps, &
-                   0:sem_obj%npol,   &
-                   0:sem_obj%npol,   &
-                   1:ndirection,     &
-                   npoints))
-    utemp = 0
 
     select case(strain_type)
     case('straintensor_trace')
-      allocate(load_strain_point_merged(sem_obj%ndumps, 1, sem_obj%nsim_merged, npoints))
       allocate(straintrace(1:sem_obj%ndumps, &
                            0:sem_obj%npol,   &
                            0:sem_obj%npol,   &
@@ -2023,7 +2025,6 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                            1:npoints))
       straintrace = 0
     case('straintensor_full')
-      allocate(load_strain_point_merged(sem_obj%ndumps, 6, sem_obj%nsim_merged, npoints))
       allocate(strain(1:sem_obj%ndumps, &
                       0:sem_obj%npol,   &
                       0:sem_obj%npol,   &
@@ -2033,9 +2034,7 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       strain = 0            
     end select
 
-    load_strain_point_merged = 0
-
-    iclockold = tick()
+    iclockold = tick(id=id_allocate, since=iclockold)
     if (use_buffer_loc) then
       select case(strain_type)
       case('straintensor_trace')
@@ -2053,8 +2052,6 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       status_strain = - 1
     end if
 
-    iclockold = tick(id=id_buffer, since=iclockold)
-
     to_be_read_from_disk = .true.
     do ipoint = 1, npoints
       ! Try displacement buffer
@@ -2062,20 +2059,23 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       status_disp = sem_obj%buffer_disp%get(id_elem(ipoint), &
                                             utemp(:,:,:,:,ipoint))
       ! If status was zero (successful), then this does not have to be read
-      to_be_read_from_disk(ipoint) = (status_disp.ne.0)
+      to_be_read_from_disk(ipoint) = ((status_disp.ne.0) .and.      & 
+                                      (status_strain(ipoint).ne.0))
     end do
+
+    iclockold = tick(id=id_buffer, since=iclockold)
 
     if (any(to_be_read_from_disk)) then
       first_elem = minval(id_elem, mask=to_be_read_from_disk)
       last_elem  = maxval(id_elem, mask=to_be_read_from_disk) 
       nelem_to_read = last_elem - first_elem + 1
 
-      write(lu_out, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem
+      !write(lu_out, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem
       !write(*, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem, ' ids:', id_elem
       u_batch = 0
 
       nread_larger_max: if (nelem_to_read < nelem_to_read_max) then
-        write(lu_out, *) 'reading all at once'
+        !write(lu_out, *) 'reading all at once'
         !write(*, *) 'reading all at once'
         do ipoint = 1, npoints
           if (to_be_read_from_disk(ipoint)) then
@@ -2101,13 +2101,16 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                                         1:ndirection,        &
                                                         ielem_read))
         end do
+        iclockold = tick(id=id_buffer, since=iclockold)
 
       else 
-        write(lu_out, *) 'reading one at a time'
+        !write(lu_out, *) 'reading one at a time'
         !write(*, *) 'reading one at a time'
         nelem_to_read = npoints
+        iclockold = tick()
 
         do ipoint = 1, npoints
+          iclockold = tick()
           ielem_in_batch(ipoint) = ipoint
           call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
                                   varid  = sem_obj%mergedvarid,               &
@@ -2120,12 +2123,14 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                                    0:sem_obj%npol,            &
                                                    1:ndirection,              &
                                                    ipoint)))
+          iclockold = tick(id=id_netcdf, since=iclockold)
           status_disp = sem_obj%buffer_disp%put(id_elem(ipoint),             &
                                                 u_batch(:,                   &
                                                         :,                   &
                                                         :,                   &
                                                         1:ndirection,        &
                                                         ipoint))
+          iclockold = tick(id=id_buffer, since=iclockold)
         end do
 
       end if nread_larger_max
@@ -2137,50 +2142,69 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       end do
 
     else
-      write(lu_out, *) 'nelem: 0, all in buffer'
+      !write(lu_out, *) 'nelem: 0, all in buffer'
     end if
       
-    if (any(utemp.ne.utemp)) print *, 'Found NaN in utemp!'
+    iclockold = tick()
+
+    !if (any(utemp.ne.utemp)) print *, 'Found NaN in utemp!'
 
     set_element_matrices: do ipoint = 1, npoints
+      G(:,:,ipoint)  = sem_obj%G2
+      col_points_eta(:, ipoint) = sem_obj%gll_points
       if (axis(ipoint)) then
-          G(:,:,ipoint)  = sem_obj%G2
-          GT(:,:,ipoint) = sem_obj%G1T
-          col_points_xi(:, ipoint)  = sem_obj%glj_points
-          col_points_eta(:, ipoint) = sem_obj%gll_points
+        GT(:,:,ipoint) = sem_obj%G1T
+        col_points_xi(:, ipoint)  = sem_obj%glj_points
       else
-          G(:,:,ipoint)  = sem_obj%G2
-          GT(:,:,ipoint) = sem_obj%G2T
-          col_points_xi(:, ipoint)  = sem_obj%gll_points
-          col_points_eta(:, ipoint) = sem_obj%gll_points
+        GT(:,:,ipoint) = sem_obj%G2T
+        col_points_xi(:, ipoint)  = sem_obj%gll_points
       endif 
     end do set_element_matrices
 
+    iclockold = tick(id=id_allocate_2, since=iclockold)
+
     select case(strain_type)
     case('straintensor_trace')
-      do ipoint = 1, npoints
-        if (status_strain(ipoint).eq.-1) then !If not found in strain buffer
-          ! Compute just trace of strain (for vp or lambda kernels)
-          straintrace(:,:,:,:,ipoint) = straintrace_merged(                     &
-                                           u = real(utemp(:,:,:,:,ipoint), kind=dp), &
-                                           G = G(:,:,ipoint),                   &
-                                           GT = GT(:,:,ipoint),                 &
-                                           xi = col_points_xi(:,ipoint),        &          
-                                           eta = col_points_eta(:,ipoint),      &
-                                           npol = sem_obj%npol,                 &
-                                           nsamp = sem_obj%ndumps,              &
-                                           nsim = sem_obj%nsim_merged,          &
-                                           nodes = nodes(:,:,ipoint),           &
-                                           element_type = element_type(ipoint), &
-                                           axial = axis(ipoint))
-        end if
-      end do
+      ! Compute just trace of strain (for vp or lambda kernels)
+      select case(sem_obj%nsim_merged)
+      case(2)
+        do concurrent (ipoint = 1: npoints, status_strain(ipoint).eq.-1)
+            straintrace(:,:,:,:,ipoint) = straintrace_merged_bwd(                 &
+                                             u = real(utemp(:,:,:,:,ipoint), kind=dp), &
+                                             G = G(:,:,ipoint),                   &
+                                             GT = GT(:,:,ipoint),                 &
+                                             xi = col_points_xi(:,ipoint),        &          
+                                             eta = col_points_eta(:,ipoint),      &
+                                             npol = sem_obj%npol,                 &
+                                             nsamp = sem_obj%ndumps,              &
+                                             nodes = nodes(:,:,ipoint),           &
+                                             element_type = element_type(ipoint), &
+                                             axial = axis(ipoint))
+          !end if
+        end do
+      case(4)
+        do concurrent (ipoint = 1: npoints, status_strain(ipoint).eq.-1)
+            straintrace(:,:,:,:,ipoint) = straintrace_merged_fwd(                 &
+                                             u = real(utemp(:,:,:,:,ipoint), kind=dp), &
+                                             G = G(:,:,ipoint),                   &
+                                             GT = GT(:,:,ipoint),                 &
+                                             xi = col_points_xi(:,ipoint),        &          
+                                             eta = col_points_eta(:,ipoint),      &
+                                             npol = sem_obj%npol,                 &
+                                             nsamp = sem_obj%ndumps,              &
+                                             nodes = nodes(:,:,ipoint),           &
+                                             element_type = element_type(ipoint), &
+                                             axial = axis(ipoint))
+          !end if
+        end do
+      end select
 
     case('straintensor_full')
-      do ipoint = 1, npoints
-        if (status_strain(ipoint).eq.-1) then !If not found in strain buffer
-          ! compute full strain tensor
-          strain(:,:,:,:,:,ipoint) = strain_merged(                   &
+      ! compute full strain tensor
+      select case(sem_obj%nsim_merged)
+      case(2)
+        do concurrent (ipoint = 1: npoints, status_strain(ipoint).eq.-1)
+          strain(:,:,:,:,:,ipoint) = strain_merged_bwd(                   &
                                  u = real(utemp(:,:,:,:,ipoint), kind=dp),  &
                                  G = G(:,:,ipoint),                   &
                                  GT = GT(:,:,ipoint),                 &
@@ -2188,12 +2212,25 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                  eta = col_points_eta(:,ipoint),      &
                                  npol = sem_obj%npol,                 &
                                  nsamp = sem_obj%ndumps,              &
-                                 nsim = sem_obj%nsim_merged,          &
                                  nodes = nodes(:,:,ipoint),           &
                                  element_type = element_type(ipoint), &
                                  axial = axis(ipoint))
-        end if
-      end do
+        end do
+      case(4)
+        do concurrent (ipoint = 1: npoints, status_strain(ipoint).eq.-1)
+          strain(:,:,:,:,:,ipoint) = strain_merged_fwd(                   &
+                                 u = real(utemp(:,:,:,:,ipoint), kind=dp),  &
+                                 G = G(:,:,ipoint),                   &
+                                 GT = GT(:,:,ipoint),                 &
+                                 xi = col_points_xi(:,ipoint),        &          
+                                 eta = col_points_eta(:,ipoint),      &
+                                 npol = sem_obj%npol,                 &
+                                 nsamp = sem_obj%ndumps,              &
+                                 nodes = nodes(:,:,ipoint),           &
+                                 element_type = element_type(ipoint), &
+                                 axial = axis(ipoint))
+        end do
+      end select
     end select
 
       !select case(strain_type)
@@ -2204,31 +2241,24 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
       !end select
     iclockold = tick(id=id_calc_strain, since=iclockold)
 
-    iclockold = tick()
     select case(strain_type)
     case('straintensor_trace')
-      do ipoint = 1, npoints
-        do isim = 1, sem_obj%nsim_merged
-          load_strain_point_merged(:, 1, isim, ipoint)                      &
+      do concurrent (ipoint = 1:npoints)
+          strain_result(:, 1, :, ipoint)                      &
               = lagrange_interpol_2D_td(col_points_xi(:,ipoint),            &
                                         col_points_eta(:,ipoint),           &
-                                        straintrace(:, :, :, isim, ipoint), &
+                                        straintrace(:, :, :, :, ipoint), &
                                         xi(ipoint),                         &
                                         eta(ipoint))
-        end do
       end do 
     case('straintensor_full')
-      do ipoint = 1, npoints
-        do isim = 1, sem_obj%nsim_merged
-          do i = 1, 6
-              load_strain_point_merged(:, i, isim, ipoint)                    &
-                  = lagrange_interpol_2D_td(col_points_xi(:,ipoint),          &
-                                            col_points_eta(:,ipoint),         &
-                                            strain(:, :, :, i, isim, ipoint), &
-                                            xi(ipoint),                       &
-                                            eta(ipoint))
-          enddo
-        enddo
+      do concurrent (ipoint = 1:npoints)
+        strain_result(:, :, :, ipoint)                    &
+            = lagrange_interpol_2D_td(col_points_xi(:,ipoint),          &
+                                      col_points_eta(:,ipoint),         &
+                                      strain(:, :, :, :, :, ipoint), &
+                                      xi(ipoint),                       &
+                                      eta(ipoint))
       enddo
     end select
     iclockold = tick(id=id_lagrange, since=iclockold)
@@ -2237,10 +2267,11 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
 
     if (trim(strain_type).eq.'straintensor_full') then
       !@TODO for consistency with SOLVER output
-      load_strain_point_merged(:, 4, :, :) = - load_strain_point_merged(:, 4, :, :) 
-      load_strain_point_merged(:, 6, :, :) = - load_strain_point_merged(:, 6, :, :) 
+      strain_result(:, 4, :, :) = - strain_result(:, 4, :, :) 
+      strain_result(:, 6, :, :) = - strain_result(:, 6, :, :) 
     end if
 
+    iclockold = tick()
     if (use_buffer_loc) then
       select case(strain_type)
       case('straintensor_trace')
@@ -2254,12 +2285,12 @@ function load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
                                            strain(:,:,:,:,:,ipoint))
         end do
       end select
-      iclockold = tick(id=id_buffer, since=iclockold)
     end if
+    iclockold = tick(id=id_buffer, since=iclockold)
     iclockold_total = tick(id=id_load_strain, since=iclockold_total)
 
 
-end function load_strain_point_merged
+end subroutine load_strain_point_merged
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

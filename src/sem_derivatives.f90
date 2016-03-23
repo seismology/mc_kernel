@@ -1,17 +1,18 @@
 !=========================================================================================
 module sem_derivatives
   use global_parameters,      only : dp
-  use commpi,                 only : pabort
   use finite_elem_mapping,    only : inv_jacobian
 
   implicit none
   private
 
-  public :: strain_merged
+  public :: strain_merged_fwd
+  public :: strain_merged_bwd
   public :: strain_monopole
   public :: strain_dipole
   public :: strain_quadpole
-  public :: straintrace_merged
+  public :: straintrace_merged_fwd
+  public :: straintrace_merged_bwd
   public :: straintrace_monopole
   public :: straintrace_dipole
   public :: straintrace_quadpole
@@ -80,7 +81,69 @@ contains
 
 !--MERGED-------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
-function strain_merged(u, G, GT, xi, eta, npol, nsamp, nsim, &
+pure function strain_merged_fwd(u, G, GT, xi, eta, npol, nsamp, &
+                       nodes, element_type, axial) result(strain)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol, nsamp
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol,10)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: strain(1:nsamp,0:npol,0:npol,6,4)
+
+  ! MZZ
+  strain(:,:,:,:,1) = strain_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
+                                      nsamp, nodes, element_type, axial)
+  ! MXX
+  strain(:,:,:,:,2) = strain_monopole(u(:,:,:,3:4), G, GT, xi, eta, npol, &
+                                      nsamp, nodes, element_type, axial)
+  ! MXZ
+  strain(:,:,:,:,3) = strain_dipole(u(:,:,:,5:7), G, GT, xi, eta, npol, &
+                                    nsamp, nodes, element_type, axial)
+  ! MXY
+  strain(:,:,:,:,4) = strain_quadpole(u(:,:,:,8:10), G, GT, xi, eta, npol, &
+                                      nsamp, nodes, element_type, axial)
+
+end function strain_merged_fwd
+!-----------------------------------------------------------------------------------------
+pure function strain_merged_bwd(u, G, GT, xi, eta, npol, nsamp, &
+                       nodes, element_type, axial) result(strain)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol, nsamp
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol,5)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: strain(1:nsamp,0:npol,0:npol,6,2)
+
+  ! PZ
+  strain(:,:,:,:,1) = strain_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
+                                      nsamp, nodes, element_type, axial)
+  ! PX
+  strain(:,:,:,:,2) = strain_dipole(u(:,:,:,3:5), G, GT, xi, eta, npol, &
+                                    nsamp, nodes, element_type, axial)
+
+end function strain_merged_bwd
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function strain_merged(u, G, GT, xi, eta, npol, nsamp, nsim, &
                        nodes, element_type, axial) result(strain)
   ! Computes the strain tensor for displacement u excited bz a monopole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
@@ -126,13 +189,13 @@ end function strain_merged
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function straintrace_merged(u, G, GT, xi, eta, npol, nsamp, nsim, nodes, &
+pure function straintrace_merged_fwd(u, G, GT, xi, eta, npol, nsamp, nodes, &
                             element_type, axial) result(straintrace)
   ! Computes the strain tensor for displacement u excited bz a monopole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
-  integer, intent(in)           :: npol, nsamp, nsim
-  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol, nint(nsim*2.5))
+  integer, intent(in)           :: npol, nsamp
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol,10)
   real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
   real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
                                                      ! axial elements
@@ -142,38 +205,56 @@ function straintrace_merged(u, G, GT, xi, eta, npol, nsamp, nsim, nodes, &
   real(kind=dp), intent(in)     :: nodes(4,2)
   integer, intent(in)           :: element_type
   logical, intent(in)           :: axial
-  real(kind=dp)                 :: straintrace(1:nsamp,0:npol,0:npol,nsim)
+  real(kind=dp)                 :: straintrace(1:nsamp,0:npol,0:npol,4)
 
-  select case(nsim)
-  case(4)
-    ! MZZ
-    straintrace(:,:,:,1) = straintrace_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
-                                                nsamp, nodes, element_type, axial)
-    ! MXX
-    straintrace(:,:,:,2) = straintrace_monopole(u(:,:,:,3:4), G, GT, xi, eta, npol, &
-                                                nsamp, nodes, element_type, axial)
-    ! MXZ
-    straintrace(:,:,:,3) = straintrace_dipole(u(:,:,:,5:7), G, GT, xi, eta, npol, &
+  ! MZZ
+  straintrace(:,:,:,1) = straintrace_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
                                               nsamp, nodes, element_type, axial)
-    ! MXY
-    straintrace(:,:,:,4) = straintrace_quadpole(u(:,:,:,8:10), G, GT, xi, eta, npol, &
-                                                nsamp, nodes, element_type, axial)
-  case(2)
-    ! PZ
-    straintrace(:,:,:,1) = straintrace_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
-                                                nsamp, nodes, element_type, axial)
-    ! PX 
-    straintrace(:,:,:,2) = straintrace_dipole(u(:,:,:,3:5), G, GT, xi, eta, npol, &
+  ! MXX
+  straintrace(:,:,:,2) = straintrace_monopole(u(:,:,:,3:4), G, GT, xi, eta, npol, &
                                               nsamp, nodes, element_type, axial)
-  end select
+  ! MXZ
+  straintrace(:,:,:,3) = straintrace_dipole(u(:,:,:,5:7), G, GT, xi, eta, npol, &
+                                            nsamp, nodes, element_type, axial)
+  ! MXY
+  straintrace(:,:,:,4) = straintrace_quadpole(u(:,:,:,8:10), G, GT, xi, eta, npol, &
+                                              nsamp, nodes, element_type, axial)
 
-end function straintrace_merged
+end function straintrace_merged_fwd
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+pure function straintrace_merged_bwd(u, G, GT, xi, eta, npol, nsamp, nodes, &
+                            element_type, axial) result(straintrace)
+  ! Computes the strain tensor for displacement u excited bz a monopole source
+  ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
+  
+  integer, intent(in)           :: npol, nsamp
+  real(kind=dp), intent(in)     :: u(1:nsamp,0:npol,0:npol,5)
+  real(kind=dp), intent(in)     :: G(0:npol,0:npol)  ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: GT(0:npol,0:npol) ! GLL for non-axial and GLJ for 
+                                                     ! axial elements
+  real(kind=dp), intent(in)     :: xi(0:npol)  ! GLL for non-axial and GLJ for axial 
+                                               ! elements
+  real(kind=dp), intent(in)     :: eta(0:npol) ! same for all elements (GLL)
+  real(kind=dp), intent(in)     :: nodes(4,2)
+  integer, intent(in)           :: element_type
+  logical, intent(in)           :: axial
+  real(kind=dp)                 :: straintrace(1:nsamp,0:npol,0:npol,2)
+
+  ! PZ
+  straintrace(:,:,:,1) = straintrace_monopole(u(:,:,:,1:2), G, GT, xi, eta, npol, &
+                                              nsamp, nodes, element_type, axial)
+  ! PX 
+  straintrace(:,:,:,2) = straintrace_dipole(u(:,:,:,3:5), G, GT, xi, eta, npol, &
+                                            nsamp, nodes, element_type, axial)
+
+end function straintrace_merged_bwd
 !-----------------------------------------------------------------------------------------
 
 !--MONOPOLE-------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function strain_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
+pure function strain_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a monopole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -213,7 +294,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
+pure function strain_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a monopole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -251,7 +332,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function straintrace_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, &
+pure function straintrace_monopole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, &
                                  axial)
   ! Computes the strain tensor for displacement u excited bz a monopole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
@@ -289,7 +370,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function straintrace_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
+pure function straintrace_monopole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a monopole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -326,7 +407,7 @@ end function
 !--DIPOLE---------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function strain_dipole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
+pure function strain_dipole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a dipole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -375,7 +456,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function strain_dipole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
+pure function strain_dipole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a dipole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -423,7 +504,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function straintrace_dipole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
+pure function straintrace_dipole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the straintrace tensor for displacement u excited by a dipole source
   
   integer, intent(in)           :: npol, nsamp
@@ -459,7 +540,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function straintrace_dipole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
+pure function straintrace_dipole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! Computes the straintrace tensor for displacement u excited by a dipole source
   
   integer, intent(in)           :: npol
@@ -496,7 +577,7 @@ end function
 !--QUADRUPOLE-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function strain_quadpole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
+pure function strain_quadpole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a quadpole_td source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -545,7 +626,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function strain_quadpole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
+pure function strain_quadpole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! Computes the strain tensor for displacement u excited bz a quadpole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -591,7 +672,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function straintrace_quadpole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
+pure function straintrace_quadpole_td(u, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the straintrace tensor for displacement u excited bz a quadpole_td source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -629,7 +710,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function straintrace_quadpole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
+pure function straintrace_quadpole(u, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! Computes the straintrace tensor for displacement u excited bz a quadpole source
   ! in Voigt notation: [dsus, dpup, dzuz, dzup, dsuz, dsup]
   
@@ -667,7 +748,7 @@ end function
 !--GENERAL--------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function f_over_s_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
+pure function f_over_s_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type, axial)
   ! Computes the f / s
   ! needs G and GT for l'hospitals rule to compute f/s = df/ds at the axis s = 0
   
@@ -714,7 +795,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function f_over_s(f, G, GT, xi, eta, npol, nodes, element_type, axial)
+pure function f_over_s(f, G, GT, xi, eta, npol, nodes, element_type, axial)
   ! Computes the f / s
   ! needs G and GT for l'hospitals rule to compute f/s = df/ds at the axis s = 0
   
@@ -753,7 +834,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function dsdf_axis_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
+pure function dsdf_axis_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
   ! Computes the axisymmetric gradient of scalar field f
   ! grad = \nabla {f} = \partial_s(f) \hat{s} + \partial_z(f) \hat{z}
   
@@ -791,7 +872,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function dsdf_axis(f, G, GT, xi, eta, npol, nodes, element_type)
+pure function dsdf_axis(f, G, GT, xi, eta, npol, nodes, element_type)
   ! Computes the partial derivative of scalar field f for ipol = 0
   ! needed for l'hospitals rule to compute f/s = df/ds at the axis s = 0
   
@@ -826,7 +907,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function axisym_gradient_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
+pure function axisym_gradient_td(f, G, GT, xi, eta, npol, nsamp, nodes, element_type)
   ! Computes the axisymmetric gradient of scalar field f
   ! grad = \nabla {f} = \partial_s(f) \hat{s} + \partial_z(f) \hat{z}
   
@@ -873,7 +954,7 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function axisym_gradient(f, G, GT, xi, eta, npol, nodes, element_type)
+pure function axisym_gradient(f, G, GT, xi, eta, npol, nodes, element_type)
   ! Computes the axisymmetric gradient of scalar field f
   ! grad = \nabla {f} = \partial_s(f) \hat{s} + \partial_z(f) \hat{z}
   

@@ -235,6 +235,8 @@ subroutine start_clock_slave
   id_out             = clock_id('Write wavefields to disk')
   id_finalize        = clock_id('Finalization of output files')
   id_element         = clock_id('Time spent for one element')
+  id_allocate        = clock_id('Allocation in load_strain')
+  id_allocate_2      = clock_id('Allocation in load_strain 2')
 
 
 end subroutine start_clock_slave

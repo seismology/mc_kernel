@@ -37,7 +37,7 @@ module global_parameters
                                 id_read_params, id_create_tasks, id_get_next_task, &
                                 id_extract, id_write_kernel, id_mult_kernel,       &
                                 id_init_fft, id_dump, id_finalize, id_element,     &
-                                id_int_hetero
+                                id_int_hetero, id_allocate, id_allocate_2
   integer                    :: id_load, id_resamp, id_out
 
   contains

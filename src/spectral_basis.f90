@@ -9,6 +9,12 @@ module spectral_basis
     public :: lagrange_interpol_2D
     public :: lagrange_interpol_2D_td
 
+    interface lagrange_interpol_2D_td
+      module procedure  :: lagrange_interpol_2D_td_scalar
+      module procedure  :: lagrange_interpol_2D_td_1d
+      module procedure  :: lagrange_interpol_2D_td_2d
+    end interface
+
     public :: zelegl
     public :: zemngl2
     public :: def_lagrange_derivs_gll
@@ -148,12 +154,12 @@ end function lagrange_interpol_2D
 !> computes the Lagrangian interpolation polynomial of a function defined by its values at 
 !  a set of collocation points in 2D, where the points are a tensorproduct of two sets of
 !  points in 1D, for time dependent coefficients
-pure function lagrange_interpol_2D_td(points1, points2, coefficients, x1, x2)
+pure function lagrange_interpol_2D_td_scalar(points1, points2, coefficients, x1, x2)
 
   real(dp), intent(in)  :: points1(0:), points2(0:)
   real(dp), intent(in)  :: coefficients(:,0:,0:) ! ndumps, 0:npol, 0:npol
   real(dp), intent(in)  :: x1, x2
-  real(dp)              :: lagrange_interpol_2D_td(size(coefficients,1))
+  real(dp)              :: lagrange_interpol_2D_td_scalar(size(coefficients,1))
   real(dp)              :: l_i(0:size(points1)-1), l_j(0:size(points2)-1)
 
   integer               :: i, j, m1, m2, n1, n2
@@ -177,17 +183,113 @@ pure function lagrange_interpol_2D_td(points1, points2, coefficients, x1, x2)
      enddo
   enddo
 
-  lagrange_interpol_2D_td(:) = 0
+  lagrange_interpol_2D_td_scalar(:) = 0
 
   do i=0, n1
      do j=0, n2
-        lagrange_interpol_2D_td(:) = lagrange_interpol_2D_td(:) &
+        lagrange_interpol_2D_td_scalar(:) = lagrange_interpol_2D_td_scalar(:) &
                                      + coefficients(:,i,j) * l_i(i) * l_j(j)
      enddo
   enddo
 
-end function lagrange_interpol_2D_td
+end function lagrange_interpol_2D_td_scalar
 !-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> computes the Lagrangian interpolation polynomial of a function defined by its values at 
+!  a set of collocation points in 2D, where the points are a tensorproduct of two sets of
+!  points in 1D, for time dependent coefficients
+!  Applies the same interpolation to an array of numbers
+pure function lagrange_interpol_2D_td_1d(points1, points2, coefficients, x1, x2)
+
+  real(dp), intent(in)  :: points1(0:), points2(0:)
+  real(dp), intent(in)  :: coefficients(:,0:,0:,:) ! ndumps, 0:npol, 0:npol, isim
+  real(dp), intent(in)  :: x1, x2
+  real(dp)              :: lagrange_interpol_2D_td_1d(size(coefficients,1), &
+                                                      size(coefficients,4))
+  real(dp)              :: l_i(0:size(points1)-1), l_j(0:size(points2)-1)
+
+  integer               :: i, j, m1, m2, n1, n2
+
+  n1 = size(points1) - 1
+  n2 = size(points2) - 1
+
+  do i=0, n1
+     l_i(i) = 1
+     do m1=0, n1
+        if (m1 == i) cycle
+        l_i(i) = l_i(i) * (x1 - points1(m1)) / (points1(i) - points1(m1))
+     enddo
+  enddo
+
+  do j=0, n2
+     l_j(j) = 1
+     do m2=0, n2
+        if (m2 == j) cycle
+        l_j(j) = l_j(j) * (x2 - points2(m2)) / (points2(j) - points2(m2))
+     enddo
+  enddo
+
+  lagrange_interpol_2D_td_1d = 0
+
+  do i=0, n1
+     do j=0, n2
+        lagrange_interpol_2D_td_1d(:,:) = lagrange_interpol_2D_td_1d(:,:) &
+                                        + coefficients(:,i,j,:) * l_i(i) * l_j(j)
+     enddo
+  enddo
+
+end function lagrange_interpol_2D_td_1d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+!> computes the Lagrangian interpolation polynomial of a function defined by its values at 
+!  a set of collocation points in 2D, where the points are a tensorproduct of two sets of
+!  points in 1D, for time dependent coefficients
+!  Applies the same interpolation to an array of numbers
+pure function lagrange_interpol_2D_td_2d(points1, points2, coefficients, x1, x2)
+
+  real(dp), intent(in)  :: points1(0:), points2(0:)
+  real(dp), intent(in)  :: coefficients(:,0:,0:,:,:) ! ndumps, 0:npol, 0:npol, isim, idim
+  real(dp), intent(in)  :: x1, x2
+  real(dp)              :: lagrange_interpol_2D_td_2d(size(coefficients,1), &
+                                                      size(coefficients,4), &
+                                                      size(coefficients,5))
+  real(dp)              :: l_i(0:size(points1)-1), l_j(0:size(points2)-1)
+
+  integer               :: i, j, m1, m2, n1, n2
+
+  n1 = size(points1) - 1
+  n2 = size(points2) - 1
+
+  do i=0, n1
+     l_i(i) = 1
+     do m1=0, n1
+        if (m1 == i) cycle
+        l_i(i) = l_i(i) * (x1 - points1(m1)) / (points1(i) - points1(m1))
+     enddo
+  enddo
+
+  do j=0, n2
+     l_j(j) = 1
+     do m2=0, n2
+        if (m2 == j) cycle
+        l_j(j) = l_j(j) * (x2 - points2(m2)) / (points2(j) - points2(m2))
+     enddo
+  enddo
+
+  lagrange_interpol_2D_td_2d = 0
+
+  do i=0, n1
+     do j=0, n2
+        lagrange_interpol_2D_td_2d(:,:,:) = lagrange_interpol_2D_td_2d(:,:,:) &
+                                          + coefficients(:,i,j,:,:) * l_i(i) * l_j(j)
+     enddo
+  enddo
+
+end function lagrange_interpol_2D_td_2d
+!-----------------------------------------------------------------------------------------
+
 
 !-----------------------------------------------------------------------------------------
 !> Compute the value of the derivative of the j-th Lagrange polynomial
