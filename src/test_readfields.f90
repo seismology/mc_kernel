@@ -101,6 +101,7 @@ subroutine test_readfields_set_params()
                             strain_buffer_size   = 100,                         &
                             displ_buffer_size    = 100,                         &
                             strain_type          = 'straintensor_trace',        &
+                            npoints              = parameters%npoints_per_step, &
                             desired_source_depth = parameters%source%depth,     &
                             parallel_read        = .false.)
 
@@ -125,6 +126,7 @@ subroutine test_readfields_open_files()
                             displ_buffer_size    = 100,                         &
                             strain_type          = 'straintensor_trace',        &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
 
    call sem_data%open_files()
@@ -132,33 +134,6 @@ subroutine test_readfields_open_files()
    call sem_data%close_files()
 
 end subroutine  test_readfields_open_files
-!-----------------------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------------------
-!> Just show that at least it does not crash
-subroutine test_readfields_reopen_files()
-   use type_parameter, only : parameter_type
-   type(parameter_type)    :: parameters
-   type(semdata_type)      :: sem_data
-
-   call parameters%read_parameters('./inparam_test')
-   call parameters%read_source()
-   
-   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
-                            bwd_dir              = parameters%bwd_dir,          &
-                            strain_buffer_size   = 100,                         &
-                            displ_buffer_size    = 100,                         &
-                            strain_type          = 'straintensor_trace',        &
-                            desired_source_depth = parameters%source%depth,     &
-                            parallel_read        = .false.)
-
-   call sem_data%open_files()
-
-   call sem_data%reopen_files()
-
-   call sem_data%close_files()
-
-end subroutine  test_readfields_reopen_files
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -190,6 +165,7 @@ subroutine test_readfields_load_fw_points
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
    call sem_data%open_files()
    call sem_data%read_meshes()
@@ -289,6 +265,7 @@ subroutine test_readfields_load_straintrace_merged
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
    call sem_data%open_files()
    call sem_data%read_meshes()
@@ -304,6 +281,7 @@ subroutine test_readfields_load_straintrace_merged
                                    displ_buffer_size    = 100,                         &
                                    strain_type          = parameters_merged%strain_type_fwd,  &
                                    desired_source_depth = parameters_merged%source%depth,     &
+                                   npoints              = parameters%npoints_per_step, &
                                    parallel_read        = .false.)
    call sem_data_merged%open_files()
    call sem_data_merged%read_meshes()
@@ -372,7 +350,7 @@ subroutine test_readfields_load_straintrace_merged
      straintrace_classical = u_classical(:, :, ipoint)
      straintrace_merged    = u_merged(:, :, ipoint)
 
-     write(err_msg, 20) 'fwd', ipoint
+     write(err_msg, 20) 'bwd', ipoint
      call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
                             1d-10, err_msg)
    end do
@@ -391,7 +369,7 @@ subroutine test_readfields_load_straintrace_merged
      straintrace_classical = u_classical(:, :, ipoint)
      straintrace_merged    = u_merged(:, :, ipoint)
 
-     write(err_msg, 20) 'fwd', ipoint
+     write(err_msg, 20) 'bwd', ipoint
      call assert_comparable(straintrace_merged(:,:), straintrace_classical(:,:), &
                             1d-10, err_msg)
    end do
@@ -459,6 +437,7 @@ subroutine test_readfields_load_strain_merged
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
    call sem_data%open_files()
    call sem_data%read_meshes()
@@ -474,6 +453,7 @@ subroutine test_readfields_load_strain_merged
                                    displ_buffer_size    = 100,                         &
                                    strain_type          = parameters_merged%strain_type_fwd,  &
                                    desired_source_depth = parameters_merged%source%depth,     &
+                                   npoints              = parameters%npoints_per_step, &
                                    parallel_read        = .false.)
    call sem_data_merged%open_files()
    call sem_data_merged%read_meshes()
@@ -544,7 +524,7 @@ subroutine test_readfields_load_strain_merged
      strain_classical = u_classical(:, :, ipoint)
      strain_merged    = u_merged(:, :, ipoint)
 
-     write(err_msg, 20) 'fwd', ipoint
+     write(err_msg, 20) 'bwd', ipoint
      call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
                             1d-10, err_msg)
    end do
@@ -563,7 +543,7 @@ subroutine test_readfields_load_strain_merged
      strain_classical = u_classical(:, :, ipoint)
      strain_merged    = u_merged(:, :, ipoint)
 
-     write(err_msg, 20) 'fwd', ipoint
+     write(err_msg, 20) 'bwd', ipoint
      call assert_comparable(strain_merged(:,:), strain_classical(:,:), &
                             1d-10, err_msg)
    end do
@@ -635,6 +615,7 @@ subroutine test_load_seismograms_rdbm_Z
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
 
    call sem_data%open_files()
@@ -694,6 +675,7 @@ subroutine test_load_seismograms_rdbm_R
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
 
    call sem_data%open_files()
@@ -753,6 +735,7 @@ subroutine test_load_seismograms_rdbm_T
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
 
    call sem_data%open_files()
@@ -814,6 +797,7 @@ subroutine test_load_seismograms_rdbm_merged_Z
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
 
    call sem_data%open_files()
@@ -873,6 +857,7 @@ subroutine test_load_seismograms_rdbm_merged_R
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
 
    call sem_data%open_files()
@@ -932,6 +917,7 @@ subroutine test_load_seismograms_rdbm_merged_T
                             displ_buffer_size    = 100,                         &
                             strain_type          = parameters%strain_type_fwd,  &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
 
    call sem_data%open_files()
@@ -1084,6 +1070,7 @@ subroutine test_readfields_load_model_coeffs
                             displ_buffer_size    = 100,                         &
                             strain_type          = 'straintensor_trace',        &
                             desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
                             parallel_read        = .false.)
 
    call sem_data%open_files()
