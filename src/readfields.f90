@@ -1957,8 +1957,7 @@ subroutine load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
     use spectral_basis, only         : lagrange_interpol_2D_td
     use sem_derivatives, only        : straintrace_merged_fwd, strain_merged_fwd
     use sem_derivatives, only        : straintrace_merged_bwd, strain_merged_bwd
-    use netcdf, only                 : nf90_get_var ! HACK, create 5D wrapper in nc_routines 
-    type(ncparamtype), intent(in)   :: sem_obj
+    type(ncparamtype)               :: sem_obj
     real(kind=dp),     intent(in)   :: xi(:), eta(:)      !< Coordinates at which to interpolate
                                                     !! strain
     character(len=*),  intent(in)   :: strain_type  !< Model parameter (decides on 
@@ -2065,84 +2064,9 @@ subroutine load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
 
     iclockold = tick(id=id_buffer, since=iclockold)
 
+    ! If there's anything to be read from disk, do it
     if (any(to_be_read_from_disk)) then
-      first_elem = minval(id_elem, mask=to_be_read_from_disk)
-      last_elem  = maxval(id_elem, mask=to_be_read_from_disk) 
-      nelem_to_read = last_elem - first_elem + 1
-
-      !write(lu_out, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem
-      !write(*, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem, ' ids:', id_elem
-      u_batch = 0
-
-      nread_larger_max: if (nelem_to_read < nelem_to_read_max) then
-        !write(lu_out, *) 'reading all at once'
-        !write(*, *) 'reading all at once'
-        do ipoint = 1, npoints
-          if (to_be_read_from_disk(ipoint)) then
-            ielem_in_batch(ipoint) = id_elem(ipoint) + 1 - first_elem
-          end if
-        end do
-
-        iclockold = tick()
-        call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
-                                varid  = sem_obj%mergedvarid,               &
-                                start  = [1, 1, 1, 1, first_elem],          &
-                                count  = [sem_obj%ndumps, sem_obj%npol+1,   &
-                                          sem_obj%npol+1, ndirection,       &
-                                          nelem_to_read],                   &
-                                values = u_batch(:,:,:,1:ndirection,1:nelem_to_read)))
-        iclockold = tick(id=id_netcdf, since=iclockold)
-
-        do ielem_read = 1, nelem_to_read
-          status_disp = sem_obj%buffer_disp%put(first_elem + ielem_read - 1, &
-                                                u_batch(:,                   &
-                                                        :,                   &
-                                                        :,                   &
-                                                        1:ndirection,        &
-                                                        ielem_read))
-        end do
-        iclockold = tick(id=id_buffer, since=iclockold)
-
-      else 
-        !write(lu_out, *) 'reading one at a time'
-        !write(*, *) 'reading one at a time'
-        nelem_to_read = npoints
-        iclockold = tick()
-
-        do ipoint = 1, npoints
-          iclockold = tick()
-          ielem_in_batch(ipoint) = ipoint
-          call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
-                                  varid  = sem_obj%mergedvarid,               &
-                                  start  = [1, 1, 1, 1, id_elem(ipoint)],     &
-                                  count  = [sem_obj%ndumps, sem_obj%npol+1,   &
-                                            sem_obj%npol+1, ndirection,       &
-                                            1],                               &
-                                  values = u_batch(1:sem_obj%ndumps,          &
-                                                   0:sem_obj%npol,            &
-                                                   0:sem_obj%npol,            &
-                                                   1:ndirection,              &
-                                                   ipoint)))
-          iclockold = tick(id=id_netcdf, since=iclockold)
-          status_disp = sem_obj%buffer_disp%put(id_elem(ipoint),             &
-                                                u_batch(:,                   &
-                                                        :,                   &
-                                                        :,                   &
-                                                        1:ndirection,        &
-                                                        ipoint))
-          iclockold = tick(id=id_buffer, since=iclockold)
-        end do
-
-      end if nread_larger_max
-
-      do ipoint = 1, npoints
-        if (to_be_read_from_disk(ipoint)) then
-          utemp(:,:,:,:,ipoint) = u_batch(:,:,:,1:ndirection,ielem_in_batch(ipoint))
-        end if
-      end do
-
-    else
-      !write(lu_out, *) 'nelem: 0, all in buffer'
+      call read_points_from_disk(sem_obj, id_elem, to_be_read_from_disk, utemp)
     end if
       
     iclockold = tick()
@@ -2291,6 +2215,101 @@ subroutine load_strain_point_merged(sem_obj, xi, eta, strain_type, nodes, &
 
 
 end subroutine load_strain_point_merged
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine read_points_from_disk(sem_obj, id_elem, to_be_read_from_disk, u)
+  use netcdf, only              : nf90_get_var ! HACK, create 5D wrapper in nc_routines 
+  type(ncparamtype)            :: sem_obj
+  integer, intent(in)          :: id_elem(:)
+  logical, intent(inout)       :: to_be_read_from_disk(:)
+  real(kind=sp), intent(inout) :: u(:,:,:,:,:)
+
+  integer                      :: first_elem, last_elem, nelem_to_read
+  integer                      :: ielem_read, ipoint, status_disp
+  integer                      :: npoints, ndirection
+  integer                      :: ielem_in_batch(size(u, dim=5))
+  integer(kind=long)           :: iclockold
+
+  ndirection = size(u, dim=4)
+  npoints = size(u, dim=5)
+
+  first_elem = minval(id_elem, mask=to_be_read_from_disk)
+  last_elem  = maxval(id_elem, mask=to_be_read_from_disk) 
+  nelem_to_read = last_elem - first_elem + 1
+
+  !write(lu_out, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem
+  !write(*, *) 'nelem: ', nelem_to_read, 'first: ', first_elem, 'last: ', last_elem, ' ids:', id_elem
+  u_batch = 0
+
+  nread_larger_max: if (nelem_to_read < nelem_to_read_max) then
+    !write(lu_out, *) 'reading all at once'
+    !write(*, *) 'reading all at once'
+    do ipoint = 1, npoints
+      if (to_be_read_from_disk(ipoint)) then
+        ielem_in_batch(ipoint) = id_elem(ipoint) + 1 - first_elem
+      end if
+    end do
+
+    iclockold = tick()
+    call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
+                            varid  = sem_obj%mergedvarid,               &
+                            start  = [1, 1, 1, 1, first_elem],          &
+                            count  = [sem_obj%ndumps, sem_obj%npol+1,   &
+                                      sem_obj%npol+1, ndirection,       &
+                                      nelem_to_read],                   &
+                            values = u_batch(:,:,:,1:ndirection,1:nelem_to_read)))
+    iclockold = tick(id=id_netcdf, since=iclockold)
+
+    do ielem_read = 1, nelem_to_read
+      status_disp = sem_obj%buffer_disp%put(first_elem + ielem_read - 1, &
+                                            u_batch(:,                   &
+                                                    :,                   &
+                                                    :,                   &
+                                                    1:ndirection,        &
+                                                    ielem_read))
+    end do
+    iclockold = tick(id=id_buffer, since=iclockold)
+
+  else 
+    !write(lu_out, *) 'reading one at a time'
+    !write(*, *) 'reading one at a time'
+    nelem_to_read = npoints
+    iclockold = tick()
+
+    do ipoint = 1, npoints
+      iclockold = tick()
+      ielem_in_batch(ipoint) = ipoint
+      call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
+                              varid  = sem_obj%mergedvarid,               &
+                              start  = [1, 1, 1, 1, id_elem(ipoint)],     &
+                              count  = [sem_obj%ndumps, sem_obj%npol+1,   &
+                                        sem_obj%npol+1, ndirection,       &
+                                        1],                               &
+                              values = u_batch(1:sem_obj%ndumps,          &
+                                               0:sem_obj%npol,            &
+                                               0:sem_obj%npol,            &
+                                               1:ndirection,              &
+                                               ipoint)))
+      iclockold = tick(id=id_netcdf, since=iclockold)
+      status_disp = sem_obj%buffer_disp%put(id_elem(ipoint),             &
+                                            u_batch(:,                   &
+                                                    :,                   &
+                                                    :,                   &
+                                                    1:ndirection,        &
+                                                    ipoint))
+      iclockold = tick(id=id_buffer, since=iclockold)
+    end do
+
+  end if nread_larger_max
+
+  do ipoint = 1, npoints
+    if (to_be_read_from_disk(ipoint)) then
+      u(:,:,:,:,ipoint) = u_batch(:,:,:,1:ndirection,ielem_in_batch(ipoint))
+    end if
+  end do
+
+end subroutine read_points_from_disk
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
