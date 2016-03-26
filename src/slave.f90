@@ -85,6 +85,7 @@ subroutine do_slave()
                            parameters%displ_buffer_size, & 
                            parameters%strain_type_fwd,    &
                            parameters%source%depth,     &
+                           parameters%npoints_per_step,     &
                            parameters%parallel_read)
 
   call sem_data%open_files()

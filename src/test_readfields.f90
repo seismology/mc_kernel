@@ -252,6 +252,8 @@ subroutine test_readfields_load_straintrace_merged
    integer                    :: ipoint
    real(kind=dp)              :: coordinates(3,npoints)
    character(len=80)          :: err_msg
+   character(len=255)         :: fnam
+   integer                    :: lu_resstrain, i
 
    
    ! Classical database
@@ -335,6 +337,23 @@ subroutine test_readfields_load_straintrace_merged
 
    end do
 
+   ! Write out some results
+   do ipoint = 1, npoints
+     write(fnam, '("./output/straintrace_fwd_classical_", I1)') ipoint 
+     open(newunit=lu_resstrain, file=trim(fnam), action='write')
+     do i=1, sem_data%ndumps
+       write(lu_resstrain, *) straintrace_classical(i, 1)
+     end do
+     close(lu_resstrain)
+
+     write(fnam, '("./output/straintrace_fwd_merged_", I1)') ipoint
+     open(newunit=lu_resstrain, file=trim(fnam), action='write')
+     do i=1, sem_data%ndumps
+       write(lu_resstrain, *) straintrace_merged(i, 1)
+     end do
+     close(lu_resstrain)
+   end do
+
    !----------------------------------------------------
    ! Backward wavefield
    coordinates(:,1) = [-1d6, 1d6, 1d6]
@@ -378,34 +397,21 @@ subroutine test_readfields_load_straintrace_merged
    call sem_data_merged%close_files()
 
    ! Write out some results
-   !write(fnam, '("./output/straintrace_fwd_classical_")') 
-   !open(newunit=lu_resstrain, file=trim(fnam), action='write')
-   !do i=1, sem_data%ndumps
-   !  write(lu_resstrain, *) straintrace_classical(i, 1)
-   !end do
-   !close(lu_resstrain)
+   do ipoint = 1, npoints
+     write(fnam, '("./output/straintrace_bwd_classical_", I1)') ipoint 
+     open(newunit=lu_resstrain, file=trim(fnam), action='write')
+     do i=1, sem_data%ndumps
+       write(lu_resstrain, *) straintrace_classical(i, 1)
+     end do
+     close(lu_resstrain)
 
-   !write(fnam, '("./output/straintrace_fwd_merged_")') 
-   !open(newunit=lu_resstrain, file=trim(fnam), action='write')
-   !do i=1, sem_data%ndumps
-   !  write(lu_resstrain, *) straintrace_merged(i, 1)
-   !end do
-   !close(lu_resstrain)
-   !
-   !write(fnam, '("./output/straintrace_bwd_classical")') 
-   !open(newunit=lu_resstrain, file=trim(fnam), action='write')
-   !do i=1, sem_data%ndumps
-   !  write(lu_resstrain, *) straintrace_classical(i, 1)
-   !end do
-   !close(lu_resstrain)
-
-   !write(fnam, '("./output/straintrace_bwd_merged")') 
-   !open(newunit=lu_resstrain, file=trim(fnam), action='write')
-   !do i=1, sem_data%ndumps
-   !  write(lu_resstrain, *) straintrace_merged(i, 1)
-   !end do
-   !close(lu_resstrain)
-
+     write(fnam, '("./output/straintrace_bwd_merged_", I1)') ipoint
+     open(newunit=lu_resstrain, file=trim(fnam), action='write')
+     do i=1, sem_data%ndumps
+       write(lu_resstrain, *) straintrace_merged(i, 1)
+     end do
+     close(lu_resstrain)
+   end do
 
 end subroutine test_readfields_load_straintrace_merged
 !-----------------------------------------------------------------------------------------

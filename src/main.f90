@@ -95,6 +95,7 @@ program kerner_code
                                  parameters%displ_buffer_size,  & 
                                  parameters%strain_type_fwd,    &
                                  parameters%source%depth,       &
+                                 1,                             &
                                  .false.)
 
         call sem_data%open_files()

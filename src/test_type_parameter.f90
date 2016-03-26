@@ -30,7 +30,7 @@ subroutine test_parameter_reading
 
    call sem_data%set_params(parameters%fwd_dir, parameters%bwd_dir, 100, 100,    &
                             parameters%strain_type_fwd, parameters%source%depth, &
-                            .false.)
+                            1, .false.)
    call sem_data%open_files()
    call sem_data%read_meshes()
    call sem_data%load_seismogram(parameters%receiver, parameters%source)
