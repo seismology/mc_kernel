@@ -1,6 +1,6 @@
 # directory of the forward and backward run
-FWD_DIR              './wavefield/fwd_merged//'
-BWD_DIR              './wavefield/bwd_merged//'
+FWD_DIR              './wavefield/fwd_merged_ordered/'
+BWD_DIR              './wavefield/bwd_merged_ordered/'
 
 # Paths of parameter files 
 SRC_FILE          'Benchmark_Gibraltar_event/CMTSOLUTION'
@@ -81,7 +81,7 @@ POINTS_PER_MC_STEP   4
 # Maximum number of iterations after which to cancel Monte Carlo integration 
 # in one cell, regardless of error.
 
-MAXIMUM_ITERATIONS   1E7
+MAXIMUM_ITERATIONS   1E4
 
 # Write detailed convergence of elements (default: false)
 # Every slave writes out the values of all the kernels and their respective 
@@ -99,11 +99,11 @@ STRAIN_BUFFER_SIZE   1000
 DISPL_BUFFER_SIZE    100
 
 # Number of elements in each MPI task. 
-ELEMENTS_PER_TASK    200 
+ELEMENTS_PER_TASK    5  
 
 # Sort mesh by element midpoint coordinates. This should allow to use the buffer more 
 # efficiently. Testing
-NO_SORT_MESH_ELEMENTS false
+NO_SORT_MESH_ELEMENTS true
 
 # Use quasirandom numbers instead of pseudorandom ones
 USE_PSEUDORANDOM_NUMBERS false
