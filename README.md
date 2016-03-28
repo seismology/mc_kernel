@@ -27,9 +27,16 @@ Be sure to load modules for Fortran, NetCDF, FFTW and LAPACK.
 On SuperMUC, the necessary commands are
 ```
 module load fortran
-module load netcdf/4.2
+module load netcdf/mpi
 module load fftw
 module load mkl
+```
+
+## AxiSEM wavefields
+Using the code requires computation of a global seismic wavefield using AxiSEM. Please refer to the AxiSEM documentation on how to do this. An set of example wavefields with a dominant period of 40s can be downloaded:
+```
+wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
+tar -xvf kerner_wavefields.tar.bz2
 ```
 
 ## Installation
@@ -38,19 +45,15 @@ Change into the download directory and copy the included template files into the
 cd kerner
 ./copy_templates.sh
 ```
-The file *make_mc_kerner.macros* allows you to modify the compiler name and compiler flags according to your system. To compile, use make
+The file *make_mc_kerner.macros* allows you to modify the compiler name and compiler flags according to your system. To compile, use
 ```bash
 make 
+```
+and afterwards 
+``` bash
 make check
 ```
-to run a set of tests.
-
-## AxiSEM wavefields
-Using the code requires computation of a global seismic wavefield using AxiSEM. Please refer to the AxiSEM documentation on how to do this. An set of example wavefields with a dominant period of 40s can be downloaded:
-```
-wget https://www.geophysik.uni-muenchen.de/~staehler/kernel_wavefields_40s.tar.gz
-tar -xvf kernel_wavefields_40s.tar.gz
-```
+to run a set of tests (wavefields downloaded in the previous step are necessary for the tests to complete).
 
 ## Usage
 To run the code, a convenient submit script is available:
