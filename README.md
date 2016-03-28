@@ -1,4 +1,4 @@
-![](https://raw.githubusercontent.com/sstaehler/kerner/master/doc/logo.png?token=AE0eeLqaWCLbz3zNLBkZjTzREWjCq0l0ks5WFu-hwA%3D%3D)
+![](https://www.geophysik.uni-muenchen.de/~staehler/kerner/logo.png)
 
 ##Authors:
 Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meyer
@@ -82,7 +82,7 @@ pvpython ../pyfiles/plot_all_kernels.py
 python ../pyfiles/create_composites.py
 ```
 The last script creates a composite image like the one below:
-![](https://raw.githubusercontent.com/sstaehler/kerner/master/doc/composite_plot.png?token=AE0eeJLSdHQBHr3dA-2R7myVym7q9jcYks5WFu-8wA%3D%3D)
+![](https://www.geophysik.uni-muenchen.de/~staehler/kerner/composite_plot.png)
 
 
 
