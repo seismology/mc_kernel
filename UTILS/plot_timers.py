@@ -53,22 +53,26 @@ for fnam in output_files[1:-1]:
             t_per_call[iline] += float(timing[1])
             t_total[iline] += float(timing[2])
 
-interesting_timers = np.array([2, 9, 11, 12, 13, 15, 17])
+interesting_timers = np.array([2, 8, 10, 11, 12, 14, 16])
+uninteresting_timers = np.array([3, 4, 7])
 
 timer_interesting = []
 t_total_interesting = []
 t_rest = 0.0
 for i in range(0, ntimers):
-    if i in interesting_timers:
-        timer_interesting.append('%s, \n %8.1f CPUh' % (timer_name[i],
-                                                        t_total[i] / 3600.))
-        t_total_interesting.append(t_total[i])
-    else:
-        t_rest += t_total[i]
+    if i not in uninteresting_timers:
+        if i in interesting_timers:
+            print 'Interesting: ', timer_name[i], t_total[i] / 3600.
+            timer_interesting.append('%s, \n %8.1f CPUh' % (timer_name[i],
+                                                            t_total[i] / 3600.))
+            t_total_interesting.append(t_total[i])
+        else:
+            print 'Not interesting: ', timer_name[i], t_total[i] / 3600.
+            t_rest += t_total[i]
 
-#t_total_interesting.append(t_rest)
-#timer_interesting.append('%s, \n %8.1f CPUh' % ('Other',
-#                                                t_rest / 3600.))
+t_total_interesting.append(t_rest)
+timer_interesting.append('%s, \n %8.1f CPUh' % ('Other',
+                                                t_rest / 3600.))
 
 # Create pie chart
 # IO colors are reddish, Computation blueish, MPI yellowish
@@ -79,7 +83,6 @@ colors = ['dodgerblue',    # FFT
           'aqua',          # Lagrange
           'cadetblue',     # Filtering
           'darkcyan',      # Integration
-          'yellowgreen',   # MPI
           'grey']          # Rest
 fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(111)
