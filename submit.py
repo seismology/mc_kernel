@@ -800,7 +800,7 @@ elif args.queue == 'SuperMUC':
         text_out += "#@ network.MPI = sn_all,not_shared,us \n"
         text_out += "#@ notification=always \n"
         text_out += "#@ notify_user = staehler@geophysik.uni-muenchen.de \n"
-        text_out += "#@ energy_policy_tag = MCKernel_intel_mpi \n"
+        text_out += "#@ energy_policy_tag = MCKernel\n"
         text_out += "#@ minimize_time_to_solution = yes     \n"
         text_out += "#@ class = %s\n" % job_class
         text_out += "#@ tasks_per_node = %d\n" % tasks_per_node
@@ -812,7 +812,7 @@ elif args.queue == 'SuperMUC':
         text_out += "#@ queue \n"
         text_out += ". /etc/profile \n"
         text_out += ". /etc/profile.d/modules.sh \n"
-        text_out += "module load netcdf/4.2 \n"
+        text_out += "module load netcdf/mpi \n"
         text_out += "module load fftw \n"
         text_out += "module load mkl \n"
         text_out += "poe ./mc_kernel inparam 2>&1  > OUTPUT_0000\n"
