@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/github-light.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width">
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
@@ -28,15 +28,15 @@
         </ul>
       </header>
       <section>
-        <p><img src="https://raw.githubusercontent.com/sstaehler/kerner/master/doc/logo.png?token=AE0eeLqaWCLbz3zNLBkZjTzREWjCq0l0ks5WFu-hwA%3D%3D" alt=""></p>
+        <p><img src="https://www.geophysik.uni-muenchen.de/%7Estaehler/kerner/logo.png" alt=""></p>
 
 <h2>
-<a id="authors" class="anchor" href="#authors" aria-hidden="true"><span class="octicon octicon-link"></span></a>Authors:</h2>
+<a id="authors" class="anchor" href="#authors" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Authors:</h2>
 
 <p>Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meyer</p>
 
 <h2>
-<a id="download" class="anchor" href="#download" aria-hidden="true"><span class="octicon octicon-link"></span></a>Download</h2>
+<a id="download" class="anchor" href="#download" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Download</h2>
 
 <p>To download the current developer version, use git clone</p>
 
@@ -44,25 +44,25 @@
 </code></pre>
 
 <h2>
-<a id="prequisites" class="anchor" href="#prequisites" aria-hidden="true"><span class="octicon octicon-link"></span></a>Prequisites</h2>
+<a id="prequisites" class="anchor" href="#prequisites" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Prequisites</h2>
 
 <p>MC Kernel needs a recent Fortran compiler (gfortran 4.8 or later), an MPI installation, the NetCDF library for accessing the wavefield files, the FFTW library for Fourier transforms and LAPACK, because we were too lazy to write a matrix inversion routine ourselves. The installation of these libraries can be done by hand on desktop machines or using modules on HPC environments.
 The recommended submit script uses Python and needs NetCDF4</p>
 
 <h4>
-<a id="ubuntudebian-linux" class="anchor" href="#ubuntudebian-linux" aria-hidden="true"><span class="octicon octicon-link"></span></a>Ubuntu/Debian Linux</h4>
+<a id="ubuntudebian-linux" class="anchor" href="#ubuntudebian-linux" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Ubuntu/Debian Linux</h4>
 
 <p>Since Ubuntu 14.04LTS, the system libraries can be used:</p>
 
 <div class="highlight highlight-source-shell"><pre>sudo apt-get install gfortran libnetcdff5 libfftw3-dev libblas3 openmpi-bin gfortran python python-netcdf</pre></div>
 
 <h4>
-<a id="macos-x" class="anchor" href="#macos-x" aria-hidden="true"><span class="octicon octicon-link"></span></a>MacOS X</h4>
+<a id="macos-x" class="anchor" href="#macos-x" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>MacOS X</h4>
 
 <p>We recommend using Homebrew to download and compile the necessary libraries. Be careful to add the <em>--with-fortran</em> argument while installing any library. Otherwise, only C libraries are installed. If you did install the libraries before without the <em>--with-fortran</em> argument, it may be necessary to remove and reinstall them.</p>
 
 <h4>
-<a id="hpc-environments" class="anchor" href="#hpc-environments" aria-hidden="true"><span class="octicon octicon-link"></span></a>HPC environments</h4>
+<a id="hpc-environments" class="anchor" href="#hpc-environments" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>HPC environments</h4>
 
 <p>Be sure to load modules for Fortran, NetCDF, FFTW and LAPACK.
 On SuperMUC, the necessary commands are</p>
@@ -74,7 +74,7 @@ module load mkl
 </code></pre>
 
 <h2>
-<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h2>
 
 <p>Change into the download directory and copy the included template files into the main directory</p>
 
@@ -89,7 +89,7 @@ make <span class="pl-c1">test</span> </pre></div>
 <p>to run a set of tests.</p>
 
 <h2>
-<a id="axisem-wavefields" class="anchor" href="#axisem-wavefields" aria-hidden="true"><span class="octicon octicon-link"></span></a>AxiSEM wavefields</h2>
+<a id="axisem-wavefields" class="anchor" href="#axisem-wavefields" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>AxiSEM wavefields</h2>
 
 <p>Using the code requires computation of a global seismic wavefield using AxiSEM. Please refer to the AxiSEM documentation on how to do this. An set of example wavefields with a dominant period of 40s can be downloaded:</p>
 
@@ -98,7 +98,7 @@ tar -xvf kernel_wavefields_40s.tar.gz
 </code></pre>
 
 <h2>
-<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h2>
 
 <p>To run the code, a convenient submit script is available:</p>
 
@@ -110,7 +110,7 @@ Modifying the settings for the run is possible by setting one of the options of 
 <div class="highlight highlight-source-shell"><pre>python submit.py -h</pre></div>
 
 <h2>
-<a id="plot-results" class="anchor" href="#plot-results" aria-hidden="true"><span class="octicon octicon-link"></span></a>Plot results</h2>
+<a id="plot-results" class="anchor" href="#plot-results" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Plot results</h2>
 
 <p>MC Kerner comes with a set of simple Python plotting scripts to visualize kernels and the seismograms they are based on. They can be found in the folder <strong>pyfiles</strong> and need a few extra programs to run:</p>
 
@@ -130,13 +130,13 @@ pvpython ../pyfiles/plot_all_kernels.py
 python ../pyfiles/create_composites.py</pre></div>
 
 <p>The last script creates a composite image like the one below:
-<img src="https://raw.githubusercontent.com/sstaehler/kerner/master/doc/composite_plot.png?token=AE0eeJLSdHQBHr3dA-2R7myVym7q9jcYks5WFu-8wA%3D%3D" alt=""></p>
+<img src="https://www.geophysik.uni-muenchen.de/%7Estaehler/kerner/composite_plot.png" alt=""></p>
 
 <h2>
-<a id="faqs" class="anchor" href="#faqs" aria-hidden="true"><span class="octicon octicon-link"></span></a>FAQs</h2>
+<a id="faqs" class="anchor" href="#faqs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>FAQs</h2>
 
 <h3>
-<a id="anaconda-interference" class="anchor" href="#anaconda-interference" aria-hidden="true"><span class="octicon octicon-link"></span></a>Anaconda interference</h3>
+<a id="anaconda-interference" class="anchor" href="#anaconda-interference" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Anaconda interference</h3>
 
 <p>The python package manager Anaconda installs his own version of gfortran, which interferes with the system version and the MPI libraries. 
 A solution is to replace the compiler name <em>FC</em> and the <em>MPIRUN</em> variable in <em>make_mc_kerner.macros</em> with absolute paths</p>
