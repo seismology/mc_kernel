@@ -1,4 +1,4 @@
-![](https://raw.githubusercontent.com/sstaehler/kerner/master/doc/logo.png?token=AE0eeLqaWCLbz3zNLBkZjTzREWjCq0l0ks5WFu-hwA%3D%3D)
+![](https://www.geophysik.uni-muenchen.de/~staehler/kerner/logo.png)
 
 ##Authors:
 Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meyer
@@ -27,9 +27,16 @@ Be sure to load modules for Fortran, NetCDF, FFTW and LAPACK.
 On SuperMUC, the necessary commands are
 ```
 module load fortran
-module load netcdf/4.2
+module load netcdf/mpi
 module load fftw
 module load mkl
+```
+
+## AxiSEM wavefields
+Using the code requires computation of a global seismic wavefield using AxiSEM. Please refer to the AxiSEM documentation on how to do this. An set of example wavefields with a dominant period of 40s can be downloaded:
+```
+wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
+tar -xvf kerner_wavefields.tar.bz2
 ```
 
 ## Installation
@@ -38,19 +45,15 @@ Change into the download directory and copy the included template files into the
 cd kerner
 ./copy_templates.sh
 ```
-The file *make_mc_kerner.macros* allows you to modify the compiler name and compiler flags according to your system. To compile, use make
+The file *make_mc_kerner.macros* allows you to modify the compiler name and compiler flags according to your system. To compile, use
 ```bash
 make 
+```
+and afterwards 
+``` bash
 make check
 ```
-to run a set of tests.
-
-## AxiSEM wavefields
-Using the code requires computation of a global seismic wavefield using AxiSEM. Please refer to the AxiSEM documentation on how to do this. An set of example wavefields with a dominant period of 40s can be downloaded:
-```
-wget https://www.geophysik.uni-muenchen.de/~staehler/kernel_wavefields_40s.tar.gz
-tar -xvf kernel_wavefields_40s.tar.gz
-```
+to run a set of tests (wavefields downloaded in the previous step are necessary for the tests to complete).
 
 ## Usage
 To run the code, a convenient submit script is available:
@@ -79,7 +82,7 @@ pvpython ../pyfiles/plot_all_kernels.py
 python ../pyfiles/create_composites.py
 ```
 The last script creates a composite image like the one below:
-![](https://raw.githubusercontent.com/sstaehler/kerner/master/doc/composite_plot.png?token=AE0eeJLSdHQBHr3dA-2R7myVym7q9jcYks5WFu-8wA%3D%3D)
+![](https://www.geophysik.uni-muenchen.de/~staehler/kerner/composite_plot.png)
 
 
 
