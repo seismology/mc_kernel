@@ -54,6 +54,7 @@ module readfields
         type(parameter_interpolator)       :: vp, vs, rho           !< Model parameters
         type(parameter_interpolator)       :: lambda, mu            !< Elastic parameters
         type(parameter_interpolator)       :: phi, xi, eta          !< Anisotropic parameters
+        real(kind=sp)                      :: vp_max, vs_max        !< Maximum values of vp, vs in the model
         integer, allocatable               :: isaxis(:)             !< Is this point at the axis?
         integer, allocatable               :: gll_point_ids(:,:,:)  !< IDs of GLL points for this element
         integer                            :: npoints, nelem
@@ -144,6 +145,7 @@ module readfields
         contains 
             procedure, pass                :: get_ndim 
             procedure, pass                :: get_mesh 
+            procedure, pass                :: get_v_max
             procedure, pass                :: set_params
             procedure, pass                :: open_files
             procedure, pass                :: close_files
@@ -189,6 +191,18 @@ function get_mesh(this, fwd_or_bwd)
       call pabort(do_traceback=.false.)
    end select
 end function get_mesh
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+function get_v_max(this)
+  ! Return the maximum p and s velocities of the forward mesh
+  class(semdata_type)            :: this
+  real(kind=sp)                  :: get_v_max(2)
+
+  get_v_max(1) = this%fwdmesh%vp_max
+  get_v_max(2) = this%fwdmesh%vs_max
+
+end function get_v_max
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
@@ -2973,6 +2987,7 @@ subroutine load_model_parameter(ncid, mesh, tree, radius)
                           comm   = MPI_COMM_NODE, &
                           values = param_tmp  )
   mesh%vp = create_interpolator(param_tmp, tree, radius)
+  mesh%vp_max = maxval(param_tmp)
   deallocate(param_tmp)
               
   call mpi_getvar_by_name(ncid   = ncid,          &
@@ -2981,6 +2996,7 @@ subroutine load_model_parameter(ncid, mesh, tree, radius)
                           comm   = MPI_COMM_NODE, &
                           values = param_tmp)
   mesh%vs = create_interpolator(param_tmp, tree, radius)
+  mesh%vs_max = maxval(param_tmp)
   deallocate(param_tmp)
               
   call mpi_getvar_by_name(ncid   = ncid,          &

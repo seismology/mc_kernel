@@ -25,6 +25,7 @@ module receiver_class
         logical                        :: needs_basekernel(6)
         character(len=32)              :: strain_type
         type(kernelspec_type), pointer :: kernel(:)
+        real(kind=dp)                  :: t_last_p=0, t_last_s=0 
         contains
            procedure, pass      :: rotate_receiver
            procedure, pass      :: init

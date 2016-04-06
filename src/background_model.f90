@@ -26,6 +26,8 @@ module background_model
     real(kind=sp), allocatable :: c_lam(:)
     real(kind=sp), allocatable :: c_mu(:)
 
+    real(kind=sp)              :: max_vp, max_vs
+
     contains 
       procedure, pass          :: init
       procedure, pass          :: combine
@@ -81,6 +83,9 @@ subroutine init(this, npoints)
     allocate(this%c_lam(npoints))
     allocate(this%c_mu(npoints))
   end if
+
+  this%max_vp = maxval(this%c_vp)
+  this%max_vs = maxval(this%c_vs)
 
 end subroutine init
 !-----------------------------------------------------------------------------------------

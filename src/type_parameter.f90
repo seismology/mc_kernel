@@ -607,6 +607,15 @@ subroutine read_kernel(this, sem_data, filter)
              this%receiver(irec)%needs_basekernel =   &
                                   this%receiver(irec)%needs_basekernel &
                              .or. this%kernel(ikernel)%needs_basekernel
+
+             select case(model_parameter)
+             case('vp', 'vph', 'vpv', 'lam')
+               this%receiver(irec)%t_last_p = max(this%receiver(irec)%t_last_p, &
+                                                  timewindow(2))
+             case default
+               this%receiver(irec)%t_last_s = max(this%receiver(irec)%t_last_s, &
+                                                  timewindow(2))
+             end select
          else
              this%kernel(ikernel)%name = kernelname
          end if

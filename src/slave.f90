@@ -514,6 +514,23 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
               end do ! ikernel
 
 
+            elseif (travel_time_larger_Tmax(source   = parameters%source,                &
+                                            receiver = parameters%receiver(1),           &
+                                            coordinates = inv_mesh%get_center(ielement), &
+                                            v_max    = sem_data%get_v_max()) ) then
+              ! Test whether the minimum travel time from source to element 
+              ! midpoint to receiver is smaller than the end of the latest 
+              ! time window on this receiver.
+              do ikernel = parameters%receiver(irec)%firstkernel, &
+                  parameters%receiver(irec)%lastkernel 
+
+                ! Set scalar misfit base kernels to zero
+                kernelvalue_basekers(:,ikernel,:) = 0.d0
+                iclockold = tick(id=id_kernel, since=iclockold)
+
+                niterations(ikernel) = niterations(ikernel) + 1
+              end do ! ikernel
+
             else
               !Receiver not in element
               
@@ -855,6 +872,29 @@ function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
   call flush(lu_out)
 
 end function integrate_3d_model
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+logical function travel_time_larger_Tmax(source, receiver, coordinates, v_max)
+  use source_class,       only : src_param_type
+  use receiver_class,     only : rec_param_type
+  type(src_param_type)        :: source
+  type(rec_param_type)        :: receiver
+  real(kind=dp), intent(in)   :: coordinates(3)
+  real(kind=sp), intent(in)   :: v_max(2)
+  
+  real(kind=dp)               :: distance
+  real(kind=dp)               :: t_max_p, t_max_s
+
+  distance = norm2(source%r - coordinates) + norm2(receiver%r - coordinates)
+
+  t_max_p = distance / v_max(1)
+  t_max_s = distance / v_max(2)
+  
+  travel_time_larger_Tmax = (t_max_p > receiver%t_last_p .and. &
+                             t_max_s > receiver%t_last_s)
+
+end function travel_time_larger_Tmax
 !-----------------------------------------------------------------------------------------
 
 end module
