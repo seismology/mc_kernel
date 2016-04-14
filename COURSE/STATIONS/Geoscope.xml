@@ -1,0 +1,2617 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<FDSNStationXML schemaVersion="1.0" xmlns="http://www.fdsn.org/xml/station/1">
+  <Source>IRIS-DMC</Source>
+  <Sender>IRIS-DMC</Sender>
+  <Module>IRIS WEB SERVICE: fdsnws-station | version: 1.1.20</Module>
+  <ModuleURI>http://service.iris.edu/fdsnws/station/1/query?network=G&amp;format=xml&amp;endafter=2016-04-14T19%3A01%3A31.073670</ModuleURI>
+  <Created>2016-04-14T19:01:32+00:00</Created>
+  <Network code="G" endDate="2500-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1982-01-01T00:00:00+00:00">
+    <Description>GEOSCOPE</Description>
+    <TotalNumberStations>55</TotalNumberStations>
+    <SelectedNumberStations>34</SelectedNumberStations>
+    <Station code="AIS" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1993-12-25T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>-</Value>
+        <BeginEffectiveTime>1999-01-07T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2286-11-20T17:46:39+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2008-04-02T04:43:54+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-07-01T20:59:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional spiking on all channels.</Value>
+        <BeginEffectiveTime>2008-03-28T13:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-03-31T14:50:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional locid 00 data lost</Value>
+        <BeginEffectiveTime>2010-12-14T05:18:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-12-14T05:31:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2011-10-24T05:50:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-11-12T21:35:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2011-12-19T00:11:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-01-04T04:33:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2012-01-25T03:22:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-01-28T20:05:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many locid 10 data lost</Value>
+        <BeginEffectiveTime>2012-06-20T16:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-06-24T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1993-12-25T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1993-12-25T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-37.79635</Latitude>
+      <Longitude unit="DEGREES">77.569186</Longitude>
+      <Elevation>35.9</Elevation>
+      <Site>
+        <Name>Nouvelle-Amsterdam - TAAF, France</Name>
+      </Site>
+      <CreationDate>1993-12-25T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>33</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="ATD" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2010-01-01T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2010-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2010-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-23T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2012-03-24T02:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-04-25T09:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-03-27T06:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-03-27T15:18:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2008-09-12T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-24T00:00:15+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">11.530725</Latitude>
+      <Longitude unit="DEGREES">42.846634</Longitude>
+      <Elevation>610.0</Elevation>
+      <Site>
+        <Name>Arta Cave - Arta, Republic of Djibouti</Name>
+      </Site>
+      <CreationDate>1993-07-07T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>23</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="CAN" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1987-11-27T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Problems with remote telemetry.</Value>
+        <BeginEffectiveTime>2007-02-10T07:37:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-02-15T01:45:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2005-03-15T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-03-24T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Data loss due to power problems</Value>
+        <BeginEffectiveTime>2006-06-11T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-10-07T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2006-06-11T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-10-07T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1989-11-17T16:17:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1989-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1990-03-31T21:29:16+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1990-07-17T20:55:26+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1991-11-26T20:52:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1991-12-03T10:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1992-08-02T12:45:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-08-07T18:25:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1993-04-01T05:50:10+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1993-07-15T00:11:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Datation uncertain</Value>
+        <BeginEffectiveTime>2013-01-26T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-03-05T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2005-03-15T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-03-24T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>1989-11-17T16:17:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1989-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>1990-03-31T21:29:16+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1990-07-17T20:55:26+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1991-11-26T20:52:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2000-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2001-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1987-11-27T02:31:36+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1989-11-17T16:17:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-35.318715</Latitude>
+      <Longitude unit="DEGREES">148.996325</Longitude>
+      <Elevation>700.0</Elevation>
+      <Site>
+        <Name>Canberra, Australia</Name>
+      </Site>
+      <CreationDate>1987-11-27T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>35</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="CCD" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2007-01-01T00:00:00+00:00">
+      <Latitude unit="DEGREES">-75.1065</Latitude>
+      <Longitude unit="DEGREES">123.305</Longitude>
+      <Elevation>3240.0</Elevation>
+      <Site>
+        <Name>Concordia Base, Dome C, Antartica</Name>
+      </Site>
+      <CreationDate>2007-01-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>24</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="CLF" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2008-07-10T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-06-10T19:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-06-15T02:15:44+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to transmission issues</Value>
+        <BeginEffectiveTime>2013-04-22T13:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-05-10T17:50:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2008-09-10T13:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-10-08T17:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">48.02579</Latitude>
+      <Longitude unit="DEGREES">2.26</Longitude>
+      <Elevation>145.0</Elevation>
+      <Site>
+        <Name>Chambon la Foret Observatory, France</Name>
+      </Site>
+      <CreationDate>2008-07-10T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>10</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="COYC" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2004-12-17T00:00:00+00:00">
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2006-06-25T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2006-06-25T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-15T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-08-23T04:18:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-08-25T13:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems.</Value>
+        <BeginEffectiveTime>2011-12-05T13:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress</Value>
+        <BeginEffectiveTime>2012-02-28T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-10T04:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2012-05-05T18:48:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-05-06T14:55:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2014-01-10T18:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2014-03-14T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2014-03-17T12:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2014-03-19T15:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2015-03-16T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2015-05-14T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-08-06T17:06:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-08-28T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Only BH data exist</Value>
+        <BeginEffectiveTime>2004-12-20T15:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-06-25T15:08:50+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-11-09T16:17:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-11-12T13:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-45.57299</Latitude>
+      <Longitude unit="DEGREES">-72.08139</Longitude>
+      <Elevation>235.0</Elevation>
+      <Site>
+        <Name>Coyhaique, Chile</Name>
+      </Site>
+      <CreationDate>2004-12-17T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>41</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="CRZF" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1986-02-01T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>-</Value>
+        <BeginEffectiveTime>1999-01-07T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2286-11-20T17:46:39+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2007-03-01T13:57:38+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-03-14T20:32:34+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2007-06-01T01:38:35+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-06-12T05:43:23+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-03-27T06:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-03-27T10:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems.</Value>
+        <BeginEffectiveTime>2011-03-25T19:35:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-27T18:29:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems.</Value>
+        <BeginEffectiveTime>2011-08-24T09:57:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-08-25T01:41:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1986-03-16T05:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1986-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2011-10-24T05:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-11-13T23:51:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1986-03-16T05:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1987-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1992-06-08T04:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-06-22T13:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2012-01-25T03:22:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-01-29T23:56:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2012-03-21T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-22T21:31:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 00 data are temporally lost</Value>
+        <BeginEffectiveTime>2011-05-15T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-07-08T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many locid 10 data lost</Value>
+        <BeginEffectiveTime>2012-07-20T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-07-24T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1995-10-29T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-10-30T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-09-20T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-09-21T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1986-02-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1986-02-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2014-03-17T10:43:14+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2014-03-19T09:46:31+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-46.43096</Latitude>
+      <Longitude unit="DEGREES">51.855308</Longitude>
+      <Elevation>140.0</Elevation>
+      <Site>
+        <Name>Port Alfred - Ile de la Possession - Crozet Islands, France</Name>
+      </Site>
+      <CreationDate>1986-02-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>69</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="DRV" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1986-02-01T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>-</Value>
+        <BeginEffectiveTime>2002-12-18T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2286-11-20T17:46:39+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional spiking on all channels.</Value>
+        <BeginEffectiveTime>2009-06-16T03:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-06-19T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1986-02-08T05:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1986-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1986-02-08T05:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1987-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1986-02-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1986-02-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1995-01-14T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-01-15T08:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-03-17T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-03-18T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-66.664908</Latitude>
+      <Longitude unit="DEGREES">140.002069</Longitude>
+      <Elevation>40.0</Elevation>
+      <Site>
+        <Name>Dumont d'Urville - Terre Adelie, Antarctica</Name>
+      </Site>
+      <CreationDate>1986-02-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>60</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="DZM" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2003-09-01T00:00:00+00:00">
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>2003-09-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>2003-09-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems.</Value>
+        <BeginEffectiveTime>2003-09-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2010-12-19T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-20T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-22.07164</Latitude>
+      <Longitude unit="DEGREES">166.44377</Longitude>
+      <Elevation>878.0</Elevation>
+      <Site>
+        <Name>Dzumac - New Caledonia, France</Name>
+      </Site>
+      <CreationDate>2003-09-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>7</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="ECH" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1990-11-08T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>-</Value>
+        <BeginEffectiveTime>2002-05-15T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2286-11-20T17:46:39+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-07-03T13:15:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-07-08T07:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional locid 00 data lost</Value>
+        <BeginEffectiveTime>2011-01-20T01:25:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-01-20T13:45:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional locid 00 data lost</Value>
+        <BeginEffectiveTime>2011-02-08T06:23:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-02-11T23:12:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional locid 00 data lost</Value>
+        <BeginEffectiveTime>2011-03-01T09:37:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-01T12:19:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional locid 00 data lost</Value>
+        <BeginEffectiveTime>2011-04-12T08:12:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-04-12T08:45:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems.</Value>
+        <BeginEffectiveTime>2011-08-24T10:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-08-25T11:23:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2011-11-08T00:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2011-11-08T00:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-11-29T08:54:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1992-07-07T10:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-07-10T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2012-01-25T03:22:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-01-29T17:24:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2012-02-10T16:35:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-05T09:56:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2012-03-21T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-23T07:25:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1990-11-08T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1990-11-08T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many locid 10 data lost</Value>
+        <BeginEffectiveTime>2012-06-20T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-06-24T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1995-04-24T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-11-12T10:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">48.216313</Latitude>
+      <Longitude unit="DEGREES">7.158961</Longitude>
+      <Elevation>580.0</Elevation>
+      <Site>
+        <Name>Echery - Sainte Marie aux Mines, France</Name>
+      </Site>
+      <CreationDate>1990-11-08T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>65</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="FDF" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1998-11-25T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-06-11T14:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-07-10T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Site maintenance</Value>
+        <BeginEffectiveTime>2010-01-19T14:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-01-19T16:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-06-01T14:12:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-06-01T15:08:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Site maintenance</Value>
+        <BeginEffectiveTime>2010-08-11T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-08-11T13:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2011-05-09T17:45:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-09T18:15:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1998-11-26T13:30:06+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2002-11-26T21:20:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>2004-02-05T06:35:43+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-11-27T13:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">14.734971</Latitude>
+      <Longitude unit="DEGREES">-61.146311</Longitude>
+      <Elevation>467.0</Elevation>
+      <Site>
+        <Name>Fort de France - Martinique island, France</Name>
+      </Site>
+      <CreationDate>1998-11-25T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>58</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="FOMA" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2008-09-01T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-02-09T23:47:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-02-13T05:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-11-03T14:34:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-11-03T14:58:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Maintenance.  Tests may be in progress.</Value>
+        <BeginEffectiveTime>2009-11-28T07:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-12-03T20:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-11-28T07:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-11-30T14:06:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-12-01T12:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-12-01T14:12:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-05-01T05:25:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-05-26T13:07:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems.</Value>
+        <BeginEffectiveTime>2010-06-22T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-09-25T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-11-13T21:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-11-13T23:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-11-13T21:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-11-13T23:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-12-05T18:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-12-05T18:42:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-12-11T14:37:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-12-11T15:06:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-12-25T18:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-12-25T19:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-12-27T18:45:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-12-27T19:15:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2011-02-28T14:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-02-28T16:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to stormy weather</Value>
+        <BeginEffectiveTime>2011-04-06T03:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-04-06T06:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2011-04-08T11:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2011-04-08T11:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-19T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2011-08-18T06:35:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-08-18T07:05:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2011-11-08T05:10:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-11-08T06:15:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2009-11-28T07:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-12-03T20:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-02-23T01:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-05-22T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-24.97565</Latitude>
+      <Longitude unit="DEGREES">46.978877</Longitude>
+      <Elevation>28.0</Elevation>
+      <Site>
+        <Name>Nahampoana Reserve - Fort Dauphin, Madagascar</Name>
+      </Site>
+      <CreationDate>2008-09-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>11</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="HDC" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2002-04-06T00:00:00+00:00">
+      <Comment>
+        <Value>Frequent spiking on all channels.</Value>
+        <BeginEffectiveTime>2007-10-30T14:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-12-31T20:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2007-08-09T14:50:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-10-29T20:50:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Q330HR + STS-2 SN : 119503</Value>
+        <BeginEffectiveTime>2008-10-10T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2500-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Q330HR + STS-2 SN : 119503</Value>
+        <BeginEffectiveTime>2008-10-10T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2500-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2009-02-22T14:57:33+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-02-22T15:06:31+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Q330HR + STS-2 SN : 119503</Value>
+        <BeginEffectiveTime>2008-10-10T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-11-30T20:26:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-11-30T20:35:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2010-09-14T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-10-14T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2009-11-30T20:26:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-11-30T20:35:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2008-01-27T17:46:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-02-02T05:24:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2008-02-24T03:21:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-02-28T14:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Frequent spiking on all channels.</Value>
+        <BeginEffectiveTime>2005-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-09-19T16:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Site maintenance</Value>
+        <BeginEffectiveTime>2005-04-06T15:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-04-12T18:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to stormy weather</Value>
+        <BeginEffectiveTime>2011-04-06T20:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-04-08T16:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-05-09T03:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-11T20:53:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-05-31T07:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-06-07T16:32:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2011-06-07T16:35:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-06-07T21:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-06-09T13:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-06-10T00:44:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-06-13T04:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-06-14T09:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-07-12T20:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-07-13T17:18:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-07-18T19:09:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-07-19T15:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2012-02-29T18:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-20T16:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2012-04-09T17:07:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-04-09T17:24:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2012-06-06T13:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-06-06T14:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2001-07-07T19:16:54+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-09-17T21:10:36+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-11-09T07:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-11-12T16:54:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">10.00201</Latitude>
+      <Longitude unit="DEGREES">-84.11142</Longitude>
+      <Elevation>1186.0</Elevation>
+      <Site>
+        <Name>Heredia, Costa Rica</Name>
+      </Site>
+      <CreationDate>1997-03-08T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>30</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="HYB" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1989-01-15T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2007-08-31T03:55:14+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-08-31T13:48:09+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2007-10-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1992-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1993-09-06T15:04:10+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1993-11-19T04:47:50+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1989-03-24T09:23:06+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-08-31T03:55:14+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">17.41867</Latitude>
+      <Longitude unit="DEGREES">78.55213</Longitude>
+      <Elevation>510.0</Elevation>
+      <Site>
+        <Name>Hyderabad, India</Name>
+      </Site>
+      <CreationDate>1989-01-15T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>16</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="ICC" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1996-04-01T00:00:00+00:00">
+      <Latitude unit="DEGREES">-20.284</Latitude>
+      <Longitude unit="DEGREES">-70.035</Longitude>
+      <Elevation>950.0</Elevation>
+      <Site>
+        <Name>Iquique, Chile</Name>
+      </Site>
+      <CreationDate>1996-04-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>6</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="INU" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1987-03-04T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Maintenance.  Tests may be in progress.</Value>
+        <BeginEffectiveTime>2004-08-07T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-08-16T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2005-12-12T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-01-18T07:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2006-10-13T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-06-24T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2006-10-29T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-10-30T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2011-06-22T15:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-06-23T04:09:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-08-22T15:47:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-09-05T03:34:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-08-22T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-09-05T03:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1987-03-04T16:19:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1987-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1989-02-04T09:10:10+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1989-11-10T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1990-04-22T12:12:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1990-10-07T00:17:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1991-06-15T18:35:11+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1991-08-02T12:23:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2004-08-07T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-08-16T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2013-04-17T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-04-19T02:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>2012-06-20T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-06-24T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1994-07-21T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-12-11T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1996-08-07T18:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-10-04T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1995-09-05T18:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-10-24T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2007-06-24T10:22:23+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-12-18T13:28:38+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2008-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-08-22T15:47:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>No data for all channels</Value>
+        <BeginEffectiveTime>2011-08-22T15:50:20+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-09-06T03:34:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">35.35</Latitude>
+      <Longitude unit="DEGREES">137.029</Longitude>
+      <Elevation>132.0</Elevation>
+      <Site>
+        <Name>Inuyama, Japan</Name>
+      </Site>
+      <CreationDate>1987-03-04T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>30</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="IVI" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2011-09-12T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2014-01-29T08:50:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2014-03-13T21:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2014-09-11T13:31:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2015-10-20T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2015-12-20T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">61.205808</Latitude>
+      <Longitude unit="DEGREES">-48.171178</Longitude>
+      <Elevation>15.0</Elevation>
+      <Site>
+        <Name>Ivittuut, Greenland</Name>
+      </Site>
+      <CreationDate>2011-09-12T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>11</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="KIP" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2004-03-05T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Calibration in progress.</Value>
+        <BeginEffectiveTime>2010-02-08T15:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-02-09T14:31:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Calibration in progress.</Value>
+        <BeginEffectiveTime>2010-01-20T15:01:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-01-21T08:03:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Calibration in progress.</Value>
+        <BeginEffectiveTime>2010-07-23T15:08:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-07-24T14:55:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-01-08T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>2006-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">21.42</Latitude>
+      <Longitude unit="DEGREES">-158.0112</Longitude>
+      <Elevation>110.0</Elevation>
+      <Site>
+        <Name>Kipapa, Hawaii, USA</Name>
+      </Site>
+      <CreationDate>1986-04-17T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>109</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="MBO" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1985-09-01T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>-</Value>
+        <BeginEffectiveTime>2002-11-05T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2286-11-20T17:46:39+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Maintenance.  Tests may be in progress.</Value>
+        <BeginEffectiveTime>2009-07-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-07-04T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1986-01-02T17:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1986-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>2010-04-01T11:39:03+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1986-01-02T17:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1988-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>2010-04-01T11:39:03+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-12-13T09:44:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1990-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1990-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1992-06-17T09:16:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-09-04T17:33:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1993-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1993-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2009-07-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-07-04T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1995-02-17T21:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-08-03T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-01-09T08:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-10-08T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">14.392024</Latitude>
+      <Longitude unit="DEGREES">-16.955467</Longitude>
+      <Elevation>3.0</Elevation>
+      <Site>
+        <Name>M'Bour, Senegal</Name>
+      </Site>
+      <CreationDate>1985-09-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>50</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="MPG" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2000-07-03T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2004-05-29T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-07-01T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2004-09-14T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-10-04T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2005-04-18T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-05-19T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2005-05-20T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-05-25T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2005-05-25T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2007-11-14T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2005-05-25T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-11-14T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2007-11-14T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2005-05-25T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-11-07T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2007-11-07T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-04-02T12:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2000-07-04T21:05:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2003-12-27T18:18:43+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">5.11011</Latitude>
+      <Longitude unit="DEGREES">-52.644483</Longitude>
+      <Elevation>147.0</Elevation>
+      <Site>
+        <Name>Montagne des Peres - French Guiana, France</Name>
+      </Site>
+      <CreationDate>2000-07-03T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>27</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="NOUC" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1988-03-21T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2007-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2007-07-23T06:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-07-25T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Frequent spiking on all channels.</Value>
+        <BeginEffectiveTime>2009-07-11T20:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-10-28T20:55:40+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-10-29T04:23:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-11-13T18:55:30+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-11-14T01:29:40+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1997-01-07T20:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1997-01-09T03:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>1997-01-09T03:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1997-01-09T23:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>1997-06-17T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1997-06-19T01:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1997-06-26T23:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1997-08-13T22:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1996-02-03T03:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-02-05T21:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1996-03-27T11:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-03-28T07:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1996-08-26T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-10-08T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1995-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-02-15T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1995-05-09T20:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-05-10T02:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1995-08-07T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-08-08T13:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1994-05-30T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-07-26T22:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>1994-09-30T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-10-04T01:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>1994-10-24T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-10-25T23:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>1994-10-27T04:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-10-30T13:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>1994-12-02T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-12-07T23:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-01-13T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-01-20T04:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-01-01T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-03-22T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-28T04:25:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-05-25T20:56:20+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-26T03:09:50+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>2011-03-01T01:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-10T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>2011-05-28T03:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-06-07T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1992-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-03-06T00:33:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>2011-10-18T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-10-19T00:18:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>2011-11-03T23:00:02+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-11-09T04:00:02+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2010-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-29T00:17:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>2012-01-01T22:29:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-01-11T03:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Site maintenance</Value>
+        <BeginEffectiveTime>2012-03-29T00:17:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-05-05T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2013-04-02T22:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-04-02T23:20:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>No data for all channels</Value>
+        <BeginEffectiveTime>1994-05-30T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-07-26T22:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1995-05-09T20:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-08-08T13:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-02-03T03:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-03-28T07:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-10-06T20:13:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-10-08T23:43:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-01-05T19:11:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-01-06T23:07:30+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1988-03-21T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1988-03-21T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2015-07-30T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2015-08-28T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-22.09863</Latitude>
+      <Longitude unit="DEGREES">166.30665</Longitude>
+      <Elevation>137.0</Elevation>
+      <Site>
+        <Name>Port Laguerre - New Caledonia, France</Name>
+      </Site>
+      <CreationDate>1988-03-21T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>35</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="PAF" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1983-01-01T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>-</Value>
+        <BeginEffectiveTime>1999-01-07T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2286-11-20T17:46:39+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-05-22T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-05-25T12:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-05-25T15:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-05-28T05:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 00 data are temporally lost</Value>
+        <BeginEffectiveTime>2010-10-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-10-15T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems</Value>
+        <BeginEffectiveTime>2011-03-25T20:16:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-27T18:13:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 00 data are temporally lost</Value>
+        <BeginEffectiveTime>2010-10-02T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-10-16T16:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems.</Value>
+        <BeginEffectiveTime>2011-08-24T10:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-08-25T00:55:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1983-08-01T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1985-01-01T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1983-08-01T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1987-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1991-10-27T22:38:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-01-08T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 00 data are temporally lost</Value>
+        <BeginEffectiveTime>2011-07-02T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-08-02T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2012-01-25T03:22:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-01-29T22:56:16+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1993-09-05T07:38:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1993-12-20T11:44:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The locid 10 data lost due to network problems</Value>
+        <BeginEffectiveTime>2012-03-21T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-22T21:38:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional locid 00 data lost</Value>
+        <BeginEffectiveTime>2010-10-02T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-10-16T16:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many locid 10 data lost</Value>
+        <BeginEffectiveTime>2012-06-20T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-06-24T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1995-01-12T10:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-12-03T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-03-24T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-07-30T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1983-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1983-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-03-11T11:37:53+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-09-16T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-49.351</Latitude>
+      <Longitude unit="DEGREES">70.210708</Longitude>
+      <Elevation>17.0</Elevation>
+      <Site>
+        <Name>Port aux Francais - Kerguelen - TAAF, France</Name>
+      </Site>
+      <CreationDate>1983-01-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>100</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="PEL" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1995-10-04T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Frequent spiking on all channels.</Value>
+        <BeginEffectiveTime>2007-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2008-12-17T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2008-12-17T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Frequent spiking on all channels.</Value>
+        <BeginEffectiveTime>2007-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-12-16T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2008-12-17T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-09T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2011-03-29T03:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-29T07:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-03-30T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-04-13T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2005-01-12T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-04-13T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station time is uncertain</Value>
+        <BeginEffectiveTime>2006-06-23T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-11-01T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Site maintenance</Value>
+        <BeginEffectiveTime>2007-03-07T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-03-08T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2011-09-25T04:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-09-26T08:33:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress</Value>
+        <BeginEffectiveTime>2012-03-08T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-09T00:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-02-11T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-08T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2011-03-30T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-04-13T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2005-01-12T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-04-13T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2012-02-11T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-08T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-03-25T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2003-12-18T16:52:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2003-12-19T17:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-04-14T16:05:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-33.143607</Latitude>
+      <Longitude unit="DEGREES">-70.67494</Longitude>
+      <Elevation>700.0</Elevation>
+      <Site>
+        <Name>Peldehue, Chile</Name>
+      </Site>
+      <CreationDate>1995-10-04T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>56</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="PPTF" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2009-04-25T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-07-11T18:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-07-12T00:15:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2011-11-03T13:16:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-11-05T00:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-03-12T19:46:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-04-18T08:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-03-02T09:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-03-08T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2014-03-15T18:55:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2014-03-30T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-17.5896</Latitude>
+      <Longitude unit="DEGREES">-149.56525</Longitude>
+      <Elevation>705.0</Elevation>
+      <Site>
+        <Name>Pamatai - Papeete - Tahiti island - French Polynesia, France</Name>
+      </Site>
+      <CreationDate>2009-04-25T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>11</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="RER" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1986-02-10T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2007-01-13T04:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-01-22T08:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-06-22T16:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-07-02T15:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-07-11T09:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-07-29T08:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-10-12T05:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-10-16T12:53:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-09-06T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-09-15T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-02-27T21:19:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-01T05:07:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to network problems</Value>
+        <BeginEffectiveTime>2011-11-02T10:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-11-02T12:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2011-11-08T09:06:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-11-09T18:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1986-02-14T09:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1987-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>1989-01-24T02:24:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1989-09-27T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1990-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1990-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1993-01-23T00:00:27+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1993-07-30T06:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1993-12-16T05:44:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Calibration in progress.</Value>
+        <BeginEffectiveTime>2012-03-19T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-03-19T14:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Uncertain timing of samples</Value>
+        <BeginEffectiveTime>2014-01-05T06:35:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2014-01-15T07:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-03-20T07:57:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-03-22T19:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-04-22T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-05-17T10:20:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2013-08-28T06:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-08-28T08:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>No data for all channels</Value>
+        <BeginEffectiveTime>1994-01-29T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-02-03T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Only VH data exist</Value>
+        <BeginEffectiveTime>1994-03-04T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-08-02T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>No data for all channels</Value>
+        <BeginEffectiveTime>1994-11-13T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-11-14T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1995-05-02T22:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-11-28T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-21.1712</Latitude>
+      <Longitude unit="DEGREES">55.73986</Longitude>
+      <Elevation>834.0</Elevation>
+      <Site>
+        <Name>Riviere de l'Est - Sainte Rose - La Reunion island, France</Name>
+      </Site>
+      <CreationDate>1986-02-10T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>87</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="ROCAM" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2012-12-15T00:00:00+00:00">
+      <Latitude unit="DEGREES">-19.75553</Latitude>
+      <Longitude unit="DEGREES">63.37014</Longitude>
+      <Elevation>52.0</Elevation>
+      <Site>
+        <Name>Leguat Reserve, Rodrigues Island, Republic of Mauritius</Name>
+      </Site>
+      <CreationDate>2012-12-15T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>20</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="SANVU" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2011-11-01T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-01-22T11:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-01-27T01:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-02-20T21:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-02-23T23:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2012-03-13T00:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-04-14T06:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2012-04-14T06:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-04-15T00:14:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2012-05-11T13:07:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-05-12T02:38:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2013-03-12T18:28:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-03-12T21:57:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2013-03-17T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-03-18T05:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2013-05-28T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-06-02T17:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data loss due to stormy weather</Value>
+        <BeginEffectiveTime>2012-11-05T04:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-11-15T18:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-15.447148</Latitude>
+      <Longitude unit="DEGREES">167.203231</Longitude>
+      <Elevation>56.0</Elevation>
+      <Site>
+        <Name>Espiritu Santo, Vanuatu</Name>
+      </Site>
+      <CreationDate>2011-11-01T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>17</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="SPB" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1996-06-17T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2007-03-29T00:55:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-03-30T11:55:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-01-17T11:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-01-19T19:20:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-07-28T21:05:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-10-03T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Problems with remote telemetry.</Value>
+        <BeginEffectiveTime>2009-12-18T01:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-07-29T21:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-10-03T00:15:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-12-09T13:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-12-10T12:50:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-01-05T15:50:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-01-06T00:35:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2011-12-02T11:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Problems with remote telemetry.</Value>
+        <BeginEffectiveTime>2009-12-18T01:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-12-10T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2012-04-23T05:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-04-26T02:08:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-07-27T05:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-08-05T22:05:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-12-04T19:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-12-27T13:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-12-30T06:13:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-01-03T19:35:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-02-21T12:42:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-02-25T18:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-23.592691</Latitude>
+      <Longitude unit="DEGREES">-47.426979</Longitude>
+      <Elevation>647.0</Elevation>
+      <Site>
+        <Name>Sao Paulo, Brazil</Name>
+      </Site>
+      <CreationDate>1996-06-17T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>39</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="SSB" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1982-05-02T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>No time correction</Value>
+        <BeginEffectiveTime>1985-04-24T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1985-06-14T12:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2008-07-26T14:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-07-28T12:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional spiking on all channels.</Value>
+        <BeginEffectiveTime>2008-08-01T11:45:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-08-01T11:52:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Maintenance.  Tests may be in progress.</Value>
+        <BeginEffectiveTime>2009-11-12T10:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-11-13T12:59:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Maintenance.  Tests may be in progress.</Value>
+        <BeginEffectiveTime>2010-01-26T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-01-26T15:44:43+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-01-29T10:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-05-04T12:54:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-05-05T16:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Maintenance.  Tests may be in progress.</Value>
+        <BeginEffectiveTime>2004-03-29T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-04-02T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Calibration in progress.</Value>
+        <BeginEffectiveTime>2004-04-01T15:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-04-01T17:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2011-05-22T14:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-22T15:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to stormy weather</Value>
+        <BeginEffectiveTime>2011-07-13T12:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-07-13T13:20:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional locid 10 data lost</Value>
+        <BeginEffectiveTime>2011-10-05T19:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-10-06T08:24:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station Maintenance.  Tests may be in progress.</Value>
+        <BeginEffectiveTime>2011-10-12T11:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-10-12T18:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1982-05-03T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1985-01-01T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1982-05-03T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1987-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1992-06-28T11:42:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-09-23T14:55:35+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Site maintenance</Value>
+        <BeginEffectiveTime>2012-06-05T07:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-06-05T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2009-11-12T10:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-11-13T12:59:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2004-03-29T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-04-02T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress.</Value>
+        <BeginEffectiveTime>2011-10-12T11:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-10-12T18:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-07-25T01:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-08-12T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Site maintenance</Value>
+        <BeginEffectiveTime>2012-08-30T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-08-30T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1994-08-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-09-09T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1995-05-25T01:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-08-03T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-02-08T04:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-05-19T06:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-07-01T13:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-07-17T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">45.279</Latitude>
+      <Longitude unit="DEGREES">4.542</Longitude>
+      <Elevation>700.0</Elevation>
+      <Site>
+        <Name>Tunnel de Badole - Saint Sauveur en Rue, France</Name>
+      </Site>
+      <CreationDate>1982-05-02T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>238</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="TAM" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1983-11-16T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to telemetry problems.</Value>
+        <BeginEffectiveTime>2008-01-29T22:25:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2008-01-29T23:16:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-09-11T05:15:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-09-11T13:38:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-11-27T01:22:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-11-27T01:47:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-05-01T15:10:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-01T22:50:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2011-05-16T14:40:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-05-16T15:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2005-01-01T15:22:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-02-03T20:27:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station time is uncertain</Value>
+        <BeginEffectiveTime>2005-02-03T20:27:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-03-04T18:32:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2005-12-05T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-12-13T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2006-02-09T03:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-02-14T11:14:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1983-11-17T01:13:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1986-01-01T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1983-11-17T01:13:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1987-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1990-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1990-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2014-10-06T13:55:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2014-10-21T02:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Frequent data loss due to transmission issues</Value>
+        <BeginEffectiveTime>2013-03-10T20:50:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-03-13T15:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-04-20T15:06:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-04-20T15:43:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2013-04-21T11:50:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-04-21T14:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1994-07-06T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1994-11-25T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1996-09-15T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1997-03-13T10:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>2012-11-29T12:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-11-29T17:05:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">22.79149</Latitude>
+      <Longitude unit="DEGREES">5.52838</Longitude>
+      <Elevation>1410.0</Elevation>
+      <Site>
+        <Name>Tamanrasset, Algeria</Name>
+      </Site>
+      <CreationDate>1983-11-16T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>40</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="TAOE" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2004-11-01T20:00:00+00:00">
+      <Comment>
+        <Value>Seismometer electronics is failing</Value>
+        <BeginEffectiveTime>2009-01-07T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-03-24T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-8.85492</Latitude>
+      <Longitude unit="DEGREES">-140.14775</Longitude>
+      <Elevation>800.0</Elevation>
+      <Site>
+        <Name>Taiohae - Marquesas islands, France</Name>
+      </Site>
+      <CreationDate>2004-11-01T20:00:00+00:00</CreationDate>
+      <TotalNumberChannels>4</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="TRIS" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="2004-03-03T00:00:00+00:00">
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-01-21T11:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-02-05T17:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2010-06-20T18:07:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-06-22T16:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-02-01T06:50:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-02-03T05:56:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">-37.0681</Latitude>
+      <Longitude unit="DEGREES">-12.3152</Longitude>
+      <Elevation>60.0</Elevation>
+      <Site>
+        <Name>Tristan da Cunha</Name>
+      </Site>
+      <CreationDate>2004-03-03T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>12</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="UNM" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1990-06-06T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has occasional gaps due to record dropouts.</Value>
+        <BeginEffectiveTime>2004-03-19T16:11:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-02-07T14:28:01+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>2004-07-22T20:58:20+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-08-18T20:00:21+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station has clock problems.</Value>
+        <BeginEffectiveTime>2004-09-04T22:59:39+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-10-28T18:01:46+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-05-31T03:00:34+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-06-01T16:23:34+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-07-22T04:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-07-28T00:10:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2009-09-07T07:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2009-09-07T20:15:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-02-21T04:52:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2010-02-22T16:13:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2010-07-06T08:30:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2004-03-19T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2004-05-26T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>2005-01-30T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2005-08-28T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2006-05-21T15:35:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2006-12-21T02:43:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss due to power problems</Value>
+        <BeginEffectiveTime>2007-02-02T18:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2007-03-03T11:50:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2011-07-14T22:05:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2011-07-15T00:30:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Maintenance in progress</Value>
+        <BeginEffectiveTime>2013-02-12T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2013-02-16T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>2012-07-13T16:20:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2012-07-14T09:40:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1995-01-08T23:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-11-18T01:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-02-03T14:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-11-25T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">19.329662</Latitude>
+      <Longitude unit="DEGREES">-99.178065</Longitude>
+      <Elevation>2280.0</Elevation>
+      <Site>
+        <Name>Unam - Mexico, Mexico</Name>
+      </Site>
+      <CreationDate>1990-06-06T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>44</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+    <Station code="WUS" endDate="2599-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1988-10-31T00:00:00+00:00">
+      <Comment>
+        <Value>Sensors responses contain nominal values.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Error on sensors poles may reach 2 percent.</Value>
+        <BeginEffectiveTime>1982-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>The station is temporarily interrupted</Value>
+        <BeginEffectiveTime>2006-04-05T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>2599-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1989-06-26T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1989-11-08T03:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1990-05-13T21:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1990-07-23T09:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Station is down.</Value>
+        <BeginEffectiveTime>1991-09-14T02:40:14+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1992-04-06T13:39:46+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Many data lost</Value>
+        <BeginEffectiveTime>1993-01-01T00:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1993-12-31T23:59:59+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1995-06-26T17:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1995-08-24T11:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Comment>
+        <Value>Occasional data loss</Value>
+        <BeginEffectiveTime>1996-05-29T02:00:00+00:00</BeginEffectiveTime>
+        <EndEffectiveTime>1996-10-09T00:00:00+00:00</EndEffectiveTime>
+      </Comment>
+      <Latitude unit="DEGREES">41.199</Latitude>
+      <Longitude unit="DEGREES">79.218</Longitude>
+      <Elevation>1457.0</Elevation>
+      <Site>
+        <Name>Wushi - Xinjiang Uygur, China</Name>
+      </Site>
+      <CreationDate>1988-10-31T00:00:00+00:00</CreationDate>
+      <TotalNumberChannels>26</TotalNumberChannels>
+      <SelectedNumberChannels>0</SelectedNumberChannels>
+    </Station>
+  </Network>
+</FDSNStationXML>
