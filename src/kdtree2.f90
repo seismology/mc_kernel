@@ -1,9 +1,16 @@
+!******************************************************************************
 !
-!(c) Matthew Kennel, Institute for Nonlinear Science (2004)
+!    This file is distributed as part of:
+!    MC Kernel: Calculating seismic sensitivity kernels on unstructured meshes
 !
-! Licensed under the Academic Free License version 1.1 found in file LICENSE
-! with additional provisions found in that same file.
 !
+! (c) Matthew Kennel, Institute for Nonlinear Science (2004)
+!
+! Licensed under the Academic Free License version 1.1 found in file 
+! LICENSE_KDTREE2  with additional provisions found in that same file.
+!
+!******************************************************************************
+
 module kdtree2_precision_module
   
   integer, parameter :: sp = kind(0.0)
