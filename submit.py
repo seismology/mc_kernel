@@ -11,7 +11,6 @@ import glob
 import datetime
 import subprocess
 import math
-import psutil
 from netCDF4 import Dataset
 
 
@@ -188,7 +187,7 @@ def define_arguments():
                "will be rounded up to a multiple of 16 (thin island) \n" + \
                "or 40 (fat island)"
     parser.add_argument('-n', '--nslaves', type=int,
-                        default=psutil.cpu_count() - 1,
+                        default= ncpu - 1,
                         metavar='N',
                         help=helptext)
 
@@ -506,6 +505,12 @@ def define_arguments():
                                      help=helptext)
     return parser
 
+try:
+  import psutil
+  ncpu = psutil.cpu_count() 
+except ImportError:
+  ncpu = 2
+
 parser = define_arguments()
 
 args = parser.parse_args()
@@ -754,6 +759,7 @@ if args.queue == 'local':
     run_cmd = 'nohup %s -n %d ./mc_kernel inparam 2>&1 > OUTPUT_0000 &' % \
               (mpirun_cmd, args.nslaves + 1)
     print 'Starting local job in %s' % run_dir
+    print 'Check %s/OUTPUT_0000 for progress' % run_dir
     subprocess.call(run_cmd, shell=True)
 
 elif args.queue == 'SuperMUC':
