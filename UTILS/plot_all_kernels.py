@@ -15,6 +15,7 @@ plane at the right place.
 
 from paraview.simple import *
 import os
+import numpy as np
 
 # Create output directory
 kernel_plot_dir = './Kernel_plots'
@@ -52,7 +53,7 @@ LUT = GetColorTransferFunction('HalliGalli')
 LUT.RGBPoints = [-1e-10, 0.231373, 0.298039, 0.752941,
                  0, 1.0, 1.0, 1.0,
                  1e-10, 0.705882, 0.0156863, 0.14902]
-LUT.LockScalarRange = 1
+#LUT.LockScalarRange = 1
 LUT.NanColor = [0.500008, 0.0, 0.0]
 LUT.ScalarRangeInitialized = 1.0
 
@@ -77,7 +78,16 @@ LUTColorBar.LabelColor = [0.3137, 0.3137, 0.3137]
 for data in kerner_kernelxdmf.PointData:
     if data.Name[0:3] == 'K_x':
 
-        print 'Plotting kernel %s' % data.Name
+        # Set color range to 10% of maximum value 
+        maxval = np.max(-data.GetRange()[0], data.GetRange()[1]) * 0.1
+        maxval = round(maxval, int(-np.log10(maxval))+1)
+
+        LUT.RGBPoints = [-maxval, 0.231373, 0.298039, 0.752941,
+                         0, 1.0, 1.0, 1.0,
+                         maxval, 0.705882, 0.0156863, 0.14902]
+
+        print 'Plotting kernel %s, range(%f, %f)' % (data.Name,
+                                                     maxval, maxval)
 
         # show data from kerner_kernelxdmf
         kerner_kernelxdmfDisplay = Show(kerner_kernelxdmf, renderView1)
@@ -100,7 +110,16 @@ for data in kerner_kernelxdmf.PointData:
 for data in kerner_kernelxdmf.CellData:
     if data.Name[0:3] == 'K_x':
 
-        print 'Plotting kernel %s' % data.Name
+        # Set color range to 10% of maximum value 
+        maxval = np.max(-data.GetRange()[0], data.GetRange()[1]) * 0.1
+        maxval = round(maxval, int(-np.log10(maxval))+1)
+
+        LUT.RGBPoints = [-maxval, 0.231373, 0.298039, 0.752941,
+                         0, 1.0, 1.0, 1.0,
+                         maxval, 0.705882, 0.0156863, 0.14902]
+
+        print 'Plotting kernel %s, range(%f, %f)' % (data.Name,
+                                                     maxval, maxval)
 
         # show data from kerner_kernelxdmf
         kerner_kernelxdmfDisplay = Show(kerner_kernelxdmf, renderView1)
