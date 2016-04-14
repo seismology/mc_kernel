@@ -3,8 +3,8 @@
   <Source>IRIS-DMC</Source>
   <Sender>IRIS-DMC</Sender>
   <Module>IRIS WEB SERVICE: fdsnws-station | version: 1.1.20</Module>
-  <ModuleURI>http://service.iris.edu/fdsnws/station/1/query?network=IU&amp;format=xml&amp;endafter=2016-04-14T19%3A01%3A33.454036</ModuleURI>
-  <Created>2016-04-14T19:01:34+00:00</Created>
+  <ModuleURI>http://service.iris.edu/fdsnws/station/1/query?network=IU&amp;format=xml&amp;endafter=2016-04-14T23%3A02%3A16.962095</ModuleURI>
+  <Created>2016-04-14T23:02:18+00:00</Created>
   <Network code="IU" endDate="2500-12-31T23:59:59+00:00" restrictedStatus="open" startDate="1988-01-01T00:00:00+00:00">
     <Description>Global Seismograph Network (GSN - IRIS/USGS)</Description>
     <TotalNumberStations>269</TotalNumberStations>
