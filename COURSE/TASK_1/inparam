@@ -7,10 +7,10 @@ BWD_DIR              './wavefield/bwd/'
 PARALLEL_READING   false
 
 # Paths of parameter files 
-SRC_FILE          'CMTSOLUTION'
-REC_FILE          'receiver.dat'
-FILT_FILE         'filters.dat'
-STF_FILE          'stf_20s.dat'
+SRC_FILE          'COURSE/TASK_1/CMTSOLUTION'
+REC_FILE          'COURSE/TASK_1/receiver.dat'
+FILT_FILE         'COURSE/TASK_1/filters.dat'
+STF_FILE          'COURSE/TASK_1/stf_20s.dat'
 
 # Select the mesh file type. Allowed values are
 # abaqus      : .inp file, can be generated with Qubit or other codes. Can
