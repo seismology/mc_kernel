@@ -106,11 +106,10 @@ def read_receiver_dat(src_file, rec_file):
 
         print 'Number of kernels: %d' % nkernel_total
 
-    return clip
-
 def print_point(name, normalvector):
 
-    renderView1.CameraPosition = normalvector * 3e7 + [2e7, 0, 0]
+    renderView1.CameraPosition = normalvector * 3e7 #+ [2e7, 0, 0]
+    renderView1.CameraFocalPoint = [0.0, 0.0, 0.0]
 
     # create a new 'Clip'
     clip1 = Clip(Input=kerner_kernelxdmf)
@@ -159,7 +158,8 @@ def print_point(name, normalvector):
 # Loop over all Cell variables in file and print them
 def print_cell(name, normalvector):
 
-    renderView1.CameraPosition = normalvector * 3e7 + [2e7, 0, 0]
+    renderView1.CameraPosition = normalvector * 3e7 #+ [2e7, 0, 0]
+    renderView1.CameraFocalPoint = [0.0, 0.0, 0.0]
 
     # create a new 'Clip'
     clip1 = Clip(Input=kerner_kernelxdmf)
@@ -233,6 +233,36 @@ renderView1.LightIntensity = 0.2
 renderView1.CameraParallelScale = 6520917.036707207
 renderView1.Background = [1.0, 1.0, 1.0]
 
+# create a new 'Arrow'
+arrow1 = Arrow()
+arrow1.TipResolution = 64
+arrow1.TipRadius = 0.01
+arrow1.TipLength = 0.025
+arrow1.ShaftResolution = 64
+arrow1.ShaftRadius = 0.005
+
+# show data from arrow1
+arrow1Display = Show(arrow1, renderView1)
+
+# trace defaults for the display properties.
+arrow1Display.ColorArrayName = [None, '']
+arrow1Display.DiffuseColor = [1.0, 0.0, 0.0]
+arrow1Display.Position = [0.0, 0.0, -10000000.0]
+arrow1Display.Scale = [20000000.0, 20000000.0, 20000000.0]
+arrow1Display.Orientation = [0.0, 270.0, 0.0]
+
+# create a new 'Sphere'
+# Core
+sphere1 = Sphere()
+sphere1.Radius = 3461000.0
+sphere1.ThetaResolution = 256
+sphere1.PhiResolution = 256
+
+# show data from sphere1
+sphere1Display = Show(sphere1, renderView1)
+# trace defaults for the display properties.
+sphere1Display.ColorArrayName = [None, '']
+sphere1Display.DiffuseColor = [0.4, 0.4, 0.4]
 
 kerner_kernelxdmf = XDMFReader(FileNames=['kerner_kernel.xdmf'])
 
