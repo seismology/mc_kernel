@@ -539,7 +539,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
 
 
             elseif (travel_time_larger_Tmax(source   = parameters%source,                &
-                                            receiver = parameters%receiver(1),           &
+                                            receiver = parameters%receiver(irec),        &
                                             coordinates = inv_mesh%get_center(ielement), &
                                             v_max    = sem_data%get_v_max()) ) then
               ! Test whether the minimum travel time from source to element 
