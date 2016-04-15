@@ -1,0 +1,15 @@
+1                                  # Nr of receivers
+Z                                  # seismogram component
+90deg 00.0000   00.0000  12      # Name, lat, lon, nr of kernels
+P_vp_60s  Gabor_60  CC 760.0 850.0  vp      # Kernel name, Filter name, misfit, time window begin and end, model parameter
+P_vp_80s  Gabor_80  CC 760.0 880.0  vp     
+P_vp_120s Gabor_120 CC 760.0 940.0  vp     
+S_vp_60s  Gabor_60  CC 1420.0 1510.0  vp  
+S_vp_80s  Gabor_80  CC 1420.0 1540.0  vp     
+S_vp_120s Gabor_120 CC 1420.0 1600.0  vp     
+P_vs_60s  Gabor_60  CC 760.0 850.0  vs      
+P_vs_80s  Gabor_80  CC 760.0 880.0  vs     
+P_vs_120s Gabor_120 CC 760.0 940.0  vs     
+S_vs_60s  Gabor_60  CC 1420.0 1510.0  vs  
+S_vs_80s  Gabor_80  CC 1420.0 1540.0  vs     
+S_vs_120s Gabor_120 CC 1420.0 1600.0  vs     
