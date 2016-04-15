@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>MC Kernel by sstaehler</title>
+    <title>MC Kernel by seismology</title>
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/github-light.css">
@@ -18,29 +18,45 @@
         <h1>MC Kernel</h1>
         <p>Calculate seismic sensitivity kernels using Axisem</p>
 
-        <p class="view"><a href="https://github.com/sstaehler/kerner">View the Project on GitHub <small>sstaehler/kerner</small></a></p>
+        <p class="view"><a href="https://github.com/seismology/mc_kernel">View the Project on GitHub <small>seismology/mc_kernel</small></a></p>
 
 
         <ul>
-          <li><a href="https://github.com/sstaehler/kerner/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/sstaehler/kerner/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/sstaehler/kerner">View On <strong>GitHub</strong></a></li>
+          <li><a href="https://github.com/seismology/mc_kernel/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/seismology/mc_kernel/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/seismology/mc_kernel">View On <strong>GitHub</strong></a></li>
         </ul>
       </header>
       <section>
-        <p><img src="https://www.geophysik.uni-muenchen.de/%7Estaehler/kerner/logo.png" alt=""></p>
+        <h1>
+<a id="mc-kernel" class="anchor" href="#mc-kernel" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>MC Kernel</h1>
 
-<h2>
-<a id="authors" class="anchor" href="#authors" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Authors:</h2>
+<p><a href="https://zenodo.org/badge/latestdoi/21468/seismology/mc_kernel"><img src="https://zenodo.org/badge/21468/seismology/mc_kernel.svg" alt="DOI"></a>
+<img src="https://www.geophysik.uni-muenchen.de/%7Estaehler/kerner/logo.png" alt=""></p>
+
+<h3>
+<a id="authors" class="anchor" href="#authors" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Authors:</h3>
 
 <p>Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meyer</p>
 
-<h2>
-<a id="download" class="anchor" href="#download" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Download</h2>
+<h3>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License:</h3>
+
+<p>This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 of the License.</p>
+
+<h3>
+<a id="acknowledgements" class="anchor" href="#acknowledgements" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Acknowledgements:</h3>
+
+<p>If you use this program for your work, please cite:</p>
+
+<p>Simon C. Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Karin Sigloch, and Tarje Nissen-Meyer: <strong>MC Kernel: Broadband Waveform Sensitivity Kernels for Seismic Tomography</strong>, <em>Geophysical Research Abstracts</em>, Vol. 18, EGU2016-7020-2, 2016</p>
+
+<h3>
+<a id="download" class="anchor" href="#download" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Download</h3>
 
 <p>To download the current developer version, use git clone</p>
 
-<pre><code>git clone https://github.com/sstaehler/kerner
+<pre><code>git clone https://github.com/seismology/mc_kernel
 </code></pre>
 
 <h2>
@@ -68,9 +84,18 @@ The recommended submit script uses Python and needs NetCDF4</p>
 On SuperMUC, the necessary commands are</p>
 
 <pre><code>module load fortran
-module load netcdf/4.2
+module load netcdf/mpi
 module load fftw
 module load mkl
+</code></pre>
+
+<h2>
+<a id="axisem-wavefields" class="anchor" href="#axisem-wavefields" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>AxiSEM wavefields</h2>
+
+<p>Using the code requires computation of a global seismic wavefield using AxiSEM. Please refer to the AxiSEM documentation on how to do this. An set of example wavefields with a dominant period of 40s can be downloaded:</p>
+
+<pre><code>wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
+tar -xvf kerner_wavefields.tar.bz2
 </code></pre>
 
 <h2>
@@ -81,21 +106,15 @@ module load mkl
 <div class="highlight highlight-source-shell"><pre><span class="pl-c1">cd</span> kerner
 ./copy_templates.sh</pre></div>
 
-<p>The file <em>make_mc_kerner.macros</em> allows you to modify the compiler name and compiler flags according to your system. To compile, use make</p>
+<p>The file <em>make_mc_kerner.macros</em> allows you to modify the compiler name and compiler flags according to your system. To compile, use</p>
 
-<div class="highlight highlight-source-shell"><pre>make 
-make <span class="pl-c1">test</span> </pre></div>
+<div class="highlight highlight-source-shell"><pre>make </pre></div>
 
-<p>to run a set of tests.</p>
+<p>and afterwards </p>
 
-<h2>
-<a id="axisem-wavefields" class="anchor" href="#axisem-wavefields" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>AxiSEM wavefields</h2>
+<div class="highlight highlight-source-shell"><pre>make check</pre></div>
 
-<p>Using the code requires computation of a global seismic wavefield using AxiSEM. Please refer to the AxiSEM documentation on how to do this. An set of example wavefields with a dominant period of 40s can be downloaded:</p>
-
-<pre><code>wget https://www.geophysik.uni-muenchen.de/~staehler/kernel_wavefields_40s.tar.gz
-tar -xvf kernel_wavefields_40s.tar.gz
-</code></pre>
+<p>to run a set of tests (wavefields downloaded in the previous step are necessary for the tests to complete).</p>
 
 <h2>
 <a id="usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h2>
@@ -144,7 +163,7 @@ A solution is to replace the compiler name <em>FC</em> and the <em>MPIRUN</em> v
 <div class="highlight highlight-source-shell"><pre>FC = /usr/bin/mpif90</pre></div>
       </section>
       <footer>
-        <p>This project is maintained by <a href="https://github.com/sstaehler">sstaehler</a></p>
+        <p>This project is maintained by <a href="https://github.com/seismology">seismology</a></p>
         <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
       </footer>
     </div>
