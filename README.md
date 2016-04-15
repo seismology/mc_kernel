@@ -1,14 +1,23 @@
+# MC Kernel
+[![DOI](https://zenodo.org/badge/21468/seismology/mc_kernel.svg)](https://zenodo.org/badge/latestdoi/21468/seismology/mc_kernel)
 ![](https://www.geophysik.uni-muenchen.de/~staehler/kerner/logo.png)
 
-##Authors:
+### Authors:
 Simon Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Tarje Nissen-Meyer
 
-## Download
+### License: 
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 of the License.
+
+### Acknowledgements:
+If you use this program for your work, please cite:
+
+Simon C. Stähler, Martin van Driel, Ludwig Auer, Kasra Hosseini, Karin Sigloch, and Tarje Nissen-Meyer: **MC Kernel: Broadband Waveform Sensitivity Kernels for Seismic Tomography**, *Geophysical Research Abstracts*, Vol. 18, EGU2016-7020-2, 2016
+
+### Download
 To download the current developer version, use git clone
 ```
-git clone https://github.com/sstaehler/kerner
+git clone https://github.com/seismology/mc_kernel
 ```
-Please note that the repository is not public as of now. If you are interested in using the code, please send a mail to staehler@geophysik.uni-muenchen.de
 
 ## Prequisites
 MC Kernel needs a recent Fortran compiler (gfortran 4.8 or later), an MPI installation, the NetCDF library for accessing the wavefield files, the FFTW library for Fourier transforms and LAPACK, because we were too lazy to write a matrix inversion routine ourselves. The installation of these libraries can be done by hand on desktop machines or using modules on HPC environments.
