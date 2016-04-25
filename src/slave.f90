@@ -672,6 +672,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                     conv_field_temp(:, :, :, ikernel),                &
                     bg_model = bg_model,                              &
                     relative_kernel = parameters%relative_kernel), 2)
+
+                  ! Multiply the waveform kernel with the seismogram for this receiver
+                  ! to mask the "coda sensitivity" in regions, where almost no energy arrives
+                  ! This results in very strange waveform kernels, so only use it, if
+                  ! you know what you're doing.
+                  ! conv_field_out(:, ikernel) = conv_field_out(:, ikernel) * &
+                  !   parameters%kernel(ikernel)%seis * parameters%kernel(ikernel)%normalization
+
+
                 end do
               end if
 
