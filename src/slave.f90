@@ -541,10 +541,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
             elseif (travel_time_larger_Tmax(source   = parameters%source,                &
                                             receiver = parameters%receiver(irec),        &
                                             coordinates = inv_mesh%get_center(ielement), &
-                                            v_max    = sem_data%get_v_max()) ) then
+                                            v_max    = sem_data%get_v_max())             &
+                    .and. (.not.parameters%plot_wavefields)) then
               ! Test whether the minimum travel time from source to element 
               ! midpoint to receiver is smaller than the end of the latest 
               ! time window on this receiver.
+              ! If wavefield plotting is switched on, no elements should be masked,
+              ! since we want to see the wavefield everywhere.
               do ikernel = parameters%receiver(irec)%firstkernel, &
                   parameters%receiver(irec)%lastkernel 
 
