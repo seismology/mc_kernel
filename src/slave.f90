@@ -541,10 +541,13 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
             elseif (travel_time_larger_Tmax(source   = parameters%source,                &
                                             receiver = parameters%receiver(irec),        &
                                             coordinates = inv_mesh%get_center(ielement), &
-                                            v_max    = sem_data%get_v_max()) ) then
+                                            v_max    = sem_data%get_v_max())             &
+                    .and. (.not.parameters%plot_wavefields)) then
               ! Test whether the minimum travel time from source to element 
               ! midpoint to receiver is smaller than the end of the latest 
               ! time window on this receiver.
+              ! If wavefield plotting is switched on, no elements should be masked,
+              ! since we want to see the wavefield everywhere.
               do ikernel = parameters%receiver(irec)%firstkernel, &
                   parameters%receiver(irec)%lastkernel 
 
@@ -669,6 +672,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                     conv_field_temp(:, :, :, ikernel),                &
                     bg_model = bg_model,                              &
                     relative_kernel = parameters%relative_kernel), 2)
+
+                  ! Multiply the waveform kernel with the seismogram for this receiver
+                  ! to mask the "coda sensitivity" in regions, where almost no energy arrives
+                  ! This results in very strange waveform kernels, so only use it, if
+                  ! you know what you're doing.
+                  ! conv_field_out(:, ikernel) = conv_field_out(:, ikernel) * &
+                  !   parameters%kernel(ikernel)%seis * parameters%kernel(ikernel)%normalization
+
+
                 end do
               end if
 

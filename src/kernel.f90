@@ -42,8 +42,9 @@ implicit none
                                                                      ! this kernel in frequency domain
     real(kind=dp), allocatable           :: t(:)
     real(kind=dp), allocatable, public   :: t_cut(:)
+    real(kind=sp), allocatable, public   :: seis(:)
     real(kind=dp)                        :: dt
-    real(kind=dp)                        :: normalization
+    real(kind=dp), public                :: normalization
     integer                              :: filter_type
     character(len=4)                     :: misfit_type
     character(len=16), public            :: model_parameter
@@ -222,6 +223,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    allocate(seis_velo_filtered_fd(nomega, 1))
    allocate(seis_disp_filtered(ntimes_ft, 1))
    allocate(seis_velo_filtered(ntimes_ft, 1))
+   allocate(this%seis(ntimes_ft))
    allocate(this%t(ntimes_ft))
    this%t = fft_data%get_t()
 
@@ -328,10 +330,16 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    case('CC')
      ! For travel-time kernels, the velocity seismogram has to be used
      normalization_term = this%integrate_parseval(this%seis_velo_cut, this%seis_velo_cut)                  
+     ! Save the complete seismogram once. This is only used for waveform kernel 
+     ! plotting, not for kernel calculation.
+     this%seis = real(seis_velo_filtered(:,1), kind=sp)
    
    case('AM')
      ! For travel-time kernels, the velocity seismogram has to be used
      normalization_term = this%integrate_parseval(this%seis_disp_cut, this%seis_disp_cut)                  
+     ! Save the complete seismogram once. This is only used for waveform kernel 
+     ! plotting, not for kernel calculation.
+     this%seis = real(seis_disp_filtered(:,1), kind=sp)
 
    case default
      print *, 'Unkown misfit type: ', trim(this%misfit_type)

@@ -192,8 +192,7 @@ def define_arguments():
                         help=helptext)
 
     helptext = "Description of run, which is saved in \n" + \
-               "JOB_NAME/README.run. \n" + \
-               "If omitted, an editor window opens to collect description."
+               "JOB_NAME/README.run. \n" 
     parser.add_argument('-m', '--message', metavar='JOB_DESCRIPTION_MESSAGE',
                         help=helptext)
 
@@ -709,13 +708,7 @@ f_readme.write('  by user ''%s'' on ''%s''\n' % (os.environ.get('USER'),
                                                  os.environ.get('HOSTNAME')))
 if args.message:
     f_readme.write(args.message)
-    f_readme.close()
-else:
-    f_readme.close()
-    editor = os.environ.get('EDITOR', '-1')
-    if editor == '-1':
-        editor = 'vim'
-    subprocess.check_call('%s %s' % (editor, out_readme), shell=True)
+f_readme.close()
 
 # Move README file to rundir
 shutil.move(out_readme, os.path.join(run_dir, 'README.run'))
