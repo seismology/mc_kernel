@@ -23,7 +23,7 @@ STF_FILE          'COURSE/TASK_1/stf_20s.dat'
 #               2. the connectivity of the facets of the tetrahedrons
 #                  (MESH_FILE_FACETS)
 MESH_FILE_TYPE       'abaqus'
-MESH_FILE_ABAQUS     'Meshes/mantle_only_500km.inp'
+MESH_FILE_ABAQUS     'Meshes/flat_triangles.inp'
 
 #MESH_FILE_TYPE       'tetrahedral'
 #MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
@@ -148,7 +148,7 @@ FFTW_PLAN              MEASURE
 
 # Do you want to just calculate kernels or additionally plot wavefields? 
 # And waveform kernels, which needs a lot of memory
-PLOT_WAVEFIELDS         false
+PLOT_WAVEFIELDS         true 
 
 # Do you want your kernels to be given on the vertices ('onvertices') or
 # inside ('volumetric') each elements?
@@ -158,4 +158,4 @@ INT_TYPE             'volumetric'
 # reason to expect the job to be cancelled. 
 # Can inhibit performance significantly for large numbers of kernels and 
 # large inversion grids
-CREATE_INTERMEDIATE  true
+CREATE_INTERMEDIATE  false
