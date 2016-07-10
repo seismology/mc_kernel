@@ -28,7 +28,7 @@ The recommended submit script uses Python and needs NetCDF4
 #### Ubuntu/Debian Linux
 Since Ubuntu 14.04LTS, the system libraries can be used:
 ```bash
-sudo apt-get install gfortran libnetcdff5 libfftw3-dev libblas3 openmpi-bin gfortran python python-netcdf
+- sudo apt-get install gfortran libnetcdff5 libnetcdf-dev libfftw3-dev liblapack-dev libblas-dev openmpi-bin libopenmpi-dev
 ```
 
 #### MacOS X
