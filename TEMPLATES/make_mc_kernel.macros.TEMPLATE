@@ -7,7 +7,7 @@
 #------------------------------------------------------------------------------#
 
 # Set name of mpirun command on your system
-MPIRUN  = mpirun
+MPIRUN  = /usr/bin/mpirun
 
 # Enable NetCDF
 NETCDF_PATH = # $(HOME)/local # e.g. $(HOME)/local, uses /usr/include if not defined
@@ -30,14 +30,15 @@ DOXYGEN_PATH = doxygen
 ####################################
 
 # GFORTRAN (fast)
-FC      = mpif90                                  # Fortran compiler
-FFLAGS  = -O3 -g -fbacktrace -cpp -march=native   # Fortran compiler flags        
-LDFLAGS = -O3 -g -fbacktrace -cpp -march=native   # Linking flags   
+#FC      = gfortran -I/usr/lib/openmpi/include -pthread -I/usr/lib/openmpi/lib -L/usr//lib -L/usr/lib/openmpi/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lhwloc                 # Fortran compiler
+#FC      = mpif90
+#FFLAGS  = -O3 -g -fbacktrace -cpp -march=native   # Fortran compiler flags        
+#LDFLAGS = -O3 -g -fbacktrace -cpp -march=native   # Linking flags   
 
 # GFORTRAN (debug)
-#FC      = mpif90                             # Fortran compiler
-#FFLAGS  = -g -fbacktrace -cpp -Warray-temporaries -fcheck-array-temporaries -fbounds-check -frange-check -pedantic
-#LDFLAGS = -g -fbacktrace -cpp -Wall
+FC      = mpif90                             # Fortran compiler
+FFLAGS  = -g -fbacktrace -cpp -fbounds-check -frange-check -pedantic -fprofile-arcs -ftest-coverage
+LDFLAGS = -g -fbacktrace -cpp -Wall -lgcov -coverage
 
 # PORTLAND (fast)
 #FC      = mpif90  

@@ -2163,7 +2163,7 @@ subroutine test_integration_in_tetrahedron
 
   integral = int_test%getintegral()
   call assert_comparable(integral, [pi*(1./3.)**(1.5) * 1d9/6.], &
-                         1d-3, 'Integral == 1.10076')
+                         1d-2, 'Integral == 1.10076')
 
 end subroutine test_integration_in_tetrahedron
 !-----------------------------------------------------------------------------------------

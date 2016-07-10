@@ -1,0 +1,52 @@
+language: c
+
+# sudo false implies containerized builds, so we can use cacheing
+sudo: required
+dist: trusty
+
+python:
+  - 2.7
+  - 3.4
+  - 3.5
+
+env:
+
+before_install:
+- pip install --user cpp-coveralls
+- sudo apt-get update -qq
+- sudo apt-get install -qq gfortran libnetcdff5 libnetcdf-dev libfftw3-dev liblapack-dev libblas-dev openmpi-bin libopenmpi-dev
+# Recommendatrion from the Travis homepage
+- test -n $CC && unset CC
+- pwd
+- |
+  if [ ! -d "wavefield" ]; then 
+  wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
+  tar -xvf kerner_wavefields.tar.bz2
+  fi
+
+install:
+- ./copy_templates.sh
+- cat make_mc_kernel.macros
+- make -j
+- ls
+
+
+script:
+- pwd
+- ls -R wavefield
+- make check
+- cat tests/mckernel_tests.log
+
+after_success:
+- coveralls --gcov-options '\-lp'
+
+before_cache:
+# clean unused packages & installed files from conda cache
+# this makes the cache rebuilt less frequently
+# - conda clean --yes --tarballs --packages --index-cache
+# - rm -rf $HOME/miniconda/pkgs/cache
+# - xargs rm <installed_files.txt
+
+cache:
+  directories:
+    - $HOME/seismology/mc_kernel/wavefield
