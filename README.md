@@ -1,7 +1,7 @@
 # MC Kernel
 [![DOI](https://zenodo.org/badge/21468/seismology/mc_kernel.svg)](https://zenodo.org/badge/latestdoi/21468/seismology/mc_kernel)
 [![Build Status](https://travis-ci.org/seismology/mc_kernel.svg?branch=master)](https://travis-ci.org/seismology/mc_kernel)
-[![Coverage Status](https://coveralls.io/repos/github/seismology/mc_kernel/badge.svg)](https://coveralls.io/github/seismology/mc_kernel)
+[![Coverage Status](https://coveralls.io/repos/github/seismology/mc_kernel/badge.svg?branch=master)](https://coveralls.io/github/seismology/mc_kernel?branch=master)
 
 ![](https://www.geophysik.uni-muenchen.de/~staehler/kerner/logo.png)
 
