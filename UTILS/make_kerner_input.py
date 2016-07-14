@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # In[1]:
@@ -149,7 +149,8 @@ ax.plot(event.longitude, event.latitude, '*', color='red',
 # add a circle
 for dist in (30, 90, 120):
     circle = mpatches.Circle((event.longitude, event.latitude), dist,
-                              ec="black", fc="None", ls="dotted", transform=ccrs.PlateCarree())
+                             ec="black", fc="None", ls="dotted",
+                             transform=ccrs.PlateCarree())
     ax.add_patch(circle)
 
 
@@ -174,7 +175,7 @@ for stat in stats_sort:
 ax.legend(fontsize=12, numpoints=1, markerscale=2.0)
 
 fname = './stations.png'
-fig.savefig(filename=fname, 
+fig.savefig(filename=fname,
             bbox_inches='tight',
             dpi=300)
 #
