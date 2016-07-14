@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding: utf-8
 """
 Plot all seismograms in this rundir with a zoom window on the

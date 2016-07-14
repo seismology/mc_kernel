@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding: utf-8
 """
 Submit a MC kerner job locally or into a HPC queue
@@ -80,7 +81,7 @@ def auto_buffer_size(memory_available):
       size_one_disp_element = (4.0 *         # 4 Byte per number
                                25 *          # Number of GLL points per elem
                                ndumps_fwd *  # number of time samples
-                               15)           # 15 disp. dimensions 
+                               15)           # 15 disp. dimensions
                                              # 3 each for the 3 dipole/quadpole
                                              # 2 each 3 for the monopole
 
@@ -100,8 +101,8 @@ def auto_buffer_size(memory_available):
                              size_one_strain_element)
     size_disp_buffer = int(memory_for_buffers * 0.4 /
                            size_one_disp_element)
-                           
-    memory_buffers_strain = size_one_strain_element * size_strain_buffer 
+
+    memory_buffers_strain = size_one_strain_element * size_strain_buffer
     #print 'Strain buffer size: %f MB' % (memory_buffers_strain/(2**20))
     memory_buffers_disp = size_one_disp_element *  size_disp_buffer
     #print 'Displ. buffer size: %f MB' % (memory_buffers_disp/(2**20))
@@ -192,7 +193,7 @@ def define_arguments():
                         help=helptext)
 
     helptext = "Description of run, which is saved in \n" + \
-               "JOB_NAME/README.run. \n" 
+               "JOB_NAME/README.run. \n"
     parser.add_argument('-m', '--message', metavar='JOB_DESCRIPTION_MESSAGE',
                         help=helptext)
 
@@ -229,7 +230,7 @@ def define_arguments():
                            help='Job class on SuperMUC')
     hpc_queue.add_argument('--tasks_per_node', type=int,
                            help='Tasks per node on SuperMUC')
-    hpc_queue.add_argument('--parallel_reading', default=False, 
+    hpc_queue.add_argument('--parallel_reading', default=False,
                            action='store_true',
                            help='Use parallel NetCDF4 for reading.')
 
@@ -506,7 +507,7 @@ def define_arguments():
 
 try:
   import psutil
-  ncpu = psutil.cpu_count() 
+  ncpu = psutil.cpu_count()
 except ImportError:
   ncpu = 2
 

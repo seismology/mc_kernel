@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding: utf-8
 """
 Create a composite plot of kernel and seismogram
