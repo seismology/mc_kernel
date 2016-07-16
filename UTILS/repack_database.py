@@ -98,7 +98,7 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
 
         f_out.setncattr('nsim', len(filenames))
 
-        for name, dimension in f_in_1.dimensions.iteritems():
+        for name, dimension in f_in_1.dimensions.items():
             if not dimension.isunlimited():
                 f_out.createDimension(name, len(dimension))
             else:
@@ -106,26 +106,26 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
 
         # Create Mesh group and copy mesh variables
         f_out.createGroup('Mesh')
-        for name, dimension in f_in_1['Mesh'].dimensions.iteritems():
+        for name, dimension in f_in_1['Mesh'].dimensions.items():
             if not dimension.isunlimited():
                 f_out['Mesh'].createDimension(name, len(dimension))
             else:
                 f_out['Mesh'].createDimension(name, None)
 
-        for name, variable in f_in_1['Mesh'].variables.iteritems():
+        for name, variable in f_in_1['Mesh'].variables.items():
             f_out['Mesh'].createVariable(name, variable.datatype,
                                          variable.dimensions)
 
             if ('elements',) == variable.dimensions:
-                print 'Resorting %s' % name
+                print('Resorting %s' % name)
                 f_out['Mesh'].variables[name][:] = \
                     f_in_1['Mesh'].variables[name][inds]
             elif name == 'sem_mesh':
-                print 'Resorting first dim of %s' % name
+                print('Resorting first dim of %s' % name)
                 f_out['Mesh'].variables[name][:, :, :] = \
                     f_in_1['Mesh'].variables[name][inds, :, :]
             elif name == 'fem_mesh':
-                print 'Resorting first dim of %s' % name
+                print('Resorting first dim of %s' % name)
                 f_out['Mesh'].variables[name][:, :] = \
                     f_in_1['Mesh'].variables[name][inds, :]
             else:
@@ -133,7 +133,7 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
                     f_in_1['Mesh'].variables[name][:]
 
         # Copy source time function variables from Surface group
-        for name, variable in f_in_1['Surface'].variables.iteritems():
+        for name, variable in f_in_1['Surface'].variables.items():
             if name in ['stf_dump', 'stf_d_dump']:
                 f_out.createVariable(name, variable.datatype,
                                      variable.dimensions)

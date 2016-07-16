@@ -29,7 +29,7 @@ def estimate_memory():
     # Estimate memory usage which cannot be controlled by input parameters
 
     memory_mesh = 4 * (2*npoints_fwd + 8*nelems_fwd + 25*nelems_fwd) * 2
-    #print 'Mesh size in memory: %f MB' % (memory_mesh/(2**20))
+    # print 'Mesh size in memory: %f MB' % (memory_mesh/(2**20))
 
     nomega = nextpow2(ndumps_fwd)
     if full_strain:
@@ -39,11 +39,11 @@ def estimate_memory():
 
     memory_fft = (8 * (nomega + ndumps_fwd) * ndim *
                   float(params['ELEMENTS_PER_TASK']))
-    #print 'Memory for FFT types: %f MB' % (memory_fft/(2**20))
+    # print 'Memory for FFT types: %f MB' % (memory_fft/(2**20))
 
     memory_fields = (8 * float(params['ELEMENTS_PER_TASK']) * ndim *
                      (5*nomega + 2*ndumps_fwd))
-    #print 'Memory for Wavefields: %f MB' % (memory_fields/(2**20))
+    # print 'Memory for Wavefields: %f MB' % (memory_fields/(2**20))
 
     '''
     The following memory requirements were determined using the Massif heap
@@ -53,11 +53,11 @@ def estimate_memory():
     around 120 MB.
     '''
     memory_hdf5 = 150 * 2**20
-    #print 'Memory for HDF5/NetCDF4 library: %f MB' % (memory_hdf5/(2**20))
+    # print 'Memory for HDF5/NetCDF4 library: %f MB' % (memory_hdf5/(2**20))
 
     # Memory usage of KD-Trees is roughly 80 Byte per mesh point
     memory_kdtree = 80 * npoints_fwd
-    #print 'Memory for KD-Trees: %f MB' % (memory_kdtree/(2**20))
+    # print 'Memory for KD-Trees: %f MB' % (memory_kdtree/(2**20))
 
     memory_total = (memory_mesh + memory_fft + memory_hdf5 +
                     memory_kdtree + memory_fields)
@@ -73,17 +73,17 @@ def auto_buffer_size(memory_available):
     memory_for_buffers = (memory_available - estimate_memory())*0.9
 
     if merged_db:
-      size_one_strain_element = (8.0 * # 8 Byte per number
-                                 25 *  # Number of GLL points per elem
+        size_one_strain_element = (8.0 *         # 8 Byte per number
+                                   25 *          # Number of GLL pts per elem
+                                   ndumps_fwd *  # number of time samples
+                                   ndim *        # number of strain dimensions
+                                   6)            # 6 files (4 fwd, 2 bwd)
+        size_one_disp_element = (4.0 *         # 4 Byte per number
+                                 25 *          # Number of GLL points per elem
                                  ndumps_fwd *  # number of time samples
-                                 ndim *        # number of strain dimensions
-                                 6)            # 6 files (4 fwd, 2 bwd)
-      size_one_disp_element = (4.0 *         # 4 Byte per number
-                               25 *          # Number of GLL points per elem
-                               ndumps_fwd *  # number of time samples
-                               15)           # 15 disp. dimensions
-                                             # 3 each for the 3 dipole/quadpole
-                                             # 2 each 3 for the monopole
+                                 15)           # 15 disp. dimensions
+                                               # 3 each for the 3 dipole/quadp
+                                               # 2 each for the 3 monopole
 
     else:
       size_one_strain_element = (4.0 *  # 8 Byte per number
@@ -102,10 +102,10 @@ def auto_buffer_size(memory_available):
     size_disp_buffer = int(memory_for_buffers * 0.4 /
                            size_one_disp_element)
 
-    memory_buffers_strain = size_one_strain_element * size_strain_buffer
-    #print 'Strain buffer size: %f MB' % (memory_buffers_strain/(2**20))
-    memory_buffers_disp = size_one_disp_element *  size_disp_buffer
-    #print 'Displ. buffer size: %f MB' % (memory_buffers_disp/(2**20))
+    # memory_buffers_strain = size_one_strain_element * size_strain_buffer
+    # print 'Strain buffer size: %f MB' % (memory_buffers_strain/(2**20))
+    # memory_buffers_disp = size_one_disp_element *  size_disp_buffer
+    # print 'Displ. buffer size: %f MB' % (memory_buffers_disp/(2**20))
 
     if memory_for_buffers < 0:
         raise ValueError('Not enough memory for buffers')
@@ -120,7 +120,7 @@ def read_receiver_dat(rec_file):
         # Read number of receivers
         str_line = f.readline()
         nrec = int(str_line.split()[0])
-        print 'Number of receivers: %d' % nrec
+        print('Number of receivers: %d' % nrec)
         # Read seismogram component
         str_line = f.readline()
         # seis_cmp = str_line.split()[0]
@@ -159,7 +159,7 @@ def read_receiver_dat(rec_file):
 
             nkernel_total += nkernel
 
-        print 'Number of kernels: %d' % nkernel_total
+        print('Number of kernels: %d' % nkernel_total)
 
     return nkernel_total, nrec, fullstrain_kernel
 
@@ -528,7 +528,7 @@ if args.input_file:
 # Merge input variables from input_file, arguments and default values
 params = {}
 # Loop over all possible arguments
-for key, value in vars(args).iteritems():
+for key, value in vars(args).items():
     if key not in ('nslaves', 'job_name', 'queue', 'available_memory'):
         # If an input file is selected, get values from there by default
         if args.input_file:
@@ -638,7 +638,7 @@ params_out = {}
 
 
 # Copy necessary files to rundir
-for key, value in params.iteritems():
+for key, value in params.items():
 
     if key == 'SRC_FILE':
         src_file_name = os.path.split(value)[1]
@@ -723,7 +723,7 @@ os.mkdir(os.path.join(run_dir, 'Filters'))
 # Create input file for run
 out_input_file = os.path.join(run_dir, 'inparam')
 with open(out_input_file, 'w') as f_out:
-    for key, value in params_out.iteritems():
+    for key, value in params_out.items():
         if value.find('/') == -1:
             f_out.write('%s  %s\n' % (key, value))
         else:
@@ -752,8 +752,8 @@ if args.queue == 'local':
 
     run_cmd = 'nohup %s -n %d ./mc_kernel inparam 2>&1 > OUTPUT_0000 &' % \
               (mpirun_cmd, args.nslaves + 1)
-    print 'Starting local job in %s' % run_dir
-    print 'Check %s/OUTPUT_0000 for progress' % run_dir
+    print('Starting local job in %s' % run_dir)
+    print('Check %s/OUTPUT_0000 for progress' % run_dir)
     subprocess.call(run_cmd, shell=True)
 
 elif args.queue == 'SuperMUC':
@@ -817,7 +817,7 @@ elif args.queue == 'SuperMUC':
         text_out += "module load mkl \n"
         text_out += "poe ./mc_kernel inparam 2>&1  > OUTPUT_0000\n"
         f.write(text_out)
-    print 'Submitting to SuperMUC loadleveler queue'
+    print('Submitting to SuperMUC loadleveler queue')
     subprocess.call(['llsubmit', job_script])
 
 elif args.queue == 'monch':
@@ -842,5 +842,5 @@ elif args.queue == 'monch':
         f.write(text_out)
     os.chdir(run_dir)
     run_cmd = 'sbatch sbatch.sh'
-    print run_cmd
+    print(run_cmd)
     subprocess.call(run_cmd, shell=True)

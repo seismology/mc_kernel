@@ -23,7 +23,7 @@ for filename in smgr_list:
     if kernel[0:3] in ('cut', 'raw'):
         continue
 
-    print kernel
+    print(kernel)
 
     smgr_name = os.path.join(seis_dir, 'seism_%s' % kernel)
     cut_name = os.path.join(seis_dir, 'seism_cut_%s' % kernel)

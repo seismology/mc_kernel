@@ -21,7 +21,7 @@ if not os.path.exists(comp_plot_dir):
 # Get list of all seismogram plot files
 smgr_list = glob.glob(os.path.join(seis_plot_dir, '*.png'))
 
-print 'Found %d seismogram images in %s' % (len(smgr_list), seis_plot_dir)
+print('Found %d seismogram images in %s' % (len(smgr_list), seis_plot_dir))
 
 for filename_smgr in smgr_list:
     kernel = os.path.split(filename_smgr)[1]
@@ -29,7 +29,7 @@ for filename_smgr in smgr_list:
     filename_kernel = os.path.join(kernel_plot_dir, 'K_x_%s' % kernel)
 
     filename_comp = os.path.join(comp_plot_dir, 'Composite_%s' % kernel)
-    print 'Processing Kernel: %s...' % kernel
+    print('Processing Kernel: %s...' % kernel)
 
     # Load kernel plot and seismogram plot
     im_kernel = Image(filename=filename_kernel)
@@ -40,4 +40,4 @@ for filename_smgr in smgr_list:
     im_kernel.composite(im_smgr, left=1100, top=580)
 
     im_kernel.save(filename=filename_comp)
-    print '  ...done!'
+    print('  ...done!')

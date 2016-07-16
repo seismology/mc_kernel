@@ -78,7 +78,7 @@ LUTColorBar.LabelColor = [0.3137, 0.3137, 0.3137]
 for data in kerner_kernelxdmf.PointData:
     if data.Name[0:3] == 'K_x':
 
-        # Set color range to 10% of maximum value 
+        # Set color range to 10% of maximum value
         maxval = np.max(-data.GetRange()[0], data.GetRange()[1]) * 0.1
         maxval = round(maxval, int(-np.log10(maxval))+1)
 
@@ -110,8 +110,8 @@ for data in kerner_kernelxdmf.PointData:
 for data in kerner_kernelxdmf.CellData:
     if data.Name[0:3] == 'K_x':
 
-        # Set color range to 10% of maximum value 
-        maxval = np.max(-data.GetRange()[0], data.GetRange()[1]) * 0.1
+        # Set color range to 10% of maximum value
+        maxval = np.max(-data.GetRange()[0], data.GetRange()[1]) * 0.01
         maxval = round(maxval, int(-np.log10(maxval))+1)
 
         LUT.RGBPoints = [-maxval, 0.231373, 0.298039, 0.752941,
