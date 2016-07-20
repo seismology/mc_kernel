@@ -550,7 +550,7 @@ for key, value in vars(args).items():
             key_out = key.upper()
             value_out = str(value)
 
-    params[key_out] = value_out
+        params[key_out] = value_out
 
 # Check for AxiSEM wavefield files to get mesh size
 fwd_path = os.path.join(os.path.realpath(params['FWD_DIR']),
