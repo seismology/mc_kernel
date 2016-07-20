@@ -87,8 +87,8 @@ for data in kerner_kernelxdmf.PointData:
             data_list.append(newval)
         data_array = np.asarray(data_list)
 
-        # Set color range to 98 percentile
-        maxval = np.percentile(abs(data_array), 98)
+        # Set color range to 99 percentile
+        maxval = np.percentile(abs(data_array), 99.5)
         maxval = round(maxval, int(-np.log10(maxval))+1)
 
         LUT.RGBPoints = [-maxval, 0.231373, 0.298039, 0.752941,
@@ -127,8 +127,8 @@ for data in kerner_kernelxdmf.CellData:
             data_list.append(newval)
         data_array = np.asarray(data_list)
 
-        # Set color range 98 percentile
-        maxval = np.percentile(abs(data_array), 98)
+        # Set color range 99 percentile
+        maxval = np.percentile(abs(data_array), 99.5)
         maxval = round(maxval, int(-np.log10(maxval))+1)
 
         LUT.RGBPoints = [-maxval, 0.231373, 0.298039, 0.752941,
