@@ -82,19 +82,17 @@ def auto_buffer_size(memory_available):
                                  25 *          # Number of GLL points per elem
                                  ndumps_fwd *  # number of time samples
                                  15)           # 15 disp. dimensions
-                                               # 3 each for the 3 dipole/quadp
-                                               # 2 each for the 3 monopole
 
     else:
-      size_one_strain_element = (4.0 *  # 8 Byte per number
-                                 25 *  # Number of GLL points per elem
+        size_one_strain_element = (4.0 *  # 8 Byte per number
+                                   25 *  # Number of GLL points per elem
+                                   ndumps_fwd *  # number of time samples
+                                   ndim *        # number of strain dimensions
+                                   6)            # 6 files (4 fwd, 2 bwd)
+        size_one_disp_element = (4.0 *         # 4 Byte per number
+                                 3 *           # 3 dimensions
                                  ndumps_fwd *  # number of time samples
-                                 ndim *        # number of strain dimensions
                                  6)            # 6 files (4 fwd, 2 bwd)
-      size_one_disp_element = (4.0 *         # 4 Byte per number
-                               3 *           # 3 dimensions
-                               ndumps_fwd *  # number of time samples
-                               6)            # 6 files (4 fwd, 2 bwd)
 
     # Rule: Strain buffer gets 60% of the available memory, displ. buffer 40%
     size_strain_buffer = int(memory_for_buffers * 0.6 /
@@ -126,12 +124,12 @@ def read_receiver_dat(rec_file):
         # seis_cmp = str_line.split()[0]
         for irec in range(0, nrec):
             str_line = f.readline()
-            rec_name = str_line.split()[0]
-            rec_lat = float(str_line.split()[1])
-            rec_lon = float(str_line.split()[2])
+            # rec_name = str_line.split()[0]
+            # rec_lat = float(str_line.split()[1])
+            # rec_lon = float(str_line.split()[2])
             nkernel = int(str_line.split()[3])
-            #print 'Receiver: %s, coordinates: (%f, %f), %d kernels' % \
-                #      (rec_name, rec_lat, rec_lon, nkernel)
+            # print 'Receiver: %s, coordinates: (%f, %f), %d kernels' % \
+            #          (rec_name, rec_lat, rec_lon, nkernel)
             for ikernel in range(0, nkernel):
                 str_line = f.readline()
                 kernel_name = str_line.split()[0]
@@ -188,7 +186,7 @@ def define_arguments():
                "will be rounded up to a multiple of 16 (thin island) \n" + \
                "or 40 (fat island)"
     parser.add_argument('-n', '--nslaves', type=int,
-                        default= ncpu - 1,
+                        default=ncpu - 1,
                         metavar='N',
                         help=helptext)
 
@@ -212,8 +210,10 @@ def define_arguments():
 
     helptext = "Queue to use. Default is local, which starts a job\n" + \
                "with MPIRUN"
-    parser.add_argument('-q', '--queue', choices=['SuperMUC', 'local', 'monch'],
-                        default='local',
+    parser.add_argument('-q', '--queue',
+                        choices=['SuperMUC', 'background', 'foreground',
+                                 'monch'],
+                        default='background',
                         help=helptext)
 
     ############################################################################
@@ -505,11 +505,13 @@ def define_arguments():
                                      help=helptext)
     return parser
 
+# Try to get the number of CPUS. If psutils is not insalled, use a default
+# value of 2.
 try:
-  import psutil
-  ncpu = psutil.cpu_count()
+    import psutil
+    ncpu = psutil.cpu_count()
 except ImportError:
-  ncpu = 2
+    ncpu = 2
 
 parser = define_arguments()
 
@@ -622,9 +624,10 @@ os.mkdir(run_dir)
 
 # Sanity check, whether fwd and bwd mesh have the same sizes and the same number
 # of wavefield time steps.
-if (npoints_fwd != npoints_bwd or
-    nelems_fwd != nelems_bwd or
-    ndumps_fwd != ndumps_bwd):
+if npoints_fwd != npoints_bwd or \
+   nelems_fwd != nelems_bwd or \
+   ndumps_fwd != ndumps_bwd:
+
     raise RuntimeError('Forward and backward run did not use' +
                        'the same parameters')
 
@@ -635,7 +638,6 @@ if args.available_memory:
 
 
 params_out = {}
-
 
 # Copy necessary files to rundir
 for key, value in params.items():
@@ -746,15 +748,28 @@ shutil.rmtree(code_dir)
 
 shutil.copy('./bin/mc_kernel', run_dir)
 
-if args.queue == 'local':
+if args.queue == 'background':
     # Change dir and submit
     os.chdir(run_dir)
 
-    run_cmd = 'nohup %s -n %d ./mc_kernel inparam 2>&1 > OUTPUT_0000 &' % \
-              (mpirun_cmd, args.nslaves + 1)
+    cmd_string = dict()
+    cmd_string = \
+        'nohup %s -n %d ./mc_kernel inparam 2>&1 > OUTPUT_0000 &'
+    run_cmd = cmd_string % (mpirun_cmd, args.nslaves + 1)
     print('Starting local job in %s' % run_dir)
     print('Check %s/OUTPUT_0000 for progress' % run_dir)
     subprocess.call(run_cmd, shell=True)
+
+if args.queue == 'foreground':
+    # Change dir and submit
+    os.chdir(run_dir)
+
+    cmd_string = dict()
+    cmd_string = \
+        '%s -n %d ./mc_kernel inparam'
+    run_cmd = cmd_string % (mpirun_cmd, args.nslaves + 1)
+    print('Starting local job in %s' % run_dir)
+    subprocess.check_call(run_cmd, shell=True)
 
 elif args.queue == 'SuperMUC':
     # Create a LoadLeveler job script for SuperMUC
