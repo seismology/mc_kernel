@@ -4,5 +4,9 @@ mckernel_tests.log
 Seismograms
 Filters
 fail_messages.txt
+gaboroutput*
 # Except this file
 !.gitignore
+!ref_make_input/CMTSOLUTION
+!ref_make_input/receiver.dat
+!ref_make_input/filters.dat
