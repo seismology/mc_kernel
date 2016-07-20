@@ -19,11 +19,12 @@ install:
 script:
 - make check
 - cat tests/mckernel_tests.log
-- ./UTILS/make_kerner_input.py
 - |
+  ./UTILS/make_kerner_input.py
   diff receiver.dat tests/ref_make_input/receiver.dat
   diff CMTSOLUTION tests/ref_make_input/CMTSOLUTION
   diff filters.dat tests/ref_make_input/filters.dat
+- ./submit.py -n 2 -q foreground test 
 
 after_success:
 - coveralls --gcov-options '\-lp'
