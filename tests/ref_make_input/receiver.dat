@@ -1,10 +1,27 @@
-4                                  # Nr of receivers
-Z                                  # seismogram component
-120deg  -30.0000   00.0000  1       # Name, lat, lon, nr of kernels
-P_40s Gabor_60 CC 885.0 945.0  vp      # Kernel name, Filter name, misfit, time window begin and end, model parameter
-30deg  60.0000   00.0000  1       # Name, lat, lon, nr of kernels
-P_40s Gabor_60 CC 345.0 405.0  vp      # Kernel name, Filter name, misfit, time window begin and end, model parameter
-90deg 45.0000  180.0000  1       # Name, lat, lon, nr of kernels
-P_60s  Gabor_60  CC 760.0 850.0  vp      # Kernel name, Filter name, misfit, time window begin and end, model parameter
-60deg 60.0000  180.0000  1       # Name, lat, lon, nr of kernels
-P_60s  Gabor_60  CC 580.0 670.0  vp    # Kernel name, Filter name, misfit, time window begin and end, model parameter
+5   # nr of receivers
+Z    # component
+R020    70.000    0.000 4
+P_vp_01 band00 CC  264.094  339.094 vp
+P_vp_02 band01 CC  264.094  370.160 vp
+P_vp_03 band02 CC  264.094  414.094 vp
+P_vp_04 band03 CC  264.094  476.226 vp
+R040    50.000    0.000 4
+P_vp_01 band00 CC  446.412  521.412 vp
+P_vp_02 band01 CC  446.412  552.478 vp
+P_vp_03 band02 CC  446.412  596.412 vp
+P_vp_04 band03 CC  446.412  658.544 vp
+R060    30.000    0.000 4
+P_vp_01 band00 CC  598.319  673.319 vp
+P_vp_02 band01 CC  598.319  704.385 vp
+P_vp_03 band02 CC  598.319  748.319 vp
+P_vp_04 band03 CC  598.319  810.451 vp
+R080    10.000    0.000 4
+P_vp_01 band00 CC  721.161  796.161 vp
+P_vp_02 band01 CC  721.161  827.227 vp
+P_vp_03 band02 CC  721.161  871.161 vp
+P_vp_04 band03 CC  721.161  933.293 vp
+R100   -10.000    0.000 4
+Pdiff_vp_01 band00 CC  817.021  892.021 vp
+Pdiff_vp_02 band01 CC  817.021  923.087 vp
+Pdiff_vp_03 band02 CC  817.021  967.021 vp
+Pdiff_vp_04 band03 CC  817.021 1029.153 vp
