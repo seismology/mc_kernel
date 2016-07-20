@@ -268,18 +268,31 @@ subroutine extract_receive_buffer(itask, irank)
         valence = 1.d0
       end select
 
-      K_x(ipoint, :)       = K_x(ipoint,:)       + wt%kernel_values(:, ibasisfunc, iel) * valence
-      Var(ipoint, :)       = Var(ipoint,:)       + wt%kernel_variance(:, ibasisfunc, iel)  * valence
+      K_x(ipoint, :) = K_x(ipoint,:) + & 
+        wt%kernel_values(:, ibasisfunc, iel) * valence
+
+      Var(ipoint, :) = Var(ipoint,:) + &
+        wt%kernel_variance(:, ibasisfunc, iel) * valence
+  
       if (parameters%int_over_background) then
-        Bg_Model(ipoint, :)  = Bg_Model(ipoint,:)  + wt%model(:, ibasisfunc, iel) * valence
+        Bg_Model(ipoint, :)  = Bg_Model(ipoint,:) + &
+          wt%model(:, ibasisfunc, iel) * valence
       end if
+
       if (parameters%int_over_hetero) then
-        Het_Model(ipoint, :) = Het_Model(ipoint,:) + wt%hetero_model(:, ibasisfunc, iel)  * valence
+        Het_Model(ipoint, :) = Het_Model(ipoint,:) + & 
+          wt%hetero_model(:, ibasisfunc, iel)  * valence
       end if
+
       if (parameters%plot_wavefields) then
-        fw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + real(wt%fw_field(:, :, :, ibasisfunc, iel) * valence, kind=sp)
-        bw_field(ipoint, :, :, :) = bw_field(ipoint, :, :, :) + real(wt%bw_field(:, :, :, ibasisfunc, iel) * valence, kind=sp)
-        conv_field(ipoint, :, :)  = conv_field(ipoint, :, :)  + real(wt%conv_field(:, 1, :, ibasisfunc, iel) * valence, kind=sp)
+        fw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + & 
+          real(wt%fw_field(:, :, :, ibasisfunc, iel) * valence, kind=sp)
+
+        bw_field(ipoint, :, :, :) = bw_field(ipoint, :, :, :) + &
+          real(wt%bw_field(:, :, :, ibasisfunc, iel) * valence, kind=sp)
+        
+        conv_field(ipoint, :, :)  = conv_field(ipoint, :, :)  + &
+          real(wt%conv_field(:, 1, :, ibasisfunc, iel) * valence, kind=sp)
       end if
 
 
@@ -343,8 +356,15 @@ subroutine finalize()
                                                     
        call inv_mesh%add_node_data(var_name = 'kernel',                      &
                                    values   = real(K_x, kind=sp) )
+       
+       where (abs(K_x).gt.1e-30)
+         Var = sqrt(Var/abs(K_x))
+       elsewhere
+         Var = 1000.0
+       end where
+
        call inv_mesh%add_node_data(var_name = 'error',                       &
-                                   values   = real(sqrt(Var/K_x), kind=sp) )
+                                   values   = real(Var, kind=sp) ) 
 
        if (parameters%int_over_background) then
          call inv_mesh%add_node_variable(var_name    = 'model',                                  &
@@ -379,8 +399,15 @@ subroutine finalize()
                                                     
        call inv_mesh%add_cell_data(var_name = 'kernel',                      &
                                    values   = real(K_x, kind=sp) )
+
+       where (abs(K_x).gt.1e-30)
+         Var = sqrt(Var/abs(K_x))
+       elsewhere
+         Var = 1000.0
+       end where
+
        call inv_mesh%add_cell_data(var_name = 'error',                       &
-                                   values   = real(sqrt(Var/K_x), kind=sp) )
+                                   values   = real(Var, kind=sp) ) 
 
        if (parameters%int_over_background) then
          call inv_mesh%add_cell_variable(var_name    = 'model',                                  &
