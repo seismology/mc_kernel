@@ -40,7 +40,7 @@ nparam = len(model_params)
 if args.event is None:
     time = obspy.core.UTCDateTime()
     origin = obspy.core.event.Origin(latitude=90.0, longitude=0.0,
-                                     depth=11.0e3, time=time)
+                                     depth=00.0e3, time=time)
 
     focmec = obspy.core.event.FocalMechanism()
     MT = obspy.core.event.MomentTensor(
@@ -69,14 +69,16 @@ filter_freq = []
 for ifilter in range(0, args.nfilter):
     filter_name.append('band%02d' % ifilter)
     filter_freq.append(args.f0 * 2.0**(ifilter*0.5))
-    filter_length.append(args.f0 * 2.0**(ifilter*0.5) * 1.2)
+    filter_length.append(args.f0 * 2.0**(ifilter*0.5) * 1.5)
 
 with open('filters.dat', 'w') as fid:
     fid.write('%d   Number of filters\n' % args.nfilter)
     for ifilter in range(0, args.nfilter):
-        fid.write('%s %s %4.1f 0.5 0 0\n' % (filter_name[ifilter],
-                                             'Gabor',
-                                             filter_freq[ifilter]))
+        fid.write('%s %s %4.1f 0.5 %4.1f 0\n' %
+                  (filter_name[ifilter],
+                   'Gabor',
+                   filter_freq[ifilter],
+                   filter_freq[ifilter]))
 
 # Version to loop over stations in inventory
 model = TauPyModel(model='ak135')
@@ -92,14 +94,12 @@ if args.receivers is None:
 
     dists = np.arange(dist_min, dist_max + dist_step, dist_step)
 
-    #network = obspy.core.inventory.Network(code='MCK')
     stats = []
     for irec in range(0, len(dists)):
         stat = obspy.core.inventory.Station(latitude=90.0 - dists[irec],
                                             longitude=00,
                                             code='R%03d' % int(dists[irec]),
                                             elevation=0)
-        #network.stations.append(stat)
         stats.append(stat)
 
 else:
@@ -170,8 +170,8 @@ with open('receiver.dat', 'w') as fid:
                                    param,
                                    iband+1,
                                    filter_name[iband],
-                                   travel_time - 5,
-                                   travel_time + filter_length[iband]-5,
+                                   travel_time - 10,
+                                   travel_time + filter_length[iband]-10,
                                    param))
 
 fig = plt.figure(figsize=(10, 8))
@@ -206,7 +206,8 @@ for dist in (30, 90, 120):
 # # Sort stations by distance to source
 # stats_sort = sorted(stats[0:nrec], key=lambda
 #                     stat: locations2degrees(stat.latitude, stat.longitude,
-#                                             origin.latitude, origin.longitude))
+#                                             origin.latitude,
+#                                             origin.longitude))
 # nrec = len(stats_sort)
 
 for stat in stats_sort:
