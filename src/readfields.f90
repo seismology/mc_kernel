@@ -1059,17 +1059,17 @@ subroutine find_element(mesh, tree, s, z, xi, eta, corner_points, id_elem, eltyp
 
   integer                           :: inext_point, icp
   integer                           :: corner_point_ids(4)
-  integer, parameter                :: nnext_points = 6
+  integer, parameter                :: nnext_points = 12
   type(kdtree2_result), allocatable :: nextpoint(:)
 
-  ! Find the six closest midpoints first
+  ! Find the twelve closest midpoints first
   allocate(nextpoint(nnext_points))
   call kdtree2_n_nearest( tree,                   &
                           real([s, z], kind=sp),  &
                           nn = nnext_points,      &
                           results = nextpoint )
 
-  ! Check, whether point is in any of the six closest elements
+  ! Check, whether point is in any of the twelve closest elements
   do inext_point = 1, nnext_points
       ! get cornerpoints of finite element
       corner_point_ids = mesh%corner_point_ids(:, nextpoint(inext_point)%idx)
@@ -1207,7 +1207,7 @@ function load_fw_points(this, coordinates, source_params, model)
                                / sqrt(dist_from_core_square) * this%fwd(1)%planet_radius
         endif
 
-        ! Find the six closest midpoints first
+        ! Find the twelve closest midpoints first
         call find_element(mesh    = this%fwdmesh,                    &
                           tree    = this%fwdtree_mp,                 &
                           s       = rotmesh_s(ipoint),               &
