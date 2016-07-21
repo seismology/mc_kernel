@@ -5,6 +5,15 @@ dist: trusty
 sudo: required
 
 before_install:
+# Install Git LFS
+- mkdir -p $HOME/bin
+- wget https://github.com/github/git-lfs/releases/download/v1.2.1/git-lfs-linux-amd64-1.2.1.tar.gz
+- tar xvfz git-lfs-linux-amd64-1.2.1.tar.gz 
+- mv git-lfs-1.2.1/git-lfs ~/bin/
+- export PATH=$PATH:$HOME/bin/
+- git lfs install
+
+# Install Miniconda
 - export MINICONDA=$HOME/miniconda
 - export PATH="$MINICONDA/bin:$PATH"
 - hash -r
@@ -12,22 +21,20 @@ before_install:
 - command -v conda >/dev/null || { wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
    bash miniconda.sh -b -f -p $MINICONDA; }
 - conda update --yes conda
-  # - conda remove --yes -n condaenv --all
-  # - conda create --yes -n condaenv python=3.5
-  # - conda install --yes -n condaenv pip
-  # - source activate condaenv
 # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
 - sudo rm -rf /dev/shm
 - sudo ln -s /run/shm /dev/shm
 - conda install --yes -c obspy nomkl obspy netcdf4 psutil python=3.5
 - conda install --yes -c SciTools cartopy
 
+# Install requirements for M.C. Kernel
 - pip install --user cpp-coveralls
 - sudo apt-get update -qq
 - sudo apt-get install -qq gfortran libnetcdff5 libnetcdf-dev libfftw3-dev liblapack-dev libblas-dev openmpi-bin libopenmpi-dev
-# Get test wavefields (2GB, takes some time)
-- wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
-- tar -xvf kerner_wavefields.tar.bz2
+  # # Get test wavefields (2GB, takes some time)
+  # - wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
+  # - tar -xvf kerner_wavefields.tar.bz2
+- git lfs pull
 
 install:
 - ./copy_templates.sh
@@ -40,19 +47,18 @@ script:
   cat tests/mckernel_tests.log
 - echo -en 'travis_fold:end:script.1\\r'
 - echo 'Test make_kerner_input.py...' && echo -en 'travis_fold:start:script.2\\r'
-- |
-  ./UTILS/make_kerner_input.py --nfilter 4 --f0 50
-  diff receiver.dat tests/ref_make_input/receiver.dat
-  diff CMTSOLUTION tests/ref_make_input/CMTSOLUTION
-  diff filters.dat tests/ref_make_input/filters.dat
+- ./UTILS/make_kerner_input.py --nfilter 4 --f0 50
+- diff receiver.dat tests/ref_make_input/receiver.dat
+- diff CMTSOLUTION tests/ref_make_input/CMTSOLUTION
+- diff filters.dat tests/ref_make_input/filters.dat
 - echo -en 'travis_fold:end:script.2\\r'
 - echo 'Test run on nonmerged wavefield files...' && echo -en 'travis_fold:start:script.3\\r'
 - ./submit.py -n 2 --fwd_dir wavefield/fwd/ --bwd_dir wavefield/bwd/ -q foreground --allowed_error 1e-16 --no_int_over_volume test_nonmerged
-  ./tests/compare_results.py test_nonmerged
+- ./tests/compare_results.py test_nonmerged
 - echo -en 'travis_fold:end:script.3\\r'
 - echo 'Test run on merged wavefield files...' && echo -en 'travis_fold:start:script.4\\r'
 - ./submit.py -n 2 --fwd_dir wavefield/fwd_merged/ --bwd_dir wavefield/bwd_merged/ -q foreground --allowed_error 1e-16 --no_int_over_volume test_merged
-  ./tests/compare_results.py test_merged
+- ./tests/compare_results.py test_merged
 - echo -en 'travis_fold:end:script.4\\r'
 
 after_success:
