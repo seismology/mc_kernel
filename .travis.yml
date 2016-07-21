@@ -35,6 +35,11 @@ before_install:
   # - wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
   # - tar -xvf kerner_wavefields.tar.bz2
 - git lfs pull
+- |
+  cd tests/reference_solutions 
+  tar -xvf test_nonmerged.tar
+  tar -xvf test_merged.tar
+  cd -
 
 install:
 - ./copy_templates.sh
@@ -47,7 +52,7 @@ script:
   cat tests/mckernel_tests.log
 - echo -en 'travis_fold:end:script.1\\r'
 - echo 'Test make_kerner_input.py...' && echo -en 'travis_fold:start:script.2\\r'
-- ./UTILS/make_kerner_input.py --nfilter 4 --f0 50
+- ./UTILS/make_kerner_input.py --nfilter 4 --f0 50 --noplot
 - diff receiver.dat tests/ref_make_input/receiver.dat
 - diff CMTSOLUTION tests/ref_make_input/CMTSOLUTION
 - diff filters.dat tests/ref_make_input/filters.dat

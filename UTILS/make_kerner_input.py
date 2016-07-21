@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
 import obspy
 from obspy.taup import TauPyModel
 from obspy.geodetics import locations2degrees
-# import os
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,6 +29,9 @@ parser.add_argument('--phases', nargs='+', default=['P', 'Pdiff'],
 parser.add_argument('--parameters', nargs='+', default=['vp'],
                     help='Model parameters to calculate kernels for')
 
+parser.add_argument('--noplot', action="store_true", default=False,
+                    help='Omit plotting (especially on headless environments)')
+
 args = parser.parse_args()
 
 model_params = args.parameters
@@ -50,7 +51,10 @@ if args.event is None:
 
     mag = obspy.core.event.Magnitude(mag=7.0)
 
-    event = obspy.core.event.Event()
+    desc = obspy.core.event.EventDescription(text='Northpole Quake',
+                                             type='earthquake name')
+
+    event = obspy.core.event.Event(event_descriptions=[desc])
     event.magnitudes.append(mag)
     event.origins.append(origin)
     event.focal_mechanisms.append(focmec)
@@ -174,51 +178,51 @@ with open('receiver.dat', 'w') as fid:
                                    travel_time + filter_length[iband]-10,
                                    param))
 
-fig = plt.figure(figsize=(10, 8))
-ax = fig.add_subplot(111, projection=ccrs.Robinson())
-# make the map global rather than have it zoom in to
-# the extents of any plotted data
-ax.set_global()
+if not args.noplot:
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection=ccrs.Robinson())
+    # make the map global rather than have it zoom in to
+    # the extents of any plotted data
+    ax.set_global()
 
-# ax.stock_img()
-ax.coastlines()
+    # ax.stock_img()
+    ax.coastlines()
 
-ax.plot(origin.longitude, origin.latitude, '*', color='red',
-        markersize=15, transform=ccrs.PlateCarree())
+    ax.plot(origin.longitude, origin.latitude, '*', color='red',
+            markersize=15, transform=ccrs.PlateCarree())
 
-# add a circle
-for dist in (30, 90, 120):
-    circle = mpatches.Circle((origin.longitude, origin.latitude), dist,
-                             ec="black", fc="None", ls="dotted",
-                             transform=ccrs.PlateCarree())
-    ax.add_patch(circle)
+    # add a circle
+    for dist in (30, 90, 120):
+        circle = mpatches.Circle((origin.longitude, origin.latitude), dist,
+                                 ec="black", fc="None", ls="dotted",
+                                 transform=ccrs.PlateCarree())
+        ax.add_patch(circle)
 
+    # stats = []
+    # stat_names = []
+    # # Create list of stations, independent of network
+    # for network in inventory:
+    #     for stat in network:
+    #         if (stat.code not in stat_names):
+    #             stats.append(stat)
+    #             stat_names.append(stat.code)
+    #
+    # # Sort stations by distance to source
+    # stats_sort = sorted(stats[0:nrec], key=lambda
+    #                     stat: locations2degrees(stat.latitude, stat.longitude,
+    #                                             origin.latitude,
+    #                                             origin.longitude))
+    # nrec = len(stats_sort)
 
-# stats = []
-# stat_names = []
-# # Create list of stations, independent of network
-# for network in inventory:
-#     for stat in network:
-#         if (stat.code not in stat_names):
-#             stats.append(stat)
-#             stat_names.append(stat.code)
-#
-# # Sort stations by distance to source
-# stats_sort = sorted(stats[0:nrec], key=lambda
-#                     stat: locations2degrees(stat.latitude, stat.longitude,
-#                                             origin.latitude,
-#                                             origin.longitude))
-# nrec = len(stats_sort)
+    for stat in stats_sort:
+        ax.plot(stat.longitude, stat.latitude, 'v', color='darkgreen',
+                transform=ccrs.PlateCarree(), markersize=10)
+    ax.legend(fontsize=12, numpoints=1, markerscale=2.0)
 
-for stat in stats_sort:
-    ax.plot(stat.longitude, stat.latitude, 'v', color='darkgreen',
-            transform=ccrs.PlateCarree(), markersize=10)
-ax.legend(fontsize=12, numpoints=1, markerscale=2.0)
-
-fname = './stations.png'
-fig.savefig(filename=fname,
-            bbox_inches='tight',
-            dpi=300)
+    fname = './stations.png'
+    fig.savefig(filename=fname,
+                bbox_inches='tight',
+                dpi=300)
 
 # import numpy as np
 # lat1 = stat.latitude * np.pi / 180
