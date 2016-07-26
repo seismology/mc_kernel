@@ -55,7 +55,7 @@ case "$os" in
                     ./autogen.sh
                     mkdir build ; cd build
                     ../configure --prefix=$TRAVIS_ROOT CC=$PRK_CC CXX=$PRK_CXX FC=$PRK_FC
-                    make -sj4
+                    make -sj4 &> make_mpi.log
                     make install
                 else
                     echo "MPICH installed..."

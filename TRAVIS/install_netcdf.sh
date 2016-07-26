@@ -33,7 +33,7 @@ if [ ! -f "$TRAVIS_ROOT/bin/h5stat" ]; then
     ./configure --prefix=$TRAVIS_ROOT --with-zlib=$TRAVIS_ROOT
 
     # -j parallelizes make;  -s reduces output
-    make -sj4
+    make -sj4 &> make_hdf.log
     #make check 
     make install
     cd ..
@@ -51,7 +51,7 @@ if [ ! -f "$TRAVIS_ROOT/bin/nc-config" ]; then
     tar -xvf netcdf-4.3.3.1.tar.gz
     cd netcdf-4.3.3.1
     ./configure --enable-netcdf-4 --enable-dap --enable-shared --prefix=$TRAVIS_ROOT
-    make -sj4
+    make -sj4 &> make_netcdf.log
     #make check # all tests should succeed.
     make install
     cd ..
@@ -69,7 +69,7 @@ if [ ! -f "$TRAVIS_ROOT/bin/nf-config" ]; then
     tar -xvf netcdf-fortran-4.4.2.tar.gz
     cd netcdf-fortran-4.4.2
     ./configure --prefix=$TRAVIS_ROOT --enable-netcdf-4
-    make -sj4
+    make -sj4 &> make_netcdf_fortran.log
     #make check
     make install
     cd ..

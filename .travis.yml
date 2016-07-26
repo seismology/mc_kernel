@@ -55,6 +55,9 @@ before_install:
 
 install:
 - ./copy_templates.sh
+- which mpif90
+- mpif90 -show
+- mpif90 -v
 - make -j
 
 script:

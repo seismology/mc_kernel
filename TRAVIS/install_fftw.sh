@@ -8,7 +8,7 @@ if [ ! -f "$TRAVIS_ROOT/bin/fftw-wisdom" ]; then
     tar -xvf fftw-3.3.4.tar.gz
     cd fftw-3.3.4
     ./configure FC=gfortran-$GCCVERSION CC=gcc-$GCCVERSION --prefix=$TRAVIS_ROOT 
-    make -sj4
+    make -sj4 >& make_fftw.log
     make install
     cd -
 else
