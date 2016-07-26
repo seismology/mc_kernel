@@ -59,10 +59,10 @@ print MAKEFILE "\n\n";
 #
 print MAKEFILE "# Handle NetCDF and other library paths\n";
 print MAKEFILE "ifdef NETCDF_PATH\n";
-print MAKEFILE "    LIBS = -llapack -L \$(strip \$(NETCDF_PATH))/lib -lnetcdff -lfftw3 -Wl,-rpath,\$(strip \$(NETCDF_PATH))/lib\n";
+print MAKEFILE "    LIBS = -L \$(strip \$(NETCDF_PATH))/lib -lnetcdff -lfftw3 -Wl,-rpath,\$(strip \$(NETCDF_PATH))/lib\n";
 print MAKEFILE "    INCLUDE = -I/usr/include -I \$(strip \$(NETCDF_PATH))/include\n";
 print MAKEFILE "else\n";
-print MAKEFILE "    LIBS = -lfftw3 -llapack -lnetcdff\n";
+print MAKEFILE "    LIBS = -lfftw3 -lnetcdff\n";
 print MAKEFILE "    INCLUDE = -I /usr/include\n";
 print MAKEFILE "endif\n";
 

@@ -1093,7 +1093,7 @@ subroutine init_weight_tet_mesh(this)
 
      end do
 
-     this%abinv(:,:,ielem) = invert(ab, 4)
+     this%abinv(:,:,ielem) = invert(ab)
 
   end do
 
@@ -1101,38 +1101,131 @@ end subroutine init_weight_tet_mesh
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-function invert(A, nrows) result(A_inv)
-!< Inverts a square matrix of dimension nrows using LAPACK routines
-!use lapack95
+!function invert(A, nrows) result(A_inv)
+!!< Inverts a square matrix of dimension nrows using LAPACK routines
+!!use lapack95
+!
+!  integer, intent(in)           :: nrows 
+!  real(kind=dp), intent(in)     :: A(nrows, nrows)
+!  real(kind=dp)                 :: A_inv(nrows, nrows)
+!  integer                       :: info
+!  real(kind=dp), allocatable    :: work(:)
+!  integer, allocatable          :: ipiv(:)
+!
+!  external                      :: dgetrf, dgetri
+!  ! This is done in LAPACK routines
+!  A_inv = A
+!  allocate(ipiv(nrows))
+!  allocate(work(nrows))
+!  
+!  call dgetrf( nrows, nrows, A_inv, nrows, ipiv, info )               
+!
+!  if (info.ne.0) then
+!    write(*,*) 'Matrix is numerically singular'
+!    call pabort()
+!  end if
+!  
+!  ! Inverse der LU-faktorisierten Matrix A        
+!  call dgetri( nrows, A_inv, nrows, ipiv, work, nrows, info )
+!  if (info.ne.0) then
+!     write(*,*) 'Error in matrix inversion'
+!     call pabort() 
+!  end if
+!
+!end function
+!-----------------------------------------------------------------------------------------
 
-  integer, intent(in)           :: nrows 
-  real(kind=dp), intent(in)     :: A(nrows, nrows)
-  real(kind=dp)                 :: A_inv(nrows, nrows)
-  integer                       :: info
-  real(kind=dp), allocatable    :: work(:)
-  integer, allocatable          :: ipiv(:)
+!-----------------------------------------------------------------------------------------
+pure function invert(A) result(B)
+  !! Performs a direct calculation of the inverse of a 4×4 matrix.
+  ! Based on m44inv by David G. Simpson (NASA)
+  ! http://www.davidgsimpson.com/software/m44inv_f90.txt
+  real(kind=dp), intent(in) :: A(4,4)   !! Matrix
+  real(kind=dp)             :: B(4,4)   !! Inverse matrix
+  real(kind=dp)             :: detinv
 
-  external                      :: dgetrf, dgetri
-  ! This is done in LAPACK routines
-  A_inv = A
-  allocate(ipiv(nrows))
-  allocate(work(nrows))
-  
-  call dgetrf( nrows, nrows, A_inv, nrows, ipiv, info )               
+  ! Calculate the inverse determinant of the matrix
+  detinv = &
+    1.0d0 / ( A(1,1)*( A(2,2)*( A(3,3)*A(4,4)-A(3,4)*A(4,3) )  &
+                      +A(2,3)*( A(3,4)*A(4,2)-A(3,2)*A(4,4) )  &
+                      +A(2,4)*( A(3,2)*A(4,3)-A(3,3)*A(4,2) )) &
+            - A(1,2)*( A(2,1)*( A(3,3)*A(4,4)-A(3,4)*A(4,3) )  &
+                      +A(2,3)*( A(3,4)*A(4,1)-A(3,1)*A(4,4) )  &
+                      +A(2,4)*( A(3,1)*A(4,3)-A(3,3)*A(4,1) )) &
+            + A(1,3)*( A(2,1)*( A(3,2)*A(4,4)-A(3,4)*A(4,2) )  &
+                      +A(2,2)*( A(3,4)*A(4,1)-A(3,1)*A(4,4) )  &
+                      +A(2,4)*( A(3,1)*A(4,2)-A(3,2)*A(4,1) )) &
+            - A(1,4)*( A(2,1)*( A(3,2)*A(4,3)-A(3,3)*A(4,2) )  &
+                      +A(2,2)*( A(3,3)*A(4,1)-A(3,1)*A(4,3) )  &
+                      +A(2,3)*( A(3,1)*A(4,2)-A(3,2)*A(4,1) )))
 
-  if (info.ne.0) then
-    write(*,*) 'Matrix is numerically singular'
-    call pabort()
-  end if
-  
-  ! Inverse der LU-faktorisierten Matrix A        
-  call dgetri( nrows, A_inv, nrows, ipiv, work, nrows, info )
-  if (info.ne.0) then
-     write(*,*) 'Error in matrix inversion'
-     call pabort() 
-  end if
+  ! Calculate the inverse of the matrix
+  B(1,1) = detinv & 
+    * (A(2,2) * (A(3,3)*A(4,4) - A(3,4)*A(4,3)) & 
+     + A(2,3) * (A(3,4)*A(4,2) - A(3,2)*A(4,4)) & 
+     + A(2,4) * (A(3,2)*A(4,3) - A(3,3)*A(4,2)))
+  B(2,1) = detinv & 
+    * (A(2,1) * (A(3,4)*A(4,3) - A(3,3)*A(4,4)) & 
+     + A(2,3) * (A(3,1)*A(4,4) - A(3,4)*A(4,1)) & 
+     + A(2,4) * (A(3,3)*A(4,1) - A(3,1)*A(4,3)))
+  B(3,1) = detinv & 
+    * (A(2,1) * (A(3,2)*A(4,4) - A(3,4)*A(4,2)) & 
+     + A(2,2) * (A(3,4)*A(4,1) - A(3,1)*A(4,4)) & 
+     + A(2,4) * (A(3,1)*A(4,2) - A(3,2)*A(4,1)))
+  B(4,1) = detinv & 
+    * (A(2,1) * (A(3,3)*A(4,2) - A(3,2)*A(4,3)) & 
+     + A(2,2) * (A(3,1)*A(4,3) - A(3,3)*A(4,1)) & 
+     + A(2,3) * (A(3,2)*A(4,1) - A(3,1)*A(4,2)))
+  B(1,2) = detinv & 
+    * (A(1,2) * (A(3,4)*A(4,3) - A(3,3)*A(4,4)) & 
+     + A(1,3) * (A(3,2)*A(4,4) - A(3,4)*A(4,2)) & 
+     + A(1,4) * (A(3,3)*A(4,2) - A(3,2)*A(4,3)))
+  B(2,2) = detinv & 
+    * (A(1,1) * (A(3,3)*A(4,4) - A(3,4)*A(4,3)) & 
+     + A(1,3) * (A(3,4)*A(4,1) - A(3,1)*A(4,4)) & 
+     + A(1,4) * (A(3,1)*A(4,3) - A(3,3)*A(4,1)))
+  B(3,2) = detinv & 
+    * (A(1,1) * (A(3,4)*A(4,2) - A(3,2)*A(4,4)) & 
+     + A(1,2) * (A(3,1)*A(4,4) - A(3,4)*A(4,1)) & 
+     + A(1,4) * (A(3,2)*A(4,1) - A(3,1)*A(4,2)))
+  B(4,2) = detinv & 
+    * (A(1,1) * (A(3,2)*A(4,3) - A(3,3)*A(4,2)) & 
+     + A(1,2) * (A(3,3)*A(4,1) - A(3,1)*A(4,3)) & 
+     + A(1,3) * (A(3,1)*A(4,2) - A(3,2)*A(4,1)))
+  B(1,3) = detinv & 
+    * (A(1,2) * (A(2,3)*A(4,4) - A(2,4)*A(4,3)) & 
+     + A(1,3) * (A(2,4)*A(4,2) - A(2,2)*A(4,4)) & 
+     + A(1,4) * (A(2,2)*A(4,3) - A(2,3)*A(4,2)))
+  B(2,3) = detinv & 
+    * (A(1,1) * (A(2,4)*A(4,3) - A(2,3)*A(4,4)) & 
+     + A(1,3) * (A(2,1)*A(4,4) - A(2,4)*A(4,1)) & 
+     + A(1,4) * (A(2,3)*A(4,1) - A(2,1)*A(4,3)))
+  B(3,3) = detinv & 
+    * (A(1,1) * (A(2,2)*A(4,4) - A(2,4)*A(4,2)) & 
+     + A(1,2) * (A(2,4)*A(4,1) - A(2,1)*A(4,4)) & 
+     + A(1,4) * (A(2,1)*A(4,2) - A(2,2)*A(4,1)))
+  B(4,3) = detinv & 
+    * (A(1,1) * (A(2,3)*A(4,2) - A(2,2)*A(4,3)) & 
+     + A(1,2) * (A(2,1)*A(4,3) - A(2,3)*A(4,1)) & 
+     + A(1,3) * (A(2,2)*A(4,1) - A(2,1)*A(4,2)))
+  B(1,4) = detinv & 
+    * (A(1,2) * (A(2,4)*A(3,3) - A(2,3)*A(3,4)) & 
+     + A(1,3) * (A(2,2)*A(3,4) - A(2,4)*A(3,2)) & 
+     + A(1,4) * (A(2,3)*A(3,2) - A(2,2)*A(3,3)))
+  B(2,4) = detinv & 
+    * (A(1,1) * (A(2,3)*A(3,4) - A(2,4)*A(3,3)) & 
+     + A(1,3) * (A(2,4)*A(3,1) - A(2,1)*A(3,4)) & 
+     + A(1,4) * (A(2,1)*A(3,3) - A(2,3)*A(3,1)))
+  B(3,4) = detinv & 
+    * (A(1,1) * (A(2,4)*A(3,2) - A(2,2)*A(3,4)) & 
+     + A(1,2) * (A(2,1)*A(3,4) - A(2,4)*A(3,1)) & 
+     + A(1,4) * (A(2,2)*A(3,1) - A(2,1)*A(3,2)))
+  B(4,4) = detinv & 
+    * (A(1,1) * (A(2,2)*A(3,3) - A(2,3)*A(3,2)) & 
+     + A(1,2) * (A(2,3)*A(3,1) - A(2,1)*A(3,3)) & 
+     + A(1,3) * (A(2,1)*A(3,2) - A(2,2)*A(3,1)))
 
-end function
+end function invert
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

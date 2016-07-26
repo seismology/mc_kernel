@@ -23,25 +23,24 @@ git clone https://github.com/seismology/mc_kernel
 ```
 
 ## Prequisites
-MC Kernel needs a recent Fortran compiler (gfortran 4.8 or later), an MPI installation, the NetCDF library for accessing the wavefield files, the FFTW library for Fourier transforms and LAPACK, because we were too lazy to write a matrix inversion routine ourselves. The installation of these libraries can be done by hand on desktop machines or using modules on HPC environments.
+MC Kernel needs a recent Fortran compiler (gfortran 4.8 or later), an MPI installation, the NetCDF library for accessing the wavefield files, the FFTW library for Fourier transforms. The installation of these libraries can be done by hand on desktop machines or using modules on HPC environments.
 The recommended submit script uses Python and needs NetCDF4
 #### Ubuntu/Debian Linux
 Since Ubuntu 14.04LTS, the system libraries can be used:
 ```bash
-- sudo apt-get install gfortran libnetcdff5 libnetcdf-dev libfftw3-dev liblapack-dev libblas-dev openmpi-bin libopenmpi-dev
+- sudo apt-get install gfortran libnetcdff5 libnetcdf-dev libfftw3-dev openmpi-bin libopenmpi-dev
 ```
 
 #### MacOS X
 We recommend using Homebrew to download and compile the necessary libraries. Be careful to add the *--with-fortran* argument while installing any library. Otherwise, only C libraries are installed. If you did install the libraries before without the *--with-fortran* argument, it may be necessary to remove and reinstall them.
 
 #### HPC environments
-Be sure to load modules for Fortran, NetCDF, FFTW and LAPACK.
+Be sure to load modules for Fortran, NetCDF, FFTW.
 On SuperMUC, the necessary commands are
 ```
 module load fortran
 module load netcdf/mpi
 module load fftw
-module load mkl
 ```
 
 ## AxiSEM wavefields
