@@ -58,6 +58,7 @@ install:
 - which mpif90
 - mpif90 -show
 - mpif90 -v
+- sh -c 'sed -i -e "s/NETCDF_PATH = /NETCDF_PATH = $(TRAVIS_ROOT) \#/g" make_mc_kernel.macros'
 - make -j
 
 script:
