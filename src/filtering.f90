@@ -226,7 +226,8 @@ end subroutine create
 !! We could get around this by having separate filters for the forward and the backward 
 !! field. 
 !! If we had nothing else to do.
-subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt)
+subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
+                    stf_source, stf_dt, stf_shift)
     use fft,                     only: rfft_type, taperandzeropad
     use simple_routines,         only: absreldiff
     use lanczos,                 only: lanczos_resample
@@ -236,13 +237,14 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     real(kind=dp)   , intent(in)    :: amplitude_fwd
     real(kind=dp)   , intent(in)    :: stf_source(:)  ! STF of the actual earthquake
     real(kind=dp)   , intent(in)    :: stf_dt         ! time step of STF
+    real(kind=dp)   , intent(in)    :: stf_shift      ! time shift of STF
 
     ! The FFT routines need 2D arrays. Second dimension will be size 1
     real(kind=dp)   , allocatable   :: stf_sem(:,:), stf_src(:,:), t(:)
     real(kind=dp)   , allocatable   :: stf_src_td(:,:)
     real(kind=dp)   , allocatable   :: stf_sem_td(:,:)
     complex(kind=dp), allocatable   :: stf_src_fd(:,:), stf_sem_fd(:,:)
-    complex(kind=dp), allocatable   :: lowpass(:)
+    complex(kind=dp), allocatable   :: lowpass(:), shift_fd(:)
 
     real(kind=dp)   , allocatable   :: stf_resampled(:)
 
@@ -270,6 +272,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
     allocate(stf_sem_fd(this%nfreq, 1))
     allocate(stf_src(size(stf_sem_fwd), 1))
     allocate(stf_src_fd(this%nfreq, 1))
+    allocate(shift_fd(this%nfreq))
 
     ! Allocate variables to store FTd and iFTd STFs
     allocate(stf_src_td(fft_stf%get_ntimes(), 1))
@@ -343,6 +346,10 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd, stf_source, stf_dt
 
     ! Apply Earthquake STF, but only to forward transfer function
     this%transferfunction_fwd = this%transferfunction_fwd * stf_src_fd(:,1)
+
+    ! Time shift STF
+    shift_fd = exp( 2*pi * cmplx(0., 1.) * this%f(:) * stf_shift)
+    this%transferfunction_fwd = this%transferfunction_fwd * shift_fd
 
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
     allocate(lowpass(this%nfreq))
@@ -599,7 +606,6 @@ subroutine init_ts(this, freq, dtshift)
    allocate(this%shift_fd(size(freq,1)) )
    this%shift_fd = exp( 2*pi * cmplx(0., 1.) * freq(:) * dtshift)
    this%isinitialized = .true.
-
 
 end subroutine
 !-----------------------------------------------------------------------------------------

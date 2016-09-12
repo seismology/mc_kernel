@@ -45,6 +45,8 @@ module receiver_class
                                                              !! in the source system
         real(kind=dp), dimension(3,3)  :: rot_mat, trans_rot_mat
         integer                        :: nkernel
+        integer                        :: istf   !< Which stf group does this receiver 
+                                                 !! belong to?
         integer                        :: firstkernel, lastkernel
         logical                        :: needs_basekernel(6)
         character(len=32)              :: strain_type
@@ -58,12 +60,13 @@ module receiver_class
 contains
 
 !-----------------------------------------------------------------------------------------
-subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkernel)
+subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkernel, istf)
    class(rec_param_type)         :: this
    character(len=16), intent(in) :: name
    real(kind=dp), intent(in)     :: lat, lon
    character(len=1), intent(in)  :: component
    integer, intent(in)           :: nkernel, firstkernel, lastkernel
+   integer, intent(in)           :: istf
 
    this%name        = name
    this%component   = component
@@ -83,6 +86,8 @@ subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkerne
    this%nkernel     = nkernel
    this%firstkernel = firstkernel
    this%lastkernel  = lastkernel
+
+   this%istf = istf
 
    allocate(this%kernel(this%nkernel))
 

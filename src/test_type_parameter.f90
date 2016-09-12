@@ -74,24 +74,24 @@ subroutine test_parameter_reading
      
    ! Do checks on filters
    call assert_equal(parameters%nfilter, 4, '4 Filters in input file')
-   call assert_true(parameters%filter(1)%name=='BW_4_40s', 'Filter 1, name: BW_4_40s')
-   call assert_true(parameters%filter(2)%name=='Identical', 'Filter 2, name:Identical')
-   call assert_true(parameters%filter(3)%name=='Gabor_60', 'Filter 3, name: Gabor_60')
-   call assert_true(parameters%filter(4)%name=='Gabor_80', 'Filter 4, name: Gabor_80')
+   call assert_true(parameters%filter(1, 1)%name=='BW_4_40s', 'Filter 1, name: BW_4_40s')
+   call assert_true(parameters%filter(2, 1)%name=='Identical', 'Filter 2, name:Identical')
+   call assert_true(parameters%filter(3, 1)%name=='Gabor_60', 'Filter 3, name: Gabor_60')
+   call assert_true(parameters%filter(4, 1)%name=='Gabor_80', 'Filter 4, name: Gabor_80')
 
-   call assert_comparable(parameters%filter(1)%frequencies, [40.d0, 0.5d0, 0.d0, 0.d0], &
+   call assert_comparable(parameters%filter(1, 1)%frequencies, [40.d0, 0.5d0, 0.d0, 0.d0], &
                           1d-10, 'Frequencies of filter 1 correct')
-   call assert_comparable(parameters%filter(2)%frequencies, [0.d0, 0.0d0, 0.d0, 0.d0], &
+   call assert_comparable(parameters%filter(2, 1)%frequencies, [0.d0, 0.0d0, 0.d0, 0.d0], &
                           1d-10, 'Frequencies of filter 2 correct')
-   call assert_comparable(parameters%filter(3)%frequencies, [60.d0, 0.5d0, 0.d0, 0.d0], &
+   call assert_comparable(parameters%filter(3, 1)%frequencies, [60.d0, 0.5d0, 0.d0, 0.d0], &
                           1d-10, 'Frequencies of filter 3 correct')
-   call assert_comparable(parameters%filter(4)%frequencies, [80.d0, 0.5d0, 0.d0, 0.d0], &
+   call assert_comparable(parameters%filter(4, 1)%frequencies, [80.d0, 0.5d0, 0.d0, 0.d0], &
                           1d-10, 'Frequencies of filter 4 correct')
 
-   call assert_true(parameters%filter(1)%filterclass=='Butterw_LP_O4', 'Filter 1, type: Gabor')
-   call assert_true(parameters%filter(2)%filterclass=='ident', 'Filter 2, type: Gabor')
-   call assert_true(parameters%filter(3)%filterclass=='Gabor', 'Filter 1, type: Gabor')
-   call assert_true(parameters%filter(4)%filterclass=='Gabor', 'Filter 2, type: Gabor')
+   call assert_true(parameters%filter(1, 1)%filterclass=='Butterw_LP_O4', 'Filter 1, type: Gabor')
+   call assert_true(parameters%filter(2, 1)%filterclass=='ident', 'Filter 2, type: Gabor')
+   call assert_true(parameters%filter(3, 1)%filterclass=='Gabor', 'Filter 1, type: Gabor')
+   call assert_true(parameters%filter(4, 1)%filterclass=='Gabor', 'Filter 2, type: Gabor')
 
 
    call parameters%read_kernel(sem_data, parameters%filter)
