@@ -55,6 +55,7 @@ module receiver_class
         contains
            procedure, pass      :: rotate_receiver
            procedure, pass      :: init
+           procedure, pass      :: get_r
     end type
 
 contains
@@ -79,10 +80,6 @@ subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkerne
    this%lon         = this%lond   * deg2rad
    this%lat         = this%latd   * deg2rad
 
-   this%r(1) = dcos(this%lat) * dcos(this%lon) * 6371e3
-   this%r(2) = dcos(this%lat) * dsin(this%lon) * 6371e3
-   this%r(3) = dsin(this%lat)                  * 6371e3
-
    this%nkernel     = nkernel
    this%firstkernel = firstkernel
    this%lastkernel  = lastkernel
@@ -94,6 +91,25 @@ subroutine init(this, name, lat, lon, component, nkernel, firstkernel, lastkerne
 end subroutine init
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+function get_r(this, planet_radius) result(r)
+   class(rec_param_type)                :: this
+   real(kind=dp), intent(in), optional  :: planet_radius
+   real(kind=dp)                        :: radius
+   real(kind=dp)                        :: r(3)
+
+   if (present(planet_radius)) then
+     radius = planet_radius * 1d3
+   else 
+     radius = 6371d3
+   end if
+
+   r(1) = cos(this%lat) * cos(this%lon) * radius
+   r(2) = cos(this%lat) * sin(this%lon) * radius
+   r(3) = sin(this%lat)                 * radius
+
+end function get_r
+!----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine rotate_receiver(this, trans_rot_mat)
    implicit none

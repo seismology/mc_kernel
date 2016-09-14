@@ -38,8 +38,7 @@ module source_class
         real(kind=dp)               :: mij_voigt(6)        ! Mtt Mpp Mrr Mrp Mrt Mtp
         real(kind=dp)               :: colat, lat, lon     ! in radians
         real(kind=dp)               :: colatd, latd, lond  ! in degrees
-        real(kind=dp), dimension(3) :: r                   ! cartesian coordinates in m
-        real(kind=dp)               :: depth, radius       ! in km
+        real(kind=dp)               :: depth               ! in km
         real(kind=dp), allocatable  :: stf_shift(:)        ! in seconds
         real(kind=dp)               :: shift_time          ! in seconds
         real(kind=dp), allocatable  :: shift_time_sample   ! in samples (based on sampling
@@ -55,6 +54,7 @@ module source_class
         real(kind=dp), dimension(3,3)   :: rot_mat, trans_rot_mat
         contains
            procedure, pass              :: init
+           procedure, pass              :: get_r
            procedure, pass              :: def_rot_matrix
            procedure, pass              :: set_shift_time_sample
            procedure, pass              :: read_stf
@@ -64,10 +64,11 @@ contains
 
 !-----------------------------------------------------------------------------------------
 !> This routine initializes the source object
-subroutine init(this, lat, lon, mij, depth)
+subroutine init(this, lat, lon, mij, depth, planet_radius)
    class(src_param_type)      :: this
 
    real(kind=dp), intent(in)  :: lat, lon, mij(6), depth ! MIJ in Nm here
+   real(kind=dp), intent(in), optional :: planet_radius  ! Default value is 6371 (Earth) 
 
    this%latd   = lat
    this%lond   = lon
@@ -79,13 +80,6 @@ subroutine init(this, lat, lon, mij, depth)
    this%depth  = depth
 
    this%shift_time = 0
-
-   !TODO hardcoded earth radius for now until I know where to get earth's radius from (MvD)
-   this%radius = 6371 - depth
-
-   this%r(1) = cos(this%lat) * cos(this%lon) * this%radius * 1d3
-   this%r(2) = cos(this%lat) * sin(this%lon) * this%radius * 1d3
-   this%r(3) = sin(this%lat)                 * this%radius * 1d3
 
    this%mij    = mij
 
@@ -104,7 +98,6 @@ subroutine init(this, lat, lon, mij, depth)
    write(lu_out, '("  Depth:     ", F8.3)')   depth
    write(lu_out, '("  Latitude:  ", F8.3)')   this%latd
    write(lu_out, '("  Longitude: ", F8.3)')   this%lond
-   write(lu_out, '("  R:         ", 3(E9.1))')   this%r
    write(lu_out, '("  M_rr:      ", E15.8)')  this%mij(1)
    write(lu_out, '("  M_tt:      ", E15.8)')  this%mij(2)
    write(lu_out, '("  M_pp:      ", E15.8)')  this%mij(3)
@@ -116,6 +109,27 @@ subroutine init(this, lat, lon, mij, depth)
 
 end subroutine init
 !-----------------------------------------------------------------------------------------
+
+
+!-----------------------------------------------------------------------------------------
+function get_r(this, planet_radius) result(r)
+   class(src_param_type)                :: this
+   real(kind=dp), intent(in), optional  :: planet_radius
+   real(kind=dp)                        :: radius
+   real(kind=dp)                        :: r(3)
+
+   if (present(planet_radius)) then
+     radius = (planet_radius - this%depth * 1d3) 
+   else 
+     radius = (6371d3 - this%depth * 1d3)
+   end if
+
+   r(1) = cos(this%lat) * cos(this%lon) * radius
+   r(2) = cos(this%lat) * sin(this%lon) * radius
+   r(3) = sin(this%lat)                 * radius
+
+end function get_r
+!----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
 !>  This function defines the rotation matrix to rotate coordinates to the 

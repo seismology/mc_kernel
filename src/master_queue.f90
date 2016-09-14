@@ -108,7 +108,7 @@ subroutine init_queue(ntasks, inparam_file)
   if (parameters%sort_mesh_elements) then
     print *, 'Sorting inversion mesh'
     allocate(co_source_receivers(3, parameters%nrec + 1))
-    co_source_receivers(:,1) = parameters%source%r
+    co_source_receivers(:,1) = parameters%source%get_r()
     do irec = 1, parameters%nrec
       co_source_receivers(:,irec + 1) = parameters%receiver(irec)%r
     end do

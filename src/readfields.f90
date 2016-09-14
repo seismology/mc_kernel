@@ -1499,15 +1499,11 @@ function load_fw_points_rdbm(this, source_params, reci_source_params, component)
 
     allocate(load_fw_points_rdbm(this%ndumps, 1, size(source_params)))
     load_fw_points_rdbm(:,:,:) = 0.0
-    
-    npoints = size(source_params)    
-
-    do ipoint = 1, npoints
-        coordinates(:,ipoint) = source_params(ipoint)%r
-    enddo
+   
+    coordinates(:, 1) = source_params(1)%get_r(this%fwd(1)%planet_radius)
     
     ! Rotate points to FWD coordinate system
-    call rotate_frame_rd( npoints, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates, &
+    call rotate_frame_rd( 1, rotmesh_s, rotmesh_phi, rotmesh_z, coordinates, &
                           reci_source_params%lon, reci_source_params%colat)
 
     allocate(nextpoint(nnext_points))
@@ -2879,7 +2875,6 @@ subroutine read_meshes(this)
    write(lu_out,*) 'Read SEM mesh from first backward simulation'
    
    call nc_read_att_int(this%bwdmesh%npoints, 'npoints', this%bwd(1))
-
    call nc_read_att_int(this%bwdmesh%nelem, 'nelem_kwf_global', this%bwd(1))
    write(lu_out, *) 'Mesh has ', this%fwdmesh%npoints, ' points, ', &
                                  this%fwdmesh%nelem, ' elements'
@@ -2902,11 +2897,13 @@ subroutine read_meshes(this)
    ! Load mesh model 
    write(lu_out, *) 'Load forward mesh model parameters and create interpolation objects'
    call flush(lu_out)
-   call load_model_parameter(this%fwd(1)%mesh, this%fwdmesh, this%fwdtree, this%fwd(1)%planet_radius)
+   call load_model_parameter(this%fwd(1)%mesh, this%fwdmesh, this%fwdtree, & 
+                             this%fwd(1)%planet_radius)
 
    write(lu_out, *) 'Load backward mesh model parameters and create interpolation objects'
    call flush(lu_out)
-   call load_model_parameter(this%bwd(1)%mesh, this%bwdmesh, this%bwdtree, this%bwd(1)%planet_radius)
+   call load_model_parameter(this%bwd(1)%mesh, this%bwdmesh, this%bwdtree, & 
+                             this%bwd(1)%planet_radius)
 
    this%meshes_read = .true.
 

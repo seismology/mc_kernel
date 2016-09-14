@@ -318,6 +318,7 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   real(kind=dp)                       :: time_in_element
   real(kind=dp)                       :: volume
   real(kind=dp)                       :: norm_fields
+  real(kind=dp)                       :: planet_radius
 
   character(len=256)                  :: fmtstring
   integer                             :: ielement, irec, ikernel, ibasisfunc, ibasekernel
@@ -331,6 +332,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                                                                 !! no obvious ones
 
   iclockold = tick()
+
+  planet_radius = sem_data%fwd(1)%planet_radius
 
   ndim = sem_data%get_ndim()
   nptperstep = parameters%npoints_per_step
@@ -452,7 +455,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     end if
 
     ! Check, whether source is inside element. If so, do not do Monte Carlo integration
-    if (inv_mesh%point_in_element(ielement, parameters%source%r) &
+    if (inv_mesh%point_in_element(ielement, &
+                                  parameters%source%get_r(planet_radius)) &
         .and.parameters%mask_src_rec ) then
 
         write(lu_out, '(A)') ' Contains source, not calculating kernel' 
@@ -541,7 +545,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
             elseif (travel_time_larger_Tmax(source   = parameters%source,                &
                                             receiver = parameters%receiver(irec),        &
                                             coordinates = inv_mesh%get_center(ielement), &
-                                            v_max    = sem_data%get_v_max())             &
+                                            v_max    = sem_data%get_v_max(),             &
+                                            planet_radius = planet_radius)               &
                     .and. (.not.parameters%plot_wavefields)) then
               ! Test whether the minimum travel time from source to element 
               ! midpoint to receiver is smaller than the end of the latest 
@@ -685,11 +690,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
               end if
 
               ! Dampen kernel values, if the points are close to receiver or source
-              call dampen_field(kernelvalue_basekers, random_points, &
-                                parameters%receiver(irec)%r,  &
+              call dampen_field(kernelvalue_basekers, random_points,             &
+                                parameters%receiver(irec)%get_r(planet_radius),  &
                                 parameters%damp_radius)
-              call dampen_field(kernelvalue_basekers, random_points, &
-                                parameters%source%r,          &
+              call dampen_field(kernelvalue_basekers, random_points,             &
+                                parameters%source%get_r(planet_radius),          &
                                 parameters%damp_radius)
 
               iclockold = tick(id=id_mc, since=iclockold)
@@ -911,18 +916,21 @@ end function integrate_3d_model
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-logical function travel_time_larger_Tmax(source, receiver, coordinates, v_max)
-  use source_class,       only : src_param_type
-  use receiver_class,     only : rec_param_type
-  type(src_param_type)        :: source
-  type(rec_param_type)        :: receiver
-  real(kind=dp), intent(in)   :: coordinates(3)
-  real(kind=sp), intent(in)   :: v_max(2)
+logical function travel_time_larger_Tmax(source, receiver, coordinates, v_max, &
+                                         planet_radius)
+  use source_class,                 only : src_param_type
+  use receiver_class,               only : rec_param_type
+  type(src_param_type)                  :: source
+  type(rec_param_type)                  :: receiver
+  real(kind=dp), intent(in)             :: coordinates(3)
+  real(kind=sp), intent(in)             :: v_max(2)
+  real(kind=dp), intent(in)             :: planet_radius
   
-  real(kind=dp)               :: distance
-  real(kind=dp)               :: t_max_p, t_max_s
+  real(kind=dp)                         :: distance
+  real(kind=dp)                         :: t_max_p, t_max_s
 
-  distance = norm2(source%r - coordinates) + norm2(receiver%r - coordinates)
+  distance = norm2(source%get_r(planet_radius) - coordinates) + &
+             norm2(receiver%get_r(planet_radius) - coordinates)
 
   t_max_p = distance / v_max(1)
   t_max_s = distance / v_max(2)
