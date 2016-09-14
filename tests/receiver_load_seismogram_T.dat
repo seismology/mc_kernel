@@ -1,10 +1,10 @@
 3
 T
-T_OBN    55.115    36.567  2
+T_OBN    55.115    36.567  src1 2
 P_BW  BW_4_50s  CC   600.000  700.000  vp
 P_Gabor  Gabor  CC   600.000  700.000  vp
-T_XMAS     2.045  -157.446  2
+T_XMAS     2.045  -157.446  src1 2
 P_BW  BW_4_50s  CC   600.000  700.000  vp
 P_Gabor  Gabor  CC   600.000  700.000  vp
-T_CASY   -66.279   110.535  1
+T_CASY   -66.279   110.535  src1 1
 P_BW  BW_4_50s  CC   600.000  700.000  vp

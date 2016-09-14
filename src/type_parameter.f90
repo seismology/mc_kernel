@@ -40,7 +40,7 @@ module type_parameter
         type(src_param_type)                 :: source
         type(rec_param_type),   allocatable  :: receiver(:)
         type(kernelspec_type),  allocatable  :: kernel(:)
-        type(filter_type),      allocatable  :: filter(:)
+        type(filter_type),      allocatable  :: filter(:, :)
         integer                              :: nrec
 
         real(kind=dp)                        :: allowed_error
@@ -393,9 +393,9 @@ subroutine read_receiver(this)
    class(parameter_type)         :: this
    integer, parameter            :: lu_receiver = 1001
    integer                       :: irec, firstkernel, lastkernel
-   integer                       :: ikernel, recnkernel
+   integer                       :: ikernel, recnkernel, recistf
    real(kind=dp)                 :: reclatd, reclond
-   character(len=16)             :: recname, trash(5), model_parameter
+   character(len=16)             :: recname, trash(5), model_parameter, src_name
    character(len=80)             :: fmtstring
 
    if (.not.this%parameters_read) then
@@ -439,12 +439,14 @@ subroutine read_receiver(this)
    lastkernel  = 0
    do irec = 1, this%nrec
       if (master) then
-          read(lu_receiver, *) recname, reclatd, reclond, recnkernel
+          read(lu_receiver, *) recname, reclatd, reclond, src_name, recnkernel
+          recistf = this%source%get_src_index(src_name)
       end if
       call pbroadcast_char(recname, 0)
       call pbroadcast_dble(reclatd, 0)
       call pbroadcast_dble(reclond, 0)
       call pbroadcast_int(recnkernel, 0)
+      call pbroadcast_int(recistf, 0)
 
       lastkernel = lastkernel + recnkernel
 
@@ -454,7 +456,8 @@ subroutine read_receiver(this)
                                     component   = this%component , &
                                     nkernel     = recnkernel     , &  
                                     firstkernel = firstkernel    , &
-                                    lastkernel  = lastkernel       )
+                                    lastkernel  = lastkernel     , &
+                                    istf        = recistf         )
       firstkernel = firstkernel + recnkernel
 
       if (master) then
@@ -514,8 +517,8 @@ subroutine read_kernel(this, sem_data, filter)
    use filtering,  only            : filter_type
    class(parameter_type)          :: this
    type(semdata_type), intent(in), optional :: sem_data
-   type(filter_type), target, intent(in), optional  :: filter(:)
-   integer                        :: irec, nfilter
+   type(filter_type), target, intent(in), optional  :: filter(:, :)
+   integer                        :: irec, nfilter, istf
    integer                        :: ikernel, ifilter
    integer                        :: lu_receiver
    real(kind=dp)                  :: timewindow(2)
@@ -564,11 +567,14 @@ subroutine read_kernel(this, sem_data, filter)
 
        if (this%deconv_stf) then
           do ifilter = 1, nfilter
-              call filter(ifilter)%add_stfs(sem_data%stf_fwd,       &
-                                            sem_data%dt,            &
-                                            sem_data%amplitude_fwd, &
-                                            this%source%stf,        &
-                                            this%source%stf_dt)
+            do istf = 1, this%source%nstf
+              call filter(ifilter, istf)%add_stfs(sem_data%stf_fwd,         &
+                                                  sem_data%dt,              &
+                                                  sem_data%amplitude_fwd,   &
+                                                  this%source%stf(:,istf),  &
+                                                  this%source%stf_dt(istf), &
+                                                  this%source%stf_shift(istf))
+            end do
           end do
        end if
    else
@@ -577,7 +583,7 @@ subroutine read_kernel(this, sem_data, filter)
 
    do irec = 1, this%nrec
       if (master) then
-          read(lu_receiver, *)
+          read(lu_receiver, *) 
       end if
       
       ! Start with the assumption that this receiver needs no base kernels at all
@@ -607,24 +613,25 @@ subroutine read_kernel(this, sem_data, filter)
                 call pabort()
              end if
              do ifilter = 1, nfilter
-                if (trim(filtername).eq.trim(filter(ifilter)%name)) exit
+                if (trim(filtername).eq.trim(filter(ifilter, 1)%name)) exit
              end do
              if (ifilter == nfilter + 1) then
                 print *, 'Could not find filter ', trim(filtername), ', which was requested'
                 print *, 'by kernel ', trim(kernelname)
-                print *, 'Available filters: ', [(filter(ifilter)%name, ifilter = 1, nfilter)]
+                print *, 'Available filters: ', [(filter(ifilter, 1)%name, ifilter = 1, nfilter)]
                 call pabort
              end if
 
-             call this%kernel(ikernel)%init(name            = kernelname                , &
-                                            time_window     = timewindow                , &
-                                            filter          = filter(ifilter)           , &
-                                            misfit_type     = misfit_type               , &
-                                            model_parameter = model_parameter           , &
-                                            seis            = sem_data%seis(:,irec)     , &
-                                            dt              = sem_data%dt               , &
-                                            deconv_stf      = this%deconv_stf           , &
-                                            timeshift_fwd   = sem_data%timeshift_fwd    , &
+             call this%kernel(ikernel)%init(name            = kernelname                ,  &
+                                            time_window     = timewindow                ,  &
+                                            filter          = filter(ifilter,              &
+                                                                this%receiver(irec)%istf), &
+                                            misfit_type     = misfit_type               ,  &
+                                            model_parameter = model_parameter           ,  &
+                                            seis            = sem_data%seis(:,irec)     ,  &
+                                            dt              = sem_data%dt               ,  &
+                                            deconv_stf      = this%deconv_stf           ,  &
+                                            timeshift_fwd   = sem_data%timeshift_fwd    ,  &
                                             write_smgr      = this%write_smgr)
 
              ! Update which base kernels are needed for this receiver
@@ -678,13 +685,13 @@ end subroutine read_kernel
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine read_filter(this, nomega, df)
-   use filtering, only        : filter_type
+subroutine read_filter(this, nomega, df, nstf)
    class(parameter_type)     :: this
    integer, intent(in), optional        :: nomega
    real(kind=dp), intent(in), optional  :: df
+   integer, intent(in), optional        :: nstf
    integer                              :: lu_filter
-   integer                              :: ifilter
+   integer                              :: ifilter, i
    character(len=32)                    :: filtername, filtertype
    character(len=80)                    :: fmtstring
    real(kind=dp)                        :: freqs(4)
@@ -706,7 +713,11 @@ subroutine read_filter(this, nomega, df)
 
    call pbroadcast_int(this%nfilter, 0)
 
-   allocate(this%filter(this%nfilter))
+   if (present(nstf)) then
+     allocate(this%filter(this%nfilter, nstf))
+   else
+     allocate(this%filter(this%nfilter, 1))
+   end if
   
    fmtstring = '("  Creating ", I5, " filters")'
    write(lu_out,fmtstring) this%nfilter
@@ -725,7 +736,15 @@ subroutine read_filter(this, nomega, df)
              write(*,*) 'ERROR: Only master may call read_filter without nomega and df'
              call pabort()
           end if
-          call this%filter(ifilter)%create(filtername, df, nomega, filtertype, freqs)
+          if (present(nstf)) then
+            do i = 1, nstf
+              call this%filter(ifilter, i)%create(filtername, df, nomega, &
+                                                  filtertype, freqs)
+            end do
+          else
+            call this%filter(ifilter, 1)%create(filtername, df, nomega, &
+                                                filtertype, freqs)
+          end if
       end if
 
    end do

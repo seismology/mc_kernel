@@ -40,20 +40,25 @@ module source_class
         real(kind=dp)               :: colatd, latd, lond  ! in degrees
         real(kind=dp), dimension(3) :: r                   ! cartesian coordinates in m
         real(kind=dp)               :: depth, radius       ! in km
+        real(kind=dp), allocatable  :: stf_shift(:)        ! in seconds
         real(kind=dp)               :: shift_time          ! in seconds
         real(kind=dp), allocatable  :: shift_time_sample   ! in samples (based on sampling
                                                            ! rate of the netcdf file)
-        logical                              :: have_stf = .false.
-        real(kind=dp), allocatable           :: stf(:), stf_resampled(:)
-        real(kind=dp)                        :: stf_dt, stf_dt_resampled
-        complex(kind=dp), allocatable        :: stf_fd(:), stf_reconv_fd(:)
+        integer                     :: nstf                ! number of stfs
+        logical                         :: have_stf = .false.
+        real(kind=dp), allocatable      :: stf(:,:), stf_resampled(:,:)
+        real(kind=dp), allocatable      :: stf_dt(:)
+        real(kind=dp)                   :: stf_dt_resampled
+        complex(kind=dp), allocatable   :: stf_fd(:,:), stf_reconv_fd(:,:)
+        character(len=32), allocatable  :: src_name(:)
 
-        real(kind=dp), dimension(3,3)        :: rot_mat, trans_rot_mat
+        real(kind=dp), dimension(3,3)   :: rot_mat, trans_rot_mat
         contains
-           procedure, pass                   :: init
-           procedure, pass                   :: def_rot_matrix
-           procedure, pass                   :: set_shift_time_sample
-           procedure, pass                   :: read_stf
+           procedure, pass              :: init
+           procedure, pass              :: def_rot_matrix
+           procedure, pass              :: set_shift_time_sample
+           procedure, pass              :: read_stf
+           procedure, pass              :: get_src_index
     end type
 contains
 
@@ -169,8 +174,8 @@ subroutine read_stf(this, filename)
    use lanczos,             only   : lanczos_resample
    class(src_param_type)          :: this
    character(len=*)               :: filename  ! file from which to read the STF
-   integer                        :: nsamp_orig
-   integer                        :: lu_stf, isamp, ioerr
+   integer, allocatable           :: nsamp_orig(:)
+   integer                        :: lu_stf, isamp, isrc, ioerr
 
    open(newunit=lu_stf, file=trim(filename), status='old', &
         action='read', iostat=ioerr)
@@ -179,17 +184,59 @@ subroutine read_stf(this, filename)
       print *, 'ERROR: Check STF input file ''', trim(filename), '''! Is it still there?' 
       call pabort
    end if
+   
+   read(lu_stf, *) this%nstf
+   allocate(this%src_name(this%nstf))
+   allocate(nsamp_orig(this%nstf))
+   allocate(this%stf_dt(this%nstf))
+   allocate(this%stf_shift(this%nstf))
 
-   read(lu_stf,*) nsamp_orig, this%stf_dt
-   allocate(this%stf(nsamp_orig))
-   do isamp = 1, nsamp_orig
-     read(lu_stf,*) this%stf(isamp)
+   do isrc = 1, this%nstf
+     read(lu_stf, *) this%src_name(isrc), nsamp_orig(isrc), &
+                     this%stf_dt(isrc), this%stf_shift(isrc)
+     do isamp = 1, nsamp_orig(isrc)
+       read(lu_stf,*) 
+     end do
+   end do
+
+   allocate(this%stf(maxval(nsamp_orig), this%nstf))
+
+   rewind(lu_stf)
+   read(lu_stf, *) ! this%nstf
+
+   do isrc = 1, this%nstf
+     read(lu_stf, *) ! src_name, nsamp, dt, shift
+     do isamp = 1, nsamp_orig(isrc)
+       read(lu_stf,*) this%stf(isamp, isrc)
+     end do
    end do
    close(lu_stf)
 
    this%have_stf = .true.
 
 end subroutine read_stf
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+integer function get_src_index(this, src_name_in)
+   class(src_param_type)          :: this
+   character(len=*)               :: src_name_in
+   integer                        :: isrc
+
+   do isrc = 1, this%nstf
+     if (trim(src_name_in) == trim(this%src_name(isrc))) exit
+   end do
+
+   if (isrc>this%nstf) then
+     print *, 'ERROR: Source ', trim(src_name_in), 'from receiver input file '
+     print *, '       not defined in STF input file'
+     print *, 'Available STFs: ', [(this%src_name(isrc), isrc= 1, this%nstf)]
+     call pabort(do_traceback=.false.)
+   end if
+
+   get_src_index = isrc
+
+end function get_src_index
 !-----------------------------------------------------------------------------------------
 
 end module
