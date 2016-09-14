@@ -45,7 +45,6 @@ implicit none
     real(kind=sp), allocatable, public   :: seis(:)
     real(kind=dp)                        :: dt
     real(kind=dp), public                :: normalization
-    integer                              :: filter_type
     character(len=4)                     :: misfit_type
     character(len=16), public            :: model_parameter
     integer,           public            :: model_parameter_index
