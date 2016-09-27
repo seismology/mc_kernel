@@ -132,12 +132,12 @@ def unroll_and_merge_netcdf4(filenames, output_folder):
                 f_out['Mesh'].variables[name][:] = \
                     f_in_1['Mesh'].variables[name][:]
 
-        # Copy source time function variables from Surface group
-        for name, variable in f_in_1['Surface'].variables.items():
+        # Copy source time function variables
+        for name, variable in f_in_1['Snapshots'].variables.items():
             if name in ['stf_dump', 'stf_d_dump']:
                 f_out.createVariable(name, variable.datatype,
                                      variable.dimensions)
-                f_out.variables[name][:] = f_in_1['Surface'].variables[name][:]
+                f_out.variables[name][:] = f_in_1['Snapshots'].variables[name][:]
 
         # Create a new array but this time in 5D. The first dimension
         # is the element number, the second and third are the GLL
