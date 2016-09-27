@@ -9,8 +9,13 @@
 # Set name of mpirun command on your system
 MPIRUN  = /usr/bin/mpirun
 
-# Enable NetCDF
-NETCDF_PATH = # $(HOME)/local # e.g. $(HOME)/local, uses /usr/include if not defined
+# Set paths to NetCDF and FFTW libraries. 
+#   uses /usr/include if empty
+#   On Linux desktops with libraries installed by package managers, this is 
+#   a safe bet, on HPC environments, a system-specific path is necessary
+#   often similar to $(NETCDF_BASE)
+NETCDF_PATH = # e.g. $(HOME)/local
+FFTW_PATH = 
 
 # If the MPI module has been compiled with another Fortran compiler, it sometimes 
 # helps to include the MPI header file into the code instead of using the MPI
@@ -32,8 +37,8 @@ DOXYGEN_PATH = doxygen
 # GFORTRAN (fast)
 #FC      = gfortran -I/usr/lib/openmpi/include -pthread -I/usr/lib/openmpi/lib -L/usr//lib -L/usr/lib/openmpi/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lhwloc                 # Fortran compiler
 #FC      = mpif90
-#FFLAGS  = -O3 -g -fbacktrace -cpp -march=native   # Fortran compiler flags        
-#LDFLAGS = -O3 -g -fbacktrace -cpp -march=native   # Linking flags   
+#FFLAGS  = -O3 -g -fbacktrace -cpp # Fortran compiler flags        
+#LDFLAGS = -O3 -g -fbacktrace -cpp # Linking flags   
 
 # GFORTRAN (debug)
 FC      = mpif90                             # Fortran compiler
