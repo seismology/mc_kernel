@@ -41,9 +41,9 @@ before_install:
     fi
 
   - pip install --user cpp-coveralls
-  # # Get test wavefields (2GB, takes some time)
-  # - wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
-  # - tar -xvf kerner_wavefields.tar.bz2
+  # Get test wavefields (2GB, takes some time)
+  - wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
+  - tar -xvf kerner_wavefields.tar.bz2
   # - git lfs pull
   # - |
   #   cd tests/reference_solutions 
