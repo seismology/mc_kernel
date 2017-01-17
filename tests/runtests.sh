@@ -41,6 +41,7 @@ set -e
 rm ftnunit.run
 
 # Present some test results
+echo "##################################################"
 tail -n 5 mckernel_tests.log
 if grep -C 1 "assertion failed" ./mckernel_tests.log > fail_messages.txt
 then

@@ -34,6 +34,7 @@ module nc_routines
     module procedure  :: nc_getvar_by_name_1d
     module procedure  :: nc_getvar_by_name_2d
     module procedure  :: nc_getvar_by_name_3d
+    module procedure  :: nc_getvar_by_name_1d_dble
     module procedure  :: nc_getvar_by_name_1d_int
     module procedure  :: nc_getvar_by_name_2d_int
     module procedure  :: nc_getvar_by_name_3d_int
@@ -475,6 +476,93 @@ subroutine nc_getvar_by_name_1d(ncid, varname, values, limits, varid, collective
   if (present(varid)) varid = variable_id
 
 end subroutine nc_getvar_by_name_1d
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine nc_getvar_by_name_1d_dble(ncid, varname, values, limits, varid, collective)
+!< Looks up a 1D variable name and returns the complete variable
+  integer, intent(in)                        :: ncid
+  character(len=*), intent(in)               :: varname
+  real(kind=dp), allocatable, intent(inout)  :: values(:)
+  real(kind=dp), intent(in), optional        :: limits(2)
+  integer, intent(out), optional             :: varid
+  logical, intent(in), optional              :: collective
+
+  integer                                    :: variable_id, dimid(1), npoints, variable_type
+  integer                                    :: status
+  real(kind=sp)                              :: limits_loc(2)
+  logical                                    :: have_limits = .false., out_of_limit = .false.
+
+
+  if (verbose>1) then
+    write(lu_out,"(' Trying to read 1D dp variable ', A, '...')") trim(varname)
+    call flush(lu_out)
+  end if
+
+  call  getvarid( ncid  = ncid,            &
+                  name  = varname,   &
+                  varid = variable_id)
+
+  ! Set parallel access for this variable to collective mode                 
+  if (present(collective)) then
+    if (collective) then
+      status = nf90_var_par_access(ncid   = ncid,           &
+                                   varid  = variable_id,    &
+                                   access = NF90_COLLECTIVE)
+    end if
+  end if
+ 
+  ! Inquire variable type and dimension ids
+  status = nf90_inquire_variable(ncid   = ncid,           &
+                                 varid  = variable_id,    &
+                                 xtype  = variable_type,  &
+                                 dimids = dimid  )
+
+  ! Inquire size of dimension 1                            
+  status = nf90_inquire_dimension(ncid  = ncid,           &
+                                  dimid = dimid(1),       &
+                                  len   = npoints)
+
+  ! Allocate output variable with size of NetCDF variable
+  allocate(values(npoints))
+
+  select case(variable_type)
+  case(NF90_DOUBLE)
+    call nc_getvar(ncid   = ncid,                 &
+                   varid  = variable_id,          &
+                   start  = 1,                    &
+                   count  = npoints,              &
+                   values = values) 
+  case default
+    write(*,*) 'Variable ', trim(varname), ' is expected to be of type NF90_DBLE'
+    call flush(6)
+    call pabort()
+  end select
+
+  if (present(limits)) then
+     limits_loc = limits
+     have_limits = .true.
+  else
+     status = nf90_get_att(ncid   = ncid,          &
+                           varid  = variable_id,   &
+                           name   = 'valid_range', &
+                           values = limits_loc) 
+     if (status.eq.NF90_NOERR) have_limits = .true.
+  end if
+
+  if (have_limits) then
+     out_of_limit = check_limits(real(values, kind=sp),     &
+                                 real(limits_loc, kind=sp), &
+                                 varname)
+     if (out_of_limit) then
+       call flush(6)
+       call pabort(do_traceback=.false.)
+     end if
+  end if
+
+  if (present(varid)) varid = variable_id
+
+end subroutine nc_getvar_by_name_1d_dble
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

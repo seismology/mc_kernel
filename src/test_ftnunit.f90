@@ -168,6 +168,7 @@ subroutine test_all
   call test(test_nc_create_group, 'Create Group')
   call test(test_nc_open_for_read, 'Open NetCDF file for reading')
   call test(test_nc_open_for_write, 'Open NetCDF file for writing')
+  call test(test_nc_getvar_1d_dble, 'Read 1D Double by name')
   call test(test_nc_getvar_1d_float, 'Read 1D Float by name')
   call test(test_nc_getvar_2d_float, 'Read 2D Float by name')
   call test(test_nc_getvar_3d_float, 'Read 3D Float by name')
