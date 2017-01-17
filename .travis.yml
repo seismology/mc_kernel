@@ -41,8 +41,6 @@ before_install:
     fi
 
   - pip install --user cpp-coveralls
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq gfortran libnetcdff5 libnetcdf-dev libfftw3-dev openmpi-bin libopenmpi-dev
   # # Get test wavefields (2GB, takes some time)
   # - wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
   # - tar -xvf kerner_wavefields.tar.bz2
