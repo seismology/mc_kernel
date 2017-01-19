@@ -9,13 +9,12 @@ env:
     MPI_IMPL=openmpi
 
   matrix:
-    - GFORTRAN_VERSION=trusty
-    - GFORTRAN_VERSION=4.8
-    - GFORTRAN_VERSION=4.9
-    - GFORTRAN_VERSION=5 
-    - GFORTRAN_VERSION=6
-    - GFORTRAN_VERSION=7
-
+    - GFORTRAN_VERSION=trusty OPT=FAST
+    - GFORTRAN_VERSION=trusty OPT=DEBUG
+    - GFORTRAN_VERSION=4.8 OPT=FAST
+    - GFORTRAN_VERSION=4.9 OPT=FAST
+    - GFORTRAN_VERSION=5 OPT=FAST
+    - GFORTRAN_VERSION=6 OPT=FAST
 
 before_install:
   - export TRAVIS_ROOT=$HOME/local
@@ -45,7 +44,6 @@ before_install:
   # Get test wavefields (2GB, takes some time)
   - wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
   - tar -xvf kerner_wavefields.tar.bz2
-  # - git lfs pull
   # - |
   #   cd tests/reference_solutions 
   #   tar -xvf test_nonmerged.tar
@@ -53,7 +51,12 @@ before_install:
   #   cd -
 
 install:
-- ./copy_templates.sh
+- |
+  if [[ "$OPT" == "FAST" ]]; then
+    ./copy_templates.sh release
+  else
+    ./copy_templates.sh 
+  fi
 - which mpif90
 - mpif90 -show
 - mpif90 -v
@@ -82,7 +85,10 @@ script:
   # - echo -en 'travis_fold:end:script.4\\r'
 
 after_success:
-- coveralls --gcov-options '\-lp'
+  - |
+    if [[ "$OPT" == "DEBUG" ]] & [[ "$GFORTRAN_VERSION" == "trusty" ]]; then
+      coveralls --gcov-options '\-lp'
+    fi
 
 cache:
   directories:

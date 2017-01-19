@@ -2,7 +2,11 @@
 set -e
 
 [ -f make_mc_kernel.macros ] && cp make_mc_kernel.macros make_mc_kernel.macros.OLD
-cp TEMPLATES/make_mc_kernel.macros.TEMPLATE make_mc_kernel.macros
+if [ $1 == 'release' ]; then
+  cp TEMPLATES/make_mc_kernel.macros_release.TEMPLATE make_mc_kernel.macros
+else
+  cp TEMPLATES/make_mc_kernel.macros.TEMPLATE make_mc_kernel.macros
+fi
 
 [ -f Makefile ] && cp Makefile Makefile.OLD
 cp TEMPLATES/Makefile.TEMPLATE Makefile
