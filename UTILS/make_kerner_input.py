@@ -158,9 +158,9 @@ with open('receiver.dat', 'w') as fid:
 
         nphase = len(iphases)
 
-        fid.write('%s  %8.3f %8.3f %d\n' % (stat.code, stat.latitude,
-                                            stat.longitude,
-                                            nphase * args.nfilter * nparam))
+        fid.write('%s  %8.3f %8.3f %s %d\n' % (stat.code, stat.latitude,
+                                               stat.longitude, 'src1',
+                                               nphase * args.nfilter * nparam))
         print('%6s, %8.3f degree, %d Kernel\n' % (stat.code, distance,
                                                   nphase * args.nfilter *
                                                   nparam))
