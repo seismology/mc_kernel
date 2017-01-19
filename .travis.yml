@@ -39,6 +39,7 @@ before_install:
     fi
 
   - pip install --user cpp-coveralls
+  - pip install netcdf4
   # Get test wavefields (2GB, takes some time)
   - wget http://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
   - tar -xvf kerner_wavefields.tar.bz2
