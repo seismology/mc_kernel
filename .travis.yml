@@ -20,8 +20,6 @@ before_install:
   - export TRAVIS_ROOT=$HOME/local
   - mkdir -p $TRAVIS_ROOT/bin
   - export PATH="$TRAVIS_ROOT/bin:$PATH"
-  # Install Git LFS
-  - ./TRAVIS/install_gitlfs.sh $TRAVIS_ROOT
 
   # Install requirements for M.C. Kernel
   - |
@@ -42,7 +40,7 @@ before_install:
 
   - pip install --user cpp-coveralls
   # Get test wavefields (2GB, takes some time)
-  - wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
+  - wget http://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
   - tar -xvf kerner_wavefields.tar.bz2
   # - |
   #   cd tests/reference_solutions 
