@@ -1,6 +1,0 @@
-[run]
-include = src/*.f90
-# Omit external libraries for which we have no tests
-omit = src/ftnunit.f90
-       src/clocks.f90
-       src/kdtree.f90
