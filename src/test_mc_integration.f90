@@ -27,7 +27,8 @@ module test_mc_integration
 
   use global_parameters
   use mc_integration, only: integrated_type
-  use ftnunit,        only: test, assert_comparable_real1d
+  use ftnunit,        only: assert_comparable_real1d, assert_true, assert_false, &
+                            assert_equal
   implicit none
   public
 
@@ -40,11 +41,25 @@ subroutine test_mc_meanandvariance
     real(kind=dp)                    :: values(N,1), volume, randa(N), randb(N)
     real(kind=sp)                    :: variance(1), integral(1), mean_an, variance_an 
 
-    volume = 1.0
-    
 
-    ! Generate values with mean=5 and std=0
+    ! Test with discrete set of values, where we know the analytical solution
+    volume = 10
+    values(1:5, 1) = [2, 2, -3, 1, 8]
     
+    call mc_integral%initialize_montecarlo(1, volume, 1d-3)
+    call mc_integral%check_montecarlo_integral(values(1:5, 1:1))
+
+    integral = real(mc_integral%getintegral(), kind=sp)
+    call assert_comparable_real1d(integral, [20.0], 1.e-7, 'Integral == 20.0')
+    variance = real(mc_integral%getvariance(), kind=sp)
+    call assert_comparable_real1d(variance, [310.0], 1.e-7, 'Integral error == 310')
+
+    call mc_integral%freeme()
+
+
+    ! Generate set of values with mean=5 and std=0
+    
+    volume = 1.0
     values(:,1) = 5.0
 
     call mc_integral%initialize_montecarlo(1, volume, 1d-3)
@@ -60,28 +75,131 @@ subroutine test_mc_meanandvariance
 
 
     ! Generate normal distributed values with mean=1 and std=2
-    
+    volume = 1.0
     call random_number(randa)
     call random_number(randb)
-    ! Produces normal distributed values with mean 1 and std 2
     values(:,1) = sqrt(-2*log(randa)) * cos(2*pi*randb) * 2.0 + 1.0
     
-    call mc_integral%initialize_montecarlo(1, volume, 1d-3)
+    call mc_integral%initialize_montecarlo(nfuncs=1, &
+                                           volume=volume, &
+                                           allowed_error=1d-3, &
+                                           allowed_relerror=1d-2)
     call mc_integral%check_montecarlo_integral(values)
 
     mean_an = real(sum(values) / N, kind=sp)
     variance_an = real(sum((values-mean_an)**2) / (N-1), kind=sp)
-    !print *, 'Analytical mean     : ', mean_an
-    !print *, 'Analytical variance : ', variance_an
 
     integral = real(mc_integral%getintegral(), kind=sp)
     call assert_comparable_real1d(integral, [mean_an], 1.e-4, 'Mean == 1.0')
     variance = real(mc_integral%getvariance(), kind=sp)
-    call assert_comparable_real1d(sqrt(variance), [sqrt(variance_an/N)], 1.e-4, 'Error == 2/sqrt(N)')
+    call assert_comparable_real1d(sqrt(variance), [sqrt(variance_an/N)], &
+                                  1.e-4, 'Error == 2/sqrt(N)')
 
     call mc_integral%freeme()
 
 end subroutine test_mc_meanandvariance
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_mc_isconverged()
+    type(integrated_type)            :: mc_integral 
+    integer, parameter               :: N = 10000
+    real(kind=dp)                    :: values(N,1), volume, randa(N), randb(N)
+    real(kind=dp)                    :: mean_an, variance_an 
+    integer                          :: i
+    real(kind=dp)                    :: allowed_error 
+
+    volume = 1.0
+    allowed_error = 1d-1
+
+    ! Produces normal distributed values with mean 1 and std 2
+    call random_number(randa)
+    call random_number(randb)
+    values(:,1) = sqrt(-2*log(randa)) * cos(2*pi*randb) * 2.0 + 1.0
+    
+    call mc_integral%initialize_montecarlo(nfuncs=1, &
+                                           volume=volume, &
+                                           allowed_error=allowed_error)
+    variance_an = 1e10
+
+    i = 1
+    do while (variance_an > allowed_error**2)                                    
+      call assert_false(mc_integral%isconverged(1), 'recognized as not converged')
+      call mc_integral%check_montecarlo_integral(reshape(values(i, :), [1, 1]))
+      if (i>1) then
+        mean_an = sum(values(1:i, 1)) / i
+        variance_an = sum((values(1:i, 1)-mean_an)**2) / (i * (i-1.d0))
+        ! print *, i, mean_an, mc_integral%getintegral(), variance_an, &
+        !          mc_integral%getvariance(), mc_integral%isconverged(1)
+      end if
+      i = i + 1
+    end do
+    call assert_true(mc_integral%isconverged(1), 'recognized as converged')
+
+    call mc_integral%freeme()
+
+end subroutine test_mc_isconverged
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_mc_areallconverged()
+    type(integrated_type)            :: mc_integral 
+    integer, parameter               :: N = 10000, nfuncs = 10
+    real(kind=dp)                    :: values(N,nfuncs), randa(N, nfuncs), randb(N, nfuncs)
+    real(kind=dp)                    :: mean_an(nfuncs), variance_an(nfuncs) 
+    integer                          :: i, j, nconverged
+    real(kind=dp)                    :: allowed_error, volume
+    character(len=80)                :: teststr
+    logical                          :: conv(nfuncs)
+
+    volume = 1.0
+    allowed_error = 1d-1
+    conv = .false.
+
+    ! Produces normal distributed values with mean 1 and std 2
+    call random_number(randa)
+    call random_number(randb)
+    values = sqrt(-2*log(randa)) * cos(2*pi*randb) * 2.0 + 1.0
+    
+    call mc_integral%initialize_montecarlo(nfuncs=nfuncs, &
+                                           volume=volume, &
+                                           allowed_error=allowed_error)
+    variance_an = 1e10
+
+    i = 1
+    do while (any(variance_an > allowed_error**2))                                    
+      call mc_integral%check_montecarlo_integral(values(i:i, :))
+
+      if (i>2) then
+        mean_an = sum(values(1:i, :), dim=1) / i
+        
+        do j = 1, nfuncs
+          if (.not.conv(j)) then
+            variance_an(j) = sum((values(1:i, j) - mean_an(j))**2) / (i * (i-1))
+            if (variance_an(j) <= allowed_error**2) conv(j) = .true.
+          end if
+        end do
+        nconverged = count(conv) 
+        call assert_equal(mc_integral%countconverged(), nconverged, &
+                          'count converged kernels')
+        
+        ! do j = 1, nfuncs
+        !   print *, i, j, mean_an(j), mc_integral%getintegral(j), variance_an(j), &
+        !            mc_integral%getvariance(j), mc_integral%isconverged(j)
+        !   if (mc_integral%isconverged(j).neqv.conv(j)) then
+        !     write(teststr, '("not equal", I2)') j
+        !     write(*,*) variance_an(j), mc_integral%getvariance(j)
+        !     call assert_true(.false., teststr)
+        !   end if
+        ! end do
+      end if
+      i = i + 1
+    end do
+    call assert_true(mc_integral%areallconverged(), 'recognized as all converged')
+
+    call mc_integral%freeme()
+
+end subroutine test_mc_areallconverged
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

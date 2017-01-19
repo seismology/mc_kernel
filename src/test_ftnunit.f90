@@ -213,6 +213,8 @@ subroutine test_all
   ! test_mc_integration
   write(6,'(/,a)') 'TEST MC_INTEGRATION MODULE'
   call test(test_mc_meanandvariance, 'MC mean and variance')
+  call test(test_mc_isconverged, 'MC isconverged')
+  call test(test_mc_areallconverged, 'MC areallconverged')
   call test(test_mc_unit_hexagon, 'MC unit hexagon')
   call test(test_mc_sphere_in_tetrahedron, 'MC sphere in tetrahedron')
 
