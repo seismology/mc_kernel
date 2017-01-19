@@ -84,8 +84,8 @@ script:
 
 after_success:
   - |
-    if [[ "$OPT" == "DEBUG" ]] & [[ "$GFORTRAN_VERSION" == "trusty" ]]; then
-      coveralls --gcov-options '\-lp'
+    if [[ "$OPT" == "DEBUG" ] & [ "$GFORTRAN_VERSION" == "trusty" ]]; then
+      coveralls --gcov-options '\-lp' --rcfile=.coveragerc
     fi
 
 cache:

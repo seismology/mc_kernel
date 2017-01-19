@@ -3,8 +3,10 @@ set -e
 
 [ -f make_mc_kernel.macros ] && cp make_mc_kernel.macros make_mc_kernel.macros.OLD
 if [ $1 == 'release' ]; then
+  echo "Copying files for fast code"
   cp TEMPLATES/make_mc_kernel.macros_release.TEMPLATE make_mc_kernel.macros
 else
+  echo "Copying files for debugging"
   cp TEMPLATES/make_mc_kernel.macros.TEMPLATE make_mc_kernel.macros
 fi
 
