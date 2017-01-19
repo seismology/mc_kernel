@@ -14,6 +14,7 @@ env:
     - GFORTRAN_VERSION=4.9
     - GFORTRAN_VERSION=5 
     - GFORTRAN_VERSION=6
+    - GFORTRAN_VERSION=7
 
 
 before_install:
