@@ -7,7 +7,7 @@
 #------------------------------------------------------------------------------#
 
 # Set name of mpirun command on your system
-MPIRUN  = /usr/bin/mpirun
+MPIRUN  = mpirun
 
 # Set paths to NetCDF and FFTW libraries. 
 #   uses /usr/include if empty

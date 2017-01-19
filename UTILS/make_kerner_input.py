@@ -8,7 +8,6 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import cartopy.crs as ccrs
 
 helptext = 'Create MC Kernel receiver and source files.'
 formatter_class = argparse.RawTextHelpFormatter
@@ -179,6 +178,7 @@ with open('receiver.dat', 'w') as fid:
                                    param))
 
 if not args.noplot:
+    import cartopy.crs as ccrs
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection=ccrs.Robinson())
     # make the map global rather than have it zoom in to

@@ -39,7 +39,7 @@ before_install:
     fi
 
   - pip install --user cpp-coveralls
-  - pip install --user netcdf4
+  - pip install --user netcdf4 obspy
   # Get test wavefields (2GB, takes some time)
   # 1. Download gdrive client
   - wget "https://docs.google.com/uc?id=0B3X9GlR6EmbnQ0FtZmJJUXEyRTA&export=download" -O gdrive
