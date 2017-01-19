@@ -35,14 +35,14 @@ DOXYGEN_PATH = doxygen
 ####################################
 
 # GFORTRAN (fast)
-#FC      = mpif90
-#FFLAGS  = -O3 -g -fbacktrace -cpp # Fortran compiler flags        
-#LDFLAGS = -O3 -g -fbacktrace -cpp # Linking flags   
+FC      = mpif90
+FFLAGS  = -O3 -g -fbacktrace -cpp # Fortran compiler flags        
+LDFLAGS = -O3 -g -fbacktrace -cpp # Linking flags   
 
 # GFORTRAN (debug)
-FC      = mpif90                             # Fortran compiler
-FFLAGS  = -g -fbacktrace -cpp -fbounds-check -frange-check -pedantic -fprofile-arcs -ftest-coverage
-LDFLAGS = -g -fbacktrace -cpp -Wall -lgcov -coverage
+#FC      = mpif90                             # Fortran compiler
+#FFLAGS  = -g -fbacktrace -cpp -fbounds-check -frange-check -pedantic -fprofile-arcs -ftest-coverage
+#LDFLAGS = -g -fbacktrace -cpp -Wall -lgcov -coverage
 
 # PORTLAND (fast)
 #FC      = mpif90  
