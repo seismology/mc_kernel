@@ -45,16 +45,7 @@ before_install:
   - pip install --user cpp-coveralls
 
   # Get test wavefields (2GB, takes some time)
-  # 1. Download gdrive client
-  - wget "https://docs.google.com/uc?id=0B3X9GlR6EmbnQ0FtZmJJUXEyRTA&export=download" -O gdrive
-  - chmod +x ./gdrive
-  # 2. Decrypt gdrive token
-  - mkdir $HOME/.gdrive
-  - openssl aes-256-cbc -K $encrypted_50ebf69bd92e_key -iv $encrypted_50ebf69bd92e_iv -in TRAVIS/token_v2.json.enc -out $HOME/.gdrive/token_v2.json -d
-  # 3. Download wavefield archive with gdrive client
-  - ./gdrive download 0B2O7p0iBm8A9SWk1WjJZUDR5dVU
-  # 4. Untar wavefield files
-  - tar -xvf kerner_wavefields.tar.bz2
+  - ./TRAVIS/get_wavefields.sh
   #   cd tests/reference_solutions 
   #   tar -xvf test_nonmerged.tar
   #   tar -xvf test_merged.tar
