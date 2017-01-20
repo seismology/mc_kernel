@@ -89,10 +89,7 @@ script:
 - echo -en 'travis_fold:end:script.4\\r'
 
 after_success:
-  - |
-    if [[ "$OPT" == "DEBUG" ] & [ "$GFORTRAN_VERSION" == "trusty" ]]; then
-      coveralls --gcov-options '\-lp' --rcfile=.coveragerc
-    fi
+  - coveralls --gcov-options '\-lp' -e src/clocks.f90 -e src/kdtree2.f90 -e src/ftnunit.f90
 
 cache:
   directories:

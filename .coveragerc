@@ -1,8 +1,0 @@
-[run]
-include = 
-  src/*.f90
-  src/*.F90
-omit = 
-  src/clocks.f90
-  src/kdtree2.f90
-  src/ftnunit.f90
