@@ -1,5 +1,5 @@
 #!/bin/bash
-
+ls -l wavefield/bwd_merged/
 if [ -f "wavefield/bwd_merged/merged_instaseis_db.nc4" ]; then
   echo "Wavefields available from cache"
 else

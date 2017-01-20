@@ -65,15 +65,15 @@ install:
 - make -j
 
 script:
-- export PATH="$MINICONDA/bin:$PATH"
-- which python
-- source activate condaenv;
 - echo 'Unit tests...' && echo -en 'travis_fold:start:script.1\\r'
 - |
   make check
   cat tests/mckernel_tests.log
 - echo -en 'travis_fold:end:script.1\\r'
 - echo 'Test make_kerner_input.py...' && echo -en 'travis_fold:start:script.2\\r'
+- export PATH="$MINICONDA/bin:$PATH"
+- which python
+- source activate condaenv;
 - python ./UTILS/make_kerner_input.py --nfilter 4 --f0 50 --noplot
 - diff receiver.dat tests/ref_make_input/receiver.dat
 - diff CMTSOLUTION tests/ref_make_input/CMTSOLUTION
