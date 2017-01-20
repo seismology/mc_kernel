@@ -6,5 +6,5 @@ command -v conda >/dev/null || {
     conda create --yes -n condaenv python=3.5;
     conda install --yes -n condaenv pip;
     source activate condaenv;
-    conda install --yes -c obspy obspy netcdf4 python=3.5
+    conda install --yes -c obspy obspy h5py python=3.5 netcdf4 
   }
