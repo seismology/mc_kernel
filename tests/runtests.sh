@@ -41,13 +41,33 @@ set -e
 rm ftnunit.run
 
 # Present some test results
+echo "##################################################"
 tail -n 5 mckernel_tests.log
 if grep -C 1 "assertion failed" ./mckernel_tests.log > fail_messages.txt
 then
   echo 
+  echo "##################################################"
+  echo "At least one test failed"
   echo "Details of failed tests:"
   cat fail_messages.txt
   echo 
   echo "See tests/mckernel_tests.log for details"
-  return -1
+  echo "##################################################"
+  exit 1
+elif grep -C 1 "At line " ./mckernel_tests.log > crash_messages.txt
+then
+  echo 
+  echo "##################################################"
+  echo "At least one test crashed"
+  echo "Details of crashed tests:"
+  cat crash_messages.txt
+  echo 
+  echo "See tests/mckernel_tests.log for details"
+  echo "##################################################"
+  exit 1
+else
+  echo 
+  echo "##################################################"
+  echo "All tests successful"
+  echo "##################################################"
 fi
