@@ -38,7 +38,7 @@ nparam = len(model_params)
 
 # Read event file
 if args.event is None:
-    time = obspy.core.UTCDateTime()
+    time = obspy.core.UTCDateTime(0.0)
     origin = obspy.core.event.Origin(latitude=90.0, longitude=0.0,
                                      depth=00.0e3, time=time)
 
