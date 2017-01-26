@@ -56,7 +56,7 @@ for filename in filt_list:
 
     ax.set_xlim((0, 500))
     ax.set_yscale('log')
-    ax.set_ylim((0.001, 1))
+    ax.set_ylim((0.001, 10))
 
     ax.vlines(axisem_period, 0, 1, 'red', linestyle='dashed', lw=2,
               label='AxiSEM mesh period')
