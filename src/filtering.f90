@@ -248,6 +248,8 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
 
     real(kind=dp)   , allocatable   :: stf_resampled(:)
 
+    real(kind=dp)                   :: ratio_fwd, ratio_bwd
+
     type(rfft_type)                 :: fft_stf
     character(len=64)               :: fnam
     integer                         :: ifreq, i
@@ -353,7 +355,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
 
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
     allocate(lowpass(this%nfreq))
-    lowpass = butterworth_lowpass(this%f, 1.d0/(this%f(this%nfreq)*0.75d0), 8)
+    ! print *, 'Butterworth at ', this%f(this%nfreq)*0.70d0, ' Hz'
+    ! print *, 'Butterworth at ', 1./(this%f(this%nfreq)*0.70d0), ' sec'
+    lowpass = butterworth_lowpass(this%f, 1.d0/(this%f(this%nfreq)*0.75d0), 12)
     lowpass = lowpass * conjg(lowpass)
   
     this%transferfunction_fwd       = this%transferfunction_fwd       * lowpass 
@@ -426,7 +430,14 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
        
     end if   
 
-    if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
+    ! Check whether transfer functions at highest frequency are close to zero
+    ! or at least less than 1% of maximum value.
+    ratio_fwd = abs(this%transferfunction_fwd(this%nfreq)) / &
+                maxval(abs(this%transferfunction_fwd(:)))
+    ratio_bwd = abs(this%transferfunction_bwd(this%nfreq)) / &
+                maxval(abs(this%transferfunction_bwd(:)))
+
+    if ((ratio_fwd > 1e-2) .or. (ratio_bwd > 1e-2)) then
       if (firstslave.or.testing) then
          print *, 'ERROR: Filter ', trim(this%name), ' is not vanishing fast enough for '
          print *, 'high frequencies.'
@@ -434,8 +445,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
          print *, 'into the kernels. Check the files'
          print *, 'filterresponse*'
          print *, 'filterresponse_stf_*'
-         print *, 'stf_spectrum_*'
-         print *, 'Maximum frequency: ', this%f(maxloc(abs(this%transferfunction),1))
+         print *, 'Relative value of forward TF at half mesh period : ', ratio_fwd
+         print *, 'Relative value of backward TF at half mesh period :', ratio_bwd
+         print *, 'Cutoff period: ', 1./this%f(this%nfreq)
        end if
        stop
     end if
