@@ -563,7 +563,7 @@ subroutine read_kernel(this, sem_data, filter)
    allocate(this%kernel(this%nkernel))
 
    if ((.not.master).or.testing) then
-       nfilter = size(filter)
+       nfilter = size(filter, dim=1)
 
        if (this%deconv_stf) then
           do ifilter = 1, nfilter
