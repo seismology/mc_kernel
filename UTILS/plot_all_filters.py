@@ -25,9 +25,10 @@ os.mkdir(filt_plot_dir)
 
 for filename in filt_list:
     filt_split = os.path.split(filename)[-1].split('_')
-    filt_name = filt_split[2]
-    freq_1 = float(filt_split[3])
-    freq_2 = float(filt_split[4])
+    istf = int(filt_split[2])
+    filt_name = filt_split[3]
+    freq_1 = float(filt_split[4])
+    freq_2 = float(filt_split[5])
 
     print('Filter: %s (%f, %f)' % (filt_name, freq_1, freq_2))
 
@@ -67,7 +68,7 @@ for filename in filt_list:
     ax.set_xlabel('Period / s')
     ax.legend()
     fig.savefig(os.path.join(filt_plot_dir,
-                             '%s_%6.4f_%6.4f.png' % (filt_name,
-                                                     freq_1, freq_2)))
+                             '%s_%02d_%6.4f_%6.4f.png' % (filt_name, istf,
+                                                          freq_1, freq_2)))
 
     plt.close(fig)

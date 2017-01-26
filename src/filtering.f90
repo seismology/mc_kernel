@@ -227,7 +227,7 @@ end subroutine create
 !! field. 
 !! If we had nothing else to do.
 subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
-                    stf_source, stf_dt, stf_shift)
+                    istf, stf_source, stf_dt, stf_shift)
     use fft,                     only: rfft_type, taperandzeropad
     use simple_routines,         only: absreldiff
     use lanczos,                 only: lanczos_resample
@@ -235,6 +235,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
     real(kind=dp)   , intent(in)    :: stf_sem_fwd(:) ! STF of the AxiSEM simulation
     real(kind=dp)   , intent(in)    :: sem_dt         ! time step of STF
     real(kind=dp)   , intent(in)    :: amplitude_fwd
+    integer,          intent(in)    :: istf           ! index of STF
     real(kind=dp)   , intent(in)    :: stf_source(:)  ! STF of the actual earthquake
     real(kind=dp)   , intent(in)    :: stf_dt         ! time step of STF
     real(kind=dp)   , intent(in)    :: stf_shift      ! time shift of STF
@@ -378,8 +379,8 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
     call fft_stf%freeme()
 
     if (firstslave.or.testing) then
-20     format('./Filters/filterresponse_stf_', A, 2('_', F0.3))
-       write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
+20     format('./Filters/filterresponse_stf_', I0.2, '_', A, 2('_', F0.3))
+       write(fnam,20) istf, trim(this%filterclass), this%frequencies(1:2)
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
           write(10,*) this%f(ifreq),  real(this%transferfunction(ifreq)), &
@@ -394,9 +395,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
        end do
        close(10)
        
-21     format('./Filters/stf_spectrum_deriv_', A, 2('_', F0.3))
+21     format('./Filters/stf_spectrum_deriv_', I0.2, '_', A, 2('_', F0.3))
 22     format(5(E16.8))
-       write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
+       write(fnam,21) istf, trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
@@ -407,9 +408,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
        end do
        close(10)
        
-23     format('./Filters/stf_in_', A, 2('_', F0.3))
+23     format('./Filters/stf_in_', I0.2, '_', A, 2('_', F0.3))
 24     format(3(E16.8))
-       write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
+       write(fnam,23) istf, trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
        do i = 1, size(stf_sem_fwd)
@@ -418,9 +419,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
        close(10)
 
        ! Contains the STFs after FFTs
-25     format('./Filters/stf_out_', A, 2('_', F0.3))
+25     format('./Filters/stf_out_', I0.2, '_', A, 2('_', F0.3))
 26     format(3(E16.8))
-       write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
+       write(fnam,25) istf, trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
        do i = 1, size(stf_sem_fwd)
