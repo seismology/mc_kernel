@@ -168,6 +168,7 @@ subroutine test_all
   call test(test_nc_create_group, 'Create Group')
   call test(test_nc_open_for_read, 'Open NetCDF file for reading')
   call test(test_nc_open_for_write, 'Open NetCDF file for writing')
+  call test(test_nc_getvar_1d_dble, 'Read 1D Double by name')
   call test(test_nc_getvar_1d_float, 'Read 1D Float by name')
   call test(test_nc_getvar_2d_float, 'Read 2D Float by name')
   call test(test_nc_getvar_3d_float, 'Read 3D Float by name')
@@ -213,6 +214,8 @@ subroutine test_all
   ! test_mc_integration
   write(6,'(/,a)') 'TEST MC_INTEGRATION MODULE'
   call test(test_mc_meanandvariance, 'MC mean and variance')
+  call test(test_mc_isconverged, 'MC isconverged')
+  call test(test_mc_areallconverged, 'MC areallconverged')
   call test(test_mc_unit_hexagon, 'MC unit hexagon')
   call test(test_mc_sphere_in_tetrahedron, 'MC sphere in tetrahedron')
 

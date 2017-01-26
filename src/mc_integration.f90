@@ -28,8 +28,9 @@ module mc_integration
     use global_parameters
     use commpi, only                              : pabort
     implicit none
+    private
 
-    type                                         :: integrated_type
+    type, public                                 :: integrated_type
         private
         integer                                  :: nfuncs
         real(kind=dp), dimension(:), allocatable :: fsum, f2sum
@@ -47,8 +48,14 @@ module mc_integration
         procedure, pass                          :: initialize_montecarlo
         procedure, pass                          :: areallconverged
         procedure, pass                          :: countconverged
-        procedure, pass                          :: getintegral
-        procedure, pass                          :: getvariance
+        procedure, pass                          :: getintegral_all
+        procedure, pass                          :: getintegral_single
+        generic                                  :: getintegral => getintegral_all, &
+                                                                   getintegral_single
+        procedure                                :: getvariance_all
+        procedure                                :: getvariance_single
+        generic                                  :: getvariance => getvariance_all, &
+                                                                   getvariance_single
         procedure, pass                          :: isconverged
         procedure, pass                          :: freeme
 
@@ -81,7 +88,8 @@ subroutine check_montecarlo_integral(this, func_values)
     this%nmodels = this%nmodels + npoints
 
     do ifuncs = 1, this%nfuncs
-        if(this%converged(ifuncs)) cycle
+      if (.not.this%converged(ifuncs)) then
+
         ! https://en.wikipedia.org/wiki/Monte_Carlo_Integration
         this%fsum(ifuncs)     = this%fsum(ifuncs)  + sum(func_values(:,ifuncs))
         this%f2sum(ifuncs)    = this%f2sum(ifuncs) + sum(func_values(:,ifuncs)**2)
@@ -89,9 +97,24 @@ subroutine check_montecarlo_integral(this, func_values)
         this%integral(ifuncs) = this%fsum(ifuncs) * &
                                 this%volume / this%nmodels
 
-        this%variance(ifuncs) = this%volume**2 / this%nmodels *    &
-                                (  (this%f2sum(ifuncs) / this%nmodels)     &
-                                 - (this%fsum(ifuncs)  / this%nmodels)**2  )
+        ! Convergence is only possible, once we have more than two values
+        if (this%nmodels > 2) then
+           this%variance(ifuncs) = this%volume**2 / (this%nmodels-1) *    &
+                                   (  (this%f2sum(ifuncs) / this%nmodels)     &
+                                    - (this%fsum(ifuncs)  / this%nmodels)**2  )
+           ! Check absolute error
+           if (this%variance(ifuncs) < this%allowed_variance(ifuncs)) then
+              this%converged(ifuncs) = .true.
+           ! Check relative error
+           elseif (sqrt(this%variance(ifuncs)) < &
+                   this%allowed_relerror(ifuncs)*abs(this%integral(ifuncs))) then
+              this%converged(ifuncs) = .true.
+           end if
+        else
+           ! Variance is not defined, if we have just one value
+           this%variance(ifuncs) = this%integral(ifuncs) * 1d10
+           this%converged(ifuncs) = .false.
+        end if
 
         if (this%integral(ifuncs).ne.this%integral(ifuncs)) then
            print *, 'Monte Carlo Integration:'
@@ -113,14 +136,7 @@ subroutine check_montecarlo_integral(this, func_values)
            print *, 'current value: ', func_values(:, ifuncs)
            call pabort
         end if
-        ! Check absolute error
-        if (this%variance(ifuncs) < this%allowed_variance(ifuncs)) then
-           this%converged(ifuncs) = .true.
-        ! Check relative error
-        elseif (sqrt(this%variance(ifuncs)) < &
-                this%allowed_relerror(ifuncs)*abs(this%integral(ifuncs))) then
-           this%converged(ifuncs) = .true.
-        end if
+      end if
 
     end do
 
@@ -158,6 +174,7 @@ subroutine initialize_montecarlo(this, nfuncs, volume, allowed_error, allowed_re
     this%allowed_variance = allowed_error ** 2
     this%converged        = .false.
     this%nmodels          = 0
+    this%variance         = 1d100
 
     if(present(allowed_relerror)) then
        this%allowed_relerror = allowed_relerror
@@ -186,31 +203,63 @@ end subroutine
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function getintegral(this)
+function getintegral_all(this)
     class(integrated_type)                :: this
-    real(kind=dp), dimension(this%nfuncs) :: getintegral
+    real(kind=dp), dimension(this%nfuncs) :: getintegral_all
 
     if (.not.this%isinitialized) then
        write(*,*) 'Initialize this MC type first 2'
        call pabort 
     end if
-    getintegral = this%integral
+    getintegral_all = this%integral
 
 end function
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-function getvariance(this)
+function getintegral_single(this, ifunc)
     class(integrated_type)                :: this
-    real(kind=dp), dimension(this%nfuncs) :: getvariance
+    real(kind=dp)                         :: getintegral_single
+    integer                               :: ifunc
+
+    if (.not.this%isinitialized) then
+       write(*,*) 'Initialize this MC type first 2'
+       call pabort 
+    end if
+    getintegral_single = this%integral(ifunc)
+
+end function
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+function getvariance_all(this)
+    class(integrated_type)                :: this
+    real(kind=dp), dimension(this%nfuncs) :: getvariance_all
 
     if (.not.this%isinitialized) then
        write(*,*) 'Initialize this MC type first 3'
        call pabort 
     end if
-    getvariance = this%variance
 
-end function
+    getvariance_all = this%variance
+
+end function getvariance_all
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+function getvariance_single(this, ifunc)
+    class(integrated_type)                :: this
+    real(kind=dp)                         :: getvariance_single
+    integer, intent(in)                   :: ifunc
+
+    if (.not.this%isinitialized) then
+       write(*,*) 'Initialize this MC type first 3'
+       call pabort 
+    end if
+
+    getvariance_single = this%variance(ifunc)
+
+end function getvariance_single
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
