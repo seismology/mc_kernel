@@ -229,6 +229,9 @@ subroutine test_all
 
   ! test_fft_type
   write(6,'(/,a)') 'TEST FFT MODULE'
+  call test(test_fft_nextpow2, 'NextPow2 routine')
+  call test(test_fft_init_pow2, 'Init FFT type in case ntimes is power of 2')
+  call test(test_fft_init_general, 'Init FFT type in general case')
   call test(test_fft_dirac, 'FFT_dirac')
   call test(test_fft_sine, 'FFT_sine')
   call test(test_fft_inverse, 'FFT_inverse')

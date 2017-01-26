@@ -33,6 +33,164 @@ module test_fft_type
 contains
 
 !-----------------------------------------------------------------------------------------
+subroutine test_fft_init_pow2()
+    ! Test initialization, if ntimes is already a power of two
+    type(rfft_type) :: fftt
+    
+    integer         :: ntimes_in, ntraces_in, ntimes_ref, nomega_ref
+    integer         :: nomega, ntimes, ntraces, ndim
+    integer         :: i
+    real(kind=dp)   :: dt, dt_in, df, df_ref
+    real(kind=dp), allocatable  :: f(:), t(:), f_ref(:), t_ref(:)
+
+    ntimes_in = 16
+    ntraces_in = 2
+    dt_in = 0.5
+
+    ntimes_ref = ntimes_in * 2 ! time vector is given double length of input
+    nomega_ref = ntimes_in + 1 ! omega vector is complex, therefore half length
+
+    allocate(t(ntimes_ref))
+    allocate(f(nomega_ref))
+    allocate(t_ref(ntimes_ref))
+    allocate(f_ref(nomega_ref))
+
+    df_ref = 1. / (dt_in * ntimes_ref)
+
+    do i=1, ntimes_ref
+      t_ref(i) = (i-1) * dt_in
+    end do
+
+    do i=1, nomega_ref
+      f_ref(i) = (i-1) * df_ref
+    end do
+
+    call fftt%init(ntimes_in, 1, ntraces_in, dt=dt_in)
+    
+    ntimes = fftt%get_ntimes()
+    ntraces = fftt%get_ntraces()
+    ndim = fftt%get_ndim()
+    nomega = fftt%get_nomega()
+    dt = fftt%get_dt()
+    df = fftt%get_df()
+    t = fftt%get_t()
+    f = fftt%get_f()
+
+
+    call assert_equal(ntimes, ntimes_ref, &
+      'FFT object is initialized with correct ntimes')
+    call assert_equal(ntraces, ntraces_in, &
+      'FFT object is initialized with correct ntraces')
+    call assert_equal(ndim, 1, &
+      'FFT object is initialized with correct ndim')
+    call assert_equal(nomega, nomega_ref, &
+      'FFT object is initialized with correct nomega')
+    call assert_comparable(dt, dt_in, 1d-7, &
+      'FFT object is initialized with correct dt')
+    call assert_comparable(df, df_ref, 1d-7, &
+      'FFT object is initialized with correct df')
+    call assert_comparable(t, t_ref, 1d-7, &
+      'FFT object''s time vector is as expected')
+    call assert_comparable(f, f_ref, 1d-7, &
+      'FFT object''s freq vector is as expected')
+    
+    call fftt%freeme()
+
+
+end subroutine test_fft_init_pow2
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_fft_init_general()
+    ! Test initialization, if ntimes is not a power of two,
+    ! the more general case
+    use fft, only: nextpow2
+    type(rfft_type) :: fftt
+    
+    integer         :: ntimes_in, ntraces_in, ntimes_ref, nomega_ref
+    integer         :: nomega, ntimes, ntraces, ndim
+    integer         :: i
+    real(kind=dp)   :: dt, dt_in, df, df_ref
+    real(kind=dp), allocatable  :: f(:), t(:), f_ref(:), t_ref(:)
+
+    ntimes_in = 17
+    ntraces_in = 2
+    dt_in = 0.5
+
+    ntimes_ref = nextpow2(ntimes_in) * 2 ! time vector is given double length of input
+    nomega_ref = nextpow2(ntimes_in) + 1 ! omega vector is complex, therefore half length
+
+    allocate(t(ntimes_ref))
+    allocate(f(nomega_ref))
+    allocate(t_ref(ntimes_ref))
+    allocate(f_ref(nomega_ref))
+
+    df_ref = 1. / (dt_in * ntimes_ref)
+
+    do i=1, ntimes_ref
+      t_ref(i) = (i-1) * dt_in
+    end do
+
+    do i=1, nomega_ref
+      f_ref(i) = (i-1) * df_ref
+    end do
+
+    call fftt%init(ntimes_in, 1, ntraces_in, dt=dt_in)
+    
+    ntimes = fftt%get_ntimes()
+    ntraces = fftt%get_ntraces()
+    ndim = fftt%get_ndim()
+    nomega = fftt%get_nomega()
+    dt = fftt%get_dt()
+    df = fftt%get_df()
+    t = fftt%get_t()
+    f = fftt%get_f()
+    
+    call assert_equal(ntimes, ntimes_ref, &
+      'FFT object is initialized with correct ntimes')
+    call assert_equal(ntraces, ntraces_in, &
+      'FFT object is initialized with correct ntraces')
+    call assert_equal(ndim, 1, &
+      'FFT object is initialized with correct ndim')
+    call assert_equal(nomega, nomega_ref, &
+      'FFT object is initialized with correct nomega')
+    call assert_comparable(dt, dt_in, 1d-7, &
+      'FFT object is initialized with correct dt')
+    call assert_comparable(df, df_ref, 1d-7, &
+      'FFT object is initialized with correct df')
+    call assert_comparable(t, t_ref, 1d-7, &
+      'FFT object''s time vector is as expected')
+    call assert_comparable(f, f_ref, 1d-7, &
+      'FFT object''s freq vector is as expected')
+    call assert_comparable(0.5/dt_in, f(nomega), 1d-7, &
+                           'lowest freq in f should be 1/dt')
+
+    
+    call fftt%freeme()
+
+
+end subroutine test_fft_init_general
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine test_fft_nextpow2()
+    use fft, only: nextpow2
+
+    ! NextPow2 should return the next power of 2, or the input integer, if it already
+    ! is a power of 2.
+    call assert_equal(nextpow2(2), 2, 'NP2(2) == 2')
+    call assert_equal(nextpow2(16), 16, 'NP2(16) == 16')
+
+    call assert_equal(nextpow2(15), 16, 'NP2(15) == 16')
+    call assert_equal(nextpow2(17), 32, 'NP2(17) == 32')
+
+    call assert_equal(nextpow2(1), 2, 'NP2(1) == 2')
+    call assert_equal(nextpow2(16385), 32768, 'NP2(16385) == 32768')
+
+end subroutine test_fft_nextpow2
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 subroutine test_fft_dirac
     integer     :: nomega, ntimes, ntraces
     integer     :: i
