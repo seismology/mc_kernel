@@ -151,9 +151,16 @@ end subroutine
 subroutine runtests_final
     if ( ftnunit_file_exists("ftnunit.run") ) then
         write(6,'(/,/,a,/,a)') 'TEST SUMMARY', '------------'
-        write(*,'(a,i5)') 'Number of failed assertions:                ', nofails
-        write(*,'(a,i5)') 'Number of program crashes during testing:   ', noruns - 1
+        write(*,'(a,i5)') 'Number of failed assertions (FAILURES):              ', &
+          nofails
+        write(*,'(a,i5)') 'Number of program crashes during testing (ERRORS):   ', &
+          noruns - 1
         call ftnunit_remove_file( "ftnunit.lst" )
+
+        ! If there has been at least one crash, create empty file to let calling
+        ! bash script know. Clumsy, but it's working.
+        if (noruns > 1) call ftnunit_make_empty_file('errors')
+
         call exit()
     endif
 end subroutine
