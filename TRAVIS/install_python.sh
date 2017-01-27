@@ -1,7 +1,14 @@
 #!/bin/bash
 
+if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    export OS="MacOSX";
+else
+    export OS="Linux";
+fi
+
+
 command -v conda >/dev/null || {
-    wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
+    wget http://repo.continuum.io/miniconda/Miniconda-latest-${OS}-x86_64.sh -O miniconda.sh;
     bash miniconda.sh -b -f -p $MINICONDA;
   }
 conda update --yes conda;

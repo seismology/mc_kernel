@@ -1,20 +1,44 @@
 language: generic
 
+matrix:
+  include:
+    - env: GFORTRAN_VERSION=trusty OPT=DEBUG
+      sudo: required
+      dist: trusty
+      os: linux
+    - env: GFORTRAN_VERSION=trusty OPT=FAST
+      sudo: required
+      dist: trusty
+      os: linux
+    - env: GFORTRAN_VERSION=4.9 OPT=FAST
+      sudo: required
+      dist: trusty
+      os: linux
+    - env: GFORTRAN_VERSION=5 OPT=FAST
+      sudo: required
+      dist: trusty
+      os: linux
+    - env: GFORTRAN_VERSION=6 OPT=FAST
+      sudo: required
+      dist: trusty
+      os: linux
+    - os: osx
+      env: OPT=FAST
+
 # Use the trusty environment, since the netcdf packages in 12.04 are broken
-dist: trusty
-sudo: required
-
-env:
-  global:
-    MPI_IMPL=openmpi
-
-  matrix:
-    - GFORTRAN_VERSION=trusty OPT=FAST
-    - GFORTRAN_VERSION=trusty OPT=DEBUG
-    - GFORTRAN_VERSION=4.8 OPT=FAST
-    - GFORTRAN_VERSION=4.9 OPT=FAST
-    - GFORTRAN_VERSION=5 OPT=FAST
-    - GFORTRAN_VERSION=6 OPT=FAST
+# dist: trusty
+# sudo: required
+# 
+# env:
+#   global:
+#     MPI_IMPL=openmpi
+# 
+#   matrix:
+#     - GFORTRAN_VERSION=trusty OPT=FAST
+#     - GFORTRAN_VERSION=trusty OPT=DEBUG
+#     - GFORTRAN_VERSION=4.9 OPT=FAST
+#     - GFORTRAN_VERSION=5 OPT=FAST
+#     - GFORTRAN_VERSION=6 OPT=FAST
 
 before_install:
   - export TRAVIS_ROOT=$HOME/local
@@ -22,34 +46,37 @@ before_install:
   - mkdir -p $TRAVIS_ROOT/bin
   - export PATH="$TRAVIS_ROOT/bin:$PATH"
   - export PATH="$MINICONDA/bin:$PATH"
-
+  - mkdir $HOME/.gdrive
+  - openssl aes-256-cbc -K $encrypted_50ebf69bd92e_key -iv $encrypted_50ebf69bd92e_iv -in TRAVIS/token_v2.json.enc -out $HOME/.gdrive/token_v2.json -d
   # Install requirements for M.C. Kernel
-  - |
-    if [[ "$GFORTRAN_VERSION" == "trusty" ]]; then 
-      sudo apt-get update -qq
-      sudo apt-get install -qq gfortran libnetcdff5 libnetcdf-dev libfftw3-dev openmpi-bin libopenmpi-dev
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      echo "On OSX";
+      wget "https://docs.google.com/uc?id=0B3X9GlR6Embnb010SnpUV0s2ZkU&export=download" -O gdrive;
+      chmod +x ./gdrive;
+      ./TRAVIS/install_brews.sh;
     else
-      sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
-      sudo -E apt-get -yq update &>> ~/apt-get-update.log
-      sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install gfortran-$GFORTRAN_VERSION g++-$GFORTRAN_VERSION
-    # Install OpenMPI
-      ./TRAVIS/install_mpi.sh $TRAVIS_ROOT $MPI_IMPL $GFORTRAN_VERSION
-    # Get and install FFTW3
-      ./TRAVIS/install_fftw.sh $TRAVIS_ROOT $GFORTRAN_VERSION
-    # Get and install NetCDF4
-      ./TRAVIS/install_netcdf.sh $TRAVIS_ROOT $GFORTRAN_VERSION
+      echo "On LINUX";
+      wget "https://docs.google.com/uc?id=0B3X9GlR6EmbnQ0FtZmJJUXEyRTA&export=download" -O gdrive;
+      chmod +x ./gdrive;
+      if [[ "$GFORTRAN_VERSION" == "trusty" ]]; then 
+        sudo apt-get update -qq;
+        sudo apt-get install -qq gfortran libnetcdff5 libnetcdf-dev libfftw3-dev openmpi-bin libopenmpi-dev;
+      else
+        sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test";
+        sudo -E apt-get -yq update &>> ~/apt-get-update.log;
+        sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install gfortran-$GFORTRAN_VERSION g++-$GFORTRAN_VERSION;
+        ./TRAVIS/install_mpi.sh $TRAVIS_ROOT $MPI_IMPL $GFORTRAN_VERSION;
+        ./TRAVIS/install_fftw.sh $TRAVIS_ROOT $GFORTRAN_VERSION;
+        ./TRAVIS/install_netcdf.sh $TRAVIS_ROOT $GFORTRAN_VERSION;
+      fi
     fi
 
   # Install some python packages that the submit script needs
-  - ./TRAVIS/install_python.sh
+  - ./TRAVIS/install_python.sh "$TRAVIS_OS_NAME"
   - pip install --user cpp-coveralls
 
   # Get test wavefields (2GB, takes some time)
   - ./TRAVIS/get_wavefields.sh
-  #   cd tests/reference_solutions 
-  #   tar -xvf test_nonmerged.tar
-  #   tar -xvf test_merged.tar
-  #   cd -
 
 install:
 - |
