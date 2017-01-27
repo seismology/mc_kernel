@@ -81,12 +81,10 @@ script:
 - echo -en 'travis_fold:end:script.2\\r'
 - echo 'Test run on nonmerged wavefield files...' #&& echo -en 'travis_fold:start:script.3\\r'
 - python ./submit.py -n 3 -i TRAVIS/TEST01/inparam_TEST01 -q foreground TEST01 > OUTPUT_TEST01
-  #- ./tests/compare_results.py test_nonmerged
-  #- echo -en 'travis_fold:end:script.3\\r'
 - echo 'Test run on merged wavefield files...' #&& echo -en 'travis_fold:start:script.4\\r'
 - python ./submit.py -n 3 -i TRAVIS/TEST02/inparam_TEST02 -q foreground TEST02 > OUTPUT_TEST02
-  #- ./tests/compare_results.py test_merged
-  #- echo -en 'travis_fold:end:script.4\\r'
+- echo 'Test run with multiple STFs...'
+- python ./submit.py -n 3 -i TRAVIS/TEST03/inparam_TEST03 -q foreground TEST03 > OUTPUT_TEST03
 
 after_success:
   - coveralls --gcov-options '\-lp' -e src/clocks.f90 -e src/kdtree2.f90 -e src/ftnunit.f90
