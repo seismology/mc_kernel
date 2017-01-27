@@ -161,6 +161,37 @@ end subroutine  test_readfields_open_files
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+subroutine test_readfields_open_files_merged()
+   use type_parameter, only : parameter_type
+   type(parameter_type)    :: parameters
+   type(semdata_type)      :: sem_data
+   integer                 :: i
+
+   call parameters%read_parameters('./inparam_test_merged')
+   call parameters%read_source()
+   
+   ! Try with very small buffer sizes
+
+   call sem_data%set_params(fwd_dir              = parameters%fwd_dir,          &
+                            bwd_dir              = parameters%bwd_dir,          &
+                            strain_buffer_size   = 2,                           &
+                            displ_buffer_size    = 1,                           &
+                            strain_type          = 'straintensor_trace',        &
+                            desired_source_depth = parameters%source%depth,     &
+                            npoints              = parameters%npoints_per_step, &
+                            parallel_read        = .false.)
+
+   call sem_data%open_files()
+
+   call assert_true(nelem_to_read_max >= 1, &
+                    'nelem_to_read_max is at least one')
+
+   call sem_data%close_files()
+
+end subroutine  test_readfields_open_files_merged
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 !> Reads straintrace from a coordinate and compares with a reference version
 !! Reference version was manually extracted from a AxiSEM pure MRR run.
 subroutine test_readfields_load_fw_points

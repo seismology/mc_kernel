@@ -184,6 +184,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
   call test(test_readfields_set_params, 'Set SEM file params')
   call test(test_readfields_open_files, 'Open SEM file')
+  call test(test_readfields_open_files_merged, 'Open merged SEM file')
   call test(test_readfields_load_straintrace_merged, 'Read straintrace from old and merged db')
   call test(test_readfields_load_strain_merged, 'Read strain from old and merged db')
   call test(test_readfields_load_model_coeffs, 'Read Model coefficients from SEM mesh')
