@@ -92,5 +92,5 @@ after_success:
 cache:
   directories:
     - $HOME/local
-    - $HOME/wavefield
     - $HOME/miniconda
+      #- $HOME/wavefield
