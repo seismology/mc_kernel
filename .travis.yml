@@ -63,7 +63,7 @@ before_install:
         sudo apt-get install -qq gfortran libnetcdff5 libnetcdf-dev libfftw3-dev openmpi-bin libopenmpi-dev;
       else
         sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test";
-        sudo -E apt-get -yq update &>> ~/apt-get-update.log;
+        sudo -E apt-get -yq update > ~/apt-get-update.log;
         sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install gfortran-$GFORTRAN_VERSION g++-$GFORTRAN_VERSION;
         ./TRAVIS/install_mpi.sh $TRAVIS_ROOT $MPI_IMPL $GFORTRAN_VERSION;
         ./TRAVIS/install_fftw.sh $TRAVIS_ROOT $GFORTRAN_VERSION;
