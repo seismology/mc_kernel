@@ -6,7 +6,8 @@ if [ -f "brew_cache.tar.gz" ]; then
   echo "Found Brew Cache, linking"
   tar zxf brew_cache.tar.gz --directory /usr/local/Cellar
   brew link gcc
-  brew link open-mpi gmp libmpc isl || brew install open-mpi
+  brew link cloog018 libmpc gmp isl
+  brew link open-mpi || brew install open-mpi
   brew link fftw || brew install fftw --with-fortran
   brew link szip hdf5 netcdf || brew tap homebrew/science && brew install netcdf --with-fortran 
 else
@@ -21,7 +22,7 @@ else
   echo "*****************************************************************"
   echo "*****************************************************************"
 fi
-tar czf brew_cache.tar.gz --directory /usr/local/Cellar gmp libmpc isl gcc szip hdf5 open-mpi fftw netcdf
+tar czf brew_cache.tar.gz --directory /usr/local/Cellar gmp libmpc isl gcc szip hdf5 open-mpi fftw netcdf cloog018
 ./gdrive upload brew_cache.tar.gz 
 
 brew doctor
