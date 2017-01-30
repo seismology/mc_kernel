@@ -159,7 +159,7 @@ subroutine do_slave()
   write(lu_out,'(A)') '***************************************************************'
   call flush(lu_out)
 
-  call parameters%read_filter(nomega, df)
+  call parameters%read_filter(nomega, df, parameters%source%nstf)
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Define kernels'

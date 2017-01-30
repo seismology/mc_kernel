@@ -12,6 +12,7 @@ import glob
 import datetime
 import subprocess
 import math
+from numpy import isclose
 from netCDF4 import Dataset
 
 
@@ -578,6 +579,7 @@ npoints_fwd = getattr(nc_fwd, "npoints")
 nelems_fwd = getattr(nc_fwd, "nelem_kwf_global")
 ndumps_fwd = getattr(nc_fwd, "number of strain dumps")
 dt_fwd = getattr(nc_fwd, "strain dump sampling rate in sec")
+period_fwd = getattr(nc_fwd, "dominant source period")
 nc_fwd.close()
 
 if os.path.exists(bwd_path):
@@ -593,7 +595,29 @@ npoints_bwd = getattr(nc_bwd, "npoints")
 nelems_bwd = getattr(nc_bwd, "nelem_kwf_global")
 ndumps_bwd = getattr(nc_bwd, "number of strain dumps")
 dt_bwd = getattr(nc_bwd, "strain dump sampling rate in sec")
+period_bwd = getattr(nc_bwd, "dominant source period")
 nc_bwd.close()
+
+# Sanity check, whether fwd and bwd mesh have the same sizes and the same number
+# of wavefield time steps.
+if not isclose(dt_fwd, dt_bwd):
+    errmsg = 'The two mesh files do not have the same dt:' + \
+        'Forward wavefield:  %9.6f sec\n' % dt_fwd + \
+        'Backward wavefield: %9.6f sec\n' % dt_bwd
+    raise ValueError(errmsg)
+
+if not isclose(period_fwd, period_bwd):
+    errmsg = 'The two mesh files do not have the same period:' + \
+        'Forward wavefield:  %5.2f sec\n' % period_fwd + \
+        'Backward wavefield: %5.2f sec\n' % period_bwd
+    raise ValueError(errmsg)
+
+if npoints_fwd != npoints_bwd or \
+   nelems_fwd != nelems_bwd or \
+   ndumps_fwd != ndumps_bwd:
+
+    raise RuntimeError('Forward and backward run did not use' +
+                       'the same parameters')
 
 # Read receiver file and get number of receivers, kernels and whether the
 # full strain has to be read for any kernel (increases the memory footprint
@@ -622,14 +646,6 @@ if os.path.exists(run_dir):
 
 os.mkdir(run_dir)
 
-# Sanity check, whether fwd and bwd mesh have the same sizes and the same number
-# of wavefield time steps.
-if npoints_fwd != npoints_bwd or \
-   nelems_fwd != nelems_bwd or \
-   ndumps_fwd != ndumps_bwd:
-
-    raise RuntimeError('Forward and backward run did not use' +
-                       'the same parameters')
 
 # Define buffer sizes based on available memory
 if args.available_memory:
@@ -709,6 +725,7 @@ f_readme.write('MC KERNEL run for %d CPUs, started on %s\n' % (args.nslaves,
                                                                current_time))
 f_readme.write('  by user ''%s'' on ''%s''\n' % (os.environ.get('USER'),
                                                  os.environ.get('HOSTNAME')))
+f_readme.write('  Minimum AxiSEM period: %4.1f\n' % (period_fwd))
 if args.message:
     f_readme.write(args.message)
 f_readme.close()
@@ -754,7 +771,7 @@ if args.queue == 'background':
 
     cmd_string = dict()
     cmd_string = \
-        'nohup %s -n %d ./mc_kernel inparam 2>&1 > OUTPUT_0000 &'
+        'nohup %s -n %d -quiet ./mc_kernel inparam 2>&1 > OUTPUT_0000 &'
     run_cmd = cmd_string % (mpirun_cmd, args.nslaves + 1)
     print('Starting local job in %s' % run_dir)
     print('Check %s/OUTPUT_0000 for progress' % run_dir)

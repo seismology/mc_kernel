@@ -8,7 +8,6 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import cartopy.crs as ccrs
 
 helptext = 'Create MC Kernel receiver and source files.'
 formatter_class = argparse.RawTextHelpFormatter
@@ -39,7 +38,7 @@ nparam = len(model_params)
 
 # Read event file
 if args.event is None:
-    time = obspy.core.UTCDateTime()
+    time = obspy.core.UTCDateTime(0.0)
     origin = obspy.core.event.Origin(latitude=90.0, longitude=0.0,
                                      depth=00.0e3, time=time)
 
@@ -158,9 +157,9 @@ with open('receiver.dat', 'w') as fid:
 
         nphase = len(iphases)
 
-        fid.write('%s  %8.3f %8.3f %d\n' % (stat.code, stat.latitude,
-                                            stat.longitude,
-                                            nphase * args.nfilter * nparam))
+        fid.write('%s  %8.3f %8.3f %s %d\n' % (stat.code, stat.latitude,
+                                               stat.longitude, 'src1',
+                                               nphase * args.nfilter * nparam))
         print('%6s, %8.3f degree, %d Kernel\n' % (stat.code, distance,
                                                   nphase * args.nfilter *
                                                   nparam))
@@ -179,6 +178,7 @@ with open('receiver.dat', 'w') as fid:
                                    param))
 
 if not args.noplot:
+    import cartopy.crs as ccrs
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection=ccrs.Robinson())
     # make the map global rather than have it zoom in to

@@ -53,11 +53,11 @@ module readfields
 
     implicit none
     private
-    public                                 :: semdata_type, meshtype, get_chunk_bounds, dampen_field
+    public                                 :: semdata_type, meshtype, get_chunk_bounds, dampen_field, nelem_to_read_max
 
     integer, parameter                     :: min_file_version = 3
     integer                                :: npoints_max      = 10
-    integer, save                          :: nelem_to_read_max      !< How many elements to read 
+    integer, protected, save               :: nelem_to_read_max      !< How many elements to read 
                                                                      !! for the merged database case.
     integer, parameter                     :: nmodel_parameters_sem_file = 6 !< For the anisotropic
                                                                              !! case. Will increase
@@ -380,7 +380,10 @@ subroutine init_merged_buffer(nc_obj, displ_buffer_size, strain_buffer_size, &
                                    nc_obj%npol+1,     &
                                    nint(nc_obj%nsim_merged*2.5))
 
-  nelem_to_read_max = int(displ_buffer_size / 20)
+  ! Should be at least one, even for small buffers
+  ! Select such that not every read overwrites the complete buffer
+  ! 20 is a heuristic value
+  nelem_to_read_max = max(int(displ_buffer_size / 20), 1) 
 
   if (.not.allocated(u_batch)) then
     allocate(u_batch(nc_obj%ndumps,                  &
@@ -2720,6 +2723,12 @@ subroutine read_points_from_disk(sem_obj, id_elem, to_be_read_from_disk, u)
     end do
     iclockold = tick(id=id_buffer, since=iclockold)
 
+    do ipoint = 1, npoints
+      if (to_be_read_from_disk(ipoint)) then
+        u(:,:,:,:,ipoint) = u_batch(:,:,:,1:ndirection,ielem_in_batch(ipoint))
+      end if
+    end do
+
   else 
     !write(lu_out, *) 'reading one at a time'
     !write(*, *) 'reading one at a time'
@@ -2728,7 +2737,6 @@ subroutine read_points_from_disk(sem_obj, id_elem, to_be_read_from_disk, u)
 
     do ipoint = 1, npoints
       iclockold = tick()
-      ielem_in_batch(ipoint) = ipoint
       call check(nf90_get_var(ncid   = sem_obj%ncid,                      & 
                               varid  = sem_obj%mergedvarid,               &
                               start  = [1, 1, 1, 1, id_elem(ipoint)],     &
@@ -2739,24 +2747,23 @@ subroutine read_points_from_disk(sem_obj, id_elem, to_be_read_from_disk, u)
                                                0:sem_obj%npol,            &
                                                0:sem_obj%npol,            &
                                                1:ndirection,              &
-                                               ipoint)))
+                                               1)))
       iclockold = tick(id=id_netcdf, since=iclockold)
       status_disp = sem_obj%buffer_disp%put(id_elem(ipoint),             &
                                             u_batch(:,                   &
                                                     :,                   &
                                                     :,                   &
                                                     1:ndirection,        &
-                                                    ipoint))
+                                                    1))
       iclockold = tick(id=id_buffer, since=iclockold)
+
+      if (to_be_read_from_disk(ipoint)) then
+        u(:,:,:,:,ipoint) = u_batch(:, :, :, 1:ndirection, 1)
+      end if
+
     end do
 
   end if nread_larger_max
-
-  do ipoint = 1, npoints
-    if (to_be_read_from_disk(ipoint)) then
-      u(:,:,:,:,ipoint) = u_batch(:,:,:,1:ndirection,ielem_in_batch(ipoint))
-    end if
-  end do
 
 end subroutine read_points_from_disk
 !-----------------------------------------------------------------------------------------

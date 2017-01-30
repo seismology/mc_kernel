@@ -99,7 +99,7 @@ function get_r(this, planet_radius) result(r)
    real(kind=dp)                        :: r(3)
 
    if (present(planet_radius)) then
-     radius = planet_radius * 1d3
+     radius = planet_radius
    else 
      radius = 6371d3
    end if

@@ -34,6 +34,7 @@ module fft
   private
   public :: rfft_type
   public :: taperandzeropad
+  public :: nextpow2
 
   type :: rfft_type
      private

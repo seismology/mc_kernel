@@ -1796,6 +1796,11 @@ subroutine test_point_in_element_tetrahedral_mesh
   end do
 
   ntest_tot = itest
+  deallocate(is_in_element_npoint)
+  allocate(is_in_element_npoint(ntest_tot))
+  deallocate(is_in_element_npoint_ref)
+  allocate(is_in_element_npoint_ref(ntest_tot))
+  is_in_element_npoint_ref = is_in_element_npoint_ref_temp(1:ntest_tot)
 
   connectivity(:,1) = [1, 2, 3, 4]
   call inv_mesh%initialize_mesh(4, vertices, connectivity, nbasisfuncs_per_elem)

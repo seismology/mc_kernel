@@ -227,7 +227,7 @@ end subroutine create
 !! field. 
 !! If we had nothing else to do.
 subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
-                    stf_source, stf_dt, stf_shift)
+                    istf, stf_source, stf_dt, stf_shift)
     use fft,                     only: rfft_type, taperandzeropad
     use simple_routines,         only: absreldiff
     use lanczos,                 only: lanczos_resample
@@ -235,6 +235,7 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
     real(kind=dp)   , intent(in)    :: stf_sem_fwd(:) ! STF of the AxiSEM simulation
     real(kind=dp)   , intent(in)    :: sem_dt         ! time step of STF
     real(kind=dp)   , intent(in)    :: amplitude_fwd
+    integer,          intent(in)    :: istf           ! index of STF
     real(kind=dp)   , intent(in)    :: stf_source(:)  ! STF of the actual earthquake
     real(kind=dp)   , intent(in)    :: stf_dt         ! time step of STF
     real(kind=dp)   , intent(in)    :: stf_shift      ! time shift of STF
@@ -247,6 +248,8 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
     complex(kind=dp), allocatable   :: lowpass(:), shift_fd(:)
 
     real(kind=dp)   , allocatable   :: stf_resampled(:)
+
+    real(kind=dp)                   :: ratio_fwd, ratio_bwd
 
     type(rfft_type)                 :: fft_stf
     character(len=64)               :: fnam
@@ -353,7 +356,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
 
     ! Apply high order butterworth filter to delete frequencies above mesh frequency
     allocate(lowpass(this%nfreq))
-    lowpass = butterworth_lowpass(this%f, 1.d0/(this%f(this%nfreq)*0.75d0), 8)
+    ! print *, 'Butterworth at ', this%f(this%nfreq)*0.70d0, ' Hz'
+    ! print *, 'Butterworth at ', 1./(this%f(this%nfreq)*0.70d0), ' sec'
+    lowpass = butterworth_lowpass(this%f, 1.d0/(this%f(this%nfreq)*0.75d0), 12)
     lowpass = lowpass * conjg(lowpass)
   
     this%transferfunction_fwd       = this%transferfunction_fwd       * lowpass 
@@ -374,8 +379,8 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
     call fft_stf%freeme()
 
     if (firstslave.or.testing) then
-20     format('./Filters/filterresponse_stf_', A, 2('_', F0.3))
-       write(fnam,20) trim(this%filterclass), this%frequencies(1:2)
+20     format('./Filters/filterresponse_stf_', I0.2, '_', A, 2('_', F0.3))
+       write(fnam,20) istf, trim(this%filterclass), this%frequencies(1:2)
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
           write(10,*) this%f(ifreq),  real(this%transferfunction(ifreq)), &
@@ -390,9 +395,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
        end do
        close(10)
        
-21     format('./Filters/stf_spectrum_deriv_', A, 2('_', F0.3))
+21     format('./Filters/stf_spectrum_deriv_', I0.2, '_', A, 2('_', F0.3))
 22     format(5(E16.8))
-       write(fnam,21) trim(this%filterclass), this%frequencies(1:2)
+       write(fnam,21) istf, trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
        do ifreq = 1, this%nfreq
@@ -403,9 +408,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
        end do
        close(10)
        
-23     format('./Filters/stf_in_', A, 2('_', F0.3))
+23     format('./Filters/stf_in_', I0.2, '_', A, 2('_', F0.3))
 24     format(3(E16.8))
-       write(fnam,23) trim(this%filterclass), this%frequencies(1:2)
+       write(fnam,23) istf, trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
        do i = 1, size(stf_sem_fwd)
@@ -414,9 +419,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
        close(10)
 
        ! Contains the STFs after FFTs
-25     format('./Filters/stf_out_', A, 2('_', F0.3))
+25     format('./Filters/stf_out_', I0.2, '_', A, 2('_', F0.3))
 26     format(3(E16.8))
-       write(fnam,25) trim(this%filterclass), this%frequencies(1:2)
+       write(fnam,25) istf, trim(this%filterclass), this%frequencies(1:2)
 
        open(10, file=trim(fnam), action='write')
        do i = 1, size(stf_sem_fwd)
@@ -426,7 +431,14 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
        
     end if   
 
-    if (maxloc(abs(this%transferfunction),1) > 0.5*this%nfreq) then
+    ! Check whether transfer functions at highest frequency are close to zero
+    ! or at least less than 1% of maximum value.
+    ratio_fwd = abs(this%transferfunction_fwd(this%nfreq)) / &
+                maxval(abs(this%transferfunction_fwd(:)))
+    ratio_bwd = abs(this%transferfunction_bwd(this%nfreq)) / &
+                maxval(abs(this%transferfunction_bwd(:)))
+
+    if ((ratio_fwd > 1e-2) .or. (ratio_bwd > 1e-2)) then
       if (firstslave.or.testing) then
          print *, 'ERROR: Filter ', trim(this%name), ' is not vanishing fast enough for '
          print *, 'high frequencies.'
@@ -434,8 +446,9 @@ subroutine add_stfs(this, stf_sem_fwd, sem_dt, amplitude_fwd,   &
          print *, 'into the kernels. Check the files'
          print *, 'filterresponse*'
          print *, 'filterresponse_stf_*'
-         print *, 'stf_spectrum_*'
-         print *, 'Maximum frequency: ', this%f(maxloc(abs(this%transferfunction),1))
+         print *, 'Relative value of forward TF at half mesh period : ', ratio_fwd
+         print *, 'Relative value of backward TF at half mesh period :', ratio_bwd
+         print *, 'Cutoff period: ', 1./this%f(this%nfreq)
        end if
        stop
     end if
