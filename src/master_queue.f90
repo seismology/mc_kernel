@@ -648,7 +648,7 @@ end subroutine create_intermediate
 !> Read intermediate results and set to global variables
 subroutine read_intermediate(filename, completed)
   character(len=*), intent(in)             :: filename
-  logical, allocatable, intent(out)        :: completed(:)
+  logical, allocatable, intent(inout)      :: completed(:)
 
   real(kind=sp), allocatable               :: real_temp(:,:)
   integer                                  :: ncid_old_intermediate
