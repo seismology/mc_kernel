@@ -85,6 +85,9 @@ script:
 - python ./submit.py -n 3 -i TRAVIS/TEST02/inparam_TEST02 -q foreground TEST02 > OUTPUT_TEST02
 - echo 'Test run with multiple STFs...'
 - python ./submit.py -n 3 -i TRAVIS/TEST03/inparam_TEST03 -q foreground TEST03 > OUTPUT_TEST03
+- echo 'Test run with multiple STFs...'
+- python ./submit.py -n 3 -i TRAVIS/TEST04/inparam_TEST04 TEST04 && sleep 30 && killall mc_kernel
+- python ./submit.py -n 3 -i TRAVIS/TEST04/inparam_TEST04 -q foreground TEST04 > OUTPUT_TEST04
 
 after_success:
   - coveralls --gcov-options '\-lp' -e src/clocks.f90 -e src/kdtree2.f90 -e src/ftnunit.f90
