@@ -785,7 +785,7 @@ elif args.queue == 'SuperMUC':
 
         nodes = math.ceil((args.nslaves)/tasks_per_node) + 1
 
-        job_class = 'fat'
+        job_class = 'big'
 
         if args.available_memory > 6000.*(40./tasks_per_node):
             raise IOError('Fat island has only 6GB RAM per node')
@@ -798,7 +798,7 @@ elif args.queue == 'SuperMUC':
 
         nodes = math.ceil((args.nslaves)/tasks_per_node) + 1
 
-        if nodes > 32:
+        if nodes > 20:
             job_class = 'general'
         else:
             job_class = 'micro'
@@ -829,7 +829,7 @@ elif args.queue == 'SuperMUC':
         text_out += ". /etc/profile.d/modules.sh \n"
         text_out += "module load netcdf/mpi \n"
         text_out += "module load fftw \n"
-        text_out += "module load mkl \n"
+        text_out += "MP_TIMEOUT=3600\n"
         text_out += "poe ./mc_kernel inparam 2>&1  > OUTPUT_0000\n"
         f.write(text_out)
     print('Submitting to SuperMUC loadleveler queue')
