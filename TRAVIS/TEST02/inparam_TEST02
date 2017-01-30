@@ -1,0 +1,161 @@
+# directory of the forward and backward run
+FWD_DIR              './wavefield/fwd_merged/'
+BWD_DIR              './wavefield/bwd_merged/'
+
+# Use Parallel NetCDF4 for reading the wavefield files?
+# Note that you have to link it against a version of netcdf4 with MPI support
+PARALLEL_READING   false
+
+# Paths of parameter files 
+SRC_FILE          'CMTSOLUTION'
+REC_FILE          'receiver.dat'
+FILT_FILE         'filters.dat'
+STF_FILE          'stf_20s.dat'
+
+# Select the mesh file type. Allowed values are
+# abaqus      : .inp file, can be generated with Qubit or other codes. Can
+#               contain various geometries and multiple sub-objects
+#               Supported geometries: tetrahedra, triangles, quadrilaterals
+#               Set file name in MESH_FILE_ABAQUS
+# 
+# tetrahedral : tetrahedral mesh in two separate files with 
+#               1. coordinates of the vertices (MESH_FILE_VERTICES)
+#               2. the connectivity of the facets of the tetrahedrons
+#                  (MESH_FILE_FACETS)
+MESH_FILE_TYPE       'abaqus'
+MESH_FILE_ABAQUS     'Meshes/flat_triangles.inp'
+
+#MESH_FILE_TYPE       'tetrahedral'
+#MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
+#MESH_FILE_FACETS     'unit_tests/facets.TEST'
+
+# Calculate kernels for relative perturbations dVp with respect to the background 
+# model (true, default)
+# or for absolute values of the model parameters like Vp (false)
+KERNEL_FOR_ABSOLUTE_PERTURBATIONS false
+
+# For plotting reasons one may wish to skip the integration over cell-volume.
+# Resulting kernels bear the unit [s/m^3]
+NO_INT_OVER_VOLUME true
+
+# Integrate the kernel over the background model. Classically, this was assumed
+# to result in the travel time of a phase. This assumption is highly dubious for
+# wavefield-derived kernels. For legacy reasons, we can still leave it in. 
+# Adds a version of the background model interpolated on the inversion mesh to 
+# the output file.
+INT_OVER_BACKGROUND_MODEL false
+
+# This activates the optional (linearity test) to integrate relative kernels over
+# model perturbations in percent, to assess how well our kernels predict measured
+# traveltime perturbations for the same model. This only makes sense when the flag
+# to compute relative perturbation kernels is set to true
+INT_OVER_3D_HETEROGENEITIES false
+HET_FILE 'tests/savani.rtpv'
+
+# Prefix of output file names.
+# Kernel files are called $OUTPUT_FILE_kernel.xdmf
+# Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
+OUT_PREFIX          'kerner'
+
+# Output format when dumping kernels and wavefields. 
+# Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
+# ascii.
+# Yet, the allowed error below is assumed as the truncation threshold in 
+# csr and ascii storage
+DUMP_TYPE            'xdmf'
+
+# Write out seismograms? (default: true)
+# Seismograms (raw full trace, filtered full trace and cut trace) can be 
+# written out. Produces three files per kernel. Disable to avoid congesting 
+# your rundir.
+WRITE_SEISMOGRAMS    true
+
+# Monte Carlo integration
+# Absolute and relative error limits can be defined separately. The convergence
+# conditions are connected by OR
+# Allowed absolute error per cell
+ALLOWED_ERROR        1e-16
+
+# Allowed relative error per cell
+ALLOWED_RELATIVE_ERROR 2e-2
+
+# Number of points on which the kernel should be evaluated per MC iteration
+POINTS_PER_MC_STEP   4
+
+# Maximum number of iterations after which to cancel Monte Carlo integration 
+# in one cell, regardless of error.
+
+MAXIMUM_ITERATIONS   100
+
+# Write detailed convergence of elements (default: false)
+# Every slave writes out the values of all the kernels and their respective 
+# estimated errors into his OUTPUT_??? file after each MC step. This can lead 
+# to huge ASCII files (>1GB) with inane line lengths (approx. 20 x nkernel).
+# However, it might be interesting to study the convergence behaviour. 
+# When set to false, only one summary per cell is written out.
+WRITE_DETAILED_CONVERGENCE  false
+
+# Size of buffers for strain and displacement.
+#  - fullfields: only strain buffer is used for chunkwise IO
+#  - displ_only: displacement buffer is used for chunkwise IO and strain buffer contains
+#                the strain in the GLL basis for whole elements
+STRAIN_BUFFER_SIZE   1000
+DISPL_BUFFER_SIZE    100
+
+# Number of elements in each MPI task. 
+ELEMENTS_PER_TASK    100 
+
+# Sort mesh by element midpoint coordinates. This should allow to use the buffer more 
+# efficiently. Testing
+NO_SORT_MESH_ELEMENTS false
+
+# Use quasirandom numbers instead of pseudorandom ones
+USE_PSEUDORANDOM_NUMBERS false
+
+# Mask Source and receiver
+# If true, the kernel value is set to zero inside the element that contains the source
+# and the one that contains the receiver. This is a crude way to mask the source, but 
+# it allows to reduce the time spent in the source region
+MASK_SOURCE_RECEIVER  false
+
+# Damping radius around source and receiver in meter
+# Inside this radius, the kernel values are damped by 
+# K = K_0 * R / DAMP_RADIUS_SOURCE_RECEIVER
+# where R is the distance of the point to source or receiver
+# If value is <=0, damping is switched off
+DAMP_RADIUS_SOURCE_RECEIVER  100.d3
+
+# Deconvolve the AxiSEM Source Time Function from the wavefield.
+# If set to true, then the wavefield is just time-shifted to account 
+# for the STF not centered at zero time.
+NO_DECONVOLVE_STF false
+
+# Integration scheme
+# Options:
+# parseval:    FFT seismogram and convolved wavefield and use Parseval's Theorem
+#              then trapezoidal rule is used in frequency domain
+# trapezoidal: Use the trapezoidal rule in time domain
+INTEGRATION_SCHEME  parseval
+
+# FFTW Planning to use
+# Options: 
+# ESTIMATE:   Use heuristic to find best FFT plan
+# MEASURE:    Compute several test FFTs to find best plan (default)
+# PATIENT:    Compute a lot of test FFTs to find best plan
+# EXHAUSTIVE: Compute an awful amount of test FFTs to find best plan
+# for a detailed explanation: http://www.fftw.org/doc/Planner-Flags.html
+FFTW_PLAN              MEASURE
+
+# Do you want to just calculate kernels or additionally plot wavefields? 
+# And waveform kernels, which needs a lot of memory
+PLOT_WAVEFIELDS         false
+
+# Do you want your kernels to be given on the vertices ('onvertices') or
+# inside ('volumetric') each elements?
+INT_TYPE             'volumetric'
+
+# Create a file with intermediate results. Probably useful, if you have
+# reason to expect the job to be cancelled. 
+# Can inhibit performance significantly for large numbers of kernels and 
+# large inversion grids
+CREATE_INTERMEDIATE  false 

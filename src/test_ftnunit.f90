@@ -168,6 +168,7 @@ subroutine test_all
   call test(test_nc_create_group, 'Create Group')
   call test(test_nc_open_for_read, 'Open NetCDF file for reading')
   call test(test_nc_open_for_write, 'Open NetCDF file for writing')
+  call test(test_nc_getvar_1d_dble, 'Read 1D Double by name')
   call test(test_nc_getvar_1d_float, 'Read 1D Float by name')
   call test(test_nc_getvar_2d_float, 'Read 2D Float by name')
   call test(test_nc_getvar_3d_float, 'Read 3D Float by name')
@@ -183,6 +184,7 @@ subroutine test_all
   write(6,'(/,a)') 'TEST READFIELDS MODULE'
   call test(test_readfields_set_params, 'Set SEM file params')
   call test(test_readfields_open_files, 'Open SEM file')
+  call test(test_readfields_open_files_merged, 'Open merged SEM file')
   call test(test_readfields_load_straintrace_merged, 'Read straintrace from old and merged db')
   call test(test_readfields_load_strain_merged, 'Read strain from old and merged db')
   call test(test_readfields_load_model_coeffs, 'Read Model coefficients from SEM mesh')
@@ -212,6 +214,8 @@ subroutine test_all
   ! test_mc_integration
   write(6,'(/,a)') 'TEST MC_INTEGRATION MODULE'
   call test(test_mc_meanandvariance, 'MC mean and variance')
+  call test(test_mc_isconverged, 'MC isconverged')
+  call test(test_mc_areallconverged, 'MC areallconverged')
   call test(test_mc_unit_hexagon, 'MC unit hexagon')
   call test(test_mc_sphere_in_tetrahedron, 'MC sphere in tetrahedron')
 
@@ -226,6 +230,9 @@ subroutine test_all
 
   ! test_fft_type
   write(6,'(/,a)') 'TEST FFT MODULE'
+  call test(test_fft_nextpow2, 'NextPow2 routine')
+  call test(test_fft_init_pow2, 'Init FFT type in case ntimes is power of 2')
+  call test(test_fft_init_general, 'Init FFT type in general case')
   call test(test_fft_dirac, 'FFT_dirac')
   call test(test_fft_sine, 'FFT_sine')
   call test(test_fft_inverse, 'FFT_inverse')

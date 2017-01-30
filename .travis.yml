@@ -9,19 +9,19 @@ env:
     MPI_IMPL=openmpi
 
   matrix:
-    - GFORTRAN_VERSION=trusty
-    - GFORTRAN_VERSION=4.8
-    - GFORTRAN_VERSION=4.9
-    - GFORTRAN_VERSION=5 
-    - GFORTRAN_VERSION=6
-
+    - GFORTRAN_VERSION=trusty OPT=FAST
+    - GFORTRAN_VERSION=trusty OPT=DEBUG
+    - GFORTRAN_VERSION=4.8 OPT=FAST
+    - GFORTRAN_VERSION=4.9 OPT=FAST
+    - GFORTRAN_VERSION=5 OPT=FAST
+    - GFORTRAN_VERSION=6 OPT=FAST
 
 before_install:
   - export TRAVIS_ROOT=$HOME/local
+  - export MINICONDA=$HOME/miniconda
   - mkdir -p $TRAVIS_ROOT/bin
   - export PATH="$TRAVIS_ROOT/bin:$PATH"
-  # Install Git LFS
-  - ./TRAVIS/install_gitlfs.sh $TRAVIS_ROOT
+  - export PATH="$MINICONDA/bin:$PATH"
 
   # Install requirements for M.C. Kernel
   - |
@@ -40,21 +40,24 @@ before_install:
       ./TRAVIS/install_netcdf.sh $TRAVIS_ROOT $GFORTRAN_VERSION
     fi
 
+  # Install some python packages that the submit script needs
+  - ./TRAVIS/install_python.sh
   - pip install --user cpp-coveralls
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq gfortran libnetcdff5 libnetcdf-dev libfftw3-dev openmpi-bin libopenmpi-dev
-  # # Get test wavefields (2GB, takes some time)
-  # - wget https://www.geophysik.uni-muenchen.de/~staehler/kerner_wavefields.tar.bz2
-  # - tar -xvf kerner_wavefields.tar.bz2
-  # - git lfs pull
-  # - |
+
+  # Get test wavefields (2GB, takes some time)
+  - ./TRAVIS/get_wavefields.sh
   #   cd tests/reference_solutions 
   #   tar -xvf test_nonmerged.tar
   #   tar -xvf test_merged.tar
   #   cd -
 
 install:
-- ./copy_templates.sh
+- |
+  if [[ "$OPT" == "FAST" ]]; then
+    ./copy_templates.sh release
+  else
+    ./copy_templates.sh 
+  fi
 - which mpif90
 - mpif90 -show
 - mpif90 -v
@@ -67,25 +70,27 @@ script:
   make check
   cat tests/mckernel_tests.log
 - echo -en 'travis_fold:end:script.1\\r'
-  # - echo 'Test make_kerner_input.py...' && echo -en 'travis_fold:start:script.2\\r'
-  # - ./UTILS/make_kerner_input.py --nfilter 4 --f0 50 --noplot
-  # - diff receiver.dat tests/ref_make_input/receiver.dat
-  # - diff CMTSOLUTION tests/ref_make_input/CMTSOLUTION
-  # - diff filters.dat tests/ref_make_input/filters.dat
-  # - echo -en 'travis_fold:end:script.2\\r'
-  # - echo 'Test run on nonmerged wavefield files...' && echo -en 'travis_fold:start:script.3\\r'
-  # - ./submit.py -n 2 --fwd_dir wavefield/fwd/ --bwd_dir wavefield/bwd/ -q foreground --allowed_error 1e-16 --no_int_over_volume test_nonmerged
-  #   #- ./tests/compare_results.py test_nonmerged
-  # - echo -en 'travis_fold:end:script.3\\r'
-  # - echo 'Test run on merged wavefield files...' && echo -en 'travis_fold:start:script.4\\r'
-  # - ./submit.py -n 2 --fwd_dir wavefield/fwd_merged/ --bwd_dir wavefield/bwd_merged/ -q foreground --allowed_error 1e-16 --no_int_over_volume test_merged
-  #   #- ./tests/compare_results.py test_merged
-  # - echo -en 'travis_fold:end:script.4\\r'
+- echo 'Test make_kerner_input.py...' && echo -en 'travis_fold:start:script.2\\r'
+- export PATH="$MINICONDA/bin:$PATH"
+- which python
+- source activate condaenv;
+- python ./UTILS/make_kerner_input.py --nfilter 4 --f0 50 --noplot
+- diff receiver.dat tests/ref_make_input/receiver.dat
+- diff CMTSOLUTION tests/ref_make_input/CMTSOLUTION
+- diff filters.dat tests/ref_make_input/filters.dat
+- echo -en 'travis_fold:end:script.2\\r'
+- echo 'Test run on nonmerged wavefield files...' #&& echo -en 'travis_fold:start:script.3\\r'
+- python ./submit.py -n 3 -i TRAVIS/TEST01/inparam_TEST01 -q foreground TEST01 > OUTPUT_TEST01
+- echo 'Test run on merged wavefield files...' #&& echo -en 'travis_fold:start:script.4\\r'
+- python ./submit.py -n 3 -i TRAVIS/TEST02/inparam_TEST02 -q foreground TEST02 > OUTPUT_TEST02
+- echo 'Test run with multiple STFs...'
+- python ./submit.py -n 3 -i TRAVIS/TEST03/inparam_TEST03 -q foreground TEST03 > OUTPUT_TEST03
 
 after_success:
-- coveralls --gcov-options '\-lp'
+  - coveralls --gcov-options '\-lp' -e src/clocks.f90 -e src/kdtree2.f90 -e src/ftnunit.f90
 
 cache:
   directories:
     - $HOME/local
-    - $HOME/wavefield
+    - $HOME/miniconda
+      #- $HOME/wavefield

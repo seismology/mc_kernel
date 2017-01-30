@@ -26,9 +26,11 @@ mkdir Seismograms
 rm -rf Filters
 mkdir Filters
 
+
 echo "Running test"
 set +e 
 echo ALL >ftnunit.run
+rm -f errors
 
 chk=1
 until test ! -f ftnunit.lst -a $chk -eq 0 ; do
@@ -38,16 +40,31 @@ until test ! -f ftnunit.lst -a $chk -eq 0 ; do
 done
 set -e 
 
-rm ftnunit.run
-
 # Present some test results
+echo "##################################################"
 tail -n 5 mckernel_tests.log
 if grep -C 1 "assertion failed" ./mckernel_tests.log > fail_messages.txt
 then
   echo 
+  echo "##################################################"
+  echo "FAILURES: At least one test failed"
   echo "Details of failed tests:"
   cat fail_messages.txt
   echo 
   echo "See tests/mckernel_tests.log for details"
-  return -1
+  echo "##################################################"
+  exit 1
+elif [ -f errors ]
+then
+  echo 
+  echo "##################################################"
+  echo "ERRORS: At least one test crashed"
+  echo "See tests/mckernel_tests.log for details"
+  echo "##################################################"
+  exit 1
+else
+  echo 
+  echo "##################################################"
+  echo "All tests successful"
+  echo "##################################################"
 fi
