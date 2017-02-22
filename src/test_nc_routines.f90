@@ -222,10 +222,12 @@ subroutine test_nc_open_for_write
 
   status = nf90_inquire(ncid = ncid, formatNum = formatnum)
 
+  if (status.ne.NF90_NOERR) print *, nf90_strerror(status)
   call assert_equal(status, NF90_NOERR, 'Inquire successful: '//nf90_strerror(status))
   call assert_equal(formatnum, NF90_FORMAT_NETCDF4, 'Opened file has NetCDF4 format')
 
   status = nf90_redef(ncid)
+  if (status.ne.NF90_NOERR) print *, nf90_strerror(status)
   call assert_equal(status, NF90_NOERR, 'File opened for write')
 
   call check(nf90_close(ncid))
@@ -238,10 +240,12 @@ subroutine test_nc_open_for_write
 
   status = nf90_inquire(ncid = ncid, formatNum = formatnum)
 
+  if (status.ne.NF90_NOERR) print *, nf90_strerror(status)
   call assert_equal(status, NF90_NOERR, 'Inquire successful: '//nf90_strerror(status))
   call assert_equal(formatnum, NF90_FORMAT_NETCDF4, 'Opened file has NetCDF4 format')
 
   status = nf90_redef(ncid)
+  if (status.ne.NF90_NOERR) print *, nf90_strerror(status)
   call assert_equal(status, NF90_NOERR, 'File opened for write')
 
   call check(nf90_close(ncid))
