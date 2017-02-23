@@ -79,11 +79,12 @@ subroutine write_wavefield_data(inv_mesh, parameters, idx_elems, &
 
   real(kind=sp)                  :: val_out(size(fw_field, 4), size(fw_field, 1))
   integer                        :: nelements, ielement
-  integer, parameter             :: ndim = 6
+  integer                        :: ndim
   integer                        :: ikernel, idim
-  character(len=2), parameter    :: dim_name(ndim) = ['tt', 'pp', 'rr', 'pr', 'tr', 'tp']
   character(len=32)              :: fmtstring
   character(len=512)             :: var_name
+
+  ndim = size(fw_field, dim=2)
 
   do ikernel = 1, parameters%nkernel
 
