@@ -98,6 +98,8 @@ subroutine test_all
   call test(test_cumsum_trapezoidal_1d, 'Cumulative sum (integration), 1D')
   call test(test_cumsum_trapezoidal_2d, 'Cumulative sum (integration), 2D')
   call test(test_cumsum_trapezoidal_3d, 'Cumulative sum (integration), 3D')
+  call test(test_is_continuous, 'is_continuous test routine')
+  call test(test_first_occurence, 'first_occurence test routine')
   verbose = oldverbose
 
   ! test sem derivatives
