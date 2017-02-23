@@ -46,7 +46,7 @@ subroutine do_master()
 #endif
 
   integer               :: nslaves, rank, ierror
-  integer, allocatable  :: output(:,:), sendrequest(:), work_done(:)
+  integer, allocatable  :: output(:,:), work_done(:)
   integer               :: mpistatus(MPI_STATUS_SIZE)
   integer               :: itask, ntasks, ioutput
   integer(kind=long)    :: iclock, iclock_ref, ticks_per_sec
@@ -62,7 +62,6 @@ subroutine do_master()
   ! Find out how many processes there are in the default communicator
   call MPI_COMM_SIZE(MPI_COMM_WORLD, nslaves, ierror)
   nslaves = nslaves - 1 ! the master does not work
-  allocate(sendrequest(nslaves))
 
   ! Format string for plotting status of slaves
   allocate(work_done(nslaves))
@@ -98,7 +97,6 @@ subroutine do_master()
                   rank,              & ! destination process rank
                   WORKTAG,           & ! user chosen message tag
                   MPI_COMM_WORLD,    & ! default communicator
-                  sendrequest(rank), &
                   ierror)
   enddo
 
@@ -130,7 +128,6 @@ subroutine do_master()
                   mpistatus(MPI_SOURCE), & ! to who we just received from
                   WORKTAG,          & ! user chosen message tag
                   MPI_COMM_WORLD,   & ! default communicator
-                  sendrequest(mpistatus(MPI_SOURCE)), &
                   ierror)
 
     ! Some more stuff before waiting for next result
@@ -179,7 +176,6 @@ subroutine do_master()
                   mpistatus(MPI_SOURCE), & ! to who we just received from
                   DIETAG,          & ! the tag conatains the actual information
                   MPI_COMM_WORLD,  & ! default communicator
-                  sendrequest(mpistatus(MPI_SOURCE)), &
                   ierror)
     
     ! Write large data to disk
