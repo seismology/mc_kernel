@@ -1628,6 +1628,7 @@ subroutine add_cell_variable(this, var_name, nentries, entry_names, istime)
     call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
                                varname = trim(var_name),                  &
                                sizes   = [this%nelements, nentries],      &
+                               chunksizes = [100, nentries],              &
                                dimension_names = ['Elements', 'time    '])
   else
     call nc_create_var_by_name(ncid    = this%ncid_cell,                  &
@@ -1800,7 +1801,8 @@ subroutine add_cell_data(this, var_name, values, ielement, ientry)
   real(kind=sp), optional, intent(in)       :: values(:,:) !< Dimension: nelements/cells, nentries/ntimes
   integer, intent(in), optional             :: ielement(2), ientry(2)
 
-  integer                                   :: ielement_loc(2), ientry_loc(2), start(2), count(2)
+  integer                                   :: ielement_loc(2), ientry_loc(2)
+  integer                                   :: start(2), count(2)
   integer                                   :: ivar
 
   if (this%ncid_cell==-1) then
@@ -2021,7 +2023,8 @@ subroutine dump_data_xdmf(this, filename)
      call pabort 
   end if
   
-  if (.not. (allocated(this%variable_cell).or.allocated(this%variable_node)) .or.this%ncid==-1) then
+  if (.not. (allocated(this%variable_cell).or.allocated(this%variable_node)) &
+      .or.this%ncid==-1) then
      write(*,*) 'ERROR: no data to dump available'
      write(*,*) 'allocated(this%variable_cell) :', allocated(this%variable_cell)
      write(*,*) 'allocated(this%variable_node) :', allocated(this%variable_node)

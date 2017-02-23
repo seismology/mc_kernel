@@ -1331,8 +1331,6 @@ subroutine test_set_node_time_data_and_dump
   call assert_true((trim(dim_name).eq.'time'), &
     'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
   call assert_true(.not.iscontiguous, 'Time variable should be chunked')
-  call assert_equal(chunksizes,  [inv_mesh%get_nvertices(), 1], &
-                    'Chunk size in time dimension is one')
 
   ! Get variable 2
   call nc_getvar_by_name(ncid    = grp_ncid,     &
@@ -1355,8 +1353,6 @@ subroutine test_set_node_time_data_and_dump
   call assert_true((trim(dim_name).eq.'time'), &
     'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
   call assert_true(.not.iscontiguous, 'Time variable should be chunked')
-  call assert_equal(chunksizes,  [inv_mesh%get_nvertices(), 1], &
-                    'Chunk size in time dimension is one')
 
   ! Get variable 3
   call nc_getvar_by_name(ncid    = grp_ncid,     &
@@ -1378,8 +1374,6 @@ subroutine test_set_node_time_data_and_dump
   call assert_true((trim(dim_name).eq.'time'), &
     'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
   call assert_true(.not.iscontiguous, 'Time variable should be chunked')
-  call assert_equal(chunksizes,  [inv_mesh%get_nvertices(), 1], &
-                    'Chunk size in time dimension is one')
   call check(nf90_close(ncid = ncid))
 
 
@@ -1484,8 +1478,6 @@ subroutine test_set_cell_time_data_and_dump
   call assert_true((trim(dim_name).eq.'time'), &
     'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
   call assert_true(.not.iscontiguous, 'Time variable should be chunked')
-  call assert_equal(chunksizes,  [inv_mesh%get_nelements(), 1], &
-                    'Chunk size in time dimension is one')
 
   ! Get variable 2
   call nc_getvar_by_name(ncid    = grp_ncid,     &
@@ -1508,8 +1500,6 @@ subroutine test_set_cell_time_data_and_dump
   call assert_true((trim(dim_name).eq.'time'), &
     'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
   call assert_true(.not.iscontiguous, 'Time variable should be chunked')
-  call assert_equal(chunksizes,  [inv_mesh%get_nelements(), 1], &
-                    'Chunk size in time dimension is one')
 
   ! Get variable 3
   call nc_getvar_by_name(ncid    = grp_ncid,     &
@@ -1531,8 +1521,6 @@ subroutine test_set_cell_time_data_and_dump
   call assert_true((trim(dim_name).eq.'time'), &
     'time dimension is called '''//trim(dim_name)//''' instead of ''time''')
   call assert_true(.not.iscontiguous, 'Time variable should be chunked')
-  call assert_equal(chunksizes,  [inv_mesh%get_nelements(), 1], &
-                    'Chunk size in time dimension is one')
   nf_status = nf90_close(ncid = ncid)
 
 

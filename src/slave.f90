@@ -47,9 +47,9 @@ module slave_mod
                                                !! vp, vs, rho, vph, vpv, vsh, vsv, eta, phi, xi, lam, mu
     real(kind=dp), allocatable :: hetero_model(:,:,:) !< (nmodel_parameter_hetero, nbasisfuncs_per_elem, nelements)
                                                !! dlnvp, dlnvs, dlnrho
-    real(kind=sp), allocatable :: fw_field(:,:,:,:,:)
-    real(kind=sp), allocatable :: bw_field(:,:,:,:,:)
-    real(kind=sp), allocatable :: conv_field(:,:,:,:,:)
+    real(kind=sp), allocatable :: fw_field(:,:,:,:)
+    real(kind=sp), allocatable :: bw_field(:,:,:,:)
+    real(kind=sp), allocatable :: conv_field(:,:,:,:)
   end type
 
 contains
@@ -81,6 +81,8 @@ subroutine do_slave()
   integer                             :: itask
   character(len=255)                  :: fmtstring
   integer                             :: nptperstep
+  integer(kind=long)                  :: iclock, iclock_ref, ticks_per_sec
+  real(kind=dp)                       :: waittime
 
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') ' Read input files for parameters, source and receivers'
@@ -172,6 +174,7 @@ subroutine do_slave()
 
   itask = 0
 
+  call system_clock(count=iclock_ref, count_rate=ticks_per_sec)
   ! Receive new tasks from master until the DIETAG is received and then exit the loop
   receive_tasks: do 
     write(lu_out,'(A)') '***************************************************************'
@@ -183,6 +186,8 @@ subroutine do_slave()
     ! Receive a message from the master
     iclockold = tick()
     call MPI_Recv(wt, 1, wt%mpitype, 0, MPI_ANY_TAG, MPI_COMM_WORLD, mpistatus, ierror)
+    call system_clock(count=iclock)
+    waittime = real(iclock-iclock_ref, kind=dp) / real(ticks_per_sec, kind=dp)
 
     ! Check the tag of the received message. If no more work to do, exit loop
     ! and return to main program
@@ -191,7 +196,8 @@ subroutine do_slave()
 
     itask = itask + 1
     write(lu_out,'(A)') '***************************************************************'
-    write(lu_out,'(A, I6, A)') ' Received task # ', itask, ', going to work'
+    write(lu_out,'(A, I6, A, F8.3, A)') ' Received task # ', itask, ' after', waittime, &
+      ' sec, going to work'
     write(lu_out,'(A)') '***************************************************************'
     call flush(lu_out)
 
@@ -208,15 +214,17 @@ subroutine do_slave()
     wt%computation_time(:)     = slave_result%computation_time(:)
     wt%model(:,:,:)            = slave_result%model(:,:,:)
     wt%hetero_model(:,:,:)     = slave_result%hetero_model(:,:,:)
-    wt%fw_field(:,:,:,:,:)     = slave_result%fw_field(:,:,:,:,:)
-    wt%bw_field(:,:,:,:,:)     = slave_result%bw_field(:,:,:,:,:)
-    wt%conv_field(:,:,:,:,:)   = slave_result%conv_field(:,:,:,:,:)
+    wt%fw_field(:,:,:,:)       = slave_result%fw_field(:,:,:,:)
+    wt%bw_field(:,:,:,:)       = slave_result%bw_field(:,:,:,:)
+    wt%conv_field(:,:,:,:)     = slave_result%conv_field(:,:,:,:)
 
     ! Finished writing my part of the mesh
     call inv_mesh%freeme
 
     ! Send the result back
+    call flush(lu_out)
     iclockold = tick()
+    call system_clock(count=iclock_ref)
     call MPI_Send(wt, 1, wt%mpitype, 0, 0, MPI_COMM_WORLD, ierror)
     iclockold = tick(id=id_mpi, since=iclockold)
 
@@ -352,9 +360,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   allocate(slave_result%hetero_model(nmodel_parameters_hetero, nbasisfuncs_per_elem, nelements))
 
   if (parameters%plot_wavefields) then
-    allocate(slave_result%fw_field(ndumps, ndim, nkernel, nbasisfuncs_per_elem, nelements)) 
-    allocate(slave_result%bw_field(ndumps, ndim, nkernel, nbasisfuncs_per_elem, nelements))
-    allocate(slave_result%conv_field(ndumps, 1,  nkernel, nbasisfuncs_per_elem, nelements))
+    allocate(slave_result%fw_field(ndumps, ndim, nkernel, nelements)) 
+    allocate(slave_result%bw_field(ndumps, ndim, nkernel, nelements))
+    allocate(slave_result%conv_field(ndumps, 1,  nkernel, nelements))
 
     allocate(fw_field_out(ndumps, ndim, nkernel))
     allocate(bw_field_out(ndumps, ndim, nkernel))
@@ -365,9 +373,9 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
     allocate(fw_field_fd_filt(nomega, ndim, nptperstep))
     allocate(bw_field_fd_filt(nomega, ndim, nptperstep))
   else
-    allocate(slave_result%fw_field(1,1,1,1,1))
-    allocate(slave_result%bw_field(1,1,1,1,1))
-    allocate(slave_result%conv_field(1,1,1,1,1))
+    allocate(slave_result%fw_field(1,1,1,1))
+    allocate(slave_result%bw_field(1,1,1,1))
+    allocate(slave_result%conv_field(1,1,1,1))
   end if
 
   slave_result%kernel_values    = 0 
@@ -777,16 +785,17 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           slave_result%hetero_model(:, ibasisfunc, ielement)  = int_hetero(ibasisfunc)%getintegral()
           call int_hetero(ibasisfunc)%freeme()              
         end if
+
         if (parameters%plot_wavefields) then
+          ! Wavefield plotting is only allowed for volumetric mode, where nbasisfuncs_per_elem==1
+          ! Therefore, this block is only called once.
           do ikernel = 1, parameters%nkernel
-            ! In case of onvertices basis functions, all basis functions of this element get
-            ! the same value, i.e. each vertex gets the same value of the fields.
-            norm_fields = real(niterations(ikernel) * nptperstep * nbasisfuncs_per_elem, kind=dp)
-            slave_result%fw_field(:, :, ikernel, ibasisfunc, ielement)   &
+            norm_fields = real(niterations(ikernel) * nptperstep, kind=dp)
+            slave_result%fw_field(:, :, ikernel, ielement)   &
               = real(fw_field_out(:, :, ikernel) / norm_fields, kind=sp)
-            slave_result%bw_field(:, :, ikernel, ibasisfunc, ielement)   &
+            slave_result%bw_field(:, :, ikernel, ielement)   &
               = real(bw_field_out(:, :, ikernel) / norm_fields, kind=sp)
-            slave_result%conv_field(:, 1, ikernel, ibasisfunc, ielement) &
+            slave_result%conv_field(:, 1, ikernel, ielement) &
               = real(conv_field_out(:, ikernel)  / norm_fields, kind=sp)
           end do ! ikernel
         end if

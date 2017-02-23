@@ -58,12 +58,8 @@ subroutine create_tasks(completed, nelems_per_task, ntasks, elems_in_task)
 
   iel = 0
   do itask = 1, ntasks
-    !print *, 'itask: ', itask
-    !call flush(6)
     iel_in_task = 1
-    !do iel = 1, parameters%nelems_per_task
     do while (iel_in_task<=nelems_per_task)
-      !iel = iel_in_task + (itask-1) * nelems_per_task
       iel = iel + 1
       if (iel <= nelems) then
           if (completed(iel)) cycle
@@ -71,8 +67,6 @@ subroutine create_tasks(completed, nelems_per_task, ntasks, elems_in_task)
       else
           elems_in_task(itask, iel_in_task) = -1
       end if
-      !print *, 'iel_in_task: ', iel_in_task, ', iel: ', iel
-      !call flush(6)
       iel_in_task = iel_in_task + 1
     end do
   enddo
