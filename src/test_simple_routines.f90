@@ -1005,5 +1005,46 @@ subroutine test_cumsum_trapezoidal_3d
 end subroutine test_cumsum_trapezoidal_3d
 !------------------------------------------------------------------------------
 
+!------------------------------------------------------------------------------
+subroutine test_is_continuous()
+  integer   ::  testarray_1(5), testarray_2(5)
+  integer   ::  testarray_3(5), testarray_4(5)
+
+  testarray_1 = [1, 2, 3, 4, 5]
+  call assert_true(is_continuous(testarray_1), '1,2,3,4,5 is continuous')
+
+  testarray_2 = [11, 12, 13, 14, 15]
+  call assert_true(is_continuous(testarray_2), '11,12,13,14,15 is continuous')
+
+  testarray_3 = [11, 13, 14, 15, 16]
+  call assert_false(is_continuous(testarray_3), '11,13,14,15,16 is not continuous')
+
+  testarray_4 = [11, 11, 13, 14, 15]
+  call assert_false(is_continuous(testarray_4), '11,11,13,14,15 is not continuous')
+end subroutine test_is_continuous
+!------------------------------------------------------------------------------
+
+!------------------------------------------------------------------------------
+subroutine test_first_occurence()
+  integer   ::  testarray_1(5), testarray_2(5)
+  integer   ::  testarray_3(5), testarray_4(5)
+
+  testarray_1 = [11, 12, 13, 14, 15]
+  call assert_equal(first_occurence(testarray_1, 11), 1, &
+                   '11 is 1st elem of [11,12,13,14,15]')
+  call assert_equal(first_occurence(testarray_1, 15), 5, &
+                   '15 is 5th elem of [11,12,13,14,15]')
+
+  testarray_2 = [11, 12, 12, 12, 12]
+  call assert_equal(first_occurence(testarray_2, 11), 1, &
+                   '11 is 1st elem of [11,12,11,11,12]')
+  call assert_equal(first_occurence(testarray_2, 12), 2, &
+                   '12 is 2nd elem of [11,12,12,12,12]')
+  call assert_equal(first_occurence(testarray_2, 13), -1, &
+                    'returns -1, if value does not occur in array')
+
+end subroutine test_first_occurence
+!------------------------------------------------------------------------------
+
 end module test_simple_routines
 !=========================================================================================

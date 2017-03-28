@@ -71,9 +71,10 @@ contains
 subroutine print_mpi_error(ierror)
   integer, intent(in)   :: ierror
   character(len=512)    :: error_string
+  integer               :: res_len, ierr
 
   if (ierror.ne.MPI_SUCCESS) then
-    call MPI_ERROR_STRING(ierror, error_string)
+    call MPI_ERROR_STRING(ierror, error_string, res_len, ierr)
     print *, 'MPI ERROR on node ', myrank, ':'
     print *, error_string
   end if

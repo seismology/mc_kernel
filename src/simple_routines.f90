@@ -29,8 +29,8 @@ module simple_routines
    implicit none
    private
    public mult2d_1d, mult3d_1d, absreldiff, check_NaN, cross
-   public to_lower, lowtrim, check_limits
-   public cumsum_trapezoidal
+   public to_lower, lowtrim, check_limits, is_continuous
+   public cumsum_trapezoidal, first_occurence
 
    interface mult2d_1d
       module procedure  :: mult2d_1d_dble
@@ -97,7 +97,6 @@ pure function mult2d_1d_cmplx(A, B) result(C)
    C = A * spread(B, 2, size(A,2))
 end function mult2d_1d_cmplx
 !------------------------------------------------------------------------------
-
 
 !------------------------------------------------------------------------------
 pure function mult3d_1d_dble(A, B) result(C)
@@ -955,5 +954,37 @@ function checklim_3d(array, limits, array_name, ntoosmall, ntoolarge) result(out
 end function checklim_3d
 !-----------------------------------------------------------------------------------------
 
+!-----------------------------------------------------------------------------------------
+pure function is_continuous(array)
+  ! Checks whether values in array are continuous (1,2,3) or not (1,3,4)
+  integer, intent(in)   :: array(:)
+  logical               :: is_continuous
+  integer               :: i
+
+  is_continuous = .true.
+  do i = 2, size(array, dim=1)
+    if (array(i) .ne. array(i-1) + 1) is_continuous = .false.
+  end do
+
+end function is_continuous
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+pure function first_occurence(array, val) result(ifirst)
+  ! Returns the first occurence of val in array
+  integer, intent(in)   :: array(:), val
+  integer               :: ifirst
+
+  ifirst = 1
+  do while (.not. array(ifirst) == val)
+     ifirst = ifirst + 1
+     if (ifirst > size(array, dim=1)) exit
+  end do
+  
+  ! Return -1 in case no element of array contains val
+  if (ifirst == size(array, dim=1) + 1) ifirst = -1
+
+end function first_occurence
+!-----------------------------------------------------------------------------------------
 end module simple_routines
 !=========================================================================================

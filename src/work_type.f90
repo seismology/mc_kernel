@@ -60,9 +60,9 @@ module work_type_mod
      real(kind=dp), allocatable :: computation_time(:)
      real(kind=dp), allocatable :: model(:,:,:)
      real(kind=dp), allocatable :: hetero_model(:,:,:)
-     real(kind=sp), allocatable :: fw_field(:,:,:,:,:)
-     real(kind=sp), allocatable :: bw_field(:,:,:,:,:)
-     real(kind=sp), allocatable :: conv_field(:,:,:,:,:)
+     real(kind=sp), allocatable :: fw_field(:,:,:,:)
+     real(kind=sp), allocatable :: bw_field(:,:,:,:)
+     real(kind=sp), allocatable :: conv_field(:,:,:,:)
 
   end type
 
@@ -132,13 +132,13 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
   allocate(wt%hetero_model(wt%nmodel_parameters_hetero, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
 
   if (plot_wavefields) then
-    allocate(wt%fw_field(wt%ndumps, wt%ndim, wt%ntotal_kernel, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
-    allocate(wt%bw_field(wt%ndumps, wt%ndim, wt%ntotal_kernel, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
-    allocate(wt%conv_field(wt%ndumps, 1, wt%ntotal_kernel, wt%nbasisfuncs_per_elem, wt%nelems_per_task))
+    allocate(wt%fw_field(wt%ndumps, wt%ndim, wt%ntotal_kernel, wt%nelems_per_task))
+    allocate(wt%bw_field(wt%ndumps, wt%ndim, wt%ntotal_kernel, wt%nelems_per_task))
+    allocate(wt%conv_field(wt%ndumps, 1, wt%ntotal_kernel, wt%nelems_per_task))
   else
-    allocate(wt%fw_field(1, 1, 1, 1, 1))
-    allocate(wt%bw_field(1, 1, 1, 1, 1))
-    allocate(wt%conv_field(1, 1, 1, 1, 1))
+    allocate(wt%fw_field(1, 1, 1, 1))
+    allocate(wt%bw_field(1, 1, 1, 1))
+    allocate(wt%conv_field(1, 1, 1, 1))
   end if
 
   wt%connectivity    = 0
@@ -172,11 +172,11 @@ subroutine init_work_type(nkernel, nelems_per_task, nvertices, nvertices_per_ele
 
   if (plot_wavefields) then
     blocklengths(10) = wt%ndumps * wt%ndim * wt%ntotal_kernel * &       
-                       wt%nbasisfuncs_per_elem * wt%nelems_per_task                 !Forward field
+                       wt%nelems_per_task                 !Forward field
     blocklengths(11) = wt%ndumps * wt%ndim * wt%ntotal_kernel * &       
-                       wt%nbasisfuncs_per_elem * wt%nelems_per_task                 !Backward field
+                       wt%nelems_per_task                 !Backward field
     blocklengths(12) = wt%ndumps * 1 * wt%ntotal_kernel * &       
-                       wt%nbasisfuncs_per_elem * wt%nelems_per_task                 !Convolved field
+                       wt%nelems_per_task                 !Convolved field
   else
     blocklengths(10:12) = 1
   end if
