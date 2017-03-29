@@ -477,6 +477,11 @@ def define_arguments():
     performance_options.add_argument('--create_intermediate', default=False,
                                      help=helptext)
 
+    helptext = "Start creation of intermediate files only after N seconds\n" + \
+               "Set this to value close to walltime on HPC systems"
+    performance_options.add_argument('--intermediate_dump_time', type=int,
+                                     default=0, help=helptext)
+
     helptext = "Mask the source and the receiver element and set the \n" + \
                "kernel to zero in each. A rough way to avoid spending \n" + \
                "hours until convergence in these two elements in reached."

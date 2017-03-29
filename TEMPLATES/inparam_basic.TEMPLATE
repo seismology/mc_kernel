@@ -159,3 +159,11 @@ INT_TYPE             'volumetric'
 # Can inhibit performance significantly for large numbers of kernels and 
 # large inversion grids
 CREATE_INTERMEDIATE  true
+
+# Time after which to start creating intermediate dumps. This should be set
+# to about 90% of the walltime on a HPC system to ensure that processes
+# running into walltime do not lose all data.
+# Don't set it too low, since saving intermediate results can be time-
+# consuming for big runs.
+# Value is in hours!
+INTERMEDIATE_DUMP_TIME 0

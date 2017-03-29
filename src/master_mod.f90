@@ -146,7 +146,7 @@ subroutine do_master()
       real(sum(work_done)) / real(ntasks) * 100., time
 
     ! Save intermediate results to NetCDF file
-    call dump_intermediate(itask_result)
+    call dump_intermediate(time)
 
     ! Write large data to disk
     call dump_expensive(itask_result)

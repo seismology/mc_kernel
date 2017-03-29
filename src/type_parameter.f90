@@ -46,6 +46,7 @@ module type_parameter
         real(kind=dp)                        :: allowed_error
         real(kind=dp)                        :: allowed_relative_error = 1d-10
         real(kind=dp)                        :: damp_radius = -1d0
+        real(kind=dp)                        :: time_for_dumping = 0
 
         character(len=512)                   :: fwd_dir
         character(len=512)                   :: bwd_dir
@@ -256,6 +257,11 @@ subroutine read_parameters(this, input_file_in)
 
         case('CREATE_INTERMEDIATE')
            read(keyvalue, *) this%create_intermediate
+
+        case('INTERMEDIATE_DUMP_TIME')
+           read(keyvalue, *) this%time_for_dumping 
+           ! Value is given in hours
+           this%time_for_dumping = this%time_for_dumping * 3600
 
         case('PARALLEL_READING')
            read(keyvalue, *) this%parallel_read

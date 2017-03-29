@@ -651,12 +651,12 @@ end subroutine read_intermediate
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine dump_intermediate(itask)
+subroutine dump_intermediate(time)
   use netcdf,            only : nf90_sync
   use clocks_mod,        only : tick
   use global_parameters, only : id_dump, long, int4
 
-  integer, intent(in)        :: itask
+  real(kind=dp), intent(in)  :: time
   integer(kind=int4)         :: iel, ielement, ibasisfunc, ipoint, status
   integer(kind=long)         :: iclockold
 
@@ -665,34 +665,32 @@ subroutine dump_intermediate(itask)
   if (parameters%create_intermediate) then
     iclockold = tick()
 
-    call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'K_x',             & 
-                           values  = real(K_x(:, :), kind=sp),    &
-                           start   = [1, 1])
-    call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'Var',             & 
-                           values  = real(Var(:, :), kind=sp),    &
-                           start   = [1, 1])
-    call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'Bg_Model',        & 
-                           values  = real(Bg_Model(:, :), kind=sp),&
-                           start   = [1, 1])
-    call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'Het_Model',        & 
-                           values  = real(Het_Model(:, :), kind=sp),&
-                           start   = [1, 1])
+    if (time>parameters%time_for_dumping) then
+      write(lu_out,*) '---saving intermediate results---', time, parameters%time_for_dumping
 
-    call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'niterations',        & 
-                           values  = niterations(:, :),&
-                           start   = [1, 1],        &
-                           count   = [1, parameters%nkernel] )
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'K_x',             & 
+                             values  = real(K_x(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Var',             & 
+                             values  = real(Var(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Bg_Model',        & 
+                             values  = real(Bg_Model(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Het_Model',        & 
+                             values  = real(Het_Model(:, :), kind=sp))
 
-    call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'element_proc',    & 
-                           values  = element_proc)
-    
-    iclockold = tick(id=id_dump, since=iclockold)
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'niterations',        & 
+                             values  = niterations(:, :))
+
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'element_proc',    & 
+                             values  = element_proc)
+      
+      iclockold = tick(id=id_dump, since=iclockold)
+    end if
   end if
 
 end subroutine dump_intermediate
