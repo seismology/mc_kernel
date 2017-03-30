@@ -30,7 +30,7 @@ program kerner_code
     use commpi,                      only: ppinit, pbroadcast_int, ppend, pabort, pbarrier,&
                                            pbroadcast_log, ppsplit
     use global_parameters,           only: sp, dp, pi, deg2rad, verbose, init_random_seed, &
-                                           master, lu_out, myrank
+                                           master, lu_out, myrank, gitversion
 
     use simple_routines,             only: lowtrim
 
@@ -82,6 +82,8 @@ program kerner_code
     !if (.not.(master.or.ioworker.or.firstslave)) print *, 'Rank: ', myrank, ' is a slave!', MPI_COMM_NODE
 
     write(lu_out,*) '***************************************************************'
+    write(lu_out,*) ' MCKernel, development branch'
+    write(lu_out,*) ' Github commit: ', gitversion
     write(lu_out,*) ' MPI communication initialized, I have rank', myrank
     write(lu_out,*) '***************************************************************'
    

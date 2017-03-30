@@ -126,9 +126,6 @@ subroutine ppinit
       end if
   end if
 
-  print *, 'I have rank ', myrank
-
-  
 end subroutine ppinit
 !-----------------------------------------------------------------------------------------
 

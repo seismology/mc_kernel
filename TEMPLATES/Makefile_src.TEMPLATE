@@ -63,7 +63,7 @@ $(PROG): $(OBJS)
 	$(FC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 clean:
-	rm -f $(PROG) $(OBJS) *.M *.mod *.d *.il core *.gcda *.gcno 
+	rm -f $(PROG) $(OBJS) *.M *.mod *.d *.il core *.gcda *.gcno *.h
 
 .SUFFIXES: $(SUFFIXES) .f90 .F90
 
