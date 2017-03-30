@@ -136,7 +136,7 @@ subroutine ppinit
       call set_lu_out(lu_out_loc)
   end if
 
-  print *, 'I have rank ', myrank
+  !print *, 'I have rank ', myrank
 
   
 end subroutine ppinit
@@ -185,8 +185,8 @@ subroutine ppsplit(nslaves_per_node_in)
   call set_myrank_node(myrank_node_loc)
   call set_nproc_node(nproc_node_loc)
 
-  print *, 'I am rank ', myrank, ' on node ', mynode, ', myrank_node: ', myrank_node, ', nproc_node', nproc_node
-  call pbarrier()
+  ! print *, 'I am rank ', myrank, ' on node ', mynode, ', myrank_node: ', myrank_node, ', nproc_node', nproc_node
+  ! call pbarrier()
 
   if (myrank>0.and.myrank_node==0) then
     call set_firstslave(.true.)
