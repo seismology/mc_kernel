@@ -651,12 +651,12 @@ end subroutine read_intermediate
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine dump_intermediate(itask)
+subroutine dump_intermediate(time)
   use netcdf,            only : nf90_sync
   use clocks_mod,        only : tick
   use global_parameters, only : id_dump, long, int4
 
-  integer, intent(in)        :: itask
+  real(kind=dp), intent(in)  :: time
   integer(kind=int4)         :: iel, ielement, ibasisfunc, ipoint, status
   integer(kind=long)         :: iclockold
 
@@ -665,74 +665,32 @@ subroutine dump_intermediate(itask)
   if (parameters%create_intermediate) then
     iclockold = tick()
 
-    do iel = 1, parameters%nelems_per_task
-      ielement = elems_in_task(itask, iel)
-      if (ielement.eq.-1) cycle
+    if (time>parameters%time_for_dumping) then
+      write(lu_out,*) '---saving intermediate results---', time, parameters%time_for_dumping
 
-      ! are we in volumetric or vertex mode?
-      select case(trim(parameters%int_type))
-      case('onvertices')         
-        do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
-          ipoint = connectivity(ibasisfunc, ielement)
-          call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                                 varname = 'K_x',             & 
-                                 values  = real(K_x(ipoint:ipoint, :), kind=sp),    &
-                                 start   = [ipoint, 1],       &
-                                 count   = [1, parameters%nkernel] )
-          call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                                 varname = 'Var',             & 
-                                 values  = real(Var(ipoint, :), kind=sp),    &
-                                 start   = [ipoint, 1],       &
-                                 count   = [1, parameters%nkernel] )
-          call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                                 varname = 'Bg_Model',        & 
-                                 values  = real(Bg_Model(ipoint, :), kind=sp),&
-                                 start   = [ipoint, 1],        &
-                                 count   = [1, nmodel_parameters] )
-          call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                                 varname = 'Het_Model',        & 
-                                 values  = real(Het_Model(ipoint, :), kind=sp),&
-                                 start   = [ipoint, 1],        &
-                                 count   = [1, nmodel_parameters_hetero] )
-        end do
-
-      case('volumetric')
-        call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                               varname = 'K_x',             & 
-                               values  = real(K_x(ielement, :), kind=sp),    &
-                               start   = [ielement, 1],       &
-                               count   = [1, parameters%nkernel] )
-        call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                               varname = 'Var',             & 
-                               values  = real(Var(ielement, :), kind=sp),    &
-                               start   = [ielement, 1],       &
-                               count   = [1, parameters%nkernel] )
-        call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                               varname = 'Bg_Model',        & 
-                               values  = real(Bg_Model(ielement, :), kind=sp),&
-                               start   = [ielement, 1],        &
-                               count   = [1, nmodel_parameters] )
-        call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                               varname = 'Het_Model',        & 
-                               values  = real(Het_Model(ielement, :), kind=sp),&
-                               start   = [ielement, 1],        &
-                               count   = [1, nmodel_parameters_hetero] )
-
-      end select ! int_type
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'K_x',             & 
+                             values  = real(K_x(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Var',             & 
+                             values  = real(Var(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Bg_Model',        & 
+                             values  = real(Bg_Model(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Het_Model',        & 
+                             values  = real(Het_Model(:, :), kind=sp))
 
       call nc_putvar_by_name(ncid    = ncid_intermediate, &
                              varname = 'niterations',        & 
-                             values  = niterations(ielement, :),&
-                             start   = [ielement, 1],        &
-                             count   = [1, parameters%nkernel] )
-    end do
+                             values  = niterations(:, :))
 
-    call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'element_proc',    & 
-                           values  = element_proc)
-    
-    status = nf90_sync(ncid_intermediate)
-    iclockold = tick(id=id_dump, since=iclockold)
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'element_proc',    & 
+                             values  = element_proc)
+      
+      iclockold = tick(id=id_dump, since=iclockold)
+    end if
   end if
 
 end subroutine dump_intermediate
