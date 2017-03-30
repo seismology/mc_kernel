@@ -192,7 +192,7 @@ subroutine nc_open_for_write(filename, ncid, cache_size)
    integer, intent(out)          :: ncid
    integer, intent(in), optional :: cache_size
    character(len=512)            :: fmtstring
-   integer                       :: status
+   integer                       :: status, nmode
    integer                       :: cache_size_local = 512*2**20 !512 MB default value
 
    if (present(cache_size)) cache_size_local = cache_size
@@ -206,8 +206,9 @@ subroutine nc_open_for_write(filename, ncid, cache_size)
      fmtstring = "('CPU ', I4, ' tried to open file ''', A, ''' for writing, " &
               // "but could not find it. Creates it instead.')"
      print fmtstring, myrank, trim(filename)
+     nmode = NF90_HDF5
      status = nf90_create(path       = filename,         &
-                          cmode      = NF90_NETCDF4,   &
+                          cmode      = nmode,            &
                           cache_size = cache_size_local, &
                           ncid       = ncid)
 
@@ -2847,18 +2848,19 @@ end subroutine putvar_int3d
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
+subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names, chunksizes)
 !< Create variable by its size without putting data into it
   integer, intent(in)                        :: ncid
   character(len=*), intent(in)               :: varname
   integer, intent(in)                        :: sizes(:)
   character(*), intent(in), optional         :: dimension_names(:)
+  integer, intent(in), optional              :: chunksizes(:)
   character(len=nf90_max_name), allocatable  :: dimensions(:)
   integer                                    :: ndim
   character(len=nf90_max_name)               :: dimname
   character(len=80)                          :: fmtstring
   integer                                    :: i, variable_id, status, ncid_root
-  integer, allocatable                       :: dimid(:), chunksizes(:)
+  integer, allocatable                       :: dimid(:), chunksizes_local(:)
 
   call getvarid(ncid  = ncid,        &
                 name  = varname,     &
@@ -2867,7 +2869,7 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
 
   ndim = size(sizes)
   allocate(dimensions(ndim))
-  allocate(chunksizes(ndim))
+  allocate(chunksizes_local(ndim))
 
   ! Get ncid of root group. Used for dimensions, which should always be defined
   ! in the root group (at least according to my taste)
@@ -2887,13 +2889,17 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
 
     dimensions = dimension_names
   end if
-
-  ! Find time dimension, if there is one 
-  ! and set its chunk size to one, which facilitates plotting movies strongly
-  chunksizes = sizes
-  do i = 1, ndim
-    if (trim(dimensions(i))=='time') chunksizes(i) = 1
-  end do
+  
+  if (present(chunksizes)) then
+    chunksizes_local = chunksizes
+  else
+    ! Find time dimension, if there is one 
+    ! and set its chunk size to one, which facilitates plotting movies strongly
+    chunksizes_local = sizes
+    do i = 1, ndim
+      if (trim(dimensions(i))=='time') chunksizes_local(i) = sizes(i) / 10
+    end do
+  end if
 
   allocate(dimid(ndim))
 
@@ -2920,13 +2926,23 @@ subroutine nc_create_var_by_name(ncid, varname, sizes, dimension_names)
 
       end if
     end do
+    if (verbose>1) then
+      print *, 'Create NetCDF variable:'
+      print *, ' varname:    ', trim(varname)
+      print *, ' chunksize:  ', chunksizes_local
+      print *, ' sizes:      ', sizes
+      print * 
+    end if
 
-    status = nf90_def_var( ncid       = ncid,          &
-                           name       = trim(varname), &
-                           xtype      = NF90_FLOAT,    &
-                           dimids     = dimid,         &
-                           chunksizes = chunksizes,    &
+    status = nf90_def_var( ncid       = ncid,             &
+                           name       = trim(varname),    &
+                           xtype      = NF90_FLOAT,       &
+                           dimids     = dimid,            &
+                           chunksizes = chunksizes_local, &
                            varid      = variable_id) 
+    status = nf90_def_var_fill(ncid    = ncid,        &
+                               varid   = variable_id, &
+                               no_fill = 0, fill = 12345)
     call check(nf90_enddef(ncid = ncid_root))
 
   else

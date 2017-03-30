@@ -35,20 +35,22 @@ module master_queue
   use heterogeneities,             only: nmodel_parameters_hetero,parameter_name_het, &
                                          parameter_name_het_store
   use master_helper,               only: create_tasks
+  use commpi,                      only: pabort
   implicit none
   private
   
   public :: init_queue, get_next_task, extract_receive_buffer, finalize, & 
-            dump_intermediate, delete_intermediate
+            dump_intermediate, delete_intermediate, dump_expensive
 
   type(inversion_mesh_data_type), save :: inv_mesh
   type(parameter_type),           save :: parameters
   integer, allocatable,           save :: elems_in_task(:,:)
   real(kind=dp), allocatable,     save :: K_x(:,:), Var(:,:), Bg_Model(:,:), Het_Model(:,:)
-  real(kind=sp), allocatable,     save :: fw_field(:,:,:,:), bw_field(:,:,:,:), conv_field(:,:,:)
   integer,       allocatable,     save :: connectivity(:,:)
   integer,       allocatable,     save :: niterations(:,:), element_proc(:)
   real(kind=dp), allocatable,     save :: computation_time(:)
+  real(kind=sp), allocatable,     save :: fw_field(:,:,:,:), bw_field(:,:,:,:), &
+                                          conv_field(:,:,:)
   integer(kind=long),             save :: iclockold_mpi
   integer,                        save :: ncid_intermediate
 
@@ -64,6 +66,7 @@ subroutine init_queue(ntasks, inparam_file)
   use clocks_mod,    only                   : tick
   use global_parameters, only               : id_read_params, id_create_tasks
   use work_type_mod, only                   : wt
+  use plot_wavefields, only                 : init_wavefield_file
   integer, intent(out)                     :: ntasks
   character(len=*), intent(in), optional   :: inparam_file
   integer                                  :: nelems, nbasisfuncs, irec
@@ -149,14 +152,29 @@ subroutine init_queue(ntasks, inparam_file)
   Het_Model(:,:) = 0.0
 
   if (parameters%plot_wavefields) then
-    allocate(fw_field(nbasisfuncs, wt%ndumps, wt%ndim, &
-                      parameters%nkernel))
-    allocate(bw_field(nbasisfuncs, wt%ndumps, wt%ndim, &
-                      parameters%nkernel))
-    allocate(conv_field(nbasisfuncs, wt%ndumps, parameters%nkernel))
-    fw_field = 0.0
-    bw_field = 0.0
-    conv_field = 0.0
+    if (trim(parameters%int_type) == 'volumetric') then
+      allocate(fw_field(parameters%nelems_per_task, wt%ndumps, wt%ndim, &
+                        parameters%nkernel))
+      allocate(bw_field(parameters%nelems_per_task, wt%ndumps, wt%ndim, &
+                        parameters%nkernel))
+      allocate(conv_field(parameters%nelems_per_task, wt%ndumps, parameters%nkernel))
+      fw_field = 0.0
+      bw_field = 0.0
+      conv_field = 0.0
+
+      call init_wavefield_file(inv_mesh, parameters,           &
+                               dt = real(wt%dt*1d-6, kind=dp), &
+                               ndumps = wt%ndumps)
+
+    else
+      ! In onvertices mode, the values on each vertex get successively 
+      ! updated, once a new element to this vertex has been calculated.
+      ! This would require us to keep the whole wavefield in memory, 
+      ! which is prohibitive.
+      print *, 'ERROR: Wavefield plotting is only possible in volumetric mode'
+      call pabort(do_traceback=.false.)
+
+    end if
   end if
 
   allocate(niterations(nelems, parameters%nkernel))
@@ -238,6 +256,7 @@ subroutine extract_receive_buffer(itask, irank)
   use clocks_mod,    only    : tick
   use global_parameters, only: id_extract, id_mpi
   use work_type_mod, only    : wt
+  use plot_wavefields, only  : write_wavefield_data
   integer, intent(in)       :: itask, irank
   integer                   :: iel, ielement, ibasisfunc, ipoint
   real(kind=dp)             :: valence
@@ -284,23 +303,19 @@ subroutine extract_receive_buffer(itask, irank)
           wt%hetero_model(:, ibasisfunc, iel)  * valence
       end if
 
-      if (parameters%plot_wavefields) then
-        fw_field(ipoint, :, :, :) = fw_field(ipoint, :, :, :) + & 
-          real(wt%fw_field(:, :, :, ibasisfunc, iel) * valence, kind=sp)
-
-        bw_field(ipoint, :, :, :) = bw_field(ipoint, :, :, :) + &
-          real(wt%bw_field(:, :, :, ibasisfunc, iel) * valence, kind=sp)
-        
-        conv_field(ipoint, :, :)  = conv_field(ipoint, :, :)  + &
-          real(wt%conv_field(:, 1, :, ibasisfunc, iel) * valence, kind=sp)
-      end if
-
 
     end do
     niterations(ielement,:)     = wt%niterations(:,iel)
     computation_time(ielement)  = wt%computation_time(iel)
     element_proc(ielement)      = irank 
   end do
+
+  if (parameters%plot_wavefields) then 
+    fw_field = wt%fw_field
+    bw_field = wt%bw_field
+    conv_field = wt%conv_field(:,1,:,:)
+  end if
+
 
   iclockold = tick(id=id_extract, since=iclockold)
 
@@ -328,6 +343,13 @@ subroutine finalize()
   write(lu_out,'(A)') '***************************************************************'
   write(lu_out,'(A)') 'Initialize output file'
   write(lu_out,'(A)') '***************************************************************'
+
+  if (parameters%plot_wavefields) then
+    ! Finalize XDMF file for wavefields and reset inv_mesh data objects
+    write(lu_out,*) 'Write Wavefields to disk'
+    call inv_mesh%dump_data_xdmf(trim(parameters%output_file)//'_wavefield')
+    call inv_mesh%free_node_and_cell_data()
+  end if
 
   ! Save big kernel variable to disk
   write(lu_out,*) 'Write Kernel to disk'
@@ -496,73 +518,8 @@ subroutine finalize()
 
 
   call inv_mesh%dump_data_xdmf(trim(parameters%output_file)//'_kernel')
-      
-  call inv_mesh%free_node_and_cell_data()
-
-  if (parameters%plot_wavefields) then
-    write(lu_out,*) 'Write wavefields to disk'
-    select case(trim(parameters%int_type))
-    case ('volumetric')
-      call inv_mesh%init_cell_data(starttime = 0.d0, dt = real(wt%dt*1d-6, kind=dp))
-
-      do ikernel = 1, parameters%nkernel
-        do idim = 1, wt%ndim
-          fmtstring = '("fw_", A, "_", A2)'
-          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), dim_name(idim)
-          call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
-          call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                      values   = fw_field(:, :, idim, ikernel))
-                                      
-          fmtstring = '("bw_", A, "_", A2)'
-          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), dim_name(idim)
-          call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
-          call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                      values   = bw_field(:, :, idim, ikernel))
-                                      
-        end do
-
-        fmtstring = '("conv_", A, "_")'
-        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name)
-        call inv_mesh%add_cell_variable(var_name, nentries=wt%ndumps, istime=.true.)
-        call inv_mesh%add_cell_data(var_name = var_name,                            &
-                                    values   = conv_field(:, :, ikernel))
-
-      end do
-
-    case ('onvertices')
-      call inv_mesh%init_node_data(starttime = 0.d0, dt = real(wt%dt*1d-6, kind=dp))
-
-      do ikernel = 1, parameters%nkernel
-        do idim = 1, wt%ndim
-          fmtstring = '("fw_", A, "_", A2)'
-          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), dim_name(idim)
-          call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
-          call inv_mesh%add_node_data(var_name = var_name,                            &
-                                      values   = fw_field(:, :, idim, ikernel))
-                                      
-          fmtstring = '("bw_", A, "_", A2)'
-          write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), dim_name(idim)
-          call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
-          call inv_mesh%add_node_data(var_name = var_name,                            &
-                                      values   = bw_field(:, :, idim, ikernel))
-                                      
-        end do
-
-        fmtstring = '("conv_", A, "_", I1)'
-        write(var_name, fmtstring) trim(parameters%kernel(ikernel)%name), 1
-        call inv_mesh%add_node_variable(var_name, nentries=wt%ndumps, istime=.true.)
-        call inv_mesh%add_node_data(var_name = var_name,                            &
-                                    values   = conv_field(:, :, ikernel))
-
-      end do
-
-    end select
-    call inv_mesh%dump_data_xdmf(trim(parameters%output_file)//'_wavefield')
-    call inv_mesh%free_node_and_cell_data()
-  end if
     
-
-
+  call inv_mesh%free_node_and_cell_data()
   call inv_mesh%freeme()
 
 
@@ -648,7 +605,7 @@ end subroutine create_intermediate
 !> Read intermediate results and set to global variables
 subroutine read_intermediate(filename, completed)
   character(len=*), intent(in)             :: filename
-  logical, allocatable, intent(out)        :: completed(:)
+  logical, allocatable, intent(inout)      :: completed(:)
 
   real(kind=sp), allocatable               :: real_temp(:,:)
   integer                                  :: ncid_old_intermediate
@@ -694,90 +651,70 @@ end subroutine read_intermediate
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
-subroutine dump_intermediate(itask)
+subroutine dump_intermediate(time)
   use netcdf,            only : nf90_sync
   use clocks_mod,        only : tick
   use global_parameters, only : id_dump, long, int4
-  integer, intent(in)        :: itask
+
+  real(kind=dp), intent(in)  :: time
   integer(kind=int4)         :: iel, ielement, ibasisfunc, ipoint, status
   integer(kind=long)         :: iclockold
 
-! The check, whether to dump intermediate results at all needs to be done here, since the
-! calling routine in master_mod.f90 has no access to the parameter object
-if (parameters%create_intermediate) then
+  ! The check, whether to dump intermediate results at all needs to be done here, since the
+  ! calling routine in master_mod.f90 has no access to the parameter object
+  if (parameters%create_intermediate) then
     iclockold = tick()
 
-    do iel = 1, parameters%nelems_per_task
-      ielement = elems_in_task(itask, iel)
-      if (ielement.eq.-1) cycle
+    if (time>parameters%time_for_dumping) then
+      write(lu_out,*) '---saving intermediate results---', time, parameters%time_for_dumping
 
-      ! are we in volumetric or vertex mode?
-      select case(trim(parameters%int_type))
-      case('onvertices')         
-        do ibasisfunc = 1, inv_mesh%nbasisfuncs_per_elem
-          ipoint = connectivity(ibasisfunc, ielement)
-          call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                                 varname = 'K_x',             & 
-                                 values  = real(K_x(ipoint:ipoint, :), kind=sp),    &
-                                 start   = [ipoint, 1],       &
-                                 count   = [1, parameters%nkernel] )
-          call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                                 varname = 'Var',             & 
-                                 values  = real(Var(ipoint, :), kind=sp),    &
-                                 start   = [ipoint, 1],       &
-                                 count   = [1, parameters%nkernel] )
-          call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                                 varname = 'Bg_Model',        & 
-                                 values  = real(Bg_Model(ipoint, :), kind=sp),&
-                                 start   = [ipoint, 1],        &
-                                 count   = [1, nmodel_parameters] )
-          call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                                 varname = 'Het_Model',        & 
-                                 values  = real(Het_Model(ipoint, :), kind=sp),&
-                                 start   = [ipoint, 1],        &
-                                 count   = [1, nmodel_parameters_hetero] )
-        end do
-
-      case('volumetric')
-        call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                               varname = 'K_x',             & 
-                               values  = real(K_x(ielement, :), kind=sp),    &
-                               start   = [ielement, 1],       &
-                               count   = [1, parameters%nkernel] )
-        call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                               varname = 'Var',             & 
-                               values  = real(Var(ielement, :), kind=sp),    &
-                               start   = [ielement, 1],       &
-                               count   = [1, parameters%nkernel] )
-        call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                               varname = 'Bg_Model',        & 
-                               values  = real(Bg_Model(ielement, :), kind=sp),&
-                               start   = [ielement, 1],        &
-                               count   = [1, nmodel_parameters] )
-        call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                               varname = 'Het_Model',        & 
-                               values  = real(Het_Model(ielement, :), kind=sp),&
-                               start   = [ielement, 1],        &
-                               count   = [1, nmodel_parameters_hetero] )
-
-      end select ! int_type
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'K_x',             & 
+                             values  = real(K_x(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Var',             & 
+                             values  = real(Var(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Bg_Model',        & 
+                             values  = real(Bg_Model(:, :), kind=sp))
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'Het_Model',        & 
+                             values  = real(Het_Model(:, :), kind=sp))
 
       call nc_putvar_by_name(ncid    = ncid_intermediate, &
                              varname = 'niterations',        & 
-                             values  = niterations(ielement, :),&
-                             start   = [ielement, 1],        &
-                             count   = [1, parameters%nkernel] )
-    end do
+                             values  = niterations(:, :))
 
-    call nc_putvar_by_name(ncid    = ncid_intermediate, &
-                           varname = 'element_proc',    & 
-                           values  = element_proc)
-    
-    status = nf90_sync(ncid_intermediate)
-    iclockold = tick(id=id_dump, since=iclockold)
+      call nc_putvar_by_name(ncid    = ncid_intermediate, &
+                             varname = 'element_proc',    & 
+                             values  = element_proc)
+      
+      iclockold = tick(id=id_dump, since=iclockold)
+    end if
   end if
 
 end subroutine dump_intermediate
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
+subroutine dump_expensive(itask)
+  ! Write large data to disk that cannot be stored over the whole runtime of the 
+  ! code, like full wavefields.
+  ! The check, whether to dump wavefields at all needs to be done here, since the
+  ! calling routine in master_mod.f90 has no access to the parameter object
+  use plot_wavefields,   only : write_wavefield_data
+  integer, intent(in)   :: itask
+
+  ! Plot wavefields to disk
+  if (parameters%plot_wavefields) then
+    call write_wavefield_data(inv_mesh, parameters,                &
+                              idx_elems = elems_in_task(itask, :), &
+                              fw_field = fw_field,                 &
+                              bw_field = bw_field,                 &
+                              conv_field = conv_field)
+  end if
+
+end subroutine dump_expensive
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------

@@ -1,29 +1,14 @@
-# directory of the forward and backward run
-FWD_DIR              './wavefield/fwd/'
-BWD_DIR              './wavefield/bwd/'
+FWD_DIR         '../wavefield/fwd_merged/'
+BWD_DIR         '../wavefield/bwd_merged/'
+ALLOWED_ERROR   1e-1
 
-# Use Parallel NetCDF4 for reading the wavefield files?
-# Note that you have to link it against a version of netcdf4 with MPI support
-PARALLEL_READING   false
 
-# Paths of parameter files 
-SRC_FILE          'CMTSOLUTION'
-REC_FILE          'receiver.dat'
-FILT_FILE         'filters.dat'
-STF_FILE          'stf_20s.dat'
-
-# Select the mesh file type. Allowed values are
-# abaqus      : .inp file, can be generated with Qubit or other codes. Can
-#               contain various geometries and multiple sub-objects
-#               Supported geometries: tetrahedra, triangles, quadrilaterals
-#               Set file name in MESH_FILE_ABAQUS
-# 
-# tetrahedral : tetrahedral mesh in two separate files with 
-#               1. coordinates of the vertices (MESH_FILE_VERTICES)
-#               2. the connectivity of the facets of the tetrahedrons
-#                  (MESH_FILE_FACETS)
+SRC_FILE        './CMTSOLUTION'
+REC_FILE        './receiver.dat'
+FILT_FILE       './filters.dat'
 MESH_FILE_TYPE       'abaqus'
-MESH_FILE_ABAQUS     'Meshes/flat_triangles.inp'
+MESH_FILE_ABAQUS     './flat_triangles.inp'
+STF_FILE             './stf_errorf.dat'
 
 #MESH_FILE_TYPE       'tetrahedral'
 #MESH_FILE_VERTICES   'unit_tests/vertices.TEST'
@@ -50,12 +35,11 @@ INT_OVER_BACKGROUND_MODEL false
 # traveltime perturbations for the same model. This only makes sense when the flag
 # to compute relative perturbation kernels is set to true
 INT_OVER_3D_HETEROGENEITIES false
-HET_FILE 'tests/savani.rtpv'
-
+HET_FILE 'unit_tests/savani.rtpv'
 # Prefix of output file names.
 # Kernel files are called $OUTPUT_FILE_kernel.xdmf
 # Wavefield movies are called $OUTPUT_FILE_wavefield.xdmf
-OUT_PREFIX          'kerner'
+OUT_PREFIX           'test_master_queue'
 
 # Output format when dumping kernels and wavefields. 
 # Choose between xdmf, Yale-style csr binary format (compressed sparse row) and
@@ -80,11 +64,10 @@ ALLOWED_ERROR        1e-4
 ALLOWED_RELATIVE_ERROR 2e-2
 
 # Number of points on which the kernel should be evaluated per MC iteration
-POINTS_PER_MC_STEP   4
+POINTS_PER_MC_STEP   20
 
 # Maximum number of iterations after which to cancel Monte Carlo integration 
 # in one cell, regardless of error.
-
 MAXIMUM_ITERATIONS   100
 
 # Write detailed convergence of elements (default: false)
@@ -126,8 +109,9 @@ MASK_SOURCE_RECEIVER  false
 DAMP_RADIUS_SOURCE_RECEIVER  100.d3
 
 # Deconvolve the AxiSEM Source Time Function from the wavefield.
-# If set to true, then the wavefield is just time-shifted to account 
-# for the STF not centered at zero time.
+# This is the correct way to do it, but it is not 100% stable yet. Leave it off for a while-
+# If set to false, than the wavefield is just time-shifted to account for the STF not centered 
+# at zero time.:
 NO_DECONVOLVE_STF false
 
 # Integration scheme
@@ -150,20 +134,7 @@ FFTW_PLAN              MEASURE
 # And waveform kernels, which needs a lot of memory
 PLOT_WAVEFIELDS         false
 
+
 # Do you want your kernels to be given on the vertices ('onvertices') or
 # inside ('volumetric') each elements?
 INT_TYPE             'volumetric'
-
-# Create a file with intermediate results. Probably useful, if you have
-# reason to expect the job to be cancelled. 
-# Can inhibit performance significantly for large numbers of kernels and 
-# large inversion grids
-CREATE_INTERMEDIATE  true
-
-# Time after which to start creating intermediate dumps. This should be set
-# to about 90% of the walltime on a HPC system to ensure that processes
-# running into walltime do not lose all data.
-# Don't set it too low, since saving intermediate results can be time-
-# consuming for big runs.
-# Value is in hours!
-INTERMEDIATE_DUMP_TIME 0

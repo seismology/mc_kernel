@@ -3,11 +3,11 @@ include make_mc_kernel.macros
 # Does not work for some reason
 #REVISION = $(git describe --dirty --abbrev=6 --always --tags)
 
-mc_kernel:  
+mc_kernel: src/gitversion.h
 	@cd src; $(MAKE) $(MFLAGS)
 
 clean:
-	cd src; rm -f *.o *.M *.mod *.d *.il core *.html *.gcda *.gcno; cd ..
+	cd src; rm -f *.o *.M *.mod *.d *.il core *.html *.gcda *.gcno *.h; cd ..
 	rm -f bin/mc_kernel
 
 .PHONY: check
@@ -26,4 +26,8 @@ doc:
 cleandoc:
 	rm -rf ./doc/html
 
-all: $(mc_kernel) $(doc)
+src/gitversion.h: .git/HEAD .git/index
+	echo "character(len=*), parameter :: gitversion = \"$(shell git rev-parse HEAD)\"" > $@
+
+all: $(mc_kernel) $(doc) 
+

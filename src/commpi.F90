@@ -71,9 +71,10 @@ contains
 subroutine print_mpi_error(ierror)
   integer, intent(in)   :: ierror
   character(len=512)    :: error_string
+  integer               :: res_len, ierr
 
   if (ierror.ne.MPI_SUCCESS) then
-    call MPI_ERROR_STRING(ierror, error_string)
+    call MPI_ERROR_STRING(ierror, error_string, res_len, ierr)
     print *, 'MPI ERROR on node ', myrank, ':'
     print *, error_string
   end if
@@ -127,18 +128,6 @@ subroutine ppinit
       call set_master(.false.)
   end if
 
-  ! Wait until the master has created all the output files 
-  call pbarrier()
-
-  if (.not.(master.or.testing)) then
-      write(fnam,"('OUTPUT_', I4.4)") myrank
-      open(newunit=lu_out_loc, file=fnam, status='old', position='rewind')
-      call set_lu_out(lu_out_loc)
-  end if
-
-  !print *, 'I have rank ', myrank
-
-  
 end subroutine ppinit
 !-----------------------------------------------------------------------------------------
 

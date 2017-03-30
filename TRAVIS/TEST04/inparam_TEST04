@@ -1,6 +1,6 @@
 # directory of the forward and backward run
-FWD_DIR              './wavefield/fwd/'
-BWD_DIR              './wavefield/bwd/'
+FWD_DIR              './wavefield/fwd_merged/'
+BWD_DIR              './wavefield/bwd_merged/'
 
 # Use Parallel NetCDF4 for reading the wavefield files?
 # Note that you have to link it against a version of netcdf4 with MPI support
@@ -36,7 +36,7 @@ KERNEL_FOR_ABSOLUTE_PERTURBATIONS false
 
 # For plotting reasons one may wish to skip the integration over cell-volume.
 # Resulting kernels bear the unit [s/m^3]
-NO_INT_OVER_VOLUME false
+NO_INT_OVER_VOLUME true
 
 # Integrate the kernel over the background model. Classically, this was assumed
 # to result in the travel time of a phase. This assumption is highly dubious for
@@ -74,7 +74,7 @@ WRITE_SEISMOGRAMS    true
 # Absolute and relative error limits can be defined separately. The convergence
 # conditions are connected by OR
 # Allowed absolute error per cell
-ALLOWED_ERROR        1e-4
+ALLOWED_ERROR        1e-16
 
 # Allowed relative error per cell
 ALLOWED_RELATIVE_ERROR 2e-2
@@ -159,11 +159,3 @@ INT_TYPE             'volumetric'
 # Can inhibit performance significantly for large numbers of kernels and 
 # large inversion grids
 CREATE_INTERMEDIATE  true
-
-# Time after which to start creating intermediate dumps. This should be set
-# to about 90% of the walltime on a HPC system to ensure that processes
-# running into walltime do not lose all data.
-# Don't set it too low, since saving intermediate results can be time-
-# consuming for big runs.
-# Value is in hours!
-INTERMEDIATE_DUMP_TIME 0
