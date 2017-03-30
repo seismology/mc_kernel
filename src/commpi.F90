@@ -89,7 +89,7 @@ subroutine ppinit
 
   use global_parameters, only  : set_lu_out, set_myrank, set_nproc, & 
                                  set_master, set_firstslave, testing
-  integer                     :: ierror, lu_out_loc, myrank_loc, nproc_loc
+  integer                     :: ierror, lu_out_loc, myrank_loc, nproc_loc, iproc
   character(len=11)           :: fnam
   
   call MPI_INIT( ierror)
@@ -117,13 +117,15 @@ subroutine ppinit
       if (.not.testing) then
         call set_lu_out(6)
       end if
+      ! The master creates all the output files. This is more efficient on
+      ! GPFS file systems, compared to having each task create its own file.
+      do iproc = 1, nproc_loc
+        write(fnam,"('OUTPUT_', I4.4)") iproc
+        open(newunit=lu_out_loc, file=fnam, status='replace')
+        close(lu_out_loc)
+      end do
   else
       call set_master(.false.)
-      if (.not.testing) then
-        write(fnam,"('OUTPUT_', I4.4)") myrank
-        open(newunit=lu_out_loc, file=fnam, status='replace')
-        call set_lu_out(lu_out_loc)
-      end if
   end if
 
 end subroutine ppinit
@@ -172,8 +174,8 @@ subroutine ppsplit(nslaves_per_node_in)
   call set_myrank_node(myrank_node_loc)
   call set_nproc_node(nproc_node_loc)
 
-  print *, 'I am rank ', myrank, ' on node ', mynode, ', myrank_node: ', myrank_node, ', nproc_node', nproc_node
-  call pbarrier()
+  ! print *, 'I am rank ', myrank, ' on node ', mynode, ', myrank_node: ', myrank_node, ', nproc_node', nproc_node
+  ! call pbarrier()
 
   if (myrank>0.and.myrank_node==0) then
     call set_firstslave(.true.)
