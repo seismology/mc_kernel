@@ -227,7 +227,7 @@ def define_arguments():
     hpc_queue.add_argument('--mail_address',
                            help='Mail address for HPC notifications')
     hpc_queue.add_argument('--job_class', choices=['fat', 'thin'],
-                           default='fat',
+                           default='thin',
                            help='Job class on SuperMUC')
     hpc_queue.add_argument('--tasks_per_node', type=int,
                            help='Tasks per node on SuperMUC')
@@ -477,9 +477,9 @@ def define_arguments():
     performance_options.add_argument('--create_intermediate', default=False,
                                      help=helptext)
 
-    helptext = "Start creation of intermediate files only after N seconds\n" + \
+    helptext = "Start creation of intermediate files only after N hours\n" + \
                "Set this to value close to walltime on HPC systems"
-    performance_options.add_argument('--intermediate_dump_time', type=int,
+    performance_options.add_argument('--intermediate_dump_time', type=float,
                                      default=0, help=helptext)
 
     helptext = "Mask the source and the receiver element and set the \n" + \
@@ -851,7 +851,8 @@ elif args.queue == 'SuperMUC':
         text_out += ". /etc/profile.d/modules.sh \n"
         text_out += "module load netcdf/mpi \n"
         text_out += "module load fftw \n"
-        text_out += "MP_TIMEOUT=3600\n"
+        text_out += "export MP_TIMEOUT=3600\n"
+        text_out += "export MP_PULSE=0\n"
         text_out += "poe ./mc_kernel inparam 2>&1  > OUTPUT_0000\n"
         f.write(text_out)
     print('Submitting to SuperMUC loadleveler queue')
