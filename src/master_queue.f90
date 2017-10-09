@@ -328,7 +328,7 @@ subroutine finalize()
   integer                       :: ikernel
   real(kind=dp)                 :: total_time
   real(kind=dp)                 :: delay_time
-  integer                       :: imodel, idim
+  integer                       :: imodel, idim, icell
   character(len=32)             :: fmtstring
   character(len=512)            :: var_name
   character(len=2), parameter   :: dim_name(6) = ['tt', 'pp', 'rr', 'pr', 'tr', 'tp']
@@ -508,13 +508,21 @@ subroutine finalize()
                                   nentries    = 1 )                 
   call inv_mesh%add_cell_variable(var_name    = 'element_proc', &
                                   nentries    = 1 )
+  call inv_mesh%add_cell_variable(var_name    = 'volume', &
+                                  nentries    = 1 )
 
   call inv_mesh%add_cell_data(var_name = 'niterations',       &
                               values   = real(niterations, kind=sp))
   call inv_mesh%add_cell_data(var_name = 'computation_time',  &
-                              values   = reshape(real(computation_time, kind=sp), [size(element_proc,1), 1]))
+                              values   = reshape(real(computation_time, kind=sp), &
+                                                 [size(element_proc,1), 1]))
   call inv_mesh%add_cell_data(var_name = 'element_proc',      &
-                              values   = reshape(real(element_proc, kind=sp), [size(element_proc,1), 1]))
+                              values   = reshape(real(element_proc, kind=sp), &
+                                                 [size(element_proc,1), 1]))
+  call inv_mesh%add_cell_data(var_name = 'volume',      &
+                              values   = reshape(real(inv_mesh%get_volumes(), &
+                                                      kind=sp),               &
+                                                 [inv_mesh%get_nelements(), 1]))
 
 
   call inv_mesh%dump_data_xdmf(trim(parameters%output_file)//'_kernel')
