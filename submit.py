@@ -776,7 +776,7 @@ if args.queue == 'background':
 
     cmd_string = dict()
     cmd_string = \
-        'nohup %s -n %d -quiet ./mc_kernel inparam 2>&1 > OUTPUT_0000 &'
+        'nohup %s -n %d -quiet ./mc_kernel inparam 2>&1 &> OUTPUT_0000 &'
     run_cmd = cmd_string % (mpirun_cmd, args.nslaves + 1)
     print('Starting local job in %s' % run_dir)
     print('Check %s/OUTPUT_0000 for progress' % run_dir)
@@ -853,7 +853,7 @@ elif args.queue == 'SuperMUC':
         text_out += "module load fftw \n"
         text_out += "export MP_TIMEOUT=3600\n"
         text_out += "export MP_PULSE=0\n"
-        text_out += "poe ./mc_kernel inparam 2>&1  > OUTPUT_0000\n"
+        text_out += "poe ./mc_kernel inparam 2>&1 &> OUTPUT_0000\n"
         f.write(text_out)
     print('Submitting to SuperMUC loadleveler queue')
     subprocess.call(['llsubmit', job_script])
