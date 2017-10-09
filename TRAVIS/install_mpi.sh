@@ -76,7 +76,7 @@ case "$os" in
                       --without-alps --without-munge --without-sge --without-loadleveler \
                       --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs \
                       --without-cuda --disable-oshmem --disable-mpi-io  --disable-io-romio
-                    make -sj4
+                    make -sj4 &> make_mpi.log
                     make install
                 else
                     echo "OpenMPI installed..."
