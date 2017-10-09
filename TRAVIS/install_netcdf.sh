@@ -26,9 +26,9 @@ if [ ! -f "$TRAVIS_ROOT/bin/h5stat" ]; then
     #
     ##HDF 1.8.17
     rm -rf hdf5-*
-    wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.17/src/hdf5-1.8.17.tar.bz2
-    tar -xf hdf5-1.8.17.tar.bz2
-    cd hdf5-1.8.17/
+    wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8/hdf5-1.8.19/src/hdf5-1.8.19.tar.bz2
+    tar -xf hdf5-1.8.19.tar.bz2
+    cd hdf5-1.8.19/
 
     ./configure --prefix=$TRAVIS_ROOT --with-zlib=$TRAVIS_ROOT
 

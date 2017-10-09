@@ -87,6 +87,7 @@ module inversion_mesh
       procedure, pass :: read_abaqus_meshtype
       procedure, pass :: tree_sort
       procedure, pass :: get_volume
+      procedure, pass :: get_volumes
       procedure, pass :: get_center
       procedure, pass :: point_in_element_onepoint
       procedure, pass :: point_in_element_npoints
@@ -355,7 +356,22 @@ end function
 !-----------------------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------------------
+function get_volumes(this)
+  ! Get volume of all cells as array      
+  class(inversion_mesh_type)        :: this
+  real(kind=dp)                     :: get_volumes(this%nelements)
+  integer                           :: ielement
+
+  do ielement = 1, this%nelements
+    get_volumes(ielement) = this%get_volume(ielement)
+  end do
+
+end function get_volumes
+!-----------------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------------------
 function get_volume(this, ielement)
+  ! Get volume of cell ielement 
   class(inversion_mesh_type)        :: this
   integer, intent(in)               :: ielement
   real(kind=dp)                     :: get_volume
