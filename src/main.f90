@@ -103,7 +103,12 @@ program kerner_code
         select case(lowtrim(parameters%mesh_file_type))
         case('tetrahedral') 
             nvertices_per_elem = 4
-            nbasisfuncs_per_elem = 4
+            select case(lowtrim(parameters%int_type))
+            case('volumetric')
+                nbasisfuncs_per_elem = 1
+            case('onvertices')
+                nbasisfuncs_per_elem = 4
+            end select
         case('abaqus') 
             call inv_mesh%read_abaqus_meshtype(parameters%mesh_file,parameters%int_type)
             nbasisfuncs_per_elem = inv_mesh%nbasisfuncs_per_elem
