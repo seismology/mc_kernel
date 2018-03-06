@@ -554,8 +554,8 @@ function calc_basekernel(ibasekernel, strain_type_fwd, strain_type_bwd, &
      print*,"ERROR: Density kernels not yet implemented"
      stop
   case(4) ! k_a
-     conv_field_fd = ( fw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
-                     ( fw_field_fd(:,2,:) + bw_field_fd(:,1,:) )
+     conv_field_fd = ( bw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
+                     ( fw_field_fd(:,2,:) + fw_field_fd(:,1,:) )
   case(5) ! k_b
      conv_field_fd = ( ( bw_field_fd(:,5,:) * fw_field_fd(:,5,:) ) + &
                        ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
@@ -747,18 +747,18 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
     if (relative_kernel) then
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vsh**2 * &
-             (  2 * base_kernel(it, :, 1)                        &  ! Lambda
+             ( -2.d0 * base_kernel(it, :, 1)                        &  ! Lambda
               +     base_kernel(it, :, 2)                        &  ! Mu
-              +     base_kernel(it, :, 5)                        &  ! B
-              + 2 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
+              -     base_kernel(it, :, 5)                        &  ! B
+              + 2.d0 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
       end do
     else
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vsh * &
-             (  2 * base_kernel(it, :, 1)                        &  ! Lambda
+             (  -2.d0 * base_kernel(it, :, 1)                        &  ! Lambda
               +     base_kernel(it, :, 2)                        &  ! Mu
-              +     base_kernel(it, :, 5)                        &  ! B
-              + 2 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
+              -     base_kernel(it, :, 5)                        &  ! B
+              + 2.d0 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
       end do
     end if
 
@@ -794,15 +794,15 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
     if (relative_kernel) then
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vpv**2 * &
-             ( base_kernel(it, :, 1) +                           &  ! Lambda
-               base_kernel(it, :, 4) +                           &  ! A
+             ( base_kernel(it, :, 1) -                           &  ! Lambda
+               base_kernel(it, :, 4) -                           &  ! A
                base_kernel(it, :, 6) )                              ! C 
       end do
     else
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vpv * &
-             ( base_kernel(it, :, 1) +                           &  ! Lambda
-               base_kernel(it, :, 4) +                           &  ! A
+             ( base_kernel(it, :, 1) -                           &  ! Lambda
+               base_kernel(it, :, 4) -                           &  ! A
                base_kernel(it, :, 6) )                              ! C 
       end do
     end if

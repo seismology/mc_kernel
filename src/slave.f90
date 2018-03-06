@@ -726,6 +726,8 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
           weights = inv_mesh%weights(ielement, ibasisfunc, random_points)                 
           kernelvalue_weighted = mult3d_1d(kernelvalue_basekers, weights)
 
+          print *, 'Weights are: ', weights(1)
+
           ! Compute weighted base kernels
           do ikernel = 1, parameters%nkernel
 
@@ -900,7 +902,7 @@ function integrate_3d_model(het_model, inv_mesh, ielement) result(int_hetero)
   istep_model = 0
   do ibasisfunc = 1, nbasisfuncs_per_elem
      call int_hetero(ibasisfunc)%initialize_montecarlo(nfuncs = nmodel_parameters_hetero,   & 
-                                                       volume = 1d0,                 & 
+                                                       volume = 1d0,                & 
                                                        allowed_error = 1d-2,         &
                                                        allowed_relerror = 1d-1)
   end do
