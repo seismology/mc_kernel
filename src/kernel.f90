@@ -554,8 +554,8 @@ function calc_basekernel(ibasekernel, strain_type_fwd, strain_type_bwd, &
      print*,"ERROR: Density kernels not yet implemented"
      stop
   case(4) ! k_a
-     conv_field_fd = ( fw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
-                     ( fw_field_fd(:,2,:) + bw_field_fd(:,1,:) )
+     conv_field_fd = ( fw_field_fd(:,2,:) + fw_field_fd(:,1,:) ) * &
+                     ( bw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) 
   case(5) ! k_b
      conv_field_fd = ( ( bw_field_fd(:,5,:) * fw_field_fd(:,5,:) ) + &
                        ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
@@ -572,8 +572,6 @@ end function calc_basekernel
 !-------------------------------------------------------------------------------
 !> Here the we tabulate the base kernels required to assemble 
 !! the physical kernels for a desired model parameter
-!! TODO: Move this to own module, together with assemble_basekernel, but wait for 
-!!       merge with Ludwigs branch - SCS 240914
 subroutine tabulate_kernels(model_param, needs_basekernel, strain_type)
   use simple_routines, only       : to_lower
   character(len=*),  intent(in)  :: model_param
