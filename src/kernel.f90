@@ -732,14 +732,14 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
     if (relative_kernel) then
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vs**2 * &
-             ( base_kernel(it, :, 2)                             &  ! Mu
-             - base_kernel(it, :, 1) * 2.d0)                        ! Lambda
+             (      base_kernel(it, :, 2)                        &  ! Mu
+              - 2 * base_kernel(it, :, 1))                          ! Lambda
       end do
     else
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vs * &
-             ( base_kernel(it, :, 2)                             &  ! Mu
-             - base_kernel(it, :, 1) * 2.d0)                        ! Lambda
+             (      base_kernel(it, :, 2)                        &  ! Mu
+              - 2 * base_kernel(it, :, 1))                          ! Lambda
       end do
     end if
 
@@ -747,17 +747,17 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
     if (relative_kernel) then
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vsh**2 * &
-             (  2 * base_kernel(it, :, 1)                        &  ! Lambda
-              +     base_kernel(it, :, 2)                        &  ! Mu
-              +     base_kernel(it, :, 5)                        &  ! B
+             (      base_kernel(it, :, 2)                        &  ! Mu
+              - 2 * base_kernel(it, :, 1)                        &  ! Lambda
+              -     base_kernel(it, :, 5)                        &  ! B
               + 2 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
       end do
     else
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vsh * &
-             (  2 * base_kernel(it, :, 1)                        &  ! Lambda
-              +     base_kernel(it, :, 2)                        &  ! Mu
-              +     base_kernel(it, :, 5)                        &  ! B
+             (      base_kernel(it, :, 2)                        &  ! Mu
+              - 2 * base_kernel(it, :, 1)                        &  ! Lambda
+              -     base_kernel(it, :, 5)                        &  ! B
               + 2 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
       end do
     end if
@@ -779,14 +779,14 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
     if (relative_kernel) then
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vph**2 * &
-             ( base_kernel(it, :, 4) +                           &  ! A
-               base_kernel(it, :, 6) * bg_model%c_eta )             ! C
+             (  base_kernel(it, :, 4)                            &  ! A
+              + base_kernel(it, :, 6) * bg_model%c_eta )            ! C
       end do
     else
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vph * &
-             ( base_kernel(it, :, 4) +                           &  ! A
-               base_kernel(it, :, 6) * bg_model%c_eta )             ! C
+             (  base_kernel(it, :, 4)                            &  ! A
+              + base_kernel(it, :, 6) * bg_model%c_eta )            ! C
       end do
     end if
 
@@ -794,16 +794,16 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
     if (relative_kernel) then
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vpv**2 * &
-             ( base_kernel(it, :, 1) +                           &  ! Lambda
-               base_kernel(it, :, 4) +                           &  ! A
-               base_kernel(it, :, 6) )                              ! C 
+             (  base_kernel(it, :, 1)                            &  ! Lambda
+              - base_kernel(it, :, 4)                            &  ! A
+              - base_kernel(it, :, 6) )                             ! C 
       end do
     else
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vpv * &
-             ( base_kernel(it, :, 1) +                           &  ! Lambda
-               base_kernel(it, :, 4) +                           &  ! A
-               base_kernel(it, :, 6) )                              ! C 
+             (  base_kernel(it, :, 1)                            &  ! Lambda
+              - base_kernel(it, :, 4)                            &  ! A
+              - base_kernel(it, :, 6) )                             ! C 
       end do
     end if
 
