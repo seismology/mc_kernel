@@ -281,7 +281,8 @@ subroutine extract_receive_buffer(itask, irank)
       select case(trim(parameters%int_type))
       case('onvertices')         
         ipoint = connectivity(ibasisfunc, ielement)
-        valence = 1.d0/real(inv_mesh%nbasisfuncs_per_elem, kind=dp)
+        !valence = 1.d0/real(inv_mesh%nbasisfuncs_per_elem, kind=dp) 
+        valence = 1.d0 !Changed by Harriet 9/05/18
       case('volumetric')
         ipoint = ielement
         valence = 1.d0

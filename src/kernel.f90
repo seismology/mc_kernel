@@ -121,6 +121,9 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    this%model_parameter   = model_parameter
    this%dt                = dt
 
+
+   !write(lu_out,'(A,F8.3)')  'timeshift fwd' timeshift_fwd
+
    ! Test argument consistency
    deconv_stf_loc = .false.
    if (present(deconv_stf)) then
@@ -233,16 +236,17 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    if (.not.deconv_stf) then
      ! It's slightly ineffective to init that every time, but it is only 
      ! called once per receiver at initialization.
-     call timeshift%init_ts(fft_data%get_f(), dtshift = timeshift_fwd)
-     call timeshift%apply(seis_disp_fd)
-     call timeshift%apply(seis_velo_fd)
-     call timeshift%freeme()
+       call timeshift%init_ts(fft_data%get_f(), dtshift = timeshift_fwd)
+       call timeshift%apply(seis_disp_fd)
+       call timeshift%apply(seis_velo_fd)
+       call timeshift%freeme()
    end if
 
    seis_disp_filtered_fd = this%filter%apply_2d(seis_disp_fd, kind='fwd')
    seis_velo_filtered_fd = this%filter%apply_2d(seis_velo_fd, kind='fwd')
 
-   call fft_data%irfft(seis_disp_filtered_fd, seis_disp_filtered)
+   call fft_data%irfft(seis_disp_fd, seis_disp_filtered)
+  ! call fft_data%irfft(seis_disp_filtered_fd, seis_disp_filtered)
    call fft_data%irfft(seis_velo_filtered_fd, seis_velo_filtered)
 
    call check_NaN(seis_velo_filtered, isnan, nan_loc)
@@ -366,7 +370,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    if ((firstslave.and.write_smgr).or.testing) then
       open(unit=100,file='./Seismograms/seism_raw_'//trim(this%name), action='write')
       do isample = 1, size(seis,1)
-         write(100,*) this%t(isample), seis(isample)
+         write(100,*) this%t(isample), seis_disp_td(isample, 1), seis(isample)
       end do
       close(100)
 
@@ -554,8 +558,8 @@ function calc_basekernel(ibasekernel, strain_type_fwd, strain_type_bwd, &
      print*,"ERROR: Density kernels not yet implemented"
      stop
   case(4) ! k_a
-     conv_field_fd = ( fw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
-                     ( fw_field_fd(:,2,:) + bw_field_fd(:,1,:) )
+     conv_field_fd = ( bw_field_fd(:,2,:) + bw_field_fd(:,1,:) ) * &
+                     ( fw_field_fd(:,2,:) + fw_field_fd(:,1,:) )
   case(5) ! k_b
      conv_field_fd = ( ( bw_field_fd(:,5,:) * fw_field_fd(:,5,:) ) + &
                        ( bw_field_fd(:,4,:) * fw_field_fd(:,4,:) ) ) * 4.d0
@@ -747,18 +751,18 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
     if (relative_kernel) then
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vsh**2 * &
-             (  2 * base_kernel(it, :, 1)                        &  ! Lambda
+             ( -2.d0 * base_kernel(it, :, 1)                        &  ! Lambda
               +     base_kernel(it, :, 2)                        &  ! Mu
-              +     base_kernel(it, :, 5)                        &  ! B
-              + 2 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
+              -     base_kernel(it, :, 5)                        &  ! B
+              + 2.d0 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
       end do
     else
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vsh * &
-             (  2 * base_kernel(it, :, 1)                        &  ! Lambda
+             (  -2.d0 * base_kernel(it, :, 1)                        &  ! Lambda
               +     base_kernel(it, :, 2)                        &  ! Mu
-              +     base_kernel(it, :, 5)                        &  ! B
-              + 2 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
+              -     base_kernel(it, :, 5)                        &  ! B
+              + 2.d0 * base_kernel(it, :, 6) * (1-bg_model%c_eta))     ! C 
       end do
     end if
 
@@ -794,15 +798,15 @@ function calc_physical_kernels_time_series(model_param, base_kernel, bg_model, &
     if (relative_kernel) then
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vpv**2 * &
-             ( base_kernel(it, :, 1) +                           &  ! Lambda
-               base_kernel(it, :, 4) +                           &  ! A
+             ( base_kernel(it, :, 1) -                           &  ! Lambda
+               base_kernel(it, :, 4) -                           &  ! A
                base_kernel(it, :, 6) )                              ! C 
       end do
     else
       do it = 1, nt
         physical_kernel(it, :) = 2.d0 * bg_model%c_rho * bg_model%c_vpv * &
-             ( base_kernel(it, :, 1) +                           &  ! Lambda
-               base_kernel(it, :, 4) +                           &  ! A
+             ( base_kernel(it, :, 1) -                           &  ! Lambda
+               base_kernel(it, :, 4) -                           &  ! A
                base_kernel(it, :, 6) )                              ! C 
       end do
     end if

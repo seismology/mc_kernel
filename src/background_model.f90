@@ -258,6 +258,8 @@ function weight(this, weights) result(all_coeffs)
      all_coeffs(:, ipoint)  = all_coeffs(:, ipoint) * weights(ipoint)
   end do
 
+ print *, 'weights(1) is: ', weights(1)
+
 end function weight
 !-----------------------------------------------------------------------------------------
 

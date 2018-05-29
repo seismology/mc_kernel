@@ -185,6 +185,8 @@ function load_model_coeffs(this, coordinates_xyz, weights) result(weighted_coeff
     weighted_coeffs(:, ipoint) = coeffs(:, ipoint) * weights(ipoint)
   end do
 
+ print *, 'Weights are: ', weights(1)
+
 end function load_model_coeffs
 !-----------------------------------------------------------------------------------------
 
