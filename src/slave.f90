@@ -629,11 +629,11 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
                   iclockold = tick(id=id_mc, since=iclockold)
 
                   ! Apply Filter 
-                  conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
+                  ! conv_field_fd_filt = parameters%kernel(ikernel)%apply_filter(conv_field_fd)
                   iclockold = tick(id=id_filter_conv, since=iclockold)
 
                   ! Apply Inverse FFT
-                  call fft_data%irfft(conv_field_fd_filt, conv_field)
+                  call fft_data%irfft(conv_field_fd, conv_field)
                   iclockold = tick(id=id_fft, since=iclockold)
 
                   ! Calculate scalar misfit base kernels from convolved time traces

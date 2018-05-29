@@ -871,26 +871,26 @@ subroutine check_consistency(this)
                 '  in simulation ", I1, "(",F9.4,"s) vs ", F9.4, " in the others")' 
     fmtstring_stf = '("Inconsistency in forward simulations: ", A, " is different \'// &
                     '  in simulation ", I1, " vs the others")' 
-    do ifile = 1, this%nfiles_fwd
-       if (source_shift_agreed_fwd.ne.this%fwd(ifile)%source_shift_t) then
-          write(*,fmtstring) 'source time shift', ifile, source_shift_agreed_fwd, &
-                             this%fwd(ifile)%source_shift_t
-          call pabort
-       end if
-       if (any(abs(stf_agreed_fwd - this%fwd(ifile)%stf).gt.1e-10)) then
-           write(*,fmtstring) 'stf', ifile
-           call pabort
-       end if
-       if (any(abs(stf_d_agreed_fwd - this%fwd(ifile)%stf_d).gt.1e-10)) then
-           write(*,fmtstring) 'stf_d', ifile
-           call pabort
-       end if
-       if (amplitude_agreed_fwd.ne.this%fwd(ifile)%amplitude) then
-          write(*,fmtstring) 'source amplitude', ifile, amplitude_agreed_fwd, &
-                             this%fwd(ifile)%amplitude
-          call pabort
-       end if
-    end do
+    !do ifile = 1, this%nfiles_fwd
+     !  if (source_shift_agreed_fwd.ne.this%fwd(ifile)%source_shift_t) then
+      !    write(*,fmtstring) 'source time shift', ifile, source_shift_agreed_fwd, &
+       !                      this%fwd(ifile)%source_shift_t
+        !  call pabort
+      ! end if
+      ! if (any(abs(stf_agreed_fwd - this%fwd(ifile)%stf).gt.1e-10)) then
+       !    write(*,fmtstring) 'stf', ifile
+        !   call pabort
+      ! end if
+      ! if (any(abs(stf_d_agreed_fwd - this%fwd(ifile)%stf_d).gt.1e-10)) then
+       !    write(*,fmtstring) 'stf_d', ifile
+        !   call pabort
+       !end if
+       !if (amplitude_agreed_fwd.ne.this%fwd(ifile)%amplitude) then
+        !  write(*,fmtstring) 'source amplitude', ifile, amplitude_agreed_fwd, &
+                             !this%fwd(ifile)%amplitude
+         ! call pabort
+      ! end if
+   ! end do
 
     this%timeshift_fwd = real(source_shift_agreed_fwd, kind=dp)
     allocate(this%stf_fwd(ndumps_agreed))

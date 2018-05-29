@@ -121,6 +121,9 @@ subroutine init(this, name, time_window, filter, misfit_type, model_parameter, &
    this%model_parameter   = model_parameter
    this%dt                = dt
 
+
+   !write(lu_out,'(A,F8.3)')  'timeshift fwd' timeshift_fwd
+
    ! Test argument consistency
    deconv_stf_loc = .false.
    if (present(deconv_stf)) then
@@ -233,16 +236,17 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    if (.not.deconv_stf) then
      ! It's slightly ineffective to init that every time, but it is only 
      ! called once per receiver at initialization.
-     call timeshift%init_ts(fft_data%get_f(), dtshift = timeshift_fwd)
-     call timeshift%apply(seis_disp_fd)
-     call timeshift%apply(seis_velo_fd)
-     call timeshift%freeme()
+       call timeshift%init_ts(fft_data%get_f(), dtshift = timeshift_fwd)
+       call timeshift%apply(seis_disp_fd)
+       call timeshift%apply(seis_velo_fd)
+       call timeshift%freeme()
    end if
 
    seis_disp_filtered_fd = this%filter%apply_2d(seis_disp_fd, kind='fwd')
    seis_velo_filtered_fd = this%filter%apply_2d(seis_velo_fd, kind='fwd')
 
-   call fft_data%irfft(seis_disp_filtered_fd, seis_disp_filtered)
+   call fft_data%irfft(seis_disp_fd, seis_disp_filtered)
+  ! call fft_data%irfft(seis_disp_filtered_fd, seis_disp_filtered)
    call fft_data%irfft(seis_velo_filtered_fd, seis_velo_filtered)
 
    call check_NaN(seis_velo_filtered, isnan, nan_loc)
@@ -366,7 +370,7 @@ subroutine cut_and_add_seismogram(this, seis, deconv_stf, write_smgr, timeshift_
    if ((firstslave.and.write_smgr).or.testing) then
       open(unit=100,file='./Seismograms/seism_raw_'//trim(this%name), action='write')
       do isample = 1, size(seis,1)
-         write(100,*) this%t(isample), seis(isample)
+         write(100,*) this%t(isample), seis_disp_td(isample, 1), seis(isample)
       end do
       close(100)
 
