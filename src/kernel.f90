@@ -533,27 +533,27 @@ function calc_basekernel(ibasekernel, strain_type_fwd, strain_type_bwd, &
   case(1) ! k_lambda
      select case(trim(strain_type_fwd))
      case('straintensor_trace')
-        conv_field_fd = sum(fw_field_fd * bw_field_fd, 2)
+        conv_field_fd = - sum(fw_field_fd * bw_field_fd, 2)
 
      case('straintensor_full')
         select case(trim(strain_type_bwd))
         case('straintensor_trace') !This receiver has only trace base vectors
-           conv_field_fd = (fw_field_fd(:,1,:) +    &
+           conv_field_fd = - ((fw_field_fd(:,1,:) +    &
                             fw_field_fd(:,2,:) +    &
                             fw_field_fd(:,3,:)  ) * &
-                            bw_field_fd(:,1,:) ! This row contains the trace
+                            bw_field_fd(:,1,:)) ! This row contains the trace
         case('straintensor_full')
            ! Only convolve trace of fw and bw fields
-           conv_field_fd = (fw_field_fd(:,1,:) +    &
+           conv_field_fd = - ((fw_field_fd(:,1,:) +    &
                             fw_field_fd(:,2,:) +    &
                             fw_field_fd(:,3,:)  ) * &
                            (bw_field_fd(:,1,:) +    &
                             bw_field_fd(:,2,:) +    &
-                            bw_field_fd(:,3,:)  )
+                            bw_field_fd(:,3,:)  ))
         end select
      end select
   case(2) ! k_mu
-     conv_field_fd = sum(fw_field_fd * bw_field_fd, 2) * 2.d0
+     conv_field_fd = - sum(fw_field_fd * bw_field_fd, 2) * 2.d0
   case(3) ! k_rho
      print*,"ERROR: Density kernels not yet implemented"
      stop
