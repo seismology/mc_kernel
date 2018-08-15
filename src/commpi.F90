@@ -124,9 +124,17 @@ subroutine ppinit
         open(newunit=lu_out_loc, file=fnam, status='replace')
         close(lu_out_loc)
       end do
+      call pbarrier()
   else
       call set_master(.false.)
+      call pbarrier()
+
+      ! Open the OUTPUT file that master created
+      write(fnam,"('OUTPUT_', I4.4)") myrank
+      open(newunit=lu_out_loc, file=fnam, status='old')
+      call set_lu_out(lu_out_loc)
   end if
+
 
 end subroutine ppinit
 !-----------------------------------------------------------------------------------------
