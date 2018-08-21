@@ -420,6 +420,15 @@ function slave_work(parameters, sem_data, inv_mesh, fft_data, het_model) result(
   allocate(weights(nptperstep))
   allocate(int_kernel(nbasisfuncs_per_elem))
 
+  if (parameters%int_over_background) then
+    allocate(int_model(nbasisfuncs_per_elem))
+  end if
+
+
+  if (parameters%int_over_hetero) then
+    allocate(int_hetero(nbasisfuncs_per_elem))
+  end if
+
   iclockold = tick(id=id_init, since=iclockold)
 
   loop_elements: do ielement = 1, nelements 
