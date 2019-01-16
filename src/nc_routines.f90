@@ -101,6 +101,7 @@ subroutine nc_open_for_read(filename, ncid, comm, info)
                     // "but could not find it or other error occured')"
       print fmtstring, myrank, trim(filename)
       print *, nf90_strerror(status)
+      call flush(6)
       call pabort()
    end if
 

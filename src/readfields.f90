@@ -2928,8 +2928,8 @@ subroutine cache_mesh(ncid, mesh)
   integer, intent(in)           :: ncid
   type(meshtype)                :: mesh
 
-  write(lu_out, '(A)', advance='no') 'Reading mesh parameters...'
-  call flush(lu_out)
+  ! write(lu_out, '(A)', advance='no') 'Reading mesh parameters...'
+  ! call flush(lu_out)
 
   call mpi_getvar_by_name(ncid   = ncid,          &
                          varname = 'mesh_S',      &
@@ -2993,7 +2993,7 @@ subroutine cache_mesh(ncid, mesh)
   !write(lu_out,*) 'sizeof mesh%gll_point_ids: ', sizeof(mesh%gll_point_ids)
 
 
-  write(lu_out, *) ' done'
+  ! write(lu_out, *) ' done'
 
 end subroutine cache_mesh
 !-----------------------------------------------------------------------------------------

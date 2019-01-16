@@ -208,7 +208,7 @@ function init(this, nbuffer, value_type, nvalues_dim1, nvalues_dim2, nvalues_dim
         call pabort
     endif
 
-    if (verbose > 0) then
+    if (verbose > 1) then
        write(lu_out, '(A,I5,A,I5,I5,I5,I5,A)') ' Initialize buffer with ', nbuffer, &
                     ' memories for (', this%nvalues_dim1, this%nvalues_dim2, &
                     this%nvalues_dim3, this%nvalues_dim4, ') values'
