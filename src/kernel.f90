@@ -434,10 +434,10 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
          case('trapezoidal')
            calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_velo_cut, &
                                                                  this%dt ) &
-                                        * this%normalization
+                                        * this%normalization * -1.d0
          case('parseval')
            calc_misfit_kernel(itrace) = this%integrate_parseval( timeseries_cut, this%seis_velo_cut_fd) &
-                                        * this%normalization
+                                        * this%normalization * -1.d0
          end select
       end do
 
@@ -454,10 +454,10 @@ function calc_misfit_kernel(this, timeseries, int_scheme)
          case('trapezoidal')
            calc_misfit_kernel(itrace) = integrate_trapezoidal( timeseries_cut * this%seis_disp_cut, &
                                                                  this%dt ) &
-                                        * this%normalization
+                                        * this%normalization * -1.d0
          case('parseval')
            calc_misfit_kernel(itrace) = this%integrate_parseval( timeseries_cut, this%seis_disp_cut_fd) &
-                                        * this%normalization
+                                        * this%normalization * -1.d0
          end select
       end do
 
