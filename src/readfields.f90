@@ -1293,7 +1293,7 @@ function load_fw_points(this, coordinates, source_params, model)
 
            load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_src_to_xyz( &
                                           load_fw_points(:,:,ipoint),        &
-                                          source_params%lon, this%ndumps    )
+                                          rotmesh_phi(ipoint), this%ndumps    )
 
            load_fw_points(:,:,ipoint) = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(        &
                                           load_fw_points(:,:,ipoint),                         &
@@ -1454,7 +1454,7 @@ function load_bw_points(this, coordinates, receiver)
         ! only need to rotate in case of vs
         if (this%strain_type.eq.'straintensor_full') then
            load_bw_points(:,:,ipoint) = rotate_symm_tensor_voigt_src_to_xyz(load_bw_points(:,:,ipoint), &
-                                          receiver%lon, this%ndumps)
+                                          rotmesh_phi(ipoint), this%ndumps)
            load_bw_points(:,:,ipoint) = rotate_symm_tensor_voigt_xyz_src_to_xyz_earth(load_bw_points(:,:,ipoint), &
                                           receiver%lon, receiver%colat, this%ndumps)
         end if
