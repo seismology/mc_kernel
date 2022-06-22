@@ -2085,8 +2085,7 @@ subroutine dump_data_xdmf(this, filename)
 
   ! create new snapshot in the temporal collection
   write(iinput_xdmf, 7341) 'grid', this%starttime, &
-                           trim(xdmf_elem_type), this%nelements, &
-                           "'", "'", "'", "'", "'", "'"
+                           trim(xdmf_elem_type), this%nelements
 
   do ivar = 1, this%nvar_node
     do ientry = 1, this%variable_node(ivar)%nentries
@@ -2179,14 +2178,20 @@ subroutine dump_data_xdmf(this, filename)
 7341 format(&    
     '    <Grid Name="', A,'" GridType="Uniform">',/&
     '        <Time Value="',F8.2,'" />',/&
-    '        <Topology TopologyType="', A, '" NumberOfElements="',i10,'">',/&
-    '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'grid', A,']" />',/&
-    '        </Topology>',/&
-    '        <Geometry GeometryType="XYZ">',/&
-    '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'points', A,']" />',/&
-    '        </Geometry>',/&
+    '        <Topology TopologyType="', A, '" NumberOfElements="',i10,'">',   /&
+    '            <DataItem Reference="XML">',                                 /&
+    '                /Xdmf/Domain/DataItem[@Name="grid"]',                    /&
+    '            </DataItem>',                                                /&
+    '        </Topology>',                                                    /&
+    '        <Geometry GeometryType="XY">',                                   /&
+    '            <DataItem Reference="XML">',                                 /&
+    '                /Xdmf/Domain/DataItem[@Name="points"]',                  /&
+    '            </DataItem>',                                                /&
+    '        </Geometry>',                                                    /&
     '        <Attribute Name="blockid" AttributeType="Scalar" Center="Cell">',/&
-    '            <DataItem Reference="/Xdmf/Domain/DataItem[@Name=', A,'block', A,']" />',/&
+    '            <DataItem Reference="XML">',                                 /&
+    '                /Xdmf/Domain/DataItem[@Name="block"]',                   /&
+    '            </DataItem>',/&
     '        </Attribute>')
 
 73421 format(&    
