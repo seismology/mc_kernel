@@ -2183,7 +2183,7 @@ subroutine dump_data_xdmf(this, filename)
     '                /Xdmf/Domain/DataItem[@Name="grid"]',                    /&
     '            </DataItem>',                                                /&
     '        </Topology>',                                                    /&
-    '        <Geometry GeometryType="XY">',                                   /&
+    '        <Geometry GeometryType="XYZ">',                                   /&
     '            <DataItem Reference="XML">',                                 /&
     '                /Xdmf/Domain/DataItem[@Name="points"]',                  /&
     '            </DataItem>',                                                /&
