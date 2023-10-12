@@ -177,7 +177,13 @@ filter2 Butterw_HP 20.   0.0 2.0 0.0
 filter3 Butterw_BP 20.0 40.0 6.0 0.0  
 ```
 
-Allowed values for the filter type are: `Butterw_BP` `Butterw_HP`,  `Butterw_LP`
+Allowed values for the filter type are:
+- `Gabor`: Log-frequency Gabor filter. Parameters: center period, width as ratio of center period, time shift in seconds (typically 0), *ignored*
+- `Butterw_BP`: Bandpass Butterworth. Parameters: Lower cutoff period, Upper cutoff period, order of filter, *ignored*
+- `Butterw_LP`: Lowpass Butterworth. Parameters: Upper cutoff period, *ignored*, order of filter, *ignored*
+- `Butterw_HP`: Highpass Butterworth. Parameters: Lower cutoff period, *ignored*, order of filter, *ignored*  
+
+All Butterworth filters can be turned into a zero-phase filter by adding `_ZP` to the type. Note that this doubles the filter order.
 
 
 
