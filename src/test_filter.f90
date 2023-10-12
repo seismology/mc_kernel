@@ -229,9 +229,9 @@ subroutine test_filter_butterworth_lp_response
    df = fft_data%get_df()
 
    ! Test filter with 5s period
-   filterclass = 'Butterw_LP_O2'
+   filterclass = 'Butterw_LP'
    filtername  = 'Butterw test'
-   call butter%create(filtername, df, nomega, filterclass, [5.0d0, 0.d0, 0.d0, 0.d0])
+   call butter%create(filtername, df, nomega, filterclass, [5.0d0, 0.d0, 2.d0, 0.d0])
 
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 
@@ -290,9 +290,9 @@ subroutine test_filter_butterworth_hp_response
    df = fft_data%get_df()
 
    ! Test filter with 5s period
-   filterclass = 'Butterw_HP_O2'
+   filterclass = 'Butterw_HP'
    filtername  = 'Butterw test'
-   call butter%create(filtername, df, nomega, filterclass, [5.0d0, 0.d0, 0.d0, 0.d0])
+   call butter%create(filtername, df, nomega, filterclass, [5.0d0, 0.d0, 2.d0, 0.d0])
 
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 
@@ -351,9 +351,9 @@ subroutine test_filter_butterworth_bp_response
    df = fft_data%get_df()
 
    ! Test filter with 10s - 5s passband
-   filterclass = 'Butterw_BP_O4'
+   filterclass = 'Butterw_BP'
    filtername  = 'Butterw test'
-   call butter%create(filtername, df, nomega, filterclass, [10.0d0, 5.d0, 0.d0, 0.d0])
+   call butter%create(filtername, df, nomega, filterclass, [10.0d0, 5.d0, 2.d0, 0.d0])
 
    call assert_true(butter%isinitialized(), 'filter is initialized after creation')
 

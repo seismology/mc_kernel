@@ -75,7 +75,7 @@ contains
 
 !-----------------------------------------------------------------------------------------
 !> Create a filter object with the specified parameters
-subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
+subroutine create(this, name, dfreq, nfreq, filterclass, frequencies, norder)
 
     class(filter_type)              :: this
     integer, intent(in)             :: nfreq
@@ -83,6 +83,7 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
     integer                         :: ifreq
     character(len=32), intent(in)   :: name
     character(len=32), intent(in)   :: filterclass
+    integer                         :: ifreq
 
     character(len=64)               :: fmtstring
     character(len=64)               :: fnam
@@ -121,75 +122,87 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
        ! 3. time shift in seconds
        this%transferfunction = loggabor(this%f, frequencies(1), frequencies(2), frequencies(3))
 
-    case('Butterw_LP_O2')
-       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 2)
-    case('Butterw_HP_O2')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2)
-    case('Butterw_BP_O2')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2) &
-                             * butterworth_lowpass(this%f, frequencies(2), 2)
-    case('Butterw_LP_O4')
-       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 4)
-    case('Butterw_HP_O4')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4)
-    case('Butterw_BP_O4')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4) &
-                             * butterworth_lowpass(this%f, frequencies(2), 4)
-    case('Butterw_LP_O6')
-       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 6)
-    case('Butterw_HP_O6')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6)
-    case('Butterw_BP_O6')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6) &
-                             * butterworth_lowpass(this%f, frequencies(2), 6)
-    case('Butterw_LP_O8')
-       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 8)
-    case('Butterw_HP_O8')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8)
-    case('Butterw_BP_O8')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8) &
-                             * butterworth_lowpass(this%f, frequencies(2), 8)
+    case('Butterw_LP')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), int(frequencies(3)))
+    case('Butterw_HP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), int(frequencies(3)))
+    case('Butterw_BP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), int(frequencies(3))) &
+                             * butterworth_lowpass(this%f, frequencies(2), int(frequencies(3)))
 
-    case('Butterw_LP_O2_ZP')
-       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 2)
+    case('Butterw_LP_ZP')
+       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), int(frequencies(3)))
        this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_HP_O2_ZP')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2)
+    case('Butterw_HP_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), int(frequencies(3)))
        this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_BP_O2_ZP')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2) &
-                             * butterworth_lowpass(this%f, frequencies(2), 2)
+    case('Butterw_BP_ZP')
+       this%transferfunction = butterworth_highpass(this%f, frequencies(1), int(frequencies(3))) &
+                             * butterworth_lowpass(this%f, frequencies(2), int(frequencies(3)))
        this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_LP_O4_ZP')
-       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 4)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_HP_O4_ZP')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_BP_O4_ZP')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4) &
-                             * butterworth_lowpass(this%f, frequencies(2), 4)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_LP_O6_ZP')
-       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 6)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_HP_O6_ZP')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_BP_O6_ZP')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6) &
-                             * butterworth_lowpass(this%f, frequencies(2), 6)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_LP_O8_ZP')
-       this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 8)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_HP_O8_ZP')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
-    case('Butterw_BP_O8_ZP')
-       this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8) &
-                             * butterworth_lowpass(this%f, frequencies(2), 8)
-       this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+
+    !  case('Butterw_LP_O4')
+    !     this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 4)
+    !  case('Butterw_HP_O4')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4)
+    !  case('Butterw_BP_O4')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4) &
+    !                           * butterworth_lowpass(this%f, frequencies(2), 4)
+    !  case('Butterw_LP_O6')
+    !     this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 6)
+    !  case('Butterw_HP_O6')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6)
+    !  case('Butterw_BP_O6')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6) &
+    !                           * butterworth_lowpass(this%f, frequencies(2), 6)
+    !  case('Butterw_LP_O8')
+    !     this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 8)
+    !  case('Butterw_HP_O8')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8)
+    !  case('Butterw_BP_O8')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8) &
+    !                           * butterworth_lowpass(this%f, frequencies(2), 8)
+
+    !  case('Butterw_LP_O2_ZP')
+    !     this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 2)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_HP_O2_ZP')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_BP_O2_ZP')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 2) &
+    !                           * butterworth_lowpass(this%f, frequencies(2), 2)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_LP_O4_ZP')
+    !     this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 4)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_HP_O4_ZP')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_BP_O4_ZP')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 4) &
+    !                           * butterworth_lowpass(this%f, frequencies(2), 4)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_LP_O6_ZP')
+    !     this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 6)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_HP_O6_ZP')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_BP_O6_ZP')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 6) &
+    !                           * butterworth_lowpass(this%f, frequencies(2), 6)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_LP_O8_ZP')
+    !     this%transferfunction = butterworth_lowpass(this%f, frequencies(1), 8)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_HP_O8_ZP')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
+    !  case('Butterw_BP_O8_ZP')
+    !     this%transferfunction = butterworth_highpass(this%f, frequencies(1), 8) &
+    !                           * butterworth_lowpass(this%f, frequencies(2), 8)
+    !     this%transferfunction = this%transferfunction * conjg(this%transferfunction)
     case default
        print *, 'ERROR: Unknown filter type: ', trim(filterclass)
        call pabort
