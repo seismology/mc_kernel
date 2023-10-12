@@ -95,6 +95,89 @@ python ../pyfiles/create_composites.py
 The last script creates a composite image like the one below:
 ![](https://www.geophysik.uni-muenchen.de/~staehler/kerner/composite_plot.png)
 
+## Input files
+There are 3 types of inputs needed to compute kernels:
+- Receivers (locations of seismograms)
+- Filters (describing the frequency content)
+- Kernels (given a receiver and a filter, what other parameters to use for the kernel)
+
+Each Receiver is described by 3 parameters:
+- **Name**: Descriptive name of the receiver (e.g. SEED snippet like CH.DAVOX or really anything)
+- **Latitude**
+- **Longitude**
+- **Source time function**
+  
+Each kernel is described by 6 parameters
+- **Receiver**: Each kernel is estimated for a seismogram recorded at one given receiver.
+- **Kernel name**: Just a descriptive name
+- **Misfit type**: Can be cross-correlation travel time (*CC*) or amplitude (*AM*)
+- **Time window**: Beginning and End of time window in which the misfit is computed
+- **Filter**: This contains the frequency content of the measurement.
+- **Model parameter**: Physical parameter to which the kernel belongs (*vp*, *vs*, etc)
+
+These inputs are contained in two files: *receiver.dat* and *filter.dat*
+### receiver.dat
+Example file describing a total of 4 kernels at 2 receivers; one in 30 and one in 60 degree distance. 
+```
+2                                      # Nr of receivers
+Z                                      # seismogram component
+30deg  60.0000   00.0000  src1 2       # Name, lat, lon, stf name, nr of kernels
+P_40s Gabor_40 CC 345.0 405.0  vp      # Kernel name, Filter name, misfit, time window begin and end, model parameter
+P_30s Gabor_30 CC 345.0 390.0  vp
+60deg  30.0000   00.0000  src1 2       
+P_40s Gabor_40 CC 580.0 640.0  vp      
+P_30s Gabor_30 CC 580.0 625.0  vp
+```
+Detailed breakdown of each line:
+```
+2                                      # Nr of receivers
+```
+How many receiver blocks will be read. If there are more receiver blocks below than this number, the remaining blocks are all ignored.
+
+```
+Z                                      # seismogram component
+```
+Which seismogram component do we compute the kernel on. Note that M.C. Kernel needs to be run again for a different seismogram component.
+
+```
+30deg  60.0000   00.0000  src1 2       # Name, lat, lon, stf name, nr of kernels
+P_40s Gabor_40 CC 345.0 405.0  vp      # Kernel name, Filter name, misfit, time window begin and end, model parameter
+P_30s Gabor_30 CC 345.0 390.0  vp
+```
+Receiver block. Starts with one line defining the receiver location and the number of kernels described on it. Followed by one line per kernel.
+Each kernel line contains the 6 entries described in the comment above. 
+Allowed values for the misfit are:
+- `CC`: Cross-correlation travel time misfit as defined in Sigloch & Nolet (2006)
+- `AM`: Amplitude misfit as defined in Sigloch & Nolet (2006)
+
+Allowed values for the model parameter are:
+- `vp`: P-wave speed
+- `vs`: S-wave speed
+- `rho`: Density
+- `vph`: P-wave speed in horizontal direction
+- `vpv`: P-wave speed in vertical direction
+- `vsh`: S-wave speed in horizontal direction
+- `vsv`: S-wave speed in vertical direction
+- `eta`: anisotropic parameter eta
+- `phi`: anisotropic parameter phi
+- `xi `: anisotropic parameter xi
+- `lam`: First Lamé parameter
+- `mu `: Second Lamé parameter
+
+### filters.dat
+Example filters.dat file describing 3 filters:
+- Gabor filter at 40 sec period
+- low-pass 2nd order Butterworth (at 20sec period)
+- bandpass 6th order Butterworth (between 20 and 40 sec)
+
+```
+3
+filter1 Gabor 40.0 0.5 0.0 0.0  
+filter2 Butterw_HP 20.   0.0 2.0 0.0  
+filter3 Butterw_BP 20.0 40.0 6.0 0.0  
+```
+
+Allowed values for the filter type are: `Butterw_BP` `Butterw_HP`,  `Butterw_LP`
 
 
 
