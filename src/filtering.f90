@@ -75,7 +75,7 @@ contains
 
 !-----------------------------------------------------------------------------------------
 !> Create a filter object with the specified parameters
-subroutine create(this, name, dfreq, nfreq, filterclass, frequencies, norder)
+subroutine create(this, name, dfreq, nfreq, filterclass, frequencies)
 
     class(filter_type)              :: this
     integer, intent(in)             :: nfreq
@@ -83,7 +83,6 @@ subroutine create(this, name, dfreq, nfreq, filterclass, frequencies, norder)
     integer                         :: ifreq
     character(len=32), intent(in)   :: name
     character(len=32), intent(in)   :: filterclass
-    integer                         :: ifreq
 
     character(len=64)               :: fmtstring
     character(len=64)               :: fnam
