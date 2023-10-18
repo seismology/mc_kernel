@@ -2124,8 +2124,9 @@ subroutine dump_data_xdmf(this, filename)
 
     ! create new snapshot in the temporal collection
     write(iinput_xdmf, 7341) 'grid', this%dt * itime + this%starttime, &
-                             trim(xdmf_elem_type), this%nelements, &
-                             "'", "'", "'", "'", "'", "'"
+                             trim(xdmf_elem_type), this%nelements !, &
+                             ! "'", "'", "'", "'", "'", "'"
+                             ! Where did these dashes even come from? SCS 231018
 
     do ivar = 1, this%nvar_node
       ! Only write if this is a time variable and we still have entries 

@@ -3306,7 +3306,7 @@ end function get_nsim_from_merged_file
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Integer
 subroutine nc_read_att_int(attribute_value, attribute_name, nc)
-  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR, nf90_strerror
   character(len=*),  intent(in)     :: attribute_name
   integer, intent(out)              :: attribute_value
   type(ncparamtype), intent(in)     :: nc
@@ -3317,6 +3317,7 @@ subroutine nc_read_att_int(attribute_value, attribute_name, nc)
       write(6,*) 'Could not find attribute ', trim(attribute_name)
       write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
+      print *, nf90_strerror(status)
       call pabort
   end if
 end subroutine nc_read_att_int
@@ -3325,7 +3326,7 @@ end subroutine nc_read_att_int
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Character
 subroutine nc_read_att_char(attribute_value, attribute_name, nc)
-  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR, nf90_strerror
   character(len=*),  intent(in)     :: attribute_name
   character(len=*), intent(out)     :: attribute_value
   type(ncparamtype), intent(in)     :: nc
@@ -3336,6 +3337,7 @@ subroutine nc_read_att_char(attribute_value, attribute_name, nc)
       write(6,*) 'Could not find attribute ', trim(attribute_name)
       write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
+      print *, nf90_strerror(status)
       call pabort 
   end if
 end subroutine nc_read_att_char
@@ -3344,7 +3346,7 @@ end subroutine nc_read_att_char
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Real
 subroutine nc_read_att_real(attribute_value, attribute_name, nc)
-  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR, nf90_strerror
   character(len=*),  intent(in)     :: attribute_name
   real, intent(out)                 :: attribute_value
   type(ncparamtype), intent(in)     :: nc
@@ -3355,6 +3357,7 @@ subroutine nc_read_att_real(attribute_value, attribute_name, nc)
       write(6,*) 'Could not find attribute ', trim(attribute_name)
       write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
+      print *, nf90_strerror(status)
       call pabort
   end if
 end subroutine nc_read_att_real
@@ -3363,7 +3366,7 @@ end subroutine nc_read_att_real
 !-----------------------------------------------------------------------------------------
 !> Read NetCDF attribute of type Double
 subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
-  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR  
+  use netcdf,     only               : nf90_get_att, NF90_GLOBAL, NF90_NOERR, nf90_strerror
   character(len=*),  intent(in)     :: attribute_name
   real(kind=dp), intent(out)        :: attribute_value
   type(ncparamtype), intent(in)     :: nc
@@ -3374,6 +3377,7 @@ subroutine nc_read_att_dble(attribute_value, attribute_name, nc)
       write(6,*) 'Could not find attribute ', trim(attribute_name)
       write(6,*) ' in NetCDF file ', trim(nc%meshdir), '/Data/ordered_output.nc4'
       write(6,*) ' with NCID: ', nc%ncid
+      print *, nf90_strerror(status)
       call pabort
   end if
 end subroutine nc_read_att_dble

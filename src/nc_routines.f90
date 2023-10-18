@@ -405,6 +405,7 @@ subroutine nc_getvar_by_name_1d(ncid, varname, values, limits, varid, collective
   integer, intent(out), optional             :: varid
   logical, intent(in), optional              :: collective
 
+  real(kind=dp), allocatable                 :: values_dp(:)
   integer                                    :: variable_id, dimid(1), npoints, variable_type
   integer                                    :: status
   real(kind=sp)                              :: limits_loc(2)
@@ -450,6 +451,15 @@ subroutine nc_getvar_by_name_1d(ncid, varname, values, limits, varid, collective
                    start  = 1,                    &
                    count  = npoints,              &
                    values = values) 
+  case(NF90_DOUBLE)
+    ! Create temporary double precision variable
+    allocate(values_dp(npoints))
+    call nc_getvar(ncid   = ncid,                 &
+                   varid  = variable_id,          &
+                   start  = 1,                    &
+                   count  = npoints,              &
+                   values = values_dp)
+    values = real(values_dp, kind=sp) 
   case default
     write(*,*) 'nc_getvar_by_name_1d is only implemented for NF90_FLOAT'
     call flush(6)
