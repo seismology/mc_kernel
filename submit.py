@@ -113,18 +113,18 @@ def auto_buffer_size(memory_available):
 
 
 def read_receiver_dat(rec_file):
-    with open(rec_file) as f:
+    with open(rec_file) as f_rec:
         nkernel_total = 0
         fullstrain_kernel = False
         # Read number of receivers
-        str_line = f.readline()
+        str_line = f_rec.readline()
         nrec = int(str_line.split()[0])
         print('Number of receivers: %d' % nrec)
         # Read seismogram component
-        str_line = f.readline()
+        _ = f_rec.readline()
         # seis_cmp = str_line.split()[0]
         for irec in range(0, nrec):
-            str_line = f.readline()
+            str_line = f_rec.readline()
             # rec_name = str_line.split()[0]
             # rec_lat = float(str_line.split()[1])
             # rec_lon = float(str_line.split()[2])
@@ -132,7 +132,7 @@ def read_receiver_dat(rec_file):
             # print 'Receiver: %s, coordinates: (%f, %f), %d kernels' % \
             #          (rec_name, rec_lat, rec_lon, nkernel)
             for ikernel in range(0, nkernel):
-                str_line = f.readline()
+                str_line = f_rec.readline()
                 kernel_name = str_line.split()[0]
                 # filter_name = str_line.split()[1]
                 # misfit_name = str_line.split()[2]
@@ -207,7 +207,7 @@ def define_arguments():
                "buffers. If the required memory is larger than this\n" + \
                "number, an error is thrown."
     parser.add_argument('-a', '--available_memory', type=int,
-                        help='Amount of memory available in MB')
+                        help=helptext)
 
     helptext = "Queue to use. Default is local, which starts a job\n" + \
                "with MPIRUN"
@@ -593,7 +593,7 @@ elif os.path.exists(bwd_path_merged):
     nc_bwd = Dataset(bwd_path_merged)
 else:
     errmsg = 'Could not find a wavefield file in the bwd_dir %s' % \
-             params['FWD_DIR']
+             params['BWD_DIR']
     raise IOError(errmsg)
 
 npoints_bwd = getattr(nc_bwd, "npoints")
@@ -730,7 +730,7 @@ f_readme.write('MC KERNEL run for %d CPUs, started on %s\n' % (args.nslaves,
                                                                current_time))
 f_readme.write('  by user ''%s'' on ''%s''\n' % (os.environ.get('USER'),
                                                  os.environ.get('HOSTNAME')))
-f_readme.write('  Minimum AxiSEM period: %4.1f\n' % (period_fwd))
+f_readme.write('  Minimum AxiSEM period: %4.1f\n' % period_fwd)
 if args.message:
     f_readme.write(args.message)
 f_readme.close()
@@ -774,7 +774,6 @@ if args.queue == 'background':
     # Change dir and submit
     os.chdir(run_dir)
 
-    cmd_string = dict()
     cmd_string = \
         'nohup %s -n %d -quiet ./mc_kernel inparam 2>&1 &> OUTPUT_0000 &'
     run_cmd = cmd_string % (mpirun_cmd, args.nslaves + 1)
@@ -786,7 +785,6 @@ if args.queue == 'foreground':
     # Change dir and submit
     os.chdir(run_dir)
 
-    cmd_string = dict()
     cmd_string = \
         '%s -n %d ./mc_kernel inparam'
     run_cmd = cmd_string % (mpirun_cmd, args.nslaves + 1)
